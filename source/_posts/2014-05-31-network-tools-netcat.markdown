@@ -254,5 +254,5 @@ I hope by now you realize how powerful netcat can be and its usefulness in a var
 
 > If more of us valued food and cheer and song above hoarded gold, it would
 > be a merrier world.
-> 		-- J.R.R. Tolkien
+> -- J.R.R. Tolkien
  
