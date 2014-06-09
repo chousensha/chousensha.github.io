@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Setting up Octopress - Core dump overflow</title>
+  <title>Getting Pure-FTPd up and running - Core dump overflow</title>
   <meta name="author" content="chousensha">
 
   
-  <meta name="description" content="Since I now got the blog up and running, I want to walk through the steps of setting it up and where I had to do some extra work not mentioned in the &hellip;">
+  <meta name="description" content="In this tutorial I&rsquo;ll present the steps I took to set up Pure-FTPd on a Backtrack system. There might be slight differences for other &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://chousensha.github.io/blog/2014/05/27/setting-up-octopress">
+  <link rel="canonical" href="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
@@ -80,7 +80,7 @@
   
   <header>
     
-      <h1 class="entry-title">Setting up Octopress</h1>
+      <h1 class="entry-title">Getting Pure-FTPd up and running</h1>
     
     
       <p class="meta">
@@ -96,7 +96,7 @@
   
 
 
-<time datetime="2014-05-27T21:44:43+03:00" pubdate data-updated="true">May 27<span>th</span>, 2014</time>
+<time datetime="2014-06-09T23:20:06+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2014</time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://chousensha.github.io">Comments</a>
@@ -106,128 +106,96 @@
   </header>
 
 
-<div class="entry-content"><p>Since I now got the blog up and running, I want to walk through the steps of setting it up and where I had to do some extra work not mentioned in the official documentation, which by the way, is a good place to start reading about Octopress.</p>
+<div class="entry-content"><p>In this tutorial I&rsquo;ll present the steps I took to set up Pure-FTPd on a Backtrack system. There might be slight differences for other distributions, particularly where file names and locations are concerned.</p>
 
 <!-- more -->
 
 
-<p>First, I want to mention that starting an Octopress blog is not a daunting task at all. You don&rsquo;t need to know Ruby, the main commands for getting it to work are already implemented for you. The files you need to modify are intuitive and structured in a logical way, and the <code>markdown</code> language is easy to use even if you never heard of it before ( I certainly hadn&rsquo;t before starting with Octopress ). Some basic familiarity with a command shell and Git is all that&rsquo;s really needed! So if you want the awesome looks and other perks of Octopress, it&rsquo;s not hard at all to get them!</p>
+<p>First, a brief description of Pure-FTPd, from the official documentation:</p>
 
-<p>So, Octopress is built on top of Jekyll, which is a simple, blog-aware, static site generator based on Ruby. Jekyll is actually the engine behind GitHub Pages. Being static, it&rsquo;s very fast and no myriad features that you don&rsquo;t really need are cluttering up the server side. And Octopress gives you the necessary tools to customize and maintain a blog in a flexible and convenient way. It also comes loaded with plugins for many 3rd party services that you might want to use.</p>
+<blockquote><p>Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon > Troll-FTPd.</p>
 
-<h3>Installation</h3>
+<p>Features include chroot()ed and/or virtual chroot()ed home directories, virtual
+domains, built-in &lsquo;ls&rsquo;, anti warez system, configurable ports for passive
+downloads, FXP protocol, bandwidth throttling, ratios, LDAP / MySQL / PostgreSQL-
+based authentication, fortune files, Apache-like log files, fast standalone mode,
+text / HTML / XML real-time status report, virtual users, virtual quotas, privilege > separation, SSL/TLS and more.</p></blockquote>
 
-<p>You need to have Git and Ruby 1.9.3 or greater before installing Octopress. You can check your Ruby version with this command: <code>ruby &mdash;version</code></p>
+<p>Something to keep in mind is that, unlike other FTP servers, Pure-FTPd is controlled through command line arguments, rather than a configuration file. The latter is possible, but I won&rsquo;t cover it here.</p>
 
-<p>To start with, clone the Octopress repository and give it the name you want:</p>
+<p>Before going into the commands, I want to explain the concept of <strong>virtual users</strong>. These are FTP-only accounts that don&rsquo;t have to exit on the system, since they&rsquo;re used only for FTP. They have to be associated with a system user, so a good practice which I&rsquo;ll follow here is to create a dedicated system account just for FTP. Thousands of virtual users can share the same system user, as long as they all are chrooted and they have their own home directory.</p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>git clone git://github.com/imathis/octopress.git blogname</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Then, install dependencies. I had to install the <code>ruby1.9.1-dev</code> package before the <em>bundle install</em> would work.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>gem install bundler
-</span><span class='line'>bundle install</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Next, install the default Octopress theme:</p>
+<p>Now, on to getting the server ready to..serve. First, create a group for FTP activities:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake install</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>groupadd ftpgroup</span></code></pre></td></tr></table></div></figure>
 
 
-<h3>Configuration</h3>
-
-<p>To configure your blog, you need to edit the <code>_config.yml</code> file. There you can add your blog URL, description categories, 3rd party integration, and other stuff.</p>
-
-<h3>Content</h3>
-
-<p>To create a post, you run the following rake task:</p>
+<p>Now, create a system user that will be used for FTP only:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_post["title"]</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>useradd -g ftpgroup -d /dev/null -s /etc ftpuser</span></code></pre></td></tr></table></div></figure>
 
 
-<p>This will create a <code>markdown</code> post in the <code>source/_posts</code> directory. Use your favorite text editor to edit it and add your post body. Markdown is really easy to use, just look at one of reference sheets available on the web to get started with it.</p>
+<p>The name of the user is ftpuser. The -g flag associates it with the previously created group. Since I don&rsquo;t want the user to have a home directory or a login shell for security reasons, the -d option nukes the home directory by assigning it to /dev/null, and -s option sets /etc as a  fake shell.</p>
 
-<p>Similarly, if you want to create a new page, you do it like this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake new_page[page]</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To see how your posts look:</p>
+<p>Next, make a directory for FTP users:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake preview</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers</span></code></pre></td></tr></table></div></figure>
 
 
-<p>This will start a small server on port 4000 that will let you view your pages on your local machine. Check it out in your browser by navigating to <code><a href="http://localhost:4000/">http://localhost:4000/</a></code></p>
-
-<h3>Deployment</h3>
-
-<p>To generate your blog (populate the public directory with your posts and pages) run:</p>
+<p>Now we want to create our first virtual user. First, make a home directory for that user (note that there is a switch to automate this, but I use the manual approach here):</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake generate</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Now you are ready to deploy it. I use Github Pages for the blog. If you want it hosted on Github, there&rsquo;s a rake task available for it, but first you need to create a new repository that should look like this: <code>username.github.io</code></p>
-
-<p>Then run:</p>
+<p>The <strong>pure-pw</strong> utility is what we&rsquo;ll use for managing virtual users. We could manually edit files instead, but who would want that when there&rsquo;s a nice, clean way?</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake setup_github_pages</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw useradd testuser -u ftpuser -d /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
 
 
-<p>You will be asked for the URL of your newly created repository, which you can copy from the HTTPS or SSH URL available on its page.</p>
+<p>This creates a virtual user named testuser, with the same UID as ftpuser, and that is chrooted to its home directory.</p>
 
-<p>After that&rsquo;s done, you can deploy your generated files with:</p>
+<p>Next step is to commit all the virtual users changes to a PureDB file. Without committing changes to the database, the accounts won&rsquo;t be activated, and unusable.</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>rake deploy</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw mkdb</span></code></pre></td></tr></table></div></figure>
 
 
-<p>This will commit your files and push them to the master branch. You will want to commit your sorce, too. In your blog directory, run these git commands:</p>
+<p>We then have to set up some symbolic links to add PureDB to the authentication methods:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>git add .
-</span><span class='line'>git commit -m 'message here'
-</span><span class='line'>git push origin source</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ln -s /etc/pure-ftpd/pureftpd.passwd /etc/pureftpd.passwd
+</span><span class='line'>ln -s /etc/pure-ftpd/pureftpd.pdb /etc/pureftpd.pdb
+</span><span class='line'>ln -s /etc/pure-ftpd/conf/PureDB /etc/pure-ftpd/auth/PureDB</span></code></pre></td></tr></table></div></figure>
 
 
-<p>And now you have an awesome Octopress blog out there on the web!</p>
-
-<h4>Disqus comments</h4>
-
-<p>To enable comments, in your _config.yml file, look for these lines and change them accordingly:</p>
+<p>If you don&rsquo;t need Unix and PAM authentication, you can do the following:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>disqus_short_name: your-disqus-shortname # your website shortname on disqus 
-</span><span class='line'>disqus_show_comment_count: true</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo no &gt; /etc/pure-ftpd/conf/UnixAuthentication
+</span><span class='line'>echo no &gt; /etc/pure-ftpd/conf/PAMAuthentication</span></code></pre></td></tr></table></div></figure>
 
 
-<p>When setting up your site on Disqus, be careful with the URL you give it. Pass it like this:</p>
+<p>Lastly, change the permissions of /home/ftpusers and its subdirectories to have ftpuser as owner and ftpgroup as group:</p>
 
-<p><em>mysite.com</em></p>
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chown -R ftpuser /home/ftpusers
+</span><span class='line'>chgrp -R ftpgroup /home/ftpusers</span></code></pre></td></tr></table></div></figure>
 
-<p>instead of this:</p>
 
-<p><em>mysite.com/</em></p>
+<p>From here on there are a lot of options which you can use to customize your FTP server to suit your needs. As always, a good place to start looking for more advanced options is in the man pages and official documentation.</p>
 
-<p>Because Disqus adds a trailing slash after your URL, if you also provide one, you will end up with 2 slashes and Disqus won&rsquo;t work.</p>
+<p>Cookie:</p>
 
-<p>And that&rsquo;s pretty much what I had to do for this blog!</p>
-
-<p>Not forgetting the cookie:</p>
-
-<blockquote><p>You will give someone a piece of your mind, which you can ill afford.</p></blockquote>
+<blockquote><p>You don&rsquo;t become a failure until you&rsquo;re satisfied with being one.</p></blockquote>
 </div>
 
 
@@ -250,12 +218,12 @@
   
 
 
-<time datetime="2014-05-27T21:44:43+03:00" pubdate data-updated="true">May 27<span>th</span>, 2014</time>
+<time datetime="2014-06-09T23:20:06+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2014</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/blog/'>blog</a>, <a class='category' href='/blog/categories/octopress/'>octopress</a>
+    <a class='category' href='/blog/categories/ftp/'>ftp</a>, <a class='category' href='/blog/categories/pure-ftpd/'>pure-ftpd</a>
   
 </span>
 
@@ -264,7 +232,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/05/27/setting-up-octopress/" data-via="" data-counturl="http://chousensha.github.io/blog/2014/05/27/setting-up-octopress/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/" data-via="" data-counturl="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/" >Tweet</a>
   
   
   
@@ -273,10 +241,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/05/21/resources-for-learning/" title="Previous Post: Resources for learning">&laquo; Resources for learning</a>
+        <a class="basic-alignment left" href="/blog/2014/06/03/pentest-lab-metasploitable-2/" title="Previous Post: Pentest lab - Metasploitable 2">&laquo; Pentest lab - Metasploitable 2</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/05/28/touring-the-linux-directories/" title="Next Post: Touring the Linux directories">Touring the Linux directories &raquo;</a>
       
     </p>
   </footer>
@@ -372,8 +338,8 @@
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://chousensha.github.io/blog/2014/05/27/setting-up-octopress/';
-        var disqus_url = 'http://chousensha.github.io/blog/2014/05/27/setting-up-octopress/';
+        var disqus_identifier = 'http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/';
+        var disqus_url = 'http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/';
         var disqus_script = 'embed.js';
       
     (function () {

@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-06-08T18:33:38+03:00</updated>
+  <updated>2014-06-09T23:33:05+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,104 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Getting Pure-FTPd up and running]]></title>
+    <link href="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/"/>
+    <updated>2014-06-09T23:20:06+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running</id>
+    <content type="html"><![CDATA[<p>In this tutorial I&rsquo;ll present the steps I took to set up Pure-FTPd on a Backtrack system. There might be slight differences for other distributions, particularly where file names and locations are concerned.</p>
+
+<!-- more -->
+
+
+<p>First, a brief description of Pure-FTPd, from the official documentation:</p>
+
+<blockquote><p>Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon > Troll-FTPd.</p>
+
+<p>Features include chroot()ed and/or virtual chroot()ed home directories, virtual
+domains, built-in &lsquo;ls&rsquo;, anti warez system, configurable ports for passive
+downloads, FXP protocol, bandwidth throttling, ratios, LDAP / MySQL / PostgreSQL-
+based authentication, fortune files, Apache-like log files, fast standalone mode,
+text / HTML / XML real-time status report, virtual users, virtual quotas, privilege > separation, SSL/TLS and more.</p></blockquote>
+
+<p>Something to keep in mind is that, unlike other FTP servers, Pure-FTPd is controlled through command line arguments, rather than a configuration file. The latter is possible, but I won&rsquo;t cover it here.</p>
+
+<p>Before going into the commands, I want to explain the concept of <strong>virtual users</strong>. These are FTP-only accounts that don&rsquo;t have to exit on the system, since they&rsquo;re used only for FTP. They have to be associated with a system user, so a good practice which I&rsquo;ll follow here is to create a dedicated system account just for FTP. Thousands of virtual users can share the same system user, as long as they all are chrooted and they have their own home directory.</p>
+
+<p>Now, on to getting the server ready to..serve. First, create a group for FTP activities:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>groupadd ftpgroup</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, create a system user that will be used for FTP only:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>useradd -g ftpgroup -d /dev/null -s /etc ftpuser</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The name of the user is ftpuser. The -g flag associates it with the previously created group. Since I don&rsquo;t want the user to have a home directory or a login shell for security reasons, the -d option nukes the home directory by assigning it to /dev/null, and -s option sets /etc as a  fake shell.</p>
+
+<p>Next, make a directory for FTP users:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we want to create our first virtual user. First, make a home directory for that user (note that there is a switch to automate this, but I use the manual approach here):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <strong>pure-pw</strong> utility is what we&rsquo;ll use for managing virtual users. We could manually edit files instead, but who would want that when there&rsquo;s a nice, clean way?</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw useradd testuser -u ftpuser -d /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This creates a virtual user named testuser, with the same UID as ftpuser, and that is chrooted to its home directory.</p>
+
+<p>Next step is to commit all the virtual users changes to a PureDB file. Without committing changes to the database, the accounts won&rsquo;t be activated, and unusable.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw mkdb</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We then have to set up some symbolic links to add PureDB to the authentication methods:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ln -s /etc/pure-ftpd/pureftpd.passwd /etc/pureftpd.passwd
+</span><span class='line'>ln -s /etc/pure-ftpd/pureftpd.pdb /etc/pureftpd.pdb
+</span><span class='line'>ln -s /etc/pure-ftpd/conf/PureDB /etc/pure-ftpd/auth/PureDB</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you don&rsquo;t need Unix and PAM authentication, you can do the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo no &gt; /etc/pure-ftpd/conf/UnixAuthentication
+</span><span class='line'>echo no &gt; /etc/pure-ftpd/conf/PAMAuthentication</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lastly, change the permissions of /home/ftpusers and its subdirectories to have ftpuser as owner and ftpgroup as group:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chown -R ftpuser /home/ftpusers
+</span><span class='line'>chgrp -R ftpgroup /home/ftpusers</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From here on there are a lot of options which you can use to customize your FTP server to suit your needs. As always, a good place to start looking for more advanced options is in the man pages and official documentation.</p>
+
+<p>Cookie:</p>
+
+<blockquote><p>You don&rsquo;t become a failure until you&rsquo;re satisfied with being one.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Metasploitable 2]]></title>
