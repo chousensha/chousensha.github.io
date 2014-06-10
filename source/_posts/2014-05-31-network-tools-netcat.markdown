@@ -3,7 +3,9 @@ layout: post
 title: "Network tools - Netcat"
 date: 2014-05-31 00:20:29 +0300
 comments: true
-categories: [netcat, network]
+categories: [netcat, networking]
+keywords: netcat, networking, penetration testing
+description: Netcat usage examples
 ---
 
 In this tutorial I will cover some of the uses of netcat, known as the "TCP/IP Swiss army knife". Netcat is a very powerful and versatile tool that can be used in diagnosing network problems or in penetration testing.

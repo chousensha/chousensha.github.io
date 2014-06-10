@@ -4,6 +4,8 @@ title: "Resources for learning"
 date: 2014-05-21 21:06:58 +0300
 comments: true
 categories: [e-learning, online courses, study]
+keywords: e-learning, online courses
+description: Online resources, classes and hands-on challenges for information security and programming 
 ---
 
 

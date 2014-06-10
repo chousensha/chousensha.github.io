@@ -4,6 +4,8 @@ title: "Getting Pure-FTPd up and running"
 date: 2014-06-09 23:20:06 +0300
 comments: true
 categories: [ftp, pure-ftpd]
+keywords: ftp, pure-ftpd, server
+description: Setting up a Pure-FTPd server
 ---
 
 
@@ -11,7 +13,8 @@ In this tutorial I'll present the steps I took to set up Pure-FTPd on a Backtrac
 <!-- more -->
 First, a brief description of Pure-FTPd, from the official documentation:
 
-> Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon > Troll-FTPd.
+> Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon 
+> Troll-FTPd.
 
 > Features include chroot()ed and/or virtual chroot()ed home directories, virtual 
 > domains, built-in 'ls', anti warez system, configurable ports for passive 

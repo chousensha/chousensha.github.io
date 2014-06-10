@@ -4,6 +4,8 @@ title: "Touring the Linux directories"
 date: 2014-05-28 21:58:52 +0300
 comments: true
 categories: [Linux]
+keywords: linux, directory structure
+description: Overview of Linux directories
 ---
 
 
