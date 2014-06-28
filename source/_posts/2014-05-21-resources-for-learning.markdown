@@ -9,8 +9,6 @@ description: Online resources, classes and hands-on challenges for information s
 ---
 
 
-All right, we're live!
-
 
 This blog will serve as my notebook for my infosec learning adventures. Hopefully, it will benefit other learners as well. I am just migrating from my small Blogger blog, because Octopress is so awesome. And it's "a blogging framework for hackers" of course! That definitely got my attention.
 
