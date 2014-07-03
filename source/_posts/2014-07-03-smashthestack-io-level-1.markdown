@@ -1,0 +1,78 @@
+---
+layout: post
+title: "SmashTheStack IO Level 1"
+date: 2014-07-03 19:24:36 +0300
+comments: true
+categories: [smashthestack, wargames, exploit]
+keywords: smash the stack, wargames
+description: SmashTheStack IO Level 1
+---
+
+There are different wargames hosted on http://smashthestack.org/ , with IO being the most popular of them. The missions revolve around debugging and reversing binaries in order to exploit some software vulnerabilities and gain enough privileges to read the password for the next level.
+
+<!-- more -->
+
+To connect to the first level, you have to SSH to the box with the password of **level1**:
+
+``` plain
+ssh level1@io.smashthestack.org
+```
+
+If you are new to these wargames, read the README file, which has some additional explanations. Levels for this game can be found in <code>/levels</code> and passwords are located in the level's home directory, like <code>/home/level2/.pass</code>
+
+So, when trying to run the *level01* binary, we can see it's looking for a passcode:
+
+``` plain
+level1@io:/levels$ ./level01
+Enter the 3 digit passcode to enter:
+```
+
+Let's see what's going on using GDB. This is the disassembly of the main() function for this program:
+
+``` plain
+(gdb) disas main
+Dump of assembler code for function main:
+   0x08048080 <+0>:     push   $0x8049128
+   0x08048085 <+5>:     call   0x804810f <puts>
+   0x0804808a <+10>:    call   0x804809f <fscanf>
+   0x0804808f <+15>:    cmp    $0x10f,%eax
+   0x08048094 <+20>:    je     0x80480dc <YouWin>
+   0x0804809a <+26>:    call   0x8048103 <exit>
+End of assembler dump.
+```
+
+This line is interesting:
+
+**cmp    $0x10f,%eax**
+
+So there is a comparison between a constant and *eax*, and if they're equal, it means that we're right on the password. Let's check that constant:
+
+``` plain
+(gdb) p 0x10f
+$2 = 271
+```
+
+This makes sense, 0x10f is the hex representation of 271 in decimal. And we know the program is looking for a 3-digit passcode. Let's try it:
+
+``` plain
+level1@io:/levels$ ./level01
+Enter the 3 digit passcode to enter: 271
+Congrats you found it, now read the password for level2 from /home/level2/.pass
+sh-4.2$ cat /home/level2/.pass
+hgvbmkQIHavkGg5wyk
+```
+
+Ok, this was an easy level!
+
+> Q:	How many hardware engineers does it take to change a light bulb?
+> A:	None.  We'll fix it in software.
+
+> Q:	How many system programmers does it take to change a light bulb?
+> A:	None.  The application can work around it.
+
+> Q:	How many software engineers does it take to change a light bulb?
+> A:	None.  We'll document it in the manual.
+
+> Q:	How many tech writers does it take to change a light bulb?
+> A:	None.  The user can figure it out.
+
