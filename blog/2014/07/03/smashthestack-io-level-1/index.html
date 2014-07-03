@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Getting Pure-FTPd up and running - Core dump overflow</title>
+  <title>SmashTheStack IO Level 1 - Core dump overflow</title>
   <meta name="author" content="chousensha">
 
   
   
-  <meta name="description" content="Setting up a Pure-FTPd server">
-  <meta name="keywords" content="ftp, pure-ftpd, server">
+  <meta name="description" content="SmashTheStack IO Level 1">
+  <meta name="keywords" content="smash the stack, wargames">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running">
+  <link rel="canonical" href="http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
@@ -82,7 +82,7 @@
   
   <header>
     
-      <h1 class="entry-title">Getting Pure-FTPd up and running</h1>
+      <h1 class="entry-title">SmashTheStack IO Level 1</h1>
     
     
       <p class="meta">
@@ -98,7 +98,7 @@
   
 
 
-<time datetime="2014-06-09T23:20:06+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2014</time>
+<time datetime="2014-07-03T19:24:36+03:00" pubdate data-updated="true">Jul 3<span>rd</span>, 2014</time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://chousensha.github.io">Comments</a>
@@ -108,97 +108,88 @@
   </header>
 
 
-<div class="entry-content"><p>In this tutorial I&rsquo;ll present the steps I took to set up Pure-FTPd on a Backtrack system. There might be slight differences for other distributions, particularly where file names and locations are concerned.</p>
+<div class="entry-content"><p>There are different wargames hosted on <a href="http://smashthestack.org/">http://smashthestack.org/</a> , with IO being the most popular of them. The missions revolve around debugging and reversing binaries in order to exploit some software vulnerabilities and gain enough privileges to read the password for the next level.</p>
 
 <!-- more -->
 
 
-<p>First, a brief description of Pure-FTPd, from the official documentation:</p>
-
-<blockquote><p>Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon
-Troll-FTPd.</p>
-
-<p>Features include chroot()ed and/or virtual chroot()ed home directories, virtual
-domains, built-in &lsquo;ls&rsquo;, anti warez system, configurable ports for passive
-downloads, FXP protocol, bandwidth throttling, ratios, LDAP / MySQL / PostgreSQL-
-based authentication, fortune files, Apache-like log files, fast standalone mode,
-text / HTML / XML real-time status report, virtual users, virtual quotas, privilege > separation, SSL/TLS and more.</p></blockquote>
-
-<p>Something to keep in mind is that, unlike other FTP servers, Pure-FTPd is controlled through command line arguments, rather than a configuration file. The latter is possible, but I won&rsquo;t cover it here.</p>
-
-<p>Before going into the commands, I want to explain the concept of <strong>virtual users</strong>. These are FTP-only accounts that don&rsquo;t have to exit on the system, since they&rsquo;re used only for FTP. They have to be associated with a system user, so a good practice which I&rsquo;ll follow here is to create a dedicated system account just for FTP. Thousands of virtual users can share the same system user, as long as they all are chrooted and they have their own home directory.</p>
-
-<p>Now, on to getting the server ready to..serve. First, create a group for FTP activities:</p>
+<p>To connect to the first level, you have to SSH to the box with the password of <strong>level1</strong>:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>groupadd ftpgroup</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh level1@io.smashthestack.org</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Now, create a system user that will be used for FTP only:</p>
+<p>If you are new to these wargames, read the README file, which has some additional explanations. Levels for this game can be found in <code>/levels</code> and passwords are located in the level&rsquo;s home directory, like <code>/home/level2/.pass</code></p>
 
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>useradd -g ftpgroup -d /dev/null -s /etc ftpuser</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The name of the user is ftpuser. The -g flag associates it with the previously created group. Since I don&rsquo;t want the user to have a home directory or a login shell for security reasons, the -d option nukes the home directory by assigning it to /dev/null, and -s option sets /etc as a  fake shell.</p>
-
-<p>Next, make a directory for FTP users:</p>
+<p>So, when trying to run the <em>level01</em> binary, we can see it&rsquo;s looking for a passcode:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers</span></code></pre></td></tr></table></div></figure>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level1@io:/levels$ ./level01
+</span><span class='line'>Enter the 3 digit passcode to enter:</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Now we want to create our first virtual user. First, make a home directory for that user (note that there is a switch to automate this, but I use the manual approach here):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The <strong>pure-pw</strong> utility is what we&rsquo;ll use for managing virtual users. We could manually edit files instead, but who would want that when there&rsquo;s a nice, clean way?</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw useradd testuser -u ftpuser -d /home/ftpusers/testuser</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This creates a virtual user named testuser, with the same UID as ftpuser, and that is chrooted to its home directory.</p>
-
-<p>Next step is to commit all the virtual users changes to a PureDB file. Without committing changes to the database, the accounts won&rsquo;t be activated, and unusable.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>pure-pw mkdb</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We then have to set up some symbolic links to add PureDB to the authentication methods:</p>
+<p>Let&rsquo;s see what&rsquo;s going on using GDB. This is the disassembly of the main() function for this program:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ln -s /etc/pure-ftpd/pureftpd.passwd /etc/pureftpd.passwd
-</span><span class='line'>ln -s /etc/pure-ftpd/pureftpd.pdb /etc/pureftpd.pdb
-</span><span class='line'>ln -s /etc/pure-ftpd/conf/PureDB /etc/pure-ftpd/auth/PureDB</span></code></pre></td></tr></table></div></figure>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) disas main
+</span><span class='line'>Dump of assembler code for function main:
+</span><span class='line'>   0x08048080 &lt;+0&gt;:     push   $0x8049128
+</span><span class='line'>   0x08048085 &lt;+5&gt;:     call   0x804810f &lt;puts&gt;
+</span><span class='line'>   0x0804808a &lt;+10&gt;:    call   0x804809f &lt;fscanf&gt;
+</span><span class='line'>   0x0804808f &lt;+15&gt;:    cmp    $0x10f,%eax
+</span><span class='line'>   0x08048094 &lt;+20&gt;:    je     0x80480dc &lt;YouWin&gt;
+</span><span class='line'>   0x0804809a &lt;+26&gt;:    call   0x8048103 &lt;exit&gt;
+</span><span class='line'>End of assembler dump.</span></code></pre></td></tr></table></div></figure>
 
 
-<p>If you don&rsquo;t need Unix and PAM authentication, you can do the following:</p>
+<p>This line is interesting:</p>
+
+<p><strong>cmp    $0x10f,%eax</strong></p>
+
+<p>So there is a comparison between a constant and <em>eax</em>, and if they&rsquo;re equal, it means that we&rsquo;re right on the password. Let&rsquo;s check that constant:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>echo no &gt; /etc/pure-ftpd/conf/UnixAuthentication
-</span><span class='line'>echo no &gt; /etc/pure-ftpd/conf/PAMAuthentication</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) p 0x10f
+</span><span class='line'>$2 = 271</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Lastly, change the permissions of /home/ftpusers and its subdirectories to have ftpuser as owner and ftpgroup as group:</p>
+<p>This makes sense, 0x10f is the hex representation of 271 in decimal. And we know the program is looking for a 3-digit passcode. Let&rsquo;s try it:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>chown -R ftpuser /home/ftpusers
-</span><span class='line'>chgrp -R ftpgroup /home/ftpusers</span></code></pre></td></tr></table></div></figure>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level1@io:/levels$ ./level01
+</span><span class='line'>Enter the 3 digit passcode to enter: 271
+</span><span class='line'>Congrats you found it, now read the password for level2 from /home/level2/.pass
+</span><span class='line'>sh-4.2$ cat /home/level2/.pass
+</span><span class='line'>hgvbmkQIHavkGg5wyk</span></code></pre></td></tr></table></div></figure>
 
 
-<p>From here on there are a lot of options which you can use to customize your FTP server to suit your needs. As always, a good place to start looking for more advanced options is in the man pages and official documentation.</p>
+<p>Ok, this was an easy level!</p>
 
-<p>Cookie:</p>
+<blockquote><p>Q:    How many hardware engineers does it take to change a light bulb?
+A:    None.  We&rsquo;ll fix it in software.</p>
 
-<blockquote><p>You don&rsquo;t become a failure until you&rsquo;re satisfied with being one.</p></blockquote>
+<p>Q:    How many system programmers does it take to change a light bulb?
+A:    None.  The application can work around it.</p>
+
+<p>Q:    How many software engineers does it take to change a light bulb?
+A:    None.  We&rsquo;ll document it in the manual.</p>
+
+<p>Q:    How many tech writers does it take to change a light bulb?
+A:    None.  The user can figure it out.</p></blockquote>
 </div>
 
 
@@ -221,12 +212,12 @@ text / HTML / XML real-time status report, virtual users, virtual quotas, privil
   
 
 
-<time datetime="2014-06-09T23:20:06+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2014</time>
+<time datetime="2014-07-03T19:24:36+03:00" pubdate data-updated="true">Jul 3<span>rd</span>, 2014</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/ftp/'>ftp</a>, <a class='category' href='/blog/categories/pure-ftpd/'>pure-ftpd</a>
+    <a class='category' href='/blog/categories/exploit/'>exploit</a>, <a class='category' href='/blog/categories/smashthestack/'>smashthestack</a>, <a class='category' href='/blog/categories/wargames/'>wargames</a>
   
 </span>
 
@@ -235,7 +226,7 @@ text / HTML / XML real-time status report, virtual users, virtual quotas, privil
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1/" >Tweet</a>
   
   
   
@@ -244,10 +235,8 @@ text / HTML / XML real-time status report, virtual users, virtual quotas, privil
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2014/06/03/pentest-lab-metasploitable-2/" title="Previous Post: Pentest lab - Metasploitable 2">&laquo; Pentest lab - Metasploitable 2</a>
+        <a class="basic-alignment left" href="/blog/2014/06/27/kioptrix-2014/" title="Previous Post: Kioptrix 2014">&laquo; Kioptrix 2014</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2014/06/11/network-tools-netstat/" title="Next Post: Network tools - netstat">Network tools - netstat &raquo;</a>
       
     </p>
   </footer>
@@ -343,8 +332,8 @@ text / HTML / XML real-time status report, virtual users, virtual quotas, privil
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/';
-        var disqus_url = 'http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/';
+        var disqus_identifier = 'http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1/';
+        var disqus_url = 'http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1/';
         var disqus_script = 'embed.js';
       
     (function () {

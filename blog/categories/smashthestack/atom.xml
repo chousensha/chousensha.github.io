@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: smashthestack | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/smashthestack/atom.xml" rel="self"/>
+  <link href="http://chousensha.github.io/"/>
+  <updated>2014-07-03T19:59:31+03:00</updated>
+  <id>http://chousensha.github.io/</id>
+  <author>
+    <name><![CDATA[chousensha]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 1]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1/"/>
+    <updated>2014-07-03T19:24:36+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/03/smashthestack-io-level-1</id>
+    <content type="html"><![CDATA[<p>There are different wargames hosted on <a href="http://smashthestack.org/">http://smashthestack.org/</a> , with IO being the most popular of them. The missions revolve around debugging and reversing binaries in order to exploit some software vulnerabilities and gain enough privileges to read the password for the next level.</p>
+
+<!-- more -->
+
+
+<p>To connect to the first level, you have to SSH to the box with the password of <strong>level1</strong>:</p>
+
+<p><code>plain
+ssh level1@io.smashthestack.org
+</code></p>
+
+<p>If you are new to these wargames, read the README file, which has some additional explanations. Levels for this game can be found in <code>/levels</code> and passwords are located in the level&rsquo;s home directory, like <code>/home/level2/.pass</code></p>
+
+<p>So, when trying to run the <em>level01</em> binary, we can see it&rsquo;s looking for a passcode:</p>
+
+<p><code>plain
+level1@io:/levels$ ./level01
+Enter the 3 digit passcode to enter:
+</code></p>
+
+<p>Let&rsquo;s see what&rsquo;s going on using GDB. This is the disassembly of the main() function for this program:</p>
+
+<p><code>plain
+(gdb) disas main
+Dump of assembler code for function main:
+   0x08048080 &lt;+0&gt;:     push   $0x8049128
+   0x08048085 &lt;+5&gt;:     call   0x804810f &lt;puts&gt;
+   0x0804808a &lt;+10&gt;:    call   0x804809f &lt;fscanf&gt;
+   0x0804808f &lt;+15&gt;:    cmp    $0x10f,%eax
+   0x08048094 &lt;+20&gt;:    je     0x80480dc &lt;YouWin&gt;
+   0x0804809a &lt;+26&gt;:    call   0x8048103 &lt;exit&gt;
+End of assembler dump.
+</code></p>
+
+<p>This line is interesting:</p>
+
+<p><strong>cmp    $0x10f,%eax</strong></p>
+
+<p>So there is a comparison between a constant and <em>eax</em>, and if they&rsquo;re equal, it means that we&rsquo;re right on the password. Let&rsquo;s check that constant:</p>
+
+<p><code>plain
+(gdb) p 0x10f
+$2 = 271
+</code></p>
+
+<p>This makes sense, 0x10f is the hex representation of 271 in decimal. And we know the program is looking for a 3-digit passcode. Let&rsquo;s try it:</p>
+
+<p><code>plain
+level1@io:/levels$ ./level01
+Enter the 3 digit passcode to enter: 271
+Congrats you found it, now read the password for level2 from /home/level2/.pass
+sh-4.2$ cat /home/level2/.pass
+hgvbmkQIHavkGg5wyk
+</code></p>
+
+<p>Ok, this was an easy level!</p>
+
+<blockquote><p>Q:    How many hardware engineers does it take to change a light bulb?
+A:    None.  We&rsquo;ll fix it in software.</p>
+
+<p>Q:    How many system programmers does it take to change a light bulb?
+A:    None.  The application can work around it.</p>
+
+<p>Q:    How many software engineers does it take to change a light bulb?
+A:    None.  We&rsquo;ll document it in the manual.</p>
+
+<p>Q:    How many tech writers does it take to change a light bulb?
+A:    None.  The user can figure it out.</p></blockquote>
+]]></content>
+  </entry>
+  
+</feed>
