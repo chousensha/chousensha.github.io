@@ -12,7 +12,7 @@ description: Online resources, classes and hands-on challenges for information s
 
 This blog will serve as my notebook for my infosec learning adventures. Hopefully, it will benefit other learners as well. I am just migrating from my small Blogger blog, because Octopress is so awesome. And it's "a blogging framework for hackers" of course! That definitely got my attention.
 
-In this post I'd like to share some of the resources I've found most helpful with any interested readers out there.
+In this post I'd like to share some of the resources I've found most helpful with any interested readers out there. I will update it as I find more.
 <!-- more -->
 
 ### Online classes
@@ -55,6 +55,10 @@ Great instructor, has some good introductory courses on Coursera, aimed at compl
 
 This is a great site that hosts training courses on multiple fields, like assembly, reverse engineering, malware, exploits and other. Great material, instructors are professionals and slides and program samples are available for downloading. Video quality isn't exceptional, but other than that it's a fantastic source of information.
 
+* [MongoDB University](https://university.mongodb.com/)
+
+On this site you can take introductory and advanced classes in MongoDB. They cover good material, and the assignments give you practical experience with the technology. The different courses cover material from a developer perspective, focusing on queries, optimization etc. and from the administrator perspective, focusing on deployment and operations, such as maintaining, scaling, monitoring, backing up etc. Previous experience with databases or NoSQL technologies isn't required.
+
 
 ### Hands-on learning
 
@@ -87,6 +91,10 @@ Another great place, in here you can learn about Linux and exploiting vulnerabil
 
 This is another great place to learn and practice exploiting programs. Levels involve buffer overflows, format strings exploitation, heap exploits and other Linux vulnerabilites.
 
+* [SmashTheStack](http://smashthestack.org/)
+
+More wargames that focus on exploits and reverse engineering.
+
 * [Vulnhub](http://vulnhub.com/)
 
 You can download vulnerable virtual machines from here so you can practice on your home lab, and they keep adding new ones. Great place for creating your own pentest lab.
@@ -97,6 +105,10 @@ Here you can practice on vulnerable web applications that other users can upload
 
 
 ### Other
+
+* [EvilZone](https://evilzone.org/index.php)
+
+An awesome community focusing on security and hacking. There are tutorials and helpful information on a variety of topics, and the forums are very active. Discussions aren't limited to technical fields, there are sections for more general purpose topics as well. A great place if you want to learn from others and contribute back.
 
 * [Corelan](https://www.corelan.be/)
 
@@ -130,7 +142,13 @@ A classic read for learning about exploits. Excellent explanations and examples.
 
 Everything you would like to know about SQLi, examples for each major database, advice on secure coding, query explanations, cheatsheets..amazing book
 
+* The Web Application Hacker's Handbook: Finding and Exploiting Security Flaws
 
+This is the most comprehensive reading for web application hacking that I've encountered. Definitely a must read.
+
+* The Hacker Playbook: Practical Guide To Penetration Testing
+
+One of the best penetration testing books that I've read. Very practical, gives examples of real world scenarios that were encountered in the author's career. What I liked most was the mention of additional valuable tools that should be added to one's arsenal (that don't come preinstalled on Kali, for example).
 
 I haven't even scratched the surface of what's available out there. But I hope this is a good starting point for other interested people.
 
