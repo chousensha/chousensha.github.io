@@ -1,0 +1,81 @@
+---
+layout: post
+title: "Introduction to Python packaging"
+date: 2014-07-20 22:14:31 +0300
+comments: true
+categories: [python, programming]
+keywords: python, packaging, pip, easyinstall, setuptools, distutils
+description: Introduction to the Python packaging system
+---
+
+There is a lot of confusion and heated debate over the Python packaging system. In this post I want to cover the basics of it so it's easier to understand.
+
+<!-- more -->
+
+One of the strengths of the Python programming language is its rich standard library that contains many useful modules suited for various tasks. However, more often than not, you will need to enhance the already rich standard library with additional, third party packages that are not installed by default. So, how do you install new packages?
+
+#### What is a package?
+
+First of all, a package in Python is simply a directory that contains a file named <code>__init__.py</code>. You can make your own packages by creating a directory with your desired name and creating an init file like the above inside it. Then you can import your package like you do with the rest.
+
+#### The manual way
+
+Of course, it's possible to manually install packages by unpacking their respective tarballs and dropping them in the directory where modules are installed. On Windows, this directory is called **site-packages** and it can be found in your Python install directory: <code>C:\Python27\Lib\site-packages</code>. On Linux, it's named **dist-packages** and you can find it in <code>/usr/lib/python2.7/dist-packages</code>. Remember to account for your actual installation directories and Python versions, these are the examples from my machines.
+
+#### Using a package manager
+
+A package manager is supposed to ease the process of installing and maintaining packages in a centralized way. This is the more convenient way of installing new Python packages. Here are some benefits of packaging as explained on [The Hitchhiker’s Guide to Packaging](http://guide.python-distribute.org/introduction.html):
+
+
+> * Dependency management
+
+> Often, the package you want to install requires that others be there. A package management system can 
+> automatically resolve dependencies and make your installation pain free and quick. This is one of the basic 
+> facilities offered by distutils. However, other extensions to distutils do a better job of installing 
+> dependencies. 
+
+> * Accounting
+
+> Package managers can maintain lists of things installed and other metadata like the version installed etc. 
+> which makes is easy for the user to know what are the things his system has. 
+
+> * Uninstall
+
+> Package managers can give you push button ways of removing a package from your environment. 
+
+> * Search
+
+> Find packages by searching a package index for specific terminology
+
+**distutils**
+
+The standard package manager that comes preinstalled with Python is distutils. The standard distribution follows a certain pattern, such as the archive name and unpacking directory having a name composed from the name and version of the distribution, like so: <code>name-version</code>. Here's an example: <code>foo-1.0</code>.
+
+Also, the distribution should contain a setup script called <code>setup.py</code> and a README file with instructions on how to install it. The command <code>python setup.py install</code> is used for building and installation. If you want to break up this process, you can choose to build it yourself first, by running <code>python setup.py build</code>, This will put the files that are to be installed in a build directory. Afterwards, you can run the install command to copy these files in your install directory.
+
+**setuptools**
+
+setuptools is supposed to enhance the features of distutils. It brings to the table a module called **easy_install** that lets you automatically download, build, install, and manage Python packages. 
+
+To install setuptools, you have to run the [*ez_setup.py*](https://bootstrap.pypa.io/ez_setup.py) script. And to install a package with easy_install, you just do <code>easy_install package name</code>.
+
+**pip**
+
+pip is an alternative Python package installer. It performs the same basic job as easy_install, but with some extra features. It can work with version control repositories (currently only Git, Mercurial, andBazaar repositories), logs output extensively, and prevents partial installs by downloading all requirements before starting installation.
+
+To install pip, download and run [*get-pip.py*](https://bootstrap.pypa.io/get-pip.py). With pip you can easily manage your Python packages from the command line:
+
+- install a package: <code>pip install package name</code>
+
+- uninstall a package: <code>pip uninstall package name</code>
+
+- upgrade a package to its latest version: <code>pip install -U package name</code> (alternatively, you can also use the --upgrade flag)
+
+- list installed packages: <code>pip list</code>
+
+- show information about one or more installed packages <code>pip show package name</code>
+
+Due to its features and convenience, pip is my favorite package installer. Of course, there are more advanced features in Python packaging, but I hope this introduction was helpful for getting to install and manage your packages.
+
+> You will stop at nothing to reach your objective, but only because your brakes are defective.
+
