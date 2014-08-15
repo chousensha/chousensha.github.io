@@ -150,6 +150,10 @@ This is the most comprehensive reading for web application hacking that I've enc
 
 One of the best penetration testing books that I've read. Very practical, gives examples of real world scenarios that were encountered in the author's career. What I liked most was the mention of additional valuable tools that should be added to one's arsenal (that don't come preinstalled on Kali, for example).
 
+* [Penetration Testing: A Hands-On Introduction to Hacking](http://www.amazon.com/Penetration-Testing-Hands-On-Introduction-Hacking/dp/1593275641)
+
+The best introductory book on penetration testing that I've read, and a great read even if you are not a beginner. Again, a book so good that I wish it were longer.
+
 I haven't even scratched the surface of what's available out there. But I hope this is a good starting point for other interested people.
 
 

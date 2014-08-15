@@ -130,23 +130,23 @@ Another plethora of resources, videos, conferences, articles and web pentesting 
 
 I've read many great books, but it would be overkill to post them all here, so I'll just list some favorites.
 
-* Violent Python
+* [Violent Python](http://www.amazon.com/Violent-Python-Cookbook-Penetration-Engineers/dp/1597499579)
 
 This is a magnificent book that combines 2 of my favorite things: pentesting and Python. Great examples of what you can do with Python in the real world. I want more of its like !
 
-* Hacking: The Art of Exploitation 
+* [Hacking: The Art of Exploitation](http://www.amazon.com/Hacking-The-Art-Exploitation-Edition/dp/1593271441)
 
-A classic read for learning about exploits. Excellent explanations and examples.
+A classic read for learning about exploits and shellcode. 
 
-* SQL Injection Attacks and Defense
+* [SQL Injection Attacks and Defense](http://www.amazon.com/Injection-Attacks-Defense-Second-Edition/dp/1597499633)
 
 Everything you would like to know about SQLi, examples for each major database, advice on secure coding, query explanations, cheatsheets..amazing book
 
-* The Web Application Hacker's Handbook: Finding and Exploiting Security Flaws
+* [The Web Application Hacker's Handbook: Finding and Exploiting Security Flaws](http://www.amazon.com/The-Web-Application-Hackers-Handbook/dp/1118026470)
 
 This is the most comprehensive reading for web application hacking that I've encountered. Definitely a must read.
 
-* The Hacker Playbook: Practical Guide To Penetration Testing
+* [The Hacker Playbook: Practical Guide To Penetration Testing](http://www.amazon.com/The-Hacker-Playbook-Practical-Penetration/dp/1494932636)
 
 One of the best penetration testing books that I've read. Very practical, gives examples of real world scenarios that were encountered in the author's career. What I liked most was the mention of additional valuable tools that should be added to one's arsenal (that don't come preinstalled on Kali, for example).
 
