@@ -1,0 +1,1112 @@
+---
+layout: post
+title: "Kali tools catalog - Web Applications"
+date: 2014-09-24 13:35:03 +0300
+comments: true
+categories: [kali, security]
+keywords: kali, security, tools, web application
+description: Overview of Kali Linux tools for the Web Applications category
+---
+
+This post will focus on the Kali tools that target web applications.
+<!-- more -->
+
+### CMS Identification
+
+**blindelephant**
+
+The BlindElephant Web Application Fingerprinter attempts to discover the version of a (known) web application by comparing static files at known locations against precomputed hashes for versions of those files in all all available releases. The technique is fast, low-bandwidth, non-invasive, generic, and highly automatable. 
+
+{% img center /images/kali/webapp/blindelephant.png 'blindelephant' 'blindelephant' %}
+
+**plecost**
+
+Wordpress finger printer tool
+
+{% img center /images/kali/webapp/plecost.png 'plecost' 'plecost' %}
+
+**wpscan**
+
+WPScan is a black box WordPress vulnerability scanner.
+
+``` plain
+_______________________________________________________________
+        __          _______   _____                  
+        \ \        / /  __ \ / ____|                 
+         \ \  /\  / /| |__) | (___   ___  __ _ _ __  
+          \ \/  \/ / |  ___/ \___ \ / __|/ _` | '_ \ 
+           \  /\  /  | |     ____) | (__| (_| | | | |
+            \/  \/   |_|    |_____/ \___|\__,_|_| |_|
+
+        WordPress Security Scanner by the WPScan Team 
+                        Version v2.4.1
+     Sponsored by the RandomStorm Open Source Initiative
+   @_WPScan_, @ethicalhack3r, @erwan_lr, pvdl, @_FireFart_
+_______________________________________________________________
+
+Help :
+
+Some values are settable in a config file, see the example.conf.json
+
+--update                            Update to the latest revision.
+--url       | -u <target url>       The WordPress URL/domain to scan.
+--force     | -f                    Forces WPScan to not check if the remote site is running WordPress.
+--enumerate | -e [option(s)]        Enumeration.
+  option :
+    u        usernames from id 1 to 10
+    u[10-20] usernames from id 10 to 20 (you must write [] chars)
+    p        plugins
+    vp       only vulnerable plugins
+    ap       all plugins (can take a long time)
+    tt       timthumbs
+    t        themes
+    vt       only vulnerable themes
+    at       all themes (can take a long time)
+  Multiple values are allowed : "-e tt,p" will enumerate timthumbs and plugins
+  If no option is supplied, the default is "vt,tt,u,vp"
+
+--exclude-content-based "<regexp or string>"
+                                    Used with the enumeration option, will exclude all occurrences based on the regexp or string supplied.
+                                    You do not need to provide the regexp delimiters, but you must write the quotes (simple or double).
+--config-file  | -c <config file>   Use the specified config file, see the example.conf.json.
+--user-agent   | -a <User-Agent>    Use the specified User-Agent.
+--random-agent | -r                 Use a random User-Agent.
+--follow-redirection                If the target url has a redirection, it will be followed without asking if you wanted to do so or not
+--batch                             Never ask for user input, use the default behaviour.
+--no-color                          Do not use colors in the output.
+--wp-content-dir <wp content dir>   WPScan try to find the content directory (ie wp-content) by scanning the index page, however you can specified it.
+                                    Subdirectories are allowed.
+--wp-plugins-dir <wp plugins dir>   Same thing than --wp-content-dir but for the plugins directory.
+                                    If not supplied, WPScan will use wp-content-dir/plugins. Subdirectories are allowed
+--proxy <[protocol://]host:port>    Supply a proxy. HTTP, SOCKS4 SOCKS4A and SOCKS5 are supported.
+                                    If no protocol is given (format host:port), HTTP will be used.
+--proxy-auth <username:password>    Supply the proxy login credentials.
+--basic-auth <username:password>    Set the HTTP Basic authentication.
+--wordlist | -w <wordlist>          Supply a wordlist for the password bruter and do the brute.
+--username | -U <username>          Only brute force the supplied username.
+--threads  | -t <number of threads> The number of threads to use when multi-threading requests.
+--cache-ttl       <cache-ttl>       Typhoeus cache TTL.
+--request-timeout <request-timeout> Request Timeout.
+--connect-timeout <connect-timeout> Connect Timeout.
+--max-threads     <max-threads>     Maximum Threads.
+--help     | -h                     This help screen.
+--verbose  | -v                     Verbose output.
+
+
+Examples :
+
+-Further help ...
+ruby ./wpscan.rb --help
+
+-Do 'non-intrusive' checks ...
+ruby ./wpscan.rb --url www.example.com
+
+-Do wordlist password brute force on enumerated users using 50 threads ...
+ruby ./wpscan.rb --url www.example.com --wordlist darkc0de.lst --threads 50
+
+-Do wordlist password brute force on the 'admin' username only ...
+ruby ./wpscan.rb --url www.example.com --wordlist darkc0de.lst --username admin
+
+-Enumerate installed plugins ...
+ruby ./wpscan.rb --url www.example.com --enumerate p
+
+-Enumerate installed themes ...
+ruby ./wpscan.rb --url www.example.com --enumerate t
+
+-Enumerate users ...
+ruby ./wpscan.rb --url www.example.com --enumerate u
+
+-Enumerate installed timthumbs ...
+ruby ./wpscan.rb --url www.example.com --enumerate tt
+
+-Use a HTTP proxy ...
+ruby ./wpscan.rb --url www.example.com --proxy 127.0.0.1:8118
+
+-Use a SOCKS5 proxy ... (cURL >= v7.21.7 needed)
+ruby ./wpscan.rb --url www.example.com --proxy socks5://127.0.0.1:9000
+
+-Use custom content directory ...
+ruby ./wpscan.rb -u www.example.com --wp-content-dir custom-content
+
+-Use custom plugins directory ...
+ruby ./wpscan.rb -u www.example.com --wp-plugins-dir wp-content/custom-plugins
+
+-Update ...
+ruby ./wpscan.rb --update
+
+-Debug output ...
+ruby ./wpscan.rb --url www.example.com --debug-output 2>debug.log
+
+See README for further information.
+```
+
+
+### Database Exploitation
+
+Covered in the VA section
+
+
+### IDS/IPS Identification
+
+**ua-tester**
+
+This tool is designed to automatically check a given URL using a list of standard and non-standard User Agent strings provided by the user (1 per line). The results of these checks are then reported to the user for further manual analysis where required.
+
+{% img center /images/kali/webapp/ua-tester.png 'ua-tester' 'ua-tester' %}
+
+
+### Web Application Fuzzers
+
+**burpsuite**
+
+Burp Suite is an integrated platform for performing security testing of web applications. Its various tools work seamlessly together to support the entire testing process, from initial mapping and analysis of an application's attack surface, through to finding and exploiting security vulnerabilities.
+
+Burp gives you full control, letting you combine advanced manual techniques with state-of-the-art automation, to make your work faster, more effective, and more fun.
+
+Burp Suite contains the following key components:
+
+* An intercepting Proxy, which lets you inspect and modify traffic between your browser and the target application.
+
+* An application-aware Spider, for crawling content and functionality.
+
+* An advanced web application Scanner, for automating the detection of numerous types of vulnerability.
+
+* An Intruder tool, for performing powerful customized attacks to find and exploit unusual vulnerabilities.
+
+* A Repeater tool, for manipulating and resending individual requests.
+
+* A Sequencer tool, for testing the randomness of session tokens.
+
+* The ability to save your work and resume working later.
+
+* Extensibility, allowing you to easily write your own plugins, to perform complex and highly customized tasks within Burp.
+
+{% img center /images/kali/webapp/burp.png 'burpsuite' 'burp' %}
+
+**owasp-zap**
+
+The OWASP Zed Attack Proxy (ZAP) is an easy to use integrated penetration testing tool for finding vulnerabilities in web applications. 
+
+ZAP provides automated scanners as well as a set of tools that allow you to find security vulnerabilities manually. 
+
+{% img center /images/kali/webapp/owasp-zap.png 'owasp-zap' 'owasp-zap' %}
+
+**webscarab**
+
+WebScarab is a framework for analysing applications that communicate using the HTTP and HTTPS protocols. It is written in Java, and is thus portable to many platforms. WebScarab has several modes of operation, implemented by a number of plugins. In its most common usage, WebScarab operates as an intercepting proxy, allowing the operator to review and modify requests created by the browser before they are sent to the server, and to review and modify responses returned from the server before they are received by the browser. WebScarab is able to intercept both HTTP and HTTPS communication. The operator can also review the conversations (requests and responses) that have passed through WebScarab. 
+
+{% img center /images/kali/webapp/webscarab.png 'webscarab' 'webscarab' %}
+
+**webslayer**
+
+WebSlayer is a tool designed for brute forcing Web Applications, it can be used to discover not linked resources (directories, servlets, scripts, etc), brute force GET and POST parameters, brute force Forms parameters (User/Password), Fuzzing, etc. The tools has a payload generator and a easy and powerful results analyzer to aid the tester in all the brute force tests.
+
+
+It's possible to perform attacks like:
+
+* Predictable resource locator (File and directories discovery)
+* Login forms brute force
+* Session brute force
+* Parameters brute force
+* Parameter fuzzing and Injection (XSS, SQL, etc)
+* Basic and Ntml brute forcing
+
+{% img center /images/kali/webapp/webslayer.png 'webslayer' 'webslayer' %}
+
+**websploit**
+
+``` plain
+WebSploit Advanced MITM Framework
+
+
+[+]Autopwn - Used From Metasploit For Scan and Exploit Target Service
+[+]wmap - Scan,Crawler Target Used From Metasploit wmap plugin
+[+]format infector - inject reverse & bind payload into file format
+[+]phpmyadmin Scanner
+[+]CloudFlare resolver
+[+]LFI Bypasser
+[+]Apache Users Scanner
+[+]Dir Bruter
+[+]admin finder
+[+]MLITM Attack - Man Left In The Middle, XSS Phishing Attacks
+[+]MITM - Man In The Middle Attack
+[+]Java Applet Attack
+[+]MFOD Attack Vector
+[+]ARP Dos Attack
+[+]Web Killer Attack
+[+]Fake Update Attack
+[+]Fake Access point Attack
+[+]Wifi Honeypot
+[+]Wifi Jammer
+[+]Wifi Dos
+[+]Wifi Mass De-Authentication Attack
+[+]Bluetooth POD Attack
+```
+
+**wfuzz**
+
+Wfuzz is a tool designed for bruteforcing Web Applications, it can be used for finding resources not linked (directories, servlets, scripts, etc), bruteforce GET and POST parameters for checking different kind of injections (SQL, XSS, LDAP,etc), bruteforce Forms parameters (User/Password), Fuzzing,etc. 
+
+{% img center /images/kali/webapp/wfuzz.png 'wfuzz' 'wfuzz' %}
+
+**xsser**
+
+Cross Site "Scripter" is an automatic -framework- to detect, exploit and report XSS vulnerabilities in web-based applications. It contains several options to try to bypass certain filters, and various special techniques of code injection.
+
+``` plain
+Usage: 
+
+xsser [OPTIONS] [-u <url> |-i <file> |-d <dork>] [-g <get> |-p <post> |-c <crawl>] [Request(s)] [Vector(s)] [Bypasser(s)] [Technique(s)] [Final Injection(s)]
+
+Cross Site "Scripter" is an automatic -framework- to detect, exploit and
+report XSS vulnerabilities in web-based applications.
+
+Options:
+  --version             show program's version number and exit
+  -h, --help            show this help message and exit
+  -s, --statistics      show advanced statistics output results
+  -v, --verbose         active verbose mode output results
+  --gtk                 launch XSSer GTK Interface (Wizard included!)
+
+  *Special Features*:
+    You can choose Vector(s) and Bypasser(s) to inject code with this
+    extra special features:
+
+    --imx=IMX           create a false image with XSS code embedded
+    --fla=FLASH         create a false .swf file with XSS code embedded
+
+  *Select Target(s)*:
+    At least one of these options has to be specified to set the source to
+    get target(s) urls from. You need to choose to run XSSer:
+
+    -u URL, --url=URL   Enter target(s) to audit
+    -i READFILE         Read target urls from a file
+    -d DORK             Process search engine dork results as target urls
+    --De=DORK_ENGINE    Search engine to use for dorking (bing, altavista,
+                        yahoo, baidu, yandex, youdao, webcrawler, google, etc.
+                        See dork.py file to check for available engines)
+
+  *Select type of HTTP/HTTPS Connection(s)*:
+    These options can be used to specify which parameter(s) we want to use
+    like payload to inject code.
+
+    -g GETDATA          Enter payload to audit using GET (ex: '/menu.php?q=')
+    -p POSTDATA         Enter payload to audit using POST (ex: 'foo=1&bar=')
+    -c CRAWLING         Number of urls to crawl on target(s): 1-99999
+    --Cw=CRAWLER_WIDTH  Deeping level of crawler: 1-5
+    --Cl                Crawl only local target(s) urls (default TRUE)
+
+  *Configure Request(s)*:
+    These options can be used to specify how to connect to target(s)
+    payload(s). You can choose multiple:
+
+    --cookie=COOKIE     Change your HTTP Cookie header
+    --drop-cookie       Ignore Set-Cookie header from response
+    --user-agent=AGENT  Change your HTTP User-Agent header (default SPOOFED)
+    --referer=REFERER   Use another HTTP Referer header (default NONE)
+    --xforw             Set your HTTP X-Forwarded-For with random IP values
+    --xclient           Set your HTTP X-Client-IP with random IP values
+    --headers=HEADERS   Extra HTTP headers newline separated
+    --auth-type=ATYPE   HTTP Authentication type (Basic, Digest, GSS or NTLM)
+    --auth-cred=ACRED   HTTP Authentication credentials (name:password)
+    --proxy=PROXY       Use proxy server (tor: http://localhost:8118)
+    --ignore-proxy      Ignore system default HTTP proxy
+    --timeout=TIMEOUT   Select your timeout (default 30)
+    --retries=RETRIES   Retries when the connection timeouts (default 1)
+    --threads=THREADS   Maximum number of concurrent HTTP requests (default 5)
+    --delay=DELAY       Delay in seconds between each HTTP request (default 0)
+    --tcp-nodelay       Use the TCP_NODELAY option
+    --follow-redirects  XSSer will follow server redirection responses (302)
+    --follow-limit=FLI  Set how many times XSSer will follow redirections
+                        (default 50)
+
+  *Checker Systems*:
+    This options are usefull to know if your target(s) have some filters
+    against XSS attacks, to reduce 'false positive' results and to perform
+    more advanced tests:
+
+    --no-head           NOT verify the stability of the url (codes: 200|302)
+                        with a HEAD pre-check request
+    --alive=ISALIVE     set limit of every how much errors XSSer must to
+                        verify that target is alive
+    --hash              send an unique hash, without vectors, to pre-check if
+                        target(s) repeats all content recieved
+    --heuristic         launch a heuristic testing to discover which
+                        parameters are filtered on target(s) code: ;\/<>"'=
+    --checkaturl=ALT    check for a valid XSS response from target(s) at an
+                        alternative url. 'blind XSS'
+    --checkmethod=ALTM  check responses from target(s) using a different
+                        connection type: GET or POST (default: GET)
+    --checkatdata=ALD   check responses from target(s) using an alternative
+                        payload (default: same than first injection)
+    --reverse-check     establish a reverse connection from target(s) to XSSer
+                        to certificate that is 100% vulnerable
+
+  *Select Vector(s)*:
+    These options can be used to specify a XSS vector source code to
+    inject in each payload. Important, if you don't want to try to inject
+    a common XSS vector, used by default. Choose only one option:
+
+    --payload=SCRIPT    OWN  - Insert your XSS construction -manually-
+    --auto              AUTO - Insert XSSer 'reported' vectors from file
+                        (HTML5 vectors included!)
+
+  *Select Bypasser(s)*:
+    These options can be used to encode selected vector(s) to try to
+    bypass possible anti-XSS filters on target(s) code and possible IPS
+    rules, if the target use it. Also, can be combined with other
+    techniques to provide encoding:
+
+    --Str               Use method String.FromCharCode()
+    --Une               Use Unescape() function
+    --Mix               Mix String.FromCharCode() and Unescape()
+    --Dec               Use Decimal encoding
+    --Hex               Use Hexadecimal encoding
+    --Hes               Use Hexadecimal encoding, with semicolons
+    --Dwo               Encode vectors IP addresses in DWORD
+    --Doo               Encode vectors IP addresses in Octal
+    --Cem=CEM           Try -manually- different Character Encoding Mutations
+                        (reverse obfuscation: good) -> (ex: 'Mix,Une,Str,Hex')
+
+  *Special Technique(s)*:
+    These options can be used to try to inject code using different type
+    of XSS techniques. You can choose multiple:
+
+    --Coo               COO - Cross Site Scripting Cookie injection
+    --Xsa               XSA - Cross Site Agent Scripting
+    --Xsr               XSR - Cross Site Referer Scripting
+    --Dcp               DCP - Data Control Protocol injections
+    --Dom               DOM - Document Object Model injections
+    --Ind               IND - HTTP Response Splitting Induced code
+    --Anchor            ANC - Use Anchor Stealth payloader (DOM shadows!)
+    --Phpids            PHP - Exploit PHPIDS bug (0.6.5) to bypass filters
+
+  *Select Final injection(s)*:
+    These options can be used to specify the final code to inject in
+    vulnerable target(s). Important, if you want to exploit on-the-wild
+    your discovered vulnerabilities. Choose only one option:
+
+    --Fp=FINALPAYLOAD   OWN    - Insert your final code to inject -manually-
+    --Fr=FINALREMOTE    REMOTE - Insert your final code to inject -remotelly-
+    --Doss              DOSs   - XSS Denial of service (server) injection
+    --Dos               DOS    - XSS Denial of service (client) injection
+    --B64               B64    - Base64 code encoding in META tag (rfc2397)
+
+  *Special Final injection(s)*:
+    These options can be used to execute some 'special' injection(s) in
+    vulnerable target(s). You can select multiple and combine with your
+    final code (except with DCP code):
+
+    --Onm               ONM - Use onMouseMove() event to inject code
+    --Ifr               IFR - Use <iframe> source tag to inject code
+
+  *Miscellaneous*:
+    --silent            inhibit console output results
+    --update            check for XSSer latest stable version
+    --save              output all results directly to template (XSSlist.dat)
+    --xml=FILEXML       output 'positives' to aXML file (--xml filename.xml)
+    --short=SHORTURLS   display -final code- shortered (tinyurl, is.gd)
+    --launch            launch a browser at the end with each XSS discovered
+    --tweet             publish each XSS discovered into the 'Grey Swarm!'
+    --tweet-tags=TT     add more tags to your XSS discovered publications
+                        (default: #xss) - (ex: #xsser #vulnerability)
+```
+
+
+### Web Application Proxies
+
+**paros**
+
+A Java based HTTP/HTTPS proxy for assessing web application vulnerability. It supports editing/viewing HTTP messages on-the-fly. Other featuers include spiders, client certificate, proxy-chaining, intelligent scanning for XSS and SQL injections etc.
+
+{% img center /images/kali/webapp/paros.png 'paros proxy' 'paros' %}
+
+**proxystrike**
+
+ProxyStrike is an active Web Application Proxy. It’s a tool designed to find vulnerabilities while browsing an application.
+
+Right now it has available Sql injection and XSS plugins. 
+
+{% img center /images/kali/webapp/proxystrike.png 'proxystrike' 'proxystrike' %}
+
+**vega**
+
+ Vega is a free and open source scanner and testing platform to test the security of web applications. Vega can help you find and validate SQL Injection, Cross-Site Scripting (XSS), inadvertently disclosed sensitive information, and other vulnerabilities. It is written in Java, GUI based, and runs on Linux, OS X, and Windows.
+
+Vega includes an automated scanner for quick tests and an intercepting proxy for tactical inspection. The Vega scanner finds XSS (cross-site scripting), SQL injection, and other vulnerabilities. Vega can be extended using a powerful API in the language of the web: Javascript. 
+
+{% img center /images/kali/webapp/vega.png 'vega' 'vega' %}
+
+
+### Web Crawlers
+
+**apache-users**
+
+This Perl script will enumerate the usernames on any system that uses Apache with the UserDir module.
+
+**cutycapt**
+
+CutyCapt is a small cross-platform command-line utility to capture WebKit’s rendering of a web page into a variety of vector and bitmap formats, including SVG, PDF, PS, PNG, JPEG, TIFF, GIF, and BMP.
+
+{% img center /images/kali/webapp/cutycapt.png 'cutycapt' 'cutycapt' %}
+
+**dirb**
+
+DIRB  IS  a  Web Content Scanner. It looks for existing (and/or hidden)
+Web Objects. It basically works by launching a dictionary basesd attack
+against a web server and analizing the response.
+
+{% img center /images/kali/webapp/dirb.png 'dirb' 'dirb' %}
+
+**dirbuster**
+
+DirBuster is a multi threaded java application designed to brute force directories and files names on web/application servers.
+
+{% img center /images/kali/webapp/dirbuster.png 'dirbuster' 'dirbuster' %}
+
+
+### Web Vulnerability Scanners
+
+**cadaver**
+
+A command-line WebDAV client for Unix.
+
+cadaver supports file upload, download,  on-screen  display,  namespace
+operations (move and copy), collection creation and deletion, and locking operations.
+
+**davtest**
+
+DAVTest tests WebDAV enabled servers by uploading test executable files, and then (optionally) uploading files which allow for command execution or other actions directly on the target.
+
+DAVTest supports:
+
+* Automatically send exploit files
+
+* Automatic randomization of directory to help hide files
+
+* Send text files and try MOVE to executable name
+
+* Basic and Digest authorization
+
+* Automatic clean-up of uploaded files
+
+* Send an arbitrary file
+
+{% img center /images/kali/webapp/davtest.png 'davtest' 'davtest' %}
+
+**deblaze**
+
+A remote method enumeration tool for flex servers
+
+Deblaze provides the following functionality:
+
+* Brute Force Service and Method Names
+
+* Method Interrogation
+
+* Flex Technology Fingerprinting
+
+* Parameter detection
+
+* Basic parameter fuzzing
+
+* Proxy AMF requests/responses
+
+* HTML reporting
+
+{% img center /images/kali/webapp/deblaze.png 'deblaze' 'deblaze' %}
+
+**fimap**
+
+Automatic LFI/RFI scanner and exploiter
+
+``` plain
+fimap v.09 (For the Swarm)
+:: Automatic LFI/RFI scanner and exploiter
+:: by Iman Karim (fimap.dev@gmail.com)
+
+Usage: ./fimap.py [options]
+## Operating Modes:
+   -s , --single                 Mode to scan a single URL for FI errors.
+                                 Needs URL (-u). This mode is the default.
+   -m , --mass                   Mode for mass scanning. Will check every URL
+                                 from a given list (-l) for FI errors.
+   -g , --google                 Mode to use Google to aquire URLs.
+                                 Needs a query (-q) as google search query.
+   -H , --harvest                Mode to harvest a URL recursivly for new URLs.
+                                 Needs a root url (-u) to start crawling there.
+                                 Also needs (-w) to write a URL list for mass mode.
+   -4 , --autoawesome            With the AutoAwesome mode fimap will fetch all
+                                 forms and headers found on the site you defined
+                                 and tries to find file inclusion bugs thru them. Needs an
+                                 URL (-u).
+## Techniques:
+   -b , --enable-blind           Enables blind FI-Bug testing when no error messages are printed.
+                                 Note that this mode will cause lots of requests compared to the
+                                 default method. Can be used with -s, -m or -g.
+   -D , --dot-truncation         Enables dot truncation technique to get rid of the suffix if
+                                 the default mode (nullbyte poison) failed. This mode can cause
+                                 tons of requests depending how you configure it.
+                                 By default this mode only tests windows servers.
+                                 Can be used with -s, -m or -g. Experimental.
+   -M , --multiply-term=X        Multiply terminal symbols like '.' and '/' in the path by X.
+## Variables:
+   -u , --url=URL                The URL you want to test.
+                                 Needed in single mode (-s).
+   -l , --list=LIST              The URL-LIST you want to test.
+                                 Needed in mass mode (-m).
+   -q , --query=QUERY            The Google Search QUERY.
+                                 Example: 'inurl:include.php'
+                                 Needed in Google Mode (-g)
+        --skip-pages=X           Skip the first X pages from the Googlescanner.
+   -p , --pages=COUNT            Define the COUNT of pages to search (-g).
+                                 Default is 10.
+        --results=COUNT          The count of results the Googlescanner should get per page.
+                                 Possible values: 10, 25, 50 or 100(default).
+        --googlesleep=TIME       The time in seconds the Googlescanner should wait befor each
+                                 request to google. fimap will count the time between two requests
+                                 and will sleep if it's needed to reach your cooldown. Default is 5.
+   -w , --write=LIST             The LIST which will be written if you have choosen
+                                 harvest mode (-H). This file will be opened in APPEND mode.
+   -d , --depth=CRAWLDEPTH       The CRAWLDEPTH (recurse level) you want to crawl your target site
+                                 in harvest mode (-H). Default is 1.
+   -P , --post=POSTDATA          The POSTDATA you want to send. All variables inside
+                                 will also be scanned for file inclusion bugs.
+        --cookie=COOKIES         Define the cookie which should be send with each request.
+                                 Also the cookies will be scanned for file inclusion bugs.
+                                 Concatenate multiple cookies with the ';' character.
+        --ttl=SECONDS            Define the TTL (in seconds) for requests. Default is 30 seconds.
+        --no-auto-detect         Use this switch if you don't want to let fimap automaticly detect
+                                 the target language in blind-mode. In that case you will get some
+                                 options you can choose if fimap isn't sure which lang it is.
+        --bmin=BLIND_MIN         Define here the minimum count of directories fimap should walk thru
+                                 in blind mode. The default number is defined in the generic.xml
+        --bmax=BLIND_MAX         Define here the maximum count of directories fimap should walk thru.
+        --dot-trunc-min=700      The count of dots to begin with in dot-truncation mode.
+        --dot-trunc-max=2000     The count of dots to end with in dot-truncation mode.
+        --dot-trunc-step=50      The step size for each round in dot-truncation mode.
+        --dot-trunc-ratio=0.095  The maximum ratio to detect if dot truncation was successfull.
+        --dot-trunc-also-unix    Use this if dot-truncation should also be tested on unix servers.
+        --force-os=OS            Forces fimap to test only files for the OS.
+                                 OS can be 'unix' or 'windows'
+## Attack Kit:
+   -x , --exploit                Starts an interactive session where you can
+                                 select a target and do some action.
+   -T , --tab-complete           Enables TAB-Completation in exploit mode. Needs readline module.
+                                 Use this if you want to be able to tab-complete thru remote
+                                 files\dirs. Eats an extra request for every 'cd' command.
+## Disguise Kit:
+   -A , --user-agent=UA          The User-Agent which should be sent.
+        --http-proxy=PROXY       Setup your proxy with this option. But read this facts:
+                                   * The googlescanner will ignore the proxy to get the URLs,
+                                     but the pentest\attack itself will go thru proxy.
+                                   * PROXY should be in format like this: 127.0.0.1:8080
+                                   * It's experimental
+        --show-my-ip             Shows your internet IP, current country and user-agent.
+                                 Useful if you want to test your vpn\proxy config.
+## Plugins:
+        --plugins                List all loaded plugins and quit after that.
+   -I , --install-plugins        Shows some official exploit-mode plugins you can install 
+                                 and\or upgrade.
+## Other:
+        --update-def             Checks and updates your definition files found in the
+                                 config directory.
+        --test-rfi               A quick test to see if you have configured RFI nicely.
+        --merge-xml=XMLFILE      Use this if you have another fimap XMLFILE you want to
+                                 include to your own fimap_result.xml.
+   -C , --enable-color           Enables a colorful output. Works only in linux!
+        --force-run              Ignore the instance check and just run fimap even if a lockfile
+                                 exists. WARNING: This may erase your fimap_results.xml file!
+   -v , --verbose=LEVEL          Verbose level you want to receive.
+                                 LEVEL=3 -> Debug
+                                 LEVEL=2 -> Info(Default)
+                                 LEVEL=1 -> Messages
+                                 LEVEL=0 -> High-Level
+        --credits                Shows some credits.
+        --greetings              Some greetings ;)
+   -h , --help                   Shows this cruft.
+## Examples:
+  1. Scan a single URL for FI errors:
+        ./fimap.py -u 'http://localhost/test.php?file=bang&id=23'
+  2. Scan a list of URLS for FI errors:
+        ./fimap.py -m -l '/tmp/urllist.txt'
+  3. Scan Google search results for FI errors:
+        ./fimap.py -g -q 'inurl:include.php'
+  4. Harvest all links of a webpage with recurse level of 3 and
+     write the URLs to /tmp/urllist
+        ./fimap.py -H -u 'http://localhost' -d 3 -w /tmp/urllist
+```
+
+**grabber**
+
+Grabber is a web application scanner. Basically it detects some kind of vulnerabilities in your website. Grabber is simple, not fast but portable and really adaptable. This software is designed to scan small websites such as personals, forums etc. absolutely not big application: it would take too long time and flood your network.
+
+Features:
+
+* Cross-Site Scripting
+
+* SQL Injection (there is also a special Blind SQL Injection module)
+
+* File Inclusion
+
+* Backup files check
+
+* Simple AJAX check (parse every JavaScript and get the URL and try to get the parameters)
+
+* Hybrid analysis/Crystal ball testing for PHP application using PHP-SAT
+
+* JavaScript source code analyzer: Evaluation of the quality/correctness of the JavaScript with JavaScript Lint
+
+* Generation of a file [session_id, time(t)] for next stats analysis.
+
+{% img center /images/kali/webapp/grabber.png 'grabber' 'grabber' %}
+
+**joomscan**
+
+Joomla! is probably the most widely-used CMS out there due to its flexibility, user-friendlinesss, extensibility to name a few. So, watching its vulnerabilities and adding such vulnerabilities as KB to Joomla scanner takes ongoing activity. It will help web developers and web masters to help identify possible security weaknesses on their deployed Joomla! sites.
+
+The following features are currently available:
+
+* Exact version Probing (the scanner can tell whether a target is running version 1.5.12)
+
+* Common Joomla! based web application firewall detection
+
+* Searching known vulnerabilities of Joomla! and its components
+
+* Reporting to Text & HTML output
+
+* Immediate update capability via scanner or svn
+
+{% img center /images/kali/webapp/joomscan.png 'joomscan' 'joomscan' %}
+
+**padbuster**
+
+PadBuster is a Perl script for automating Padding Oracle Attacks. PadBuster provides the capability to decrypt arbitrary ciphertext, encrypt arbitrary plaintext, and perform automated response analysis to determine whether a request is vulnerable to padding oracle attacks.
+
+``` plain
++-------------------------------------------+
+| PadBuster - v0.3.3                        |
+| Brian Holyfield - Gotham Digital Science  |
+| labs@gdssecurity.com                      |
++-------------------------------------------+
+    
+    Use: padBuster.pl URL EncryptedSample BlockSize [options]
+
+  Where: URL = The target URL (and query string if applicable)
+         EncryptedSample = The encrypted value you want to test. Must
+                           also be present in the URL, PostData or a Cookie
+         BlockSize = The block size being used by the algorithm
+
+Options:
+	 -auth [username:password]: HTTP Basic Authentication 
+	 -bruteforce: Perform brute force against the first block 
+	 -ciphertext [Bytes]: CipherText for Intermediate Bytes (Hex-Encoded)
+         -cookies [HTTP Cookies]: Cookies (name1=value1; name2=value2)
+         -encoding [0-4]: Encoding Format of Sample (Default 0)
+                          0=Base64, 1=Lower HEX, 2=Upper HEX
+                          3=.NET UrlToken, 4=WebSafe Base64
+         -encodedtext [Encoded String]: Data to Encrypt (Encoded)
+         -error [Error String]: Padding Error Message
+         -headers [HTTP Headers]: Custom Headers (name1::value1;name2::value2)
+	 -interactive: Prompt for confirmation on decrypted bytes
+	 -intermediate [Bytes]: Intermediate Bytes for CipherText (Hex-Encoded)
+	 -log: Generate log files (creates folder PadBuster.DDMMYY)
+	 -noencode: Do not URL-encode the payload (encoded by default)
+	 -noiv: Sample does not include IV (decrypt first block) 
+         -plaintext [String]: Plain-Text to Encrypt
+         -post [Post Data]: HTTP Post Data String
+	 -prefix [Prefix]: Prefix bytes to append to each sample (Encoded) 
+	 -proxy [address:port]: Use HTTP/S Proxy
+	 -proxyauth [username:password]: Proxy Authentication
+	 -resume [Block Number]: Resume at this block number
+	 -usebody: Use response body content for response analysis phase
+         -verbose: Be Verbose
+         -veryverbose: Be Very Verbose (Debug Only)
+```
+
+**skipfish**
+
+Skipfish is an active web application security reconnaissance tool. It prepares an interactive sitemap for the targeted site by carrying out a recursive crawl and dictionary-based probes. The resulting map is then annotated with the output from a number of active (but hopefully non-disruptive) security checks. The final report generated by the tool is meant to serve as a foundation for professional web application security assessments.
+
+Key features:
+
+* High speed: pure C code, highly optimized HTTP handling, minimal CPU footprint – easily achieving 2000 requests per second with responsive targets.
+
+* Ease of use: heuristics to support a variety of quirky web frameworks and mixed-technology sites, with automatic learning capabilities, on-the-fly wordlist creation, and form autocompletion.
+
+* Cutting-edge security logic: high quality, low false positive, differential security checks, capable of spotting a range of subtle flaws, including blind injection vectors.
+
+``` plain
+skipfish web application scanner - version 2.10b
+Usage: skipfish [ options ... ] -W wordlist -o output_dir start_url [ start_url2 ... ]
+
+Authentication and access options:
+
+  -A user:pass      - use specified HTTP authentication credentials
+  -F host=IP        - pretend that 'host' resolves to 'IP'
+  -C name=val       - append a custom cookie to all requests
+  -H name=val       - append a custom HTTP header to all requests
+  -b (i|f|p)        - use headers consistent with MSIE / Firefox / iPhone
+  -N                - do not accept any new cookies
+  --auth-form url   - form authentication URL
+  --auth-user user  - form authentication user
+  --auth-pass pass  - form authentication password
+  --auth-verify-url -  URL for in-session detection
+
+Crawl scope options:
+
+  -d max_depth     - maximum crawl tree depth (16)
+  -c max_child     - maximum children to index per node (512)
+  -x max_desc      - maximum descendants to index per branch (8192)
+  -r r_limit       - max total number of requests to send (100000000)
+  -p crawl%        - node and link crawl probability (100%)
+  -q hex           - repeat probabilistic scan with given seed
+  -I string        - only follow URLs matching 'string'
+  -X string        - exclude URLs matching 'string'
+  -K string        - do not fuzz parameters named 'string'
+  -D domain        - crawl cross-site links to another domain
+  -B domain        - trust, but do not crawl, another domain
+  -Z               - do not descend into 5xx locations
+  -O               - do not submit any forms
+  -P               - do not parse HTML, etc, to find new links
+
+Reporting options:
+
+  -o dir          - write output to specified directory (required)
+  -M              - log warnings about mixed content / non-SSL passwords
+  -E              - log all HTTP/1.0 / HTTP/1.1 caching intent mismatches
+  -U              - log all external URLs and e-mails seen
+  -Q              - completely suppress duplicate nodes in reports
+  -u              - be quiet, disable realtime progress stats
+  -v              - enable runtime logging (to stderr)
+
+Dictionary management options:
+
+  -W wordlist     - use a specified read-write wordlist (required)
+  -S wordlist     - load a supplemental read-only wordlist
+  -L              - do not auto-learn new keywords for the site
+  -Y              - do not fuzz extensions in directory brute-force
+  -R age          - purge words hit more than 'age' scans ago
+  -T name=val     - add new form auto-fill rule
+  -G max_guess    - maximum number of keyword guesses to keep (256)
+
+  -z sigfile      - load signatures from this file
+
+Performance settings:
+
+  -g max_conn     - max simultaneous TCP connections, global (40)
+  -m host_conn    - max simultaneous connections, per target IP (10)
+  -f max_fail     - max number of consecutive HTTP errors (100)
+  -t req_tmout    - total request response timeout (20 s)
+  -w rw_tmout     - individual network I/O timeout (10 s)
+  -i idle_tmout   - timeout on idle HTTP connections (10 s)
+  -s s_limit      - response size limit (400000 B)
+  -e              - do not keep binary responses for reporting
+
+Other settings:
+
+  -l max_req      - max requests per second (0.000000)
+  -k duration     - stop scanning after the given duration h:m:s
+  --config file   - load the specified configuration file
+
+Send comments and complaints to <heinenn@google.com>.
+```
+
+**uniscan-gui**
+
+Uniscan is a simple Remote File Include, Local File Include and Remote Command Execution vulnerability scanner.
+
+{% img center /images/kali/webapp/uniscan-gui.png 'uniscan-gui' 'uniscan-gui' %}
+
+**w3af**
+
+w3af is a Web Application Attack and Audit Framework which aims to identify and exploit all web application vulnerabilities. This package provides a graphical user interface (GUI) for the framework. If you want a command-line application only, install w3af-console. The framework has been called the “metasploit for the web”, but it’s actually much more than that, because it also discovers the web application vulnerabilities using black-box scanning techniques!. The w3af core and it’s plugins are fully written in Python. The project has more than 130 plugins, which identify and exploit SQL injection, cross site scripting (XSS), remote file inclusion and more.
+
+{% img center /images/kali/webapp/w3af.png 'w3af' 'w3af' %}
+
+**wapiti**
+
+It  performs "black-box" scans, i.e. it does not study the source code of the
+application but will scans the webpages of the deployed webapp,  looking  for
+scripts and forms where it can inject data.
+Once  it gets this list, Wapiti acts like a fuzzer, injecting payloads to see
+if a script is vulnerable.
+
+``` plain
+Wapiti-SVN - A web application vulnerability scanner 
+ 
+ Usage: python wapiti.py http://server.com/base/url/ [options] 
+ 
+ Supported options are: 
+ -s <url> 
+ --start <url> 
+ 	To specify an url to start with 
+  
+ -x <url> 
+ --exclude <url> 
+ 	To exclude an url from the scan (for example logout scripts) 
+ 	You can also use a wildcard (*) 
+ 	Example : -x http://server/base/?page=*&module=test 
+ 	or -x http://server/base/admin/* to exclude a directory 
+ 
+ -p <url_proxy> 
+ --proxy <url_proxy> 
+ 	To specify a proxy 
+ 	Example: -p http://proxy:port/ 
+ 
+ -c <cookie_file> 
+ --cookie <cookie_file> 
+ 	To use a cookie 
+ 
+ -t <timeout> 
+ --timeout <timeout> 
+ 	To fix the timeout (in seconds) 
+ 
+ -a <login%password> 
+ --auth <login%password> 
+ 	Set credentials for HTTP authentication 
+ 	Doesn't work with Python 2.4 
+ 
+ -r <parameter_name> 
+ --remove <parameter_name> 
+ 	Remove a parameter from URLs 
+ 
+ -n <limit> 
+ --nice <limit> 
+ 	Define a limit of urls to read with the same pattern 
+ 	Use this option to prevent endless loops 
+ 	Must be greater than 0 
+ 
+-m <module_options>
+--module <module_options>
+	Set the modules and HTTP methods to use for attacks.
+	Example: -m "-all,xss:get,exec:post"
+ 
+ -u 
+ --underline 
+ 	Use color to highlight vulnerables parameters in output 
+ 
+ -v <level> 
+ --verbose <level> 
+ 	Set the verbosity level 
+ 	0: quiet (default), 1: print each url, 2: print every attack 
+ 
+ -b <scope>
+ --scope <scope>
+ 	Set the scope of the scan:
+ 		+ "page":  to analyse only the page passed in the URL
+ 		+ "folder":to analyse all the links to the pages which are in the same folder as the URL passed to Wapiti.
+ 		+ "domain":to analyse all the links to the pages which are in the same domain as the URL passed to Wapiti.
+ 	If no scope is set, Wapiti scans all the tree under the given URL.
+ 
+ -f <type_file> 
+ --reportType <type_file> 
+ 	Set the type of the report 
+ 	xml: Report in XML format 
+ 	html: Report in HTML format 
+ 	txt: Report in plain text 
+ 
+ -o <output> 
+ --output <output_file> 
+ 	Set the name of the report file 
+ 	If the selected report type is 'html', this parameter must be a directory 
+ 
+ -i <file>
+ --continue <file>
+ 	This parameter indicates Wapiti to continue with the scan from the specified file, this file should contain data from a previous scan.
+ 	The file is optional, if it is not specified, Wapiti takes the default file from the "scans" folder.
+ 
+ -k <file>
+ --attack <file>
+ 	This parameter indicates Wapiti to perform attacks without scanning again the website and following the data of this file.
+ 	The file is optional, if it is not specified, Wapiti takes the default file from the "scans" folder.
+ 
+ -h 
+ --help 
+ 	To print this usage message
+```
+
+**webshag-gui**
+
+Webshag is a multi-threaded, multi-platform web server audit tool. Written in Python, it gathers commonly useful functionalities for web server auditing like website crawling, URL scanning or file fuzzing.
+Webshag can be used to scan a web server in HTTP or HTTPS, through a proxy and using HTTP authentication (Basic and Digest). In addition to that it proposes innovative IDS evasion functionalities aimed at making correlation between request more complicated (e.g. use a different random per request HTTP proxy server).
+
+{% img center /images/kali/webapp/webshag-gui.png 'webshag-gui' 'webshag-gui' %}
+
+**whatweb**
+
+WhatWeb identifies websites. Its goal is to answer the question, “What is that Website?”. WhatWeb recognises web technologies including content management systems (CMS), blogging platforms, statistic/analytics packages, JavaScript libraries, web servers, and embedded devices. WhatWeb has over 900 plugins, each to recognise something different. WhatWeb also identifies version numbers, email addresses, account IDs, web framework modules, SQL errors, and more.
+
+WhatWeb can be stealthy and fast, or thorough but slow. WhatWeb supports an aggression level to control the trade off between speed and reliability. When you visit a website in your browser, the transaction includes many hints of what web technologies are powering that website. Sometimes a single webpage visit contains enough information to identify a website but when it does not, WhatWeb can interrogate the website further. The default level of aggression, called ‘passive’, is the fastest and requires only one HTTP request of a website. This is suitable for scanning public websites. More aggressive modes were developed for in penetration tests.
+
+Most WhatWeb plugins are thorough and recognise a range of cues from subtle to obvious. For example, most WordPress websites can be identified by the meta HTML tag, e.g. ‘‘, but a minority of WordPress websites remove this identifying tag but this does not thwart WhatWeb. The WordPress WhatWeb plugin has over 15 tests, which include checking the favicon, default installation files, login pages, and checking for “/wp-content/” within relative links.
+
+Features:
+* Over 900 plugins
+
+* Control the trade off between speed/stealth and reliability
+
+* Plugins include example URLs
+
+* Performance tuning. Control how many websites to scan concurrently.
+
+* Multiple log formats: Brief (greppable), Verbose (human readable), XML, JSON, MagicTree, RubyObject, MongoDB.
+
+* Recursive web spidering
+
+* Proxy support including TOR
+
+* Custom HTTP headers
+
+* Basic HTTP authentication
+
+* Control over webpage redirection
+
+* Nmap-style IP ranges
+
+* Fuzzy matching
+
+* Result certainty awareness
+
+* Custom plugins defined on the command line
+
+``` plain
+.$$$     $.                                   .$$$     $.         
+$$$$     $$. .$$$  $$$ .$$$$$$.  .$$$$$$$$$$. $$$$     $$. .$$$$$$$. .$$$$$$. 
+$ $$     $$$ $ $$  $$$ $ $$$$$$. $$$$$ $$$$$$ $ $$     $$$ $ $$   $$ $ $$$$$$.
+$ `$     $$$ $ `$  $$$ $ `$  $$$ $$' $ `$ `$$ $ `$     $$$ $ `$      $ `$  $$$'
+$. $     $$$ $. $$$$$$ $. $$$$$$ `$  $. $  :' $. $     $$$ $. $$$$   $. $$$$$.
+$::$  .  $$$ $::$  $$$ $::$  $$$     $::$     $::$  .  $$$ $::$      $::$  $$$$
+$;;$ $$$ $$$ $;;$  $$$ $;;$  $$$     $;;$     $;;$ $$$ $$$ $;;$      $;;$  $$$$
+$$$$$$ $$$$$ $$$$  $$$ $$$$  $$$     $$$$     $$$$$$ $$$$$ $$$$$$$$$ $$$$$$$$$'
+
+WhatWeb - Next generation web scanner.
+Version 0.4.8-dev by Andrew Horton aka urbanadventurer
+Homepage: http://www.morningstarsecurity.com/research/whatweb
+
+Usage: whatweb [options] <URLs>
+
+TARGET SELECTION:
+  <URLs>		Enter URLs, filenames or nmap-format IP ranges.
+			Use /dev/stdin to pipe HTML directly
+  --input-file=FILE, -i	Identify URLs found in FILE, eg. -i /dev/stdin
+
+TARGET MODIFICATION:
+  --url-prefix		Add a prefix to target URLs
+  --url-suffix		Add a suffix to target URLs
+  --url-pattern		Insert the targets into a URL. Requires --input-file,
+			eg. www.example.com/%insert%/robots.txt 
+
+AGGRESSION:
+  The aggression level controls the trade-off between speed/stealth and
+  reliability.
+  --aggression, -a=LEVEL Set the aggression level. Default: 1
+  Aggression levels are:
+  1. Stealthy	Makes one HTTP request per target. Also follows redirects.
+  2. Unused
+  3. Aggressive	Can make a handful of HTTP requests per target. This triggers
+  		aggressive plugins for targets only when those plugins are
+  		identified with a level 1 request first.
+  4. Heavy	Makes a lot of HTTP requests per target. Aggressive tests from
+  		all plugins are used for all URLs.
+
+HTTP OPTIONS:
+  --user-agent, -U=AGENT Identify as AGENT instead of WhatWeb/0.4.8-dev.
+  --header, -H		Add an HTTP header. eg "Foo:Bar". Specifying a default
+			header will replace it. Specifying an empty value, eg.
+			"User-Agent:" will remove the header.
+  --follow-redirect=WHEN Control when to follow redirects. WHEN may be `never',
+			`http-only', `meta-only', `same-site', `same-domain'
+			or `always'. Default: always
+  --max-redirects=NUM	Maximum number of contiguous redirects. Default: 10
+
+AUTHENTICATION:
+  --user, -u=<user:password> HTTP basic authentication
+  Add session cookies with --header, e.g. --header "Cookie: SESSID=1a2b3c;"
+
+PROXY:
+  --proxy		<hostname[:port]> Set proxy hostname and port
+			Default: 8080
+  --proxy-user		<username:password> Set proxy user and password
+
+PLUGINS:
+  --list-plugins, -l	List all plugins
+  --plugins, -p=LIST	Select plugins. LIST is a comma delimited set of 
+			selected plugins. Default is all.
+			Each element can be a directory, file or plugin name and
+			can optionally have a modifier, eg. + or -
+			Examples: +/tmp/moo.rb,+/tmp/foo.rb
+			title,md5,+./plugins-disabled/
+			./plugins-disabled,-md5
+			-p + is a shortcut for -p +plugins-disabled
+  --info-plugins, -I=PLUGINS	Display detailed information for plugins.
+			Optionally search with keywords in a comma delimited
+			list.
+  --grep, -g=STRING	Search for STRING in HTTP responses. Reports with a
+			plugin named Grep
+  --custom-plugin=DEFINITION	Define a custom plugin named Custom-Plugin,
+			Examples: ":text=>'powered by abc'"
+			":version=>/powered[ ]?by ab[0-9]/"
+			":ghdb=>'intitle:abc \"powered by abc\"'"
+			":md5=>'8666257030b94d3bdb46e05945f60b42'"
+			"{:text=>'powered by abc'},{:regexp=>/abc [ ]?1/i}"
+  --dorks=PLUGIN	List google dorks for the selected plugin
+  --example-urls, -e=PLUGIN Update the target list with example URLs from
+			the selected plugins.
+
+OUTPUT:
+  --verbose, -v		Verbose output includes plugin descriptions. Use twice
+			for debugging.
+  --colour,--color=WHEN	control whether colour is used. WHEN may be `never',
+			`always', or `auto'
+  --quiet, -q		Do not display brief logging to STDOUT
+  --no-errors		Suppress error messages
+
+LOGGING:
+  --log-brief=FILE	Log brief, one-line output
+  --log-verbose=FILE	Log verbose output
+  --log-xml=FILE	Log XML format
+  --log-json=FILE	Log JSON format
+  --log-json-verbose=FILE Log JSON Verbose format
+  --log-magictree=FILE	Log MagicTree XML format
+  --log-object=FILE	Log Ruby object inspection format
+  --log-mongo-database	Name of the MongoDB database
+  --log-mongo-collection Name of the MongoDB collection. Default: whatweb
+  --log-mongo-host	MongoDB hostname or IP address. Default: 0.0.0.0
+  --log-mongo-username	MongoDB username. Default: nil
+  --log-mongo-password	MongoDB password. Default: nil
+  --log-errors=FILE	Log errors
+
+PERFORMANCE & STABILITY:
+  --max-threads, -t	Number of simultaneous threads. Default: 25.
+  --open-timeout	Time in seconds. Default: 15
+  --read-timeout	Time in seconds. Default: 30
+  --wait=SECONDS	Wait SECONDS between connections
+			This is useful when using a single thread.
+
+HELP & MISCELLANEOUS:
+  --help, -h		This help
+  --debug		Raise errors in plugins
+  --version		Display version information. (WhatWeb 0.4.8-dev)
+
+EXAMPLE USAGE:
+* Scan example.com
+  whatweb example.com
+* Scan reddit.com slashdot.org with verbose plugin descriptions
+  whatweb -v reddit.com slashdot.org
+* An aggressive scan of mashable.com detects the exact version of Wordpress
+  whatweb -a 3 mashable.com
+* Scan the local network quickly with 255 threads and suppress errors
+  whatweb --no-errors -t 255 192.168.0.0/24
+
+OPTIONAL DEPENDENCIES
+--------------------------------------------------------------------------------
+To enable MongoDB logging install the mongo gem.
+```
+
+This was the Web Applications section. Don't forget that you can check tools usage examples and descriptions on http://tools.kali.org/tools-listing
+
+> Q:	How did you get into artificial intelligence?
+
+> A:	Seemed logical -- I didn't have any real intelligence.
+
