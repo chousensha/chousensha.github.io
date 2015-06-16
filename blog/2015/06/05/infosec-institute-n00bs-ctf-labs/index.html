@@ -1,0 +1,520 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Infosec Institute n00bs CTF Labs - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Walkthrough for the Infosec Institute n00bs CTF Labs">
+  <meta name="keywords" content="infosec, ctf, hacking labs">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2015/06/05/infosec-institute-n00bs-ctf-labs">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Infosec Institute n00bs CTF Labs</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-05T20:39:07+03:00" pubdate data-updated="true">Jun 5<span>th</span>, 2015</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>It&rsquo;s been a while since I&rsquo;ve last polished my web hacking skills, and I recently found out about these CTF challenges. Too late for the bounty though..</p>
+
+<p>You can access the labs at <a href="http://ctf.infosecinstitute.com/index.php">http://ctf.infosecinstitute.com/index.php</a></p>
+
+<!-- more -->
+
+
+<h3>Level 1</h3>
+
+<p>This is straightforward, just listen to Yoda:</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level1.png" title="level1" alt="level1"></p>
+
+<p>You can find the flag in the source: <code>infosec_flagis_welcome</code></p>
+
+<h3>Level 2</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level2.png" title="level2" alt="level2"></p>
+
+<p>Found the image in the source:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;img/leveltwo.jpeg&quot;</span> <span class="nt">/&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When clicking on it, there is this error:</p>
+
+<p><code>The image “view-source:<a href="http://ctf.infosecinstitute.com/img/leveltwo.jpeg%E2%80%9D">http://ctf.infosecinstitute.com/img/leveltwo.jpeg%E2%80%9D</a> cannot be displayed because it contains errors.</code></p>
+
+<p>Downloaded it and ran <em>strings</em> on it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/Desktop# strings leveltwo.jpeg 
+</span><span class='line'>aW5mb3NlY19mbGFnaXNfd2VhcmVqdXN0c3RhcnRpbmc=</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, well. This isn&rsquo;t suspicious at all! :D After you Base64 decode it, you get the flag: <code>infosec_flagis_wearejuststarting</code></p>
+
+<h3>Level 3</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level3.png" title="level3" alt="level3"></p>
+
+<p>I used an <a href="http://www.onlinebarcodereader.com/">online barcode scanner</a> that produced this output: <code>.. &ndash;. ..&ndash;. &mdash;&ndash; &hellip; . &ndash;.&ndash;. ..&ndash;. .&ndash;.. .&ndash; &mdash;. .. &hellip; &mdash; &mdash;&ndash; .&ndash;. &hellip; .. &ndash;. &mdash;.</code>. Well, that seems familiar..Morse code! Used <a href="http://www.onlineconversion.com/morse_code.htm">this site</a> to decode it: <code>INFOSECFLAGISMORSING</code></p>
+
+<h3>Level 4</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level4.png" title="level4" alt="level4"></p>
+
+<p>If you hover over the image with your mouse, a popup appears with the message <em>Stop poking me!</em>. Looking in the source, the Javascript function responsible for that is called <code>poke()</code>, and you can find it in the <code>custom.js</code> file. All it does is alert the message. I spent some time here going in a wrong direction, disabling Javascript, and trying to see if something is hidden in the image. The hint states HTTP, and I did look at the headers and all, and it&rsquo;s not often that you see a cookie called <em>fusrodah</em>. But initially I didn&rsquo;t think it was pertaining to this specific level, because it was present in the requests to other levels as well. But when I hit a blank on everything else, I returned to it and ran it in some decoders:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fusrodah=vasbfrp_syntvf_jrybirpbbxvrf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And I hit the jackpot with a Caesar shift of 13: <code>infosec_flagis_welovecookies</code></p>
+
+<h3>Level 5</h3>
+
+<p>When you click on Level 5, you immediatelly get a popup saying <em>Hacker!!!</em>. I disabled Javascript to see this image:</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level5.png" title="level5" alt="level5"></p>
+
+<p>Right, back to the thing I hate most, steganography. Stegdetect didn&rsquo;t find anything, and I didn&rsquo;t have any luck with StegExpose either. Surprisingly, an online tool came to help: <a href="https://futureboy.us/stegano/decinput.html">https://futureboy.us/stegano/decinput.html</a></p>
+
+<p>The output was this string:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>01101001011011100110011001101111011100110110010101100011010111110110011001101100011000010110011101101001011100110101111101110011011101000110010101100111011000010110110001101001011001010110111001110011</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>which I then ran in a binary decoder: <code>infosec_flagis_stegaliens</code></p>
+
+<h3>Level 6</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level6.png" title="level6" alt="level6"></p>
+
+<p>Packet analysis is not really my thing, so the way I solved this was by just following streams until I hit on something potentially interesting: the string <code>696e666f7365635f666c616769735f736e6966666564</code>, contained in the first UDP packet, with a source and destination of 127.0.0.1. This was actually the hex encoded flag: <code>infosec_flagis_sniffed</code></p>
+
+<h3>Level 7</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level7.png" title="level7" alt="level7"></p>
+
+<p>I tried to manually navigate to levelseven.php and all I got was a blank page. But when I looked at the request with Live HTTP Headers, I noticed this: <code>HTTP/1.0 200 aW5mb3NlY19mbGFnaXNfeW91Zm91bmRpdA==</code>. A base64 encoded string&hellip;and decoding it gives the flag: <code>infosec_flagis_youfoundit</code></p>
+
+<h3>Level 8</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level8.png" title="level8" alt="level8"></p>
+
+<p>Well, didn&rsquo;t expect to solve it just by running <em>strings</em>, but that&rsquo;s all you need to do! :D The flag is in the <em>strings</em> output: <code>infosec_flagis_0x1a</code></p>
+
+<h3>Level 9</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level9.png" title="level9" alt="level9"></p>
+
+<p>No SQLi involved here..so I googled for Cisco IDS Web Login System password. Eventually I found the credentials that work on <a href="http://www.anameless.com/blog/default-passwords.html">this page</a> that contains default passwords for a number of devices. The ones that worked were <code>root:attack</code>. A popup appeared with the flag <code>ssaptluafed_sigalf_cesofni</code>, which is the reverse for <code>infosec_flagis_defaultpass</code></p>
+
+<h3>Level 10</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level10.png" title="level10" alt="level10"></p>
+
+<p>Played the .wav file, it sounded like something being fast forwarded. So I launched Audacity, and under Effect->Change Speed, you can play with the Speed Multiplier (some 0.20 and lower) until you hear a voice telling you the flag: <code>infosec_flagis_sound</code></p>
+
+<h3>Level 11</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level11.png" title="level11" alt="level11"></p>
+
+<p>Right, that huge PHP image is suspicious. I downloaded it and ran <em>strings</em> on it to begin with, and:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>infosec_flagis_aHR0cDovL3d3dy5yb2xsZXJza2kuY28udWsvaW1hZ2VzYi9wb3dlcnNsaWRlX2xvZ29fbGFyZ2UuZ2lm</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Base64? Yes it is! Decoding it gives the address of another image: <a href="http://www.rollerski.co.uk/imagesb/powerslide_logo_large.gif">http://www.rollerski.co.uk/imagesb/powerslide_logo_large.gif</a></p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/powerslide.png" title="powerslide" alt="powerslide"></p>
+
+<p>Couldn&rsquo;t find anything hidden in this image, so I guess <code>infosec_flagis_powerslide</code></p>
+
+<h3>Level 12</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level12.png" title="level12" alt="level12"></p>
+
+<p>Spent some time scratching my head at this one, because I couldn&rsquo;t find anything. Since I was just jumping over the initial section of the page source, with the CSS files and all, I was missing the relevant information. So, if you look in the source and you compare it with other pages, you can see that there is a new CSS file, called <em>design.css</em>, with the following inside:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='css'><span class='line'><span class="nc">.thisloveis</span><span class="p">{</span>
+</span><span class='line'>  <span class="k">color</span><span class="o">:</span> <span class="m">#696e666</span><span class="n">f7365635f666c616769735f686579696d6e6f7461636f6c6f72</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And if you decode that hex string, you get the flag: <code>infosec_flagis_heyimnotacolor</code></p>
+
+<h3>Level 13</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level13.png" title="level13" alt="level13"></p>
+
+<p>I kept trying editing the URL and adding file extensions commonly associated with backup files from <a href="http://www.file-extensions.org/filetype/extension/name/backup-files">this list</a>. Eventually, stumbled upon one that works: the <em>.old</em> file extension.</p>
+
+<p><a href="http://file.org/extension/old">What is an OLD file?</a>:</p>
+
+<blockquote><p>Files that contain the .old file extension are most commonly used to indicate that a file on a user&rsquo;s hard drive is a backup copy of a newer
+version of the file. The .old extension is given to the file name when the newer version of the file is saved within the associated computer
+application.</p>
+
+<p>The initial file extension is often kept intact when the .old file extension is assigned to a file. For example, if the original version of a file
+is saved as mydocument.doc, then when a new version of the file is created that version will also be saved with the name of mydocument.doc.
+However, in order to store a copy of the old version of the file, the original version will be saved with the name as mydocument.doc.old.</p></blockquote>
+
+<p>So when I added <em>.old</em> to the URL, I got a message if I want to open or download levelthirteen.php.old. Ok, now we&rsquo;re getting somewhere! Ran <em>strings</em> on it (again!) and noticed an extra something in the source:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>/* <span class="nt">&lt;img</span> <span class="na">src=</span><span class="s">&quot;img/clippy1.jpg&quot;</span> <span class="na">class=</span><span class="s">&quot;imahe&quot;</span> <span class="nt">/&gt;</span> <span class="nt">&lt;br</span> <span class="nt">/&gt;</span> <span class="nt">&lt;br</span> <span class="nt">/&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;p&gt;</span>Do you want to download this mysterious file?<span class="nt">&lt;/p&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;misc/imadecoy&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;button</span> <span class="na">class=</span><span class="s">&quot;btn&quot;</span><span class="nt">&gt;</span>Yes<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/a&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">&quot;index.php&quot;</span><span class="nt">&gt;</span>
+</span><span class='line'>      <span class="nt">&lt;button</span> <span class="na">class=</span><span class="s">&quot;btn&quot;</span><span class="nt">&gt;</span>No<span class="nt">&lt;/button&gt;</span>
+</span><span class='line'>    <span class="nt">&lt;/a&gt;</span>
+</span><span class='line'>    */
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went to <a href="http://ctf.infosecinstitute.com/misc/imadecoy">http://ctf.infosecinstitute.com/misc/imadecoy</a> and you can download the mysterious file. Apparently it&rsquo;s another job for Wireshark:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/Desktop# file imadecoy
+</span><span class='line'>imadecoy: tcpdump capture file (little-endian) - version 2.4 (Linux "cooked", capture length 65535)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, more random following streams and trying to glean what&rsquo;s interesting. Eventually, I reached this part:</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/imadecoy.png" title="imadecoy" alt="imadecoy"></p>
+
+<p>The GET request for that HoneyPY.PNG image occurs a few times after first spotting it. So the image might be interesting. And it&rsquo;s possible to reconstruct it from the packet file! Click on the relevant packet:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>633  46.399534   127.0.0.1   127.0.0.1   HTTP    1955    HTTP/1.1 200 OK  (PNG)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then go to File->Export Objects->HTTP. Wireshark will then give you all the HTTP objects list:</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/http_objects.png" title="http object list" alt="http objects"></p>
+
+<p>We&rsquo;re only interested in the image, which is the last one. I saved it, and&hellip;</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/flag13.png" title="flag13" alt="flag13"></p>
+
+<h3>Level 14</h3>
+
+<p><img class="center" src="/images/infosec_institute_ctf/level14.png" title="level14" alt="level14"></p>
+
+<p>The file is a phpMyAdmin SQL Dump. If you scroll through it, towards the end there will be this table:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-- Dumping data for table `friends`
+</span><span class='line'>--
+</span><span class='line'>
+</span><span class='line'>INSERT INTO `friends` (`id`, `name`, `address`, `status`) VALUES
+</span><span class='line'>(102, 'Sasha Grey', 'Vatican City', 'Active'),
+</span><span class='line'>(101, 'Andres Bonifacio', 'Tondo, Manila', 'Active'),
+</span><span class='line'>(103, 'lol', 'what the???', 'Inactive'),
+</span><span class='line'>(104, '\\u0069\\u006e\\u0066\\u006f\\u0073\\u0065\\u0063\\u005f\\u0066\\u006c\\u0061\\u0067\\u0069\\u0073\\u005f\\u0077\\u0068\\u0061\\u0074\\u0073\\u006f\\u0072\\u0063\\u0065\\u0072\\u0079\\u0069\\u0073\\u0074\\u0068\\u0069\\u0073', 'annoying', '0x0a');</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Used <a href="http://ddecode.com/hexdecoder/">this decoder</a> to decode the not-at-all conspicuous string and: <code>infosec_flagis_whatsorceryisthis</code> ! :D</p>
+
+<h3>Level 15</h3>
+
+<p>Something seems wrong with the server and I get a (real) 404 error for this level only. When it works again I will update this section</p>
+
+<p><img class="center" src="/images/infosec_institute_ctf/cookie.png" title="cookie" alt="cookie"></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2015-06-05T20:39:07+03:00" pubdate data-updated="true">Jun 5<span>th</span>, 2015</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ctf/'>ctf</a>, <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/web-security/'>web security</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2015/06/01/kali-tools-catalog-exploitation-tools/" title="Previous Post: Kali tools catalog - Exploitation Tools">&laquo; Kali tools catalog - Exploitation Tools</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <p>I am an information security enthusiast and I love Python and Linux. I got seriously interested in this field somewhere in 2012, and since then it's been a non-stop learning journey. I don't have a formal education in computer science, but I've been studying by myself with the help of various books, sites, online classes and of course, lots of practice.</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/">Infosec Institute n00bs CTF Labs</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/01/kali-tools-catalog-exploitation-tools/">Kali tools catalog - Exploitation Tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/05/10/pentest-lab-relativity/">Pentest lab - Relativity</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/20/kali-tools-catalog-wireless-attacks/">Kali tools catalog - Wireless Attacks</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/04/04/kali-tools-catalog-password-attacks/">Kali tools catalog - Password Attacks</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/';
+        var disqus_url = 'http://chousensha.github.io/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
