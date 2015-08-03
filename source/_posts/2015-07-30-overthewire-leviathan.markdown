@@ -1,0 +1,344 @@
+---
+layout: post
+title: "OverTheWire: Leviathan"
+date: 2015-07-30 17:01:22 +0300
+comments: true
+categories: [overthewire, wargames, linux]
+keywords: overthewire, wargames, leviathan
+description: OverTheWire Leviathan wargame
+---
+
+
+The next step in difficulty for the OverTheWire wargames is Leviathan. From the description:
+
+> This wargame doesn't require any knowledge about programming - just a bit of common sense and some knowledge about basic *nix commands.
+
+Leviathan’s levels are called leviathan0, leviathan1, … etc. and can be accessed on **leviathan.labs.overthewire.org** through SSH.
+
+To login to the first level use:
+
+Username: leviathan0
+
+Password: leviathan0
+
+Data for the levels can be found in the homedirectories.
+
+<!-- more -->
+
+### Level 0 -> Level 1
+
+There is no information about what you have to do for each level to progress, so you just have to look around. 
+
+If you do a *ls -la* in the home directory, you will see an interesting hidden directory owned by leviathan1:
+
+``` plain
+leviathan0@melinda:~$ ls -la
+total 24
+drwxr-xr-x   3 root       root       4096 Nov 14  2014 .
+drwxr-xr-x 167 root       root       4096 Jul  9 16:27 ..
+drwxr-x---   2 leviathan1 leviathan0 4096 Jul 17 16:44 .backup
+-rw-r--r--   1 root       root        220 Apr  9  2014 .bash_logout
+-rw-r--r--   1 root       root       3637 Apr  9  2014 .bashrc
+-rw-r--r--   1 root       root        675 Apr  9  2014 .profile
+```
+
+Inside there is a bookmarks.html file with lots of links, so I tried grepping for the word password and wasn't disappointed:
+
+``` plain
+leviathan0@melinda:~/.backup$ cat bookmarks.html  | grep password
+<DT><A HREF="http://leviathan.labs.overthewire.org/passwordus.html | This will be fixed later, the password for leviathan1 is rioGegei8m" ADD_DATE="1155384634" LAST_CHARSET="ISO-8859-1" ID="rdf:#$2wIU71">password to leviathan1</A>
+```
+
+### Level 1 -> Level 2
+
+There is a setuid binary in the home folder that asks for a password. Running *strings* on it didn't reveal much, except that it uses *strcmp*..so it compares the input it receives with something..
+
+I solved this by running *ltrace* on the binary. *ltrace* is a library call tracer:
+
+> ltrace  is  a  program  that simply runs the specified command until it
+> exits.  It intercepts and records the dynamic library calls  which  are
+> called  by  the  executed process and the signals which are received by
+>  that process.  It can also intercept and print the  system  calls  executed by the program.
+
+
+``` plain
+leviathan1@melinda:~$ ltrace ./check
+__libc_start_main(0x804852d, 1, 0xffffd7a4, 0x80485f0 <unfinished ...>
+printf("password: ")                                                                        = 10
+getchar(0x8048680, 47, 0x804a000, 0x8048642password: abcd
+)                                                = 97
+getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 98
+getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 99
+strcmp("abc", "sex")                                                                        = -1
+puts("Wrong password, Good Bye ..."Wrong password, Good Bye ...
+)                                                        = 29
++++ exited (status 0) +++
+```
+
+In the *ltrace* output you can actually see the password that your input is compared with. Give it to the program and you will get a shell as leviathan2:
+
+``` plain
+leviathan1@melinda:~$ ./check 
+password: sex
+$ whoami
+leviathan2
+```
+
+As in the previous wargame, look in */etc/* for the password:
+
+``` plain
+$ cat /etc/leviathan_pass/leviathan2
+ougahZi8Ta
+```
+
+### Level 2 -> Level 3
+
+In this level we have another setuid binary named printfile. If you try to read the password file for the next level you just get a message that you an't have that file:
+
+``` plain
+leviathan2@melinda:~$ ./printfile /etc/leviathan_pass/leviathan3
+You cant have that file...
+```
+
+Running *ltrace* again we see the *access* system call is being used:
+
+``` plain
+leviathan2@melinda:~$ ltrace ./printfile /etc/leviathan_pass/leviathan3   
+__libc_start_main(0x804852d, 2, 0xffffd774, 0x8048600 <unfinished ...>
+access("/etc/leviathan_pass/leviathan3", 4)                                                 = -1
+puts("You cant have that file..."You cant have that file...
+)                                                          = 27
++++ exited (status 1) +++
+```
+
+This is good news, because *access* is vulnerable to race conditions, as can be seen from its man page:
+
+> access() checks whether the calling process can access the file pathname. If pathname is a symbolic link, it is dereferenced.
+
+> The check is done using the calling process's real UID and GID,  rather than the effective IDs as is done when actually attempting an operation
+> (e.g., open(2)) on the file.  This allows set-user-ID programs to  easily determine the invoking user's authority.
+
+> Warning: Using access() to check if a user is authorized to, for  example, open a file before actually doing so using open(2) creates a security 
+> hole, because the user  might  exploit  the  short  time  interval between  checking and opening the file to manipulate it. For this reason, the   > use of this system call should be avoided. 
+
+A more detailed description from [OWASP](https://www.owasp.org/index.php/File_Access_Race_Condition:_TOCTOU):
+
+> The window of time between when a file property is checked and when the file is used can be exploited to launch a privilege escalation attack.
+
+> File access race conditions, known as time-of-check, time-of-use (TOCTOU) race conditions, occur when:
+
+> The program checks a property of a file, referencing the file by name.
+> The program later performs a filesystem operation using the same filename and assumes that the previously-checked property still holds.
+
+The first thing I thought was to create a file and make it a symlink to the password file, but it didn't work. So I just made a random file for test purposes and used *ltrace* again to see what is happening when accessing it:
+
+``` plain
+leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/readme
+__libc_start_main(0x804852d, 2, 0xffffd784, 0x8048600 <unfinished ...>
+access("/tmp/baka/readme", 4)                                                               = 0
+snprintf("/bin/cat /tmp/baka/readme", 511, "/bin/cat %s", "/tmp/baka/readme")               = 25
+system("/bin/cat /tmp/baka/readme"test
+ <no return ...>
+--- SIGCHLD (Child exited) ---
+<... system resumed> )                                                                      = 0
++++ exited (status 0) +++
+```
+
+I have to say, I used help for this one, because it wasn't clear to me on how to proceed (it's also where I got stuck when I first attempted this wargame). If *access* returns successfully, it will *cat* the file that was passed to it (and it's actually *snprintf* that does the *cat*. Remember from Bandit how *cat* won't print files with spaces in their names, unless the spaces are escaped or the filename is surrounded by quotes. I made a new dummy file with a space in its name:
+
+``` plain
+leviathan2@melinda:/tmp/baka$ cat space\ file 
+test
+leviathan2@melinda:/tmp/baka$ cat space file
+cat: space: No such file or directory
+cat: file: No such file or directory
+```
+
+Now I ran *ltrace* again and tried to print this new file:
+
+``` plain
+leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/space\ file 
+__libc_start_main(0x804852d, 2, 0xffffd764, 0x8048600 <unfinished ...>
+access("/tmp/baka/space file", 4)                                                           = 0
+snprintf("/bin/cat /tmp/baka/space file", 511, "/bin/cat %s", "/tmp/baka/space file")       = 29
+system("/bin/cat /tmp/baka/space file"/bin/cat: /tmp/baka/space: No such file or directory
+/bin/cat: file: No such file or directory
+ <no return ...>
+--- SIGCHLD (Child exited) ---
+<... system resumed> )                                                                      = 256
++++ exited (status 0) +++
+```
+
+There is a discrepancy between *access*, which checks the path of the file, and what *cat* tries to print, two different files that don't exist, *space* and *file* (because the space isn't seen as part of the filename, but as a separator between arguments):
+
+* *cat* tries /tmp/baka/space
+
+* *cat* tries file
+
+This is where the symbolic link exploitation part comes in place. It didn't work before, but if I now create a symlink to the password file and name it *space*, it will match the first half of the file that *cat* will try to print:
+
+``` plain
+leviathan2@melinda:/tmp/baka$ ls -l
+total 8
+-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 12:18 readme
+lrwxrwxrwx 1 leviathan2 leviathan2 30 Jul 31 15:45 space -> /etc/leviathan_pass/leviathan3
+-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 15:01 space file
+```
+
+And now I run *printfile* again:
+
+``` plain
+leviathan2@melinda:~$ ./printfile /tmp/baka/'space file'
+Ahdiemoo1j
+/bin/cat: file: No such file or directory
+```
+
+Yay! It worked! Because *cat* first tried to print *space*, it followed the symlink with the same name and printed the password!
+
+
+### Level 3 -> Level 4
+
+And another setuid binary! Running *strings* on it revealed it's a program that gives you a shell if you enter the right password. Along with string names such as do_stuff, nothing and morenothing xD
+
+*ltrace* keeps helping a lot with these challenges:
+
+``` plain
+leviathan3@melinda:~$ ltrace ./level3 
+__libc_start_main(0x80485fe, 1, 0xffffd794, 0x80486d0 <unfinished ...>
+strcmp("h0no33", "kakaka")                                                                  = -1
+printf("Enter the password> ")                                                              = 20
+fgets(Enter the password> huh
+"huh\n", 256, 0xf7fcac20)                                                             = 0xffffd58c
+strcmp("huh\n", "snlprintf\n")                                                              = -1
+puts("bzzzzzzzzap. WRONG"bzzzzzzzzap. WRONG
+)                                                                  = 19
++++ exited (status 0) +++
+```
+
+The first *strcmp* doesn't seem to be used for anything, but the second one is interesting. It compares the given input with..snlprintf?! There is no such function in the C library, so I assumed it's just a string..and:
+
+``` plain
+leviathan3@melinda:~$ ./level3 
+Enter the password> snlprintf
+[You've got shell]!
+$ whoami
+leviathan4
+$ cat /etc/leviathan_pass/leviathan4
+vuH0coox6m
+```
+
+Awesome! On to the next level!
+
+
+### Level 4 -> Level 5
+
+There is a hidden directory in the home folder:
+
+``` plain
+leviathan4@melinda:~$ ls -la
+total 24
+drwxr-xr-x   3 root root       4096 Nov 14  2014 .
+drwxr-xr-x 167 root root       4096 Jul  9 16:27 ..
+-rw-r--r--   1 root root        220 Apr  9  2014 .bash_logout
+-rw-r--r--   1 root root       3637 Apr  9  2014 .bashrc
+-rw-r--r--   1 root root        675 Apr  9  2014 .profile
+dr-xr-x---   2 root leviathan4 4096 Nov 14  2014 .trash
+```
+
+Inside there's a program that gives some binary output when run:
+
+``` plain
+leviathan4@melinda:~/.trash$ ./bin 
+01010100 01101001 01110100 01101000 00110100 01100011 01101111 01101011 01100101 01101001 00001010 
+```
+
+Convert it to Ascii for the password: <code>Tith4cokei</code>
+
+
+### Level 5 -> Level 6
+
+Another binary! If you run it, it says it can't find a file:
+
+``` plain
+leviathan5@melinda:~$ ./leviathan5 
+Cannot find /tmp/file.log
+```
+
+This is a setuid binary, so maybe we can trick it into reading the password file for the leviathan5 user. I made a symlink to the password file with the name of the missing file, and the binary followed it right to the password:
+
+``` plain
+leviathan5@melinda:~$ ln -s /etc/leviathan_pass/leviathan6 /tmp/file.log
+leviathan5@melinda:~$ ./leviathan5 
+UgaoFee4li
+```
+
+
+### Level 6 -> Level 7
+
+And yet another binary! This one asks for a 4-digit code:
+
+``` plain
+leviathan6@melinda:~$ ./leviathan6 
+usage: ./leviathan6 <4 digit code>
+```
+
+Lookint at the strings, it seems this program will give us a shell if we can find the right code. I was going to use Python again but I found a quick and easy way to bruteforce the code with a very small Bash script:
+
+``` bash
+#!/bin/bash
+
+for i in {0000..9999}
+do
+echo 'Trying' $i
+~/leviathan6 $i
+done
+```
+
+This script iterates over the range of possible codes and tries each of them as input for the leviathan6 binary:
+
+``` plain
+...
+Trying 7122
+Wrong
+Trying 7123
+$ whoami
+leviathan7
+$ cat /etc/leviathan_pass/leviathan7
+ahy7MaeBo9
+```
+
+
+### Level 7 -> Level 8
+
+This is the final level, as you can see from the congratulatory note:
+
+``` plain
+leviathan7@melinda:~$ ls
+CONGRATULATIONS
+leviathan7@melinda:~$ cat CONGRATULATIONS 
+Well Done, you seem to have used a *nix system before, now try something more serious.
+(Please don't post writeups, solutions or spoilers about the games on the web. Thank you!)
+```
+
+Better skip over that last line...
+
+``` plain
+ ________________________________________
+/ Tomorrow will be cancelled due to lack \
+\ of interest.                           /
+ ----------------------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+```
+
+
+
+
+
+
+
+
+
