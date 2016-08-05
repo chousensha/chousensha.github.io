@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-08-01T10:06:10-04:00</updated>
+  <updated>2016-08-05T07:54:22-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1681 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Getting started with Apache]]></title>
+    <link href="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/"/>
+    <updated>2016-08-05T07:26:16-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache</id>
+    <content type="html"><![CDATA[<p>In this post I will go over the installation and configuration of an Apache web server on CentOS.</p>
+
+<!-- more -->
+
+
+<h1>Installation</h1>
+
+<p>First, let&rsquo;s verify whether Apache is already installed. Note that on CentOS, the package (and process name) for Apache is called <strong>httpd</strong>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q httpd
+</span><span class='line'>package httpd is not installed
+</span><span class='line'>ls -l /var/www
+</span><span class='line'>ls: cannot access /var/www: No such file or directory</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Apache is not installed, so let&rsquo;s install it with <code>yum install httpd</code>. Now verify that it has been installed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q httpd
+</span><span class='line'>httpd-2.4.6-40.el7.centos.4.x86_64
+</span><span class='line'>ls -l /var/www
+</span><span class='line'>total 0
+</span><span class='line'>drwxr-xr-x. 2 root root 6 Jul 18 18:30 cgi-bin
+</span><span class='line'>drwxr-xr-x. 2 root root 6 Jul 18 18:30 html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Remember that the directory for Apache configuration is <code>/etc/httpd</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# ls /etc/httpd
+</span><span class='line'>conf  conf.d  conf.modules.d  logs  modules  run</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the Apache configuration file is <code>/etc/httpd/conf/httpd.conf</code>. I included a snapshot of a fresh config file at the end of this post.</p>
+
+<h1>Configuration</h1>
+
+<p>Now we can start Apache and check that it is running with the <strong>apachectl</strong> command, that provides a front-end control interface for the httpd daemon. For reference, the man page for this utility is at the end of the post.</p>
+
+<p>To start the web server, type <code>apachectl start</code> (alternatively, you can do it with <code>service httpd start</code>, and can use the httpd daemon directly to pass arguments, etc. At the end I&rsquo;ve also included the httpd man page.</p>
+
+<p>If you&rsquo;re getting a message like &ldquo;Could not reliably determine the server&rsquo;s fully qualified domain name&rdquo;, you can modify the ServerName in the configuration file and then restart the server. After making changes to the config file, it&rsquo;s also a good idea to check if there are any errors in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# apachectl configtest
+</span><span class='line'>Syntax OK</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, let&rsquo;s check the status of the server:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# apachectl status
+</span><span class='line'>* httpd.service - The Apache HTTP Server
+</span><span class='line'>   Loaded: loaded (/usr/lib/systemd/system/httpd.service; disabled; vendor preset: disabled)
+</span><span class='line'>   Active: active (running) since Tue 2016-08-02 15:53:53 EEST; 1min 42s ago
+</span><span class='line'>     Docs: man:httpd(8)
+</span><span class='line'>           man:apachectl(8)
+</span><span class='line'> Main PID: 5941 (httpd)
+</span><span class='line'>   Status: "Total requests: 0; Current requests/sec: 0; Current traffic:   0 B/sec"
+</span><span class='line'>[snip]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Also, if you want Apache to start on boot, you need to specify it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chkconfig httpd on
+</span><span class='line'>Note: Forwarding request to 'systemctl enable httpd.service'.
+</span><span class='line'>Created symlink from /etc/systemd/system/multi-user.target.wants/httpd.service to /usr/lib/systemd/system/httpd.service.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you need to troubleshoot your Apache, you can consult the error log at <code>/var/log/httpd/error_log</code>.</p>
+
+<h2>Site setup</h2>
+
+<p>To add an index for your site, create an <em>index.html</em> file inside <code>/var/www/html/</code>. This is what you&rsquo;ll see when visiting your site.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# echo 'Hello interwebz!' &gt; /var/www/html/index.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When you navigate to your website, this page will be what you&rsquo;ll see. On other distributions, a default index.html may be present in the website root (identified by the DocumentRoot directive).</p>
+
+<h3>Virtual hosts</h3>
+
+<p>Virtual hosts allow you to run multiple websites on a single server. Let&rsquo;s see some examples of how we can do that.</p>
+
+<h4>Port-based vhosts</h4>
+
+<p>One option is to <strong>put each website on a different port</strong>. In addition to our main website on port 80, let&rsquo;s serve a different one on port 8080.</p>
+
+<p>First, add a new Listen directive in <code>/etc/httpd/conf/httpd.conf</code>, to tell Apache to also listen on port 8080:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Listen 80
+</span><span class='line'>Listen 8080</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We could add virtual hosts in the main configuration file, but if you plan to serve many websites, better to create separate configuration files for each virtual host. Check that the line telling Apache to load other config files is uncommented:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Load config files in the "/etc/httpd/conf.d" directory, if any.
+</span><span class='line'>IncludeOptional conf.d/*.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, create a config file for a specific virtual host (it must end in .conf):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# nano /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>[root@freehat ~]# cat /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>&lt;VirtualHost *:8080&gt;
+</span><span class='line'>    DocumentRoot "/var/www/html/skynet"
+</span><span class='line'>    ServerName skynet.local
+</span><span class='line'>&lt;/VirtualHost&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, create the necessary document root directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# mkdir /var/www/html/skynet</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Put some resource that you want to be server in the folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# echo 'You are marked for extermination' &gt;  /var/www/html/skynet/index.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The last step is to tell Apache to reload its configuration files with <code>service httpd reload</code>. However, now I ran into some SELinux alert. I looked in <code>/var/log/messages</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Aug  3 16:16:16 localhost setroubleshoot: SELinux is preventing /usr/sbin/httpd from name_connect access on the tcp_socket port 8080. For complete SELinux messages. run sealert -l bc571bd3-344f-4a4e-830a-ce744154d527</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran the mentioned command but was confused by my first brush with SELinux, so I did some google-fu which led me to <a href="https://www.certdepot.net/rhel7-use-selinux-port-labelling/">this post</a>. You can verify what ports are allowed by SELinux for HTTP traffic with the below command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# semanage port -l | grep http
+</span><span class='line'>http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
+</span><span class='line'>http_cache_port_t              udp      3130
+</span><span class='line'>http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
+</span><span class='line'>pegasus_http_port_t            tcp      5988
+</span><span class='line'>pegasus_https_port_t           tcp      5989</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To add port 8080 to http_port_t, I ran <code>semanage port -m -t http_port_t -p tcp 8080</code>, and then I checked it was added. Should be all good now. If you go visit your server on port 8080, you should get a friendly message. To differentiate it from the website on port 80, create another virtual host configuration for that respective server.</p>
+
+<p>You can now access your sites from your own machine, but if you try navigating to them from another computer, it will be just like the websites don&rsquo;t exist! It turns out, iptables is blocking access, and you have to tell it to open the ports:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+</span><span class='line'>[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 8080 -j ACCEPT</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And if you want these changes to survive a reboot, you should save them. I had to do some additional work for that. It turns out, <a href="https://stackoverflow.com/questions/24756240/how-can-i-use-iptables-on-centos-7">RHEL 7 and CentOS 7 use <em>firewalld</em></a> to manage iptables. So first I followed the instructions on StackOverflow to stop and mask the firewalld service:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl stop firewalld
+</span><span class='line'>[root@freehat ~]# systemctl mask firewalld
+</span><span class='line'>Created symlink from /etc/systemd/system/firewalld.service to /dev/null.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I had to install <em>iptables-services</em>: <code>yum install iptables-services</code>. Next I enabled it at boot:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl enable iptables
+</span><span class='line'>Created symlink from /etc/systemd/system/basic.target.wants/iptables.service to /usr/lib/systemd/system/iptables.service.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I also modified the &ldquo;no&rdquo; defaults in <code>/etc/sysconfig/iptables-config</code> to &ldquo;yes&rdquo;:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Save current firewall rules on stop.
+</span><span class='line'>#   Value: yes|no,  default: no
+</span><span class='line'># Saves all firewall rules to /etc/sysconfig/iptables if firewall gets stopped
+</span><span class='line'># (e.g. on system shutdown).
+</span><span class='line'>IPTABLES_SAVE_ON_STOP="yes"
+</span><span class='line'>
+</span><span class='line'># Save current firewall rules on restart.
+</span><span class='line'>#   Value: yes|no,  default: no
+</span><span class='line'># Saves all firewall rules to /etc/sysconfig/iptables if firewall gets
+</span><span class='line'># restarted.
+</span><span class='line'>IPTABLES_SAVE_ON_RESTART="yes"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, I was able to save the changes and checked that they persisted after reboot:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service iptables save
+</span><span class='line'>iptables: Saving firewall rules to /etc/sysconfig/iptables:[  OK  ]</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Name-based vhosts</h4>
+
+<p>We&rsquo;ve seen the virtual hosts running on different ports, now let&rsquo;s see how we can <strong>serve them on the same port, but with different names</strong>. I modified one of the config files so that both sites will run on port 80.Let&rsquo;s see the current virtual host settings:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>httpd -S
+</span><span class='line'>VirtualHost configuration:
+</span><span class='line'>*:80                   is a NameVirtualHost
+</span><span class='line'>         default server myweb.local (/etc/httpd/conf.d/myweb.conf:1)
+</span><span class='line'>         port 80 namevhost myweb.local (/etc/httpd/conf.d/myweb.conf:1)
+</span><span class='line'>         port 80 namevhost skynet.local (/etc/httpd/conf.d/skynet.conf:1)
+</span><span class='line'>ServerRoot: "/etc/httpd"
+</span><span class='line'>Main DocumentRoot: "/var/www/html"
+</span><span class='line'>Main ErrorLog: "/etc/httpd/logs/error_log"
+</span><span class='line'>[snip]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We will use the server names to navigate to those sites. Because I am testing locally with no DNS, I modified <code>/etc/hosts</code> and added these entries:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>192.168.80.153 myweb.local
+</span><span class='line'>192.168.80.153 skynet.local</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I was able to use the names of the sites in the web browser.</p>
+
+<h3>Password protection</h3>
+
+<p>It&rsquo;s time to restrict access to the skynet website! There are a number of ways that Apache can protect a resource with a password and ensure that is accessible only to certain users. In this example, I will want the skynet website to allow only a user called tx. First, I used the <em>htpasswd</em> utility to create a <em>.htpasswd</em> file (you can call it whatever you want), and placed it in <code>/etc/httpd</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>htpasswd -c /etc/httpd/.htpasswd tx
+</span><span class='line'>New password: 
+</span><span class='line'>Re-type new password: 
+</span><span class='line'>Adding password for user tx</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This file holds the allowed user/password combination:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/httpd/.htpasswd
+</span><span class='line'>tx:$apr1$2FI77JZQ$IrMFnxvHzvtRhWGiQfvxL0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The next step is to tell Apache to restrict access to a resource based on this file. If you have access to the main configuration file or the virtual host config file, the preferred way is to add a Directory directive there:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nano /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>&lt;VirtualHost *:80&gt;
+</span><span class='line'>    DocumentRoot "/var/www/html/skynet"
+</span><span class='line'>    ServerName skynet.local
+</span><span class='line'>    &lt;Directory "/var/www/html/skynet"&gt;
+</span><span class='line'>        AuthType Basic
+</span><span class='line'>        AuthName "Authorized Only"
+</span><span class='line'>        AuthUserFile /etc/httpd/.htpasswd
+</span><span class='line'>        Require valid-user
+</span><span class='line'>    &lt;/Directory&gt;
+</span><span class='line'>&lt;/VirtualHost&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The Directory specified is the one that will be password-protected. Next, we specify the type of authentication (basic in this case, so no super sensitive files should be stored there), the name which will be displayed on the prompt, the location where Apache can find the password file, and the allowed user(s). Maybe we&rsquo;ll want to add some terminators later, so instead of just specifying one user, I allowed any valid user/password combination from the password file.</p>
+
+<p>Now if you try to go to the skynet website, you will see the window prompting for username and password.</p>
+
+<p>Another way you can restrict directory access is via a <strong>.htaccess</strong> file. Due to performance and security reasons, you should avoid this, if possible.</p>
+
+<p>First, create a .htaccess file in the directory you want to protect:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nano /var/www/html/skynet/.htaccess
+</span><span class='line'>AuthType Basic
+</span><span class='line'>AuthName "Authorized Only"
+</span><span class='line'>AuthUserFile /etc/httpd/.htpasswd
+</span><span class='line'>Require valid-user</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For the .htaccess file to work, you need to edit the <code>/etc/httpd/conf/httpd.conf</code> file, and change the <a href="https://httpd.apache.org/docs/current/mod/core.html#allowoverride">AllowOverride directive</a> inside Directory. When set to None, as it is by default, .htaccess files are ignored. Change it to AuthConfig (I had to do it both under /var/www and /var/www/html).</p>
+
+<h3>HTTPS with self-signed certificate</h3>
+
+<p>In the next demo, I will encrypt the skynet website with SSL (removed all the authorization bits for demo purposes).</p>
+
+<p>First, I installed <a href="https://httpd.apache.org/docs/current/mod/mod_ssl.html">mod_ssl</a> with <code>yum install mod_ssl</code>. Next, I created a directory for Apache to store its server key and certificate: <code>mkdir /etc/httpd/myssl</code></p>
+
+<p>Inside this directory, I created a RSA private key of length 2048:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl genrsa -out https.key 2048
+</span><span class='line'>Generating RSA private key, 2048 bit long modulus
+</span><span class='line'>....................+++
+</span><span class='line'>..............+++
+</span><span class='line'>e is 65537 (0x10001)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I created a Certificate Signing Request (CSR):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl req -new -key https.key -out server.csr
+</span><span class='line'>You are about to be asked to enter information that will be incorporated
+</span><span class='line'>into your certificate request.
+</span><span class='line'>What you are about to enter is what is called a Distinguished Name or a DN.
+</span><span class='line'>There are quite a few fields but you can leave some blank
+</span><span class='line'>For some fields there will be a default value,
+</span><span class='line'>If you enter '.', the field will be left blank.
+</span><span class='line'>-----
+</span><span class='line'>Country Name (2 letter code) [XX]:
+</span><span class='line'>State or Province Name (full name) []:
+</span><span class='line'>Locality Name (eg, city) [Default City]:
+</span><span class='line'>Organization Name (eg, company) [Default Company Ltd]:
+</span><span class='line'>Organizational Unit Name (eg, section) []:
+</span><span class='line'>Common Name (eg, your name or your server's hostname) []:
+</span><span class='line'>Email Address []:
+</span><span class='line'>
+</span><span class='line'>Please enter the following 'extra' attributes
+</span><span class='line'>to be sent with your certificate request
+</span><span class='line'>A challenge password []:
+</span><span class='line'>An optional company name []:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lastly, I generated an x509 certificate with a duration of an year:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl x509 -req -days 365 -in server.csr -signkey https.key -out mycert.crt
+</span><span class='line'>Signature ok
+</span><span class='line'>subject=/C=XX/L=Default City/O=Default Company Ltd
+</span><span class='line'>Getting Private key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;re not done yet. Edit the file <code>/etc/httpd/conf.d/ssl.conf</code>, and comment the lines with the location of the server key and certificate, replacing them with new ones pointing at our previously created files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+</span><span class='line'>SSLCertificateFile /etc/httpd/myssl/mycert.crt
+</span><span class='line'>#SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+</span><span class='line'>SSLCertificateKeyFile /etc/httpd/myssl/https.key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now restart the server and go to website (mine is at <a href="https://192.168.80.153/">https://192.168.80.153/</a> ). Your browser will warn you about the untrusted connection, add it to exceptions and now you have https on your site.</p>
+
+<h3>Logging</h3>
+
+<p>Lastly, let&rsquo;s go over Apache&rsquo;s logging system. There are 2 types of logs kept, error logs for when some error happens, and access logs, that provide information about incoming requests. By default, these logs are located at <code>/var/log/httpd/error_log</code> and <code>/var/log/httpd/access_log</code> on CentOS</p>
+
+<p>For your sites, you can configure the logs and choose where to store them. I decided to separate the logs for my skynet website. I made a folder for them in /var/log/httpd/skynet-logs, and modified the skynet virtual host config file and added the path and format for the logs:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CustomLog /var/log/httpd/skynet-logs/skynet-access.log combined
+</span><span class='line'>ErrorLog /var/log/httpd/skynet-logs/skynet-error.log</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I wanted the combined format instead of the common one, because it provides a bit more information, including also the User-agent and the Referer</p>
+
+<p>Hopefully, this post has helped others in setting up an Apache web server. Since I&rsquo;ve installed it on CentOS 7, I also had to account for SELinux and some other differences from a Debian distro, so it&rsquo;s been a good learning experience.</p>
+
+<p>If you want to become an Apache wizard, the <a href="https://httpd.apache.org/docs/2.4/">Apache 2.4 documentation</a> should be a good starting point.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>________________________________________
+</span><span class='line'>/ Give thought to your reputation.       \
+</span><span class='line'>| Consider changing name and moving to a |
+</span><span class='line'>\ new town.                              /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>Freshly installed httpd.conf file</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+<span class='line-number'>231</span>
+<span class='line-number'>232</span>
+<span class='line-number'>233</span>
+<span class='line-number'>234</span>
+<span class='line-number'>235</span>
+<span class='line-number'>236</span>
+<span class='line-number'>237</span>
+<span class='line-number'>238</span>
+<span class='line-number'>239</span>
+<span class='line-number'>240</span>
+<span class='line-number'>241</span>
+<span class='line-number'>242</span>
+<span class='line-number'>243</span>
+<span class='line-number'>244</span>
+<span class='line-number'>245</span>
+<span class='line-number'>246</span>
+<span class='line-number'>247</span>
+<span class='line-number'>248</span>
+<span class='line-number'>249</span>
+<span class='line-number'>250</span>
+<span class='line-number'>251</span>
+<span class='line-number'>252</span>
+<span class='line-number'>253</span>
+<span class='line-number'>254</span>
+<span class='line-number'>255</span>
+<span class='line-number'>256</span>
+<span class='line-number'>257</span>
+<span class='line-number'>258</span>
+<span class='line-number'>259</span>
+<span class='line-number'>260</span>
+<span class='line-number'>261</span>
+<span class='line-number'>262</span>
+<span class='line-number'>263</span>
+<span class='line-number'>264</span>
+<span class='line-number'>265</span>
+<span class='line-number'>266</span>
+<span class='line-number'>267</span>
+<span class='line-number'>268</span>
+<span class='line-number'>269</span>
+<span class='line-number'>270</span>
+<span class='line-number'>271</span>
+<span class='line-number'>272</span>
+<span class='line-number'>273</span>
+<span class='line-number'>274</span>
+<span class='line-number'>275</span>
+<span class='line-number'>276</span>
+<span class='line-number'>277</span>
+<span class='line-number'>278</span>
+<span class='line-number'>279</span>
+<span class='line-number'>280</span>
+<span class='line-number'>281</span>
+<span class='line-number'>282</span>
+<span class='line-number'>283</span>
+<span class='line-number'>284</span>
+<span class='line-number'>285</span>
+<span class='line-number'>286</span>
+<span class='line-number'>287</span>
+<span class='line-number'>288</span>
+<span class='line-number'>289</span>
+<span class='line-number'>290</span>
+<span class='line-number'>291</span>
+<span class='line-number'>292</span>
+<span class='line-number'>293</span>
+<span class='line-number'>294</span>
+<span class='line-number'>295</span>
+<span class='line-number'>296</span>
+<span class='line-number'>297</span>
+<span class='line-number'>298</span>
+<span class='line-number'>299</span>
+<span class='line-number'>300</span>
+<span class='line-number'>301</span>
+<span class='line-number'>302</span>
+<span class='line-number'>303</span>
+<span class='line-number'>304</span>
+<span class='line-number'>305</span>
+<span class='line-number'>306</span>
+<span class='line-number'>307</span>
+<span class='line-number'>308</span>
+<span class='line-number'>309</span>
+<span class='line-number'>310</span>
+<span class='line-number'>311</span>
+<span class='line-number'>312</span>
+<span class='line-number'>313</span>
+<span class='line-number'>314</span>
+<span class='line-number'>315</span>
+<span class='line-number'>316</span>
+<span class='line-number'>317</span>
+<span class='line-number'>318</span>
+<span class='line-number'>319</span>
+<span class='line-number'>320</span>
+<span class='line-number'>321</span>
+<span class='line-number'>322</span>
+<span class='line-number'>323</span>
+<span class='line-number'>324</span>
+<span class='line-number'>325</span>
+<span class='line-number'>326</span>
+<span class='line-number'>327</span>
+<span class='line-number'>328</span>
+<span class='line-number'>329</span>
+<span class='line-number'>330</span>
+<span class='line-number'>331</span>
+<span class='line-number'>332</span>
+<span class='line-number'>333</span>
+<span class='line-number'>334</span>
+<span class='line-number'>335</span>
+<span class='line-number'>336</span>
+<span class='line-number'>337</span>
+<span class='line-number'>338</span>
+<span class='line-number'>339</span>
+<span class='line-number'>340</span>
+<span class='line-number'>341</span>
+<span class='line-number'>342</span>
+<span class='line-number'>343</span>
+<span class='line-number'>344</span>
+<span class='line-number'>345</span>
+<span class='line-number'>346</span>
+<span class='line-number'>347</span>
+<span class='line-number'>348</span>
+<span class='line-number'>349</span>
+<span class='line-number'>350</span>
+<span class='line-number'>351</span>
+<span class='line-number'>352</span>
+<span class='line-number'>353</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#
+</span><span class='line'># This is the main Apache HTTP server configuration file.  It contains the
+</span><span class='line'># configuration directives that give the server its instructions.
+</span><span class='line'># See &lt;URL:http://httpd.apache.org/docs/2.4/&gt; for detailed information.
+</span><span class='line'># In particular, see 
+</span><span class='line'># &lt;URL:http://httpd.apache.org/docs/2.4/mod/directives.html&gt;
+</span><span class='line'># for a discussion of each configuration directive.
+</span><span class='line'>#
+</span><span class='line'># Do NOT simply read the instructions in here without understanding
+</span><span class='line'># what they do.  They're here only as hints or reminders.  If you are unsure
+</span><span class='line'># consult the online docs. You have been warned.  
+</span><span class='line'>#
+</span><span class='line'># Configuration and logfile names: If the filenames you specify for many
+</span><span class='line'># of the server's control files begin with "/" (or "drive:/" for Win32), the
+</span><span class='line'># server will use that explicit path.  If the filenames do *not* begin
+</span><span class='line'># with "/", the value of ServerRoot is prepended -- so 'log/access_log'
+</span><span class='line'># with ServerRoot set to '/www' will be interpreted by the
+</span><span class='line'># server as '/www/log/access_log', where as '/log/access_log' will be
+</span><span class='line'># interpreted as '/log/access_log'.
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerRoot: The top of the directory tree under which the server's
+</span><span class='line'># configuration, error, and log files are kept.
+</span><span class='line'>#
+</span><span class='line'># Do not add a slash at the end of the directory path.  If you point
+</span><span class='line'># ServerRoot at a non-local disk, be sure to specify a local disk on the
+</span><span class='line'># Mutex directive, if file-based mutexes are used.  If you wish to share the
+</span><span class='line'># same ServerRoot for multiple httpd daemons, you will need to change at
+</span><span class='line'># least PidFile.
+</span><span class='line'>#
+</span><span class='line'>ServerRoot "/etc/httpd"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Listen: Allows you to bind Apache to specific IP addresses and/or
+</span><span class='line'># ports, instead of the default. See also the &lt;VirtualHost&gt;
+</span><span class='line'># directive.
+</span><span class='line'>#
+</span><span class='line'># Change this to Listen on specific IP addresses as shown below to 
+</span><span class='line'># prevent Apache from glomming onto all bound IP addresses.
+</span><span class='line'>#
+</span><span class='line'>#Listen 12.34.56.78:80
+</span><span class='line'>Listen 80
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Dynamic Shared Object (DSO) Support
+</span><span class='line'>#
+</span><span class='line'># To be able to use the functionality of a module which was built as a DSO you
+</span><span class='line'># have to place corresponding `LoadModule' lines at this location so the
+</span><span class='line'># directives contained in it are actually available _before_ they are used.
+</span><span class='line'># Statically compiled modules (those listed by `httpd -l') do not need
+</span><span class='line'># to be loaded here.
+</span><span class='line'>#
+</span><span class='line'># Example:
+</span><span class='line'># LoadModule foo_module modules/mod_foo.so
+</span><span class='line'>#
+</span><span class='line'>Include conf.modules.d/*.conf
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># If you wish httpd to run as a different user or group, you must run
+</span><span class='line'># httpd as root initially and it will switch.  
+</span><span class='line'>#
+</span><span class='line'># User/Group: The name (or #number) of the user/group to run httpd as.
+</span><span class='line'># It is usually good practice to create a dedicated user and group for
+</span><span class='line'># running httpd, as with most system services.
+</span><span class='line'>#
+</span><span class='line'>User apache
+</span><span class='line'>Group apache
+</span><span class='line'>
+</span><span class='line'># 'Main' server configuration
+</span><span class='line'>#
+</span><span class='line'># The directives in this section set up the values used by the 'main'
+</span><span class='line'># server, which responds to any requests that aren't handled by a
+</span><span class='line'># &lt;VirtualHost&gt; definition.  These values also provide defaults for
+</span><span class='line'># any &lt;VirtualHost&gt; containers you may define later in the file.
+</span><span class='line'>#
+</span><span class='line'># All of these directives may appear inside &lt;VirtualHost&gt; containers,
+</span><span class='line'># in which case these default settings will be overridden for the
+</span><span class='line'># virtual host being defined.
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerAdmin: Your address, where problems with the server should be
+</span><span class='line'># e-mailed.  This address appears on some server-generated pages, such
+</span><span class='line'># as error documents.  e.g. admin@your-domain.com
+</span><span class='line'>#
+</span><span class='line'>ServerAdmin root@localhost
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerName gives the name and port that the server uses to identify itself.
+</span><span class='line'># This can often be determined automatically, but we recommend you specify
+</span><span class='line'># it explicitly to prevent problems during startup.
+</span><span class='line'>#
+</span><span class='line'># If your host doesn't have a registered DNS name, enter its IP address here.
+</span><span class='line'>#
+</span><span class='line'>#ServerName www.example.com:80
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Deny access to the entirety of your server's filesystem. You must
+</span><span class='line'># explicitly permit access to web content directories in other 
+</span><span class='line'># &lt;Directory&gt; blocks below.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory /&gt;
+</span><span class='line'>    AllowOverride none
+</span><span class='line'>    Require all denied
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Note that from this point forward you must specifically allow
+</span><span class='line'># particular features to be enabled - so if something's not working as
+</span><span class='line'># you might expect, make sure that you have specifically enabled it
+</span><span class='line'># below.
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># DocumentRoot: The directory out of which you will serve your
+</span><span class='line'># documents. By default, all requests are taken from this directory, but
+</span><span class='line'># symbolic links and aliases may be used to point to other locations.
+</span><span class='line'>#
+</span><span class='line'>DocumentRoot "/var/www/html"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Relax access to content within /var/www.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory "/var/www"&gt;
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>    # Allow open access:
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'># Further relax access to the default document root:
+</span><span class='line'>&lt;Directory "/var/www/html"&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # Possible values for the Options directive are "None", "All",
+</span><span class='line'>    # or any combination of:
+</span><span class='line'>    #   Indexes Includes FollowSymLinks SymLinksifOwnerMatch ExecCGI MultiViews
+</span><span class='line'>    #
+</span><span class='line'>    # Note that "MultiViews" must be named *explicitly* --- "Options All"
+</span><span class='line'>    # doesn't give it to you.
+</span><span class='line'>    #
+</span><span class='line'>    # The Options directive is both complicated and important.  Please see
+</span><span class='line'>    # http://httpd.apache.org/docs/2.4/mod/core.html#options
+</span><span class='line'>    # for more information.
+</span><span class='line'>    #
+</span><span class='line'>    Options Indexes FollowSymLinks
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AllowOverride controls what directives may be placed in .htaccess files.
+</span><span class='line'>    # It can be "All", "None", or any combination of the keywords:
+</span><span class='line'>    #   Options FileInfo AuthConfig Limit
+</span><span class='line'>    #
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Controls who can get stuff from this server.
+</span><span class='line'>    #
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># DirectoryIndex: sets the file that Apache will serve if a directory
+</span><span class='line'># is requested.
+</span><span class='line'>#
+</span><span class='line'>&lt;IfModule dir_module&gt;
+</span><span class='line'>    DirectoryIndex index.html
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># The following lines prevent .htaccess and .htpasswd files from being 
+</span><span class='line'># viewed by Web clients. 
+</span><span class='line'>#
+</span><span class='line'>&lt;Files ".ht*"&gt;
+</span><span class='line'>    Require all denied
+</span><span class='line'>&lt;/Files&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ErrorLog: The location of the error log file.
+</span><span class='line'># If you do not specify an ErrorLog directive within a &lt;VirtualHost&gt;
+</span><span class='line'># container, error messages relating to that virtual host will be
+</span><span class='line'># logged here.  If you *do* define an error logfile for a &lt;VirtualHost&gt;
+</span><span class='line'># container, that host's errors will be logged there and not here.
+</span><span class='line'>#
+</span><span class='line'>ErrorLog "logs/error_log"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># LogLevel: Control the number of messages logged to the error_log.
+</span><span class='line'># Possible values include: debug, info, notice, warn, error, crit,
+</span><span class='line'># alert, emerg.
+</span><span class='line'>#
+</span><span class='line'>LogLevel warn
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule log_config_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # The following directives define some format nicknames for use with
+</span><span class='line'>    # a CustomLog directive (see below).
+</span><span class='line'>    #
+</span><span class='line'>    LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+</span><span class='line'>    LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
+</span><span class='line'>
+</span><span class='line'>    &lt;IfModule logio_module&gt;
+</span><span class='line'>      # You need to enable mod_logio.c to use %I and %O
+</span><span class='line'>      LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+</span><span class='line'>    &lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # The location and format of the access logfile (Common Logfile Format).
+</span><span class='line'>    # If you do not define any access logfiles within a &lt;VirtualHost&gt;
+</span><span class='line'>    # container, they will be logged here.  Contrariwise, if you *do*
+</span><span class='line'>    # define per-&lt;VirtualHost&gt; access logfiles, transactions will be
+</span><span class='line'>    # logged therein and *not* in this file.
+</span><span class='line'>    #
+</span><span class='line'>    #CustomLog "logs/access_log" common
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # If you prefer a logfile with access, agent, and referer information
+</span><span class='line'>    # (Combined Logfile Format) you can use the following directive.
+</span><span class='line'>    #
+</span><span class='line'>    CustomLog "logs/access_log" combined
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule alias_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # Redirect: Allows you to tell clients about documents that used to 
+</span><span class='line'>    # exist in your server's namespace, but do not anymore. The client 
+</span><span class='line'>    # will make a new request for the document at its new location.
+</span><span class='line'>    # Example:
+</span><span class='line'>    # Redirect permanent /foo http://www.example.com/bar
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Alias: Maps web paths into filesystem paths and is used to
+</span><span class='line'>    # access content that does not live under the DocumentRoot.
+</span><span class='line'>    # Example:
+</span><span class='line'>    # Alias /webpath /full/filesystem/path
+</span><span class='line'>    #
+</span><span class='line'>    # If you include a trailing / on /webpath then the server will
+</span><span class='line'>    # require it to be present in the URL.  You will also likely
+</span><span class='line'>    # need to provide a &lt;Directory&gt; section to allow access to
+</span><span class='line'>    # the filesystem path.
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # ScriptAlias: This controls which directories contain server scripts. 
+</span><span class='line'>    # ScriptAliases are essentially the same as Aliases, except that
+</span><span class='line'>    # documents in the target directory are treated as applications and
+</span><span class='line'>    # run by the server when requested rather than as documents sent to the
+</span><span class='line'>    # client.  The same rules about trailing "/" apply to ScriptAlias
+</span><span class='line'>    # directives as to Alias.
+</span><span class='line'>    #
+</span><span class='line'>    ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
+</span><span class='line'>
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># "/var/www/cgi-bin" should be changed to whatever your ScriptAliased
+</span><span class='line'># CGI directory exists, if you have that configured.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory "/var/www/cgi-bin"&gt;
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>    Options None
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule mime_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # TypesConfig points to the file containing the list of mappings from
+</span><span class='line'>    # filename extension to MIME-type.
+</span><span class='line'>    #
+</span><span class='line'>    TypesConfig /etc/mime.types
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AddType allows you to add to or override the MIME configuration
+</span><span class='line'>    # file specified in TypesConfig for specific file types.
+</span><span class='line'>    #
+</span><span class='line'>    #AddType application/x-gzip .tgz
+</span><span class='line'>    #
+</span><span class='line'>    # AddEncoding allows you to have certain browsers uncompress
+</span><span class='line'>    # information on the fly. Note: Not all browsers support this.
+</span><span class='line'>    #
+</span><span class='line'>    #AddEncoding x-compress .Z
+</span><span class='line'>    #AddEncoding x-gzip .gz .tgz
+</span><span class='line'>    #
+</span><span class='line'>    # If the AddEncoding directives above are commented-out, then you
+</span><span class='line'>    # probably should define those extensions to indicate media types:
+</span><span class='line'>    #
+</span><span class='line'>    AddType application/x-compress .Z
+</span><span class='line'>    AddType application/x-gzip .gz .tgz
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AddHandler allows you to map certain file extensions to "handlers":
+</span><span class='line'>    # actions unrelated to filetype. These can be either built into the server
+</span><span class='line'>    # or added with the Action directive (see below)
+</span><span class='line'>    #
+</span><span class='line'>    # To use CGI scripts outside of ScriptAliased directories:
+</span><span class='line'>    # (You will also need to add "ExecCGI" to the "Options" directive.)
+</span><span class='line'>    #
+</span><span class='line'>    #AddHandler cgi-script .cgi
+</span><span class='line'>
+</span><span class='line'>    # For type maps (negotiated resources):
+</span><span class='line'>    #AddHandler type-map var
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Filters allow you to process content before it is sent to the client.
+</span><span class='line'>    #
+</span><span class='line'>    # To parse .shtml files for server-side includes (SSI):
+</span><span class='line'>    # (You will also need to add "Includes" to the "Options" directive.)
+</span><span class='line'>    #
+</span><span class='line'>    AddType text/html .shtml
+</span><span class='line'>    AddOutputFilter INCLUDES .shtml
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Specify a default charset for all content served; this enables
+</span><span class='line'># interpretation of all content as UTF-8 by default.  To use the 
+</span><span class='line'># default browser choice (ISO-8859-1), or to allow the META tags
+</span><span class='line'># in HTML content to override this choice, comment out this
+</span><span class='line'># directive:
+</span><span class='line'>#
+</span><span class='line'>AddDefaultCharset UTF-8
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule mime_magic_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # The mod_mime_magic module allows the server to use various hints from the
+</span><span class='line'>    # contents of the file itself to determine its type.  The MIMEMagicFile
+</span><span class='line'>    # directive tells the module where the hint definitions are located.
+</span><span class='line'>    #
+</span><span class='line'>    MIMEMagicFile conf/magic
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Customizable error responses come in three flavors:
+</span><span class='line'># 1) plain text 2) local redirects 3) external redirects
+</span><span class='line'>#
+</span><span class='line'># Some examples:
+</span><span class='line'>#ErrorDocument 500 "The server made a boo boo."
+</span><span class='line'>#ErrorDocument 404 /missing.html
+</span><span class='line'>#ErrorDocument 404 "/cgi-bin/missing_handler.pl"
+</span><span class='line'>#ErrorDocument 402 http://www.example.com/subscription_info.html
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># EnableMMAP and EnableSendfile: On systems that support it, 
+</span><span class='line'># memory-mapping or the sendfile syscall may be used to deliver
+</span><span class='line'># files.  This usually improves server performance, but must
+</span><span class='line'># be turned off when serving from networked-mounted 
+</span><span class='line'># filesystems or if support for these functions is otherwise
+</span><span class='line'># broken on your system.
+</span><span class='line'># Defaults if commented: EnableMMAP On, EnableSendfile Off
+</span><span class='line'>#
+</span><span class='line'>#EnableMMAP off
+</span><span class='line'>EnableSendfile on
+</span><span class='line'>
+</span><span class='line'># Supplemental configuration
+</span><span class='line'>#
+</span><span class='line'># Load config files in the "/etc/httpd/conf.d" directory, if any.
+</span><span class='line'>IncludeOptional conf.d/*.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>apachectl utility</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>APACHECTL(8)              apachectl                APACHECTL(8)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>NAME
+</span><span class='line'>       apachectl - Apache HTTP Server Control Interface
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SYNOPSIS
+</span><span class='line'>       When  acting  in    pass-through  mode,  apachectl can take all the arguments
+</span><span class='line'>       available for the httpd binary.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       apachectl [ httpd-argument ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       When acting in SysV init mode, apachectl takes simple,  one-word    commands,
+</span><span class='line'>       defined below.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       apachectl command
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SUMMARY
+</span><span class='line'>       apachectl  is  a front end to the Apache HyperText Transfer Protocol (HTTP)
+</span><span class='line'>       server. It is designed to help the administrator control the functioning of
+</span><span class='line'>       the Apache httpd daemon.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  apachectl script can operate in two modes. First, it can act as a sim‐
+</span><span class='line'>       ple front-end to the httpd command that simply sets any necessary  environ‐
+</span><span class='line'>       ment  variables    and  then  invokes httpd, passing through any command line
+</span><span class='line'>       arguments. Second, apachectl can act as a SysV init script,  taking  simple
+</span><span class='line'>       one-word arguments like start, restart, and stop, and translating them into
+</span><span class='line'>       appropriate signals to httpd.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       If your Apache installation uses non-standard paths, you will need to  edit
+</span><span class='line'>       the  apachectl script to set the appropriate paths to the httpd binary. You
+</span><span class='line'>       can also specify any necessary httpd command line arguments. See    the  com‐
+</span><span class='line'>       ments in the script for details.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  apachectl script returns a 0 exit value on success, and &gt;0 if an error
+</span><span class='line'>       occurs. For more details, view the comments in the script.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>OPTIONS
+</span><span class='line'>       Only the SysV init-style options are  defined  here.  Other  arguments  are
+</span><span class='line'>       defined on the httpd manual page.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       start  Start  the Apache httpd daemon. Gives an error if it is already run‐
+</span><span class='line'>        ning. This is equivalent to apachectl -k start.
+</span><span class='line'>
+</span><span class='line'>       stop   Stops the Apache httpd daemon. This is equivalent    to  apachectl  -k
+</span><span class='line'>        stop.
+</span><span class='line'>
+</span><span class='line'>       restart
+</span><span class='line'>        Restarts  the  Apache httpd daemon. If the daemon is not running, it
+</span><span class='line'>        is started. This  command  automatically  checks  the  configuration
+</span><span class='line'>        files  as  in  configtest before initiating the restart to make sure
+</span><span class='line'>        the daemon doesn't die. This is equivalent to apachectl -k restart.
+</span><span class='line'>
+</span><span class='line'>       fullstatus
+</span><span class='line'>        Displays a full status report from mod_status. For this to work, you
+</span><span class='line'>        need  to  have  mod_status  enabled  on your server and a text-based
+</span><span class='line'>        browser such as lynx available on  your  system.  The  URL  used  to
+</span><span class='line'>        access  the  status report can be set by editing the STATUSURL vari‐
+</span><span class='line'>        able in the script.
+</span><span class='line'>
+</span><span class='line'>       status Displays a brief status report using systemd.
+</span><span class='line'>
+</span><span class='line'>       graceful
+</span><span class='line'>        Gracefully restarts the Apache httpd daemon. If the  daemon  is  not
+</span><span class='line'>        running,  it  is  not started. This differs from a normal restart in
+</span><span class='line'>        that currently open connections are not aborted. A  side  effect  is
+</span><span class='line'>        that  old  log files will not be closed immediately. This means that
+</span><span class='line'>        if used in a log rotation script, a substantial delay may be  neces‐
+</span><span class='line'>        sary  to  ensure that the old log files are closed before processing
+</span><span class='line'>        them. This command automatically checks the configuration  files  as
+</span><span class='line'>        in  configtest  before  initiating  the  restart to make sure Apache
+</span><span class='line'>        doesn't die. This is equivalent to apachectl -k graceful.
+</span><span class='line'>
+</span><span class='line'>       graceful-stop
+</span><span class='line'>        Gracefully stops the Apache httpd daemon. This differs from a normal
+</span><span class='line'>        stop  in  that  currently  open  connections are not aborted. A side
+</span><span class='line'>        effect is that old log files will not be closed immediately. This is
+</span><span class='line'>        equivalent to apachectl -k graceful-stop.
+</span><span class='line'>
+</span><span class='line'>       configtest
+</span><span class='line'>        Run  a  configuration  file syntax test. It parses the configuration
+</span><span class='line'>        files and either reports Syntax Ok or detailed information about the
+</span><span class='line'>        particular syntax error. This is equivalent to apachectl -t.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  following  option  was  available  in  earlier  versions  but has been
+</span><span class='line'>       removed.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       startssl
+</span><span class='line'>        To start httpd with SSL support, you should edit your  configuration
+</span><span class='line'>        file  to  include  the  relevant  directives and then use the normal
+</span><span class='line'>        apachectl start.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Apache HTTP Server            2005-08-26                APACHECTL(8)</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>httpd reference</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>HTTPD(8)                httpd                  HTTPD(8)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>NAME
+</span><span class='line'>       httpd - Apache Hypertext Transfer Protocol Server
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SYNOPSIS
+</span><span class='line'>       httpd  [    -d serverroot ] [ -f config ] [ -C directive ] [ -c directive ] [
+</span><span class='line'>       -D parameter ] [    -e  level  ]  [  -E  file  ]  [  -k  start|restart|grace‐
+</span><span class='line'>       ful|stop|graceful-stop  ] [ -R directory ] [ -h ] [ -l ] [ -L ] [ -S ] [ -t
+</span><span class='line'>       ] [ -v ] [ -V ] [ -X ] [ -M ] [ -T ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       On Windows systems, the following additional arguments are available:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       httpd [ -k install|config|uninstall ] [ -n name ] [ -w ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SUMMARY
+</span><span class='line'>       httpd is the Apache HyperText Transfer Protocol (HTTP) server  program.    It
+</span><span class='line'>       is  designed  to be run as a standalone daemon process. When used like this
+</span><span class='line'>       it will create a pool of child processes or threads to handle requests.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       In general, httpd should not be invoked    directly,  but  rather  should  be
+</span><span class='line'>       invoked    via apachectl on Unix-based systems or as a service on Windows NT,
+</span><span class='line'>       2000 and XP and as a console application on Windows 9x and ME.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>OPTIONS
+</span><span class='line'>       -d serverroot
+</span><span class='line'>        Set the initial value for the ServerRoot  directive  to  serverroot.
+</span><span class='line'>        This can be overridden by the ServerRoot directive in the configura‐
+</span><span class='line'>        tion file. The default is /etc/httpd.
+</span><span class='line'>
+</span><span class='line'>       -f config
+</span><span class='line'>        Uses the directives in the file config on startup.  If  config  does
+</span><span class='line'>        not  begin  with  a /, then it is taken to be a path relative to the
+</span><span class='line'>        ServerRoot. The default is conf/httpd.conf.
+</span><span class='line'>
+</span><span class='line'>       -k start|restart|graceful|stop|graceful-stop
+</span><span class='line'>        Signals httpd to start, restart, or stop. See Stopping Apache  httpd
+</span><span class='line'>        for more information.
+</span><span class='line'>
+</span><span class='line'>       -C directive
+</span><span class='line'>        Process the configuration directive before reading config files.
+</span><span class='line'>
+</span><span class='line'>       -c directive
+</span><span class='line'>        Process the configuration directive after reading config files.
+</span><span class='line'>
+</span><span class='line'>       -D parameter
+</span><span class='line'>        Sets  a  configuration  parameter  which can be used with &lt;IfDefine&gt;
+</span><span class='line'>        sections in the configuration files to conditionally skip or process
+</span><span class='line'>        commands at server startup and restart. Also can be used to set cer‐
+</span><span class='line'>        tain less-common startup parameters including  -DNO_DETACH  (prevent
+</span><span class='line'>        the  parent  from forking) and -DFOREGROUND (prevent the parent from
+</span><span class='line'>        calling setsid() et al).
+</span><span class='line'>
+</span><span class='line'>       -e level
+</span><span class='line'>        Sets the LogLevel to level during server startup. This is useful for
+</span><span class='line'>        temporarily  increasing  the verbosity of the error messages to find
+</span><span class='line'>        problems during startup.
+</span><span class='line'>
+</span><span class='line'>       -E file
+</span><span class='line'>        Send error messages during server startup to file.
+</span><span class='line'>
+</span><span class='line'>       -h     Output a short summary of available command line options.
+</span><span class='line'>
+</span><span class='line'>       -l     Output a list of modules compiled into the  server.  This    will  not
+</span><span class='line'>        list dynamically loaded modules included using the LoadModule direc‐
+</span><span class='line'>        tive.
+</span><span class='line'>
+</span><span class='line'>       -L     Output a list of directives provided  by    static  modules,  together
+</span><span class='line'>        with  expected  arguments  and  places where the directive is valid.
+</span><span class='line'>        Directives provided by shared modules are not listed.
+</span><span class='line'>
+</span><span class='line'>       -M     Dump a list of loaded Static and Shared Modules.
+</span><span class='line'>
+</span><span class='line'>       -S     Show the settings as parsed from the  config  file  (currently  only
+</span><span class='line'>        shows the virtualhost settings).
+</span><span class='line'>
+</span><span class='line'>       -T (Available in 2.3.8 and later)
+</span><span class='line'>        Skip document root check at startup/restart.
+</span><span class='line'>
+</span><span class='line'>       -t     Run  syntax  tests for configuration files only. The program immedi‐
+</span><span class='line'>        ately exits after these syntax parsing tests with  either  a  return
+</span><span class='line'>        code  of 0 (Syntax OK) or return code not equal to 0 (Syntax Error).
+</span><span class='line'>        If -D DUMP_VHOSTS is also set, details of the virtual host  configu‐
+</span><span class='line'>        ration  will be printed. If -D DUMP_MODULES  is set, all loaded mod‐
+</span><span class='line'>        ules will be printed.
+</span><span class='line'>
+</span><span class='line'>       -v     Print the version of httpd, and then exit.
+</span><span class='line'>
+</span><span class='line'>       -V     Print the version and build parameters of httpd, and then exit.
+</span><span class='line'>
+</span><span class='line'>       -X     Run httpd in debug mode. Only one worker will  be    started  and  the
+</span><span class='line'>        server will not detach from the console.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The following arguments are available only on the Windows platform:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       -k install|config|uninstall
+</span><span class='line'>        Install Apache httpd as a Windows NT service; change startup options
+</span><span class='line'>        for the Apache httpd service; and uninstall the  Apache  httpd  ser‐
+</span><span class='line'>        vice.
+</span><span class='line'>
+</span><span class='line'>       -n name
+</span><span class='line'>        The name of the Apache httpd service to signal.
+</span><span class='line'>
+</span><span class='line'>       -w     Keep  the console window open on error so that the error message can
+</span><span class='line'>        be read.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Apache HTTP Server            2012-02-10                HTTPD(8)</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Nmap cheatsheet]]></title>
@@ -15445,1508 +17120,6 @@ Check page 9 of <a href="https://www.imperva.com/docs/HII_Remote_and_Local_File_
 <p>Markdown formatting was a pain in the ass for cowsay, so a slightly different fortune cookie format, but straight from the cow&rsquo;s mouth!</p>
 
 <p><img class="center" src="http://chousensha.github.io/images/pentest/relativity/cookie.png" title="cookie" alt="fortune cowsay"></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kali tools catalog - Wireless Attacks]]></title>
-    <link href="http://chousensha.github.io/blog/2015/04/20/kali-tools-catalog-wireless-attacks/"/>
-    <updated>2015-04-20T09:31:23-04:00</updated>
-    <id>http://chousensha.github.io/blog/2015/04/20/kali-tools-catalog-wireless-attacks</id>
-    <content type="html"><![CDATA[<h3>802.11 Wireless Tools</h3>
-
-<p><strong>aircrack-ng</strong></p>
-
-<p>aircrack-ng is an 802.11 WEP and WPA/WPA2-PSK key cracking program.
-It can recover the WEP key once enough encrypted packets have been captured with airodump-ng. This part of the aircrack-ng  suite  determines
-the  WEP key using two fundamental methods. The first method is via the
-PTW approach (Pyshkin, Tews, Weinmann). The main advantage of  the  PTW
-approach  is  that  very few data packets are required to crack the WEP
-key. The second method is the FMS/KoreK method.  The  FMS/KoreK  method
-incorporates  various  statistical  attacks to discover the WEP key and
-uses these in combination with brute forcing.</p>
-
-<!-- more -->
-
-
-<p>Additionally, the program offers a dictionary  method  for  determining
-the WEP key. For cracking WPA/WPA2 pre-shared keys, a wordlist (file or
-stdin) or an airolib-ng has to be used.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>  Aircrack-ng 1.2 rc1 - (C) 2006-2013 Thomas d'Otreppe
-</span><span class='line'>  http://www.aircrack-ng.org
-</span><span class='line'>
-</span><span class='line'>  usage: aircrack-ng [options] &lt;.cap / .ivs file(s)&gt;
-</span><span class='line'>
-</span><span class='line'>  Common options:
-</span><span class='line'>
-</span><span class='line'>      -a &lt;amode&gt; : force attack mode (1/WEP, 2/WPA-PSK)
-</span><span class='line'>      -e &lt;essid&gt; : target selection: network identifier
-</span><span class='line'>      -b &lt;bssid&gt; : target selection: access point's MAC
-</span><span class='line'>      -p &lt;nbcpu&gt; : # of CPU to use  (default: all CPUs)
-</span><span class='line'>      -q         : enable quiet mode (no status output)
-</span><span class='line'>      -C &lt;macs&gt;  : merge the given APs to a virtual one
-</span><span class='line'>      -l &lt;file&gt;  : write key to file
-</span><span class='line'>
-</span><span class='line'>  Static WEP cracking options:
-</span><span class='line'>
-</span><span class='line'>      -c         : search alpha-numeric characters only
-</span><span class='line'>      -t         : search binary coded decimal chr only
-</span><span class='line'>      -h         : search the numeric key for Fritz!BOX
-</span><span class='line'>      -d &lt;mask&gt;  : use masking of the key (A1:XX:CF:YY)
-</span><span class='line'>      -m &lt;maddr&gt; : MAC address to filter usable packets
-</span><span class='line'>      -n &lt;nbits&gt; : WEP key length :  64/128/152/256/512
-</span><span class='line'>      -i &lt;index&gt; : WEP key index (1 to 4), default: any
-</span><span class='line'>      -f &lt;fudge&gt; : bruteforce fudge factor,  default: 2
-</span><span class='line'>      -k &lt;korek&gt; : disable one attack method  (1 to 17)
-</span><span class='line'>      -x or -x0  : disable bruteforce for last keybytes
-</span><span class='line'>      -x1        : last keybyte bruteforcing  (default)
-</span><span class='line'>      -x2        : enable last  2 keybytes bruteforcing
-</span><span class='line'>      -y         : experimental  single bruteforce mode
-</span><span class='line'>      -K         : use only old KoreK attacks (pre-PTW)
-</span><span class='line'>      -s         : show the key in ASCII while cracking
-</span><span class='line'>      -M &lt;num&gt;   : specify maximum number of IVs to use
-</span><span class='line'>      -D         : WEP decloak, skips broken keystreams
-</span><span class='line'>      -P &lt;num&gt;   : PTW debug:  1: disable Klein, 2: PTW
-</span><span class='line'>      -1         : run only 1 try to crack key with PTW
-</span><span class='line'>
-</span><span class='line'>  WEP and WPA-PSK cracking options:
-</span><span class='line'>
-</span><span class='line'>      -w &lt;words&gt; : path to wordlist(s) filename(s)
-</span><span class='line'>
-</span><span class='line'>  WPA-PSK options:
-</span><span class='line'>
-</span><span class='line'>      -E &lt;file&gt;  : create EWSA Project file v3
-</span><span class='line'>      -J &lt;file&gt;  : create Hashcat Capture file
-</span><span class='line'>      -S         : WPA cracking speed test
-</span><span class='line'>      -r &lt;DB&gt;    : path to airolib-ng database
-</span><span class='line'>                   (Cannot be used with -w)
-</span><span class='line'>
-</span><span class='line'>  Other options:
-</span><span class='line'>
-</span><span class='line'>      -u         : Displays # of CPUs & MMX/SSE support
-</span><span class='line'>      --help     : Displays this usage screen</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>asleap</strong></p>
-
-<p>Actively recover LEAP/PPTP passwords</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/asleap.png" title="asleap" alt="asleap"></p>
-
-<p><strong>bully</strong></p>
-
-<p>Bully is a new implementation of the WPS brute force attack, written in C. It is conceptually identical to other programs, in that it exploits the (now well known) design flaw in the WPS specification. It has several advantages over the original reaver code. These include fewer dependencies, improved memory and cpu performance, correct handling of endianness, and a more robust set of options. It runs on Linux, and was specifically developed to run on embedded Linux systems (OpenWrt, etc) regardless of architecture.</p>
-
-<p>Bully provides several improvements in the detection and handling of anomalous scenarios. It has been tested against access points from numerous vendors, and with differing configurations, with much success.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>  usage: bully &lt;options&gt; interface
-</span><span class='line'>
-</span><span class='line'>  Required arguments:
-</span><span class='line'>
-</span><span class='line'>      interface      : Wireless interface in monitor mode (root required)
-</span><span class='line'>
-</span><span class='line'>      -b, --bssid macaddr    : MAC address of the target access point
-</span><span class='line'>   Or
-</span><span class='line'>      -e, --essid string     : Extended SSID for the access point
-</span><span class='line'>
-</span><span class='line'>  Optional arguments:
-</span><span class='line'>
-</span><span class='line'>      -c, --channel N[,N...] : Channel number of AP, or list to hop [b/g]
-</span><span class='line'>      -i, --index N          : Starting pin index (7 or 8 digits)  [Auto]
-</span><span class='line'>      -l, --lockwait N       : Seconds to wait if the AP locks WPS   [43]
-</span><span class='line'>      -o, --outfile file     : Output file for messages          [stdout]
-</span><span class='line'>      -p, --pin N            : Starting pin number (7 or 8 digits) [Auto]
-</span><span class='line'>      -s, --source macaddr   : Source (hardware) MAC address      [Probe]
-</span><span class='line'>      -v, --verbosity N      : Verbosity level 1-3, 1 is quietest     [3]
-</span><span class='line'>      -w, --workdir path     : Location of pin/session files  [~/.bully/]
-</span><span class='line'>      -5, --5ghz             : Hop on 5GHz a/n default channel list  [No]
-</span><span class='line'>      -B, --bruteforce       : Bruteforce the WPS pin checksum digit [No]
-</span><span class='line'>      -F, --force            : Force continue in spite of warnings   [No]
-</span><span class='line'>      -S, --sequential       : Sequential pins (do not randomize)    [No]
-</span><span class='line'>      -T, --test             : Test mode (do not inject any packets) [No]
-</span><span class='line'>
-</span><span class='line'>  Advanced arguments:
-</span><span class='line'>
-</span><span class='line'>      -a, --acktime N        : Deprecated/ignored                  [Auto]
-</span><span class='line'>      -r, --retries N        : Resend packets N times when not acked  [2]
-</span><span class='line'>      -m, --m13time N        : Deprecated/ignored                  [Auto]
-</span><span class='line'>      -t, --timeout N        : Deprecated/ignored                  [Auto]
-</span><span class='line'>      -1, --pin1delay M,N    : Delay M seconds every Nth nack at M5 [0,1]
-</span><span class='line'>      -2, --pin2delay M,N    : Delay M seconds every Nth nack at M7 [5,1]
-</span><span class='line'>      -A, --noacks           : Disable ACK check for sent packets    [No]
-</span><span class='line'>      -C, --nocheck          : Skip CRC/FCS validation (performance) [No]
-</span><span class='line'>      -D, --detectlock       : Detect WPS lockouts unreported by AP  [No]
-</span><span class='line'>      -E, --eapfail          : EAP Failure terminate every exchange  [No]
-</span><span class='line'>      -L, --lockignore       : Ignore WPS locks reported by the AP   [No]
-</span><span class='line'>      -M, --m57nack          : M5/M7 timeouts treated as WSC_NACK's  [No]
-</span><span class='line'>      -N, --nofcs            : Packets don't contain the FCS field [Auto]
-</span><span class='line'>      -P, --probe            : Use probe request for nonbeaconing AP [No]
-</span><span class='line'>      -R, --radiotap         : Assume radiotap headers are present [Auto]
-</span><span class='line'>      -W, --windows7         : Masquerade as a Windows 7 registrar   [No]
-</span><span class='line'>      -Z, --suppress         : Suppress packet throttling algorithm  [No]
-</span><span class='line'>      -V, --version          : Print version info and exit
-</span><span class='line'>      -h, --help             : Display this help information</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>cowpatty</strong></p>
-
-<p>Implementation of an offline dictionary attack against WPA/WPA2 networks using PSK-based authentication (e.g. WPA-Personal). Many enterprise networks deploy PSK-based authentication mechanisms for WPA/WPA2 since it is much easier than establishing the necessary RADIUS, supplicant and certificate authority architecture needed for WPA-Enterprise authentication. Cowpatty can implement an accelerated attack if a precomputed PMK file is available for the SSID that is being assessed.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/cowpatty.png" title="cowpatty" alt="cowpatty"></p>
-
-<p><strong>eapmd5pass</strong></p>
-
-<p>EAP-MD5 is a legacy authentication mechanism that does not provide sufficient protection for user authentication credentials. Users who authenticate using EAP-MD5 subject themselves to an offline dictionary attack vulnerability. This tool reads from a live network interface in monitor-mode, or from a stored libpcap capture file, and extracts the portions of the EAP-MD5 authentication exchange. Once the challenge and response portions have been collected from this exchange, eapmd5pass will mount an offline dictionary attack against the user’s password.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/eapmd5pass.png" title="eapmd5pass" alt="eapmd5pass"></p>
-
-<p><strong>fern-wifi-cracker</strong></p>
-
-<p>Fern Wifi Cracker is a Wireless security auditing and attack software program written using the Python Programming Language and the Python Qt GUI library, the program is able to crack and recover WEP/WPA/WPS keys and also run other network based attacks on wireless or ethernet based networks.</p>
-
-<p>Fern Wifi Cracker currently supports the following features:</p>
-
-<ul>
-<li><p>WEP Cracking with Fragmentation,Chop-Chop, Caffe-Latte, Hirte, ARP Request Replay or WPS attack</p></li>
-<li><p>WPA/WPA2 Cracking with Dictionary or WPS based attacks</p></li>
-<li><p>Automatic saving of key in database on successful crack</p></li>
-<li><p>Automatic Access Point Attack System</p></li>
-<li><p>Session Hijacking (Passive and Ethernet Modes)</p></li>
-<li><p>Access Point MAC Address Geo Location Tracking</p></li>
-<li><p>Internal MITM Engine</p></li>
-<li><p>Bruteforce Attacks (HTTP,HTTPS,TELNET,FTP)</p></li>
-<li><p>Update Support</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/fern-wifi-cracker.png" title="fern-wifi-cracker" alt="fern-wifi-cracker"></p>
-
-<p><strong>genkeys</strong></p>
-
-<p>Generates lookup file for asleap</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>genkeys 2.2 - generates lookup file for asleap. &lt;jwright@hasborg.com&gt;
-</span><span class='line'>genkeys: Must supply -r -f and -n
-</span><span class='line'>Usage: genkeys [options]
-</span><span class='line'>
-</span><span class='line'>  -r  Input dictionary file, one word per line
-</span><span class='line'>  -f  Output pass+hash filename
-</span><span class='line'>  -n  Output index filename
-</span><span class='line'>  -h  Last 2 hash bytes to filter with (optional)</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>genpmk</strong></p>
-
-<p>WPA-PSK precomputation attack</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/genpmk.png" title="genpmk" alt="genpmk"></p>
-
-<p><strong>giskismet</strong></p>
-
-<p>GISKismet is a wireless recon visualization tool to represent data gathered using Kismet in a flexible manner. GISKismet stores the information in a database so that the user can generate graphs using SQL. GISKismet currently uses SQLite for the database and GoogleEarth / KML files for graphing.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: giskismet [Options]
-</span><span class='line'>
-</span><span class='line'>Input File:
-</span><span class='line'>       --csv &lt;csv-file&gt;             Parse the input from Kismet-devel CSV
-</span><span class='line'>   -x  --xml &lt;xml-file&gt;             Parse the input from Kismet-newcore NETXML
-</span><span class='line'>
-</span><span class='line'>Input Filters: 
-</span><span class='line'>       --bssid file | list          Filter based on BSSID     
-</span><span class='line'>       --essid file | list          Filter based on ESSID 
-</span><span class='line'>       --encryption file | list     Filter based on Encryption 
-</span><span class='line'>       --channel file | list        Filter based on Channel
-</span><span class='line'>
-</span><span class='line'>file | list (list = comma separated lists(needs quotes)
-</span><span class='line'>
-</span><span class='line'>Kismet-newcore Options:
-</span><span class='line'>   -a  --ap                         Insert only the APs
-</span><span class='line'>
-</span><span class='line'>Query
-</span><span class='line'>   -q  --query [sql]                SQL query
-</span><span class='line'>   -m  --manual [csv]               CSV output of manual SQL query
-</span><span class='line'>
-</span><span class='line'>   -o  --output [file]              Output filename
-</span><span class='line'>   -n  --name [str]                 Name of the KML layer
-</span><span class='line'>       --desc [str]                 Description of the KML layer
-</span><span class='line'>
-</span><span class='line'>General Options:                
-</span><span class='line'>       --ignore-gps                 Import data even when GPS fields are missing
-</span><span class='line'>       --database [file]            SQLite3 database name [default: wireless.dbl]
-</span><span class='line'>   -d  --debug [num]                Display debug information
-</span><span class='line'>   -s  --silent                     No output when adding APs
-</span><span class='line'>   -v  --version                    Display version
-</span><span class='line'>   -h  --help                       Display this information
-</span><span class='line'>
-</span><span class='line'>Send Comments to Joshua "Jabra" Abraham ( jabra@spl0it.org )</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>kismet</strong></p>
-
-<p>Kismet is an 802.11 layer2 wireless network detector, sniffer, and intrusion detection system. Kismet will work with any wireless card which supports raw monitoring (rfmon) mode, and (with appropriate hardware) can sniff 802.11b, 802.11a, 802.11g, and 802.11n traffic. Kismet also supports plugins which allow sniffing other media such as DECT.</p>
-
-<p>Kismet identifies networks by passively collecting packets and detecting standard named networks, detecting (and given time, decloaking) hidden networks, and infering the presence of nonbeaconing networks via data traffic.</p>
-
-<p>Kismet supports logging to the wtapfile packet format (readable by tcpdump and ethereal) and saves detected network information as plaintext,
-CSV, and XML.  kismet is capable of using any GPS supported by gpsd and
-logs and plots network data.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/kismet.png" title="kismet" alt="kismet"></p>
-
-<p><strong>mdk3</strong></p>
-
-<p>MDK is a proof-of-concept tool to exploit common IEEE 802.11 protocol weaknesses.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>MDK 3.0 v6 - "Yeah, well, whatever"
-</span><span class='line'>by ASPj of k2wrlz, using the osdep library from aircrack-ng
-</span><span class='line'>And with lots of help from the great aircrack-ng community:
-</span><span class='line'>Antragon, moongray, Ace, Zero_Chaos, Hirte, thefkboss, ducttape,
-</span><span class='line'>telek0miker, Le_Vert, sorbo, Andy Green, bahathir and Dawid Gajownik
-</span><span class='line'>THANK YOU!
-</span><span class='line'>
-</span><span class='line'>MDK is a proof-of-concept tool to exploit common IEEE 802.11 protocol weaknesses.
-</span><span class='line'>IMPORTANT: It is your responsibility to make sure you have permission from the
-</span><span class='line'>network owner before running MDK against it.
-</span><span class='line'>
-</span><span class='line'>This code is licenced under the GPLv2
-</span><span class='line'>
-</span><span class='line'>MDK USAGE:
-</span><span class='line'>mdk3 &lt;interface&gt; &lt;test_mode&gt; [test_options]
-</span><span class='line'>
-</span><span class='line'>Try mdk3 --fullhelp for all test options
-</span><span class='line'>Try mdk3 --help &lt;test_mode&gt; for info about one test only
-</span><span class='line'>
-</span><span class='line'>TEST MODES:
-</span><span class='line'>b   - Beacon Flood Mode
-</span><span class='line'>      Sends beacon frames to show fake APs at clients.
-</span><span class='line'>      This can sometimes crash network scanners and even drivers!
-</span><span class='line'>a   - Authentication DoS mode
-</span><span class='line'>      Sends authentication frames to all APs found in range.
-</span><span class='line'>      Too much clients freeze or reset some APs.
-</span><span class='line'>p   - Basic probing and ESSID Bruteforce mode
-</span><span class='line'>      Probes AP and check for answer, useful for checking if SSID has
-</span><span class='line'>      been correctly decloaked or if AP is in your adaptors sending range
-</span><span class='line'>      SSID Bruteforcing is also possible with this test mode.
-</span><span class='line'>d   - Deauthentication / Disassociation Amok Mode
-</span><span class='line'>      Kicks everybody found from AP
-</span><span class='line'>m   - Michael shutdown exploitation (TKIP)
-</span><span class='line'>      Cancels all traffic continuously
-</span><span class='line'>x   - 802.1X tests
-</span><span class='line'>w   - WIDS/WIPS Confusion
-</span><span class='line'>      Confuse/Abuse Intrusion Detection and Prevention Systems
-</span><span class='line'>f   - MAC filter bruteforce mode
-</span><span class='line'>      This test uses a list of known client MAC Adresses and tries to
-</span><span class='line'>      authenticate them to the given AP while dynamically changing
-</span><span class='line'>      its response timeout for best performance. It currently works only
-</span><span class='line'>      on APs who deny an open authentication request properly
-</span><span class='line'>g   - WPA Downgrade test
-</span><span class='line'>      deauthenticates Stations and APs sending WPA encrypted packets.
-</span><span class='line'>      With this test you can check if the sysadmin will try setting his
-</span><span class='line'>      network to WEP or disable encryption.</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>wifiarp</strong></p>
-
-<p>Wifi injection ARP answering tool based on Wifitap</p>
-
-<p><strong>wifidns</strong></p>
-
-<p>Wifi injection DNS answering tool based on Wifitap</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# wifidns -h
-</span><span class='line'>Psyco optimizer not installed, running anyway...
-</span><span class='line'>INFO: did not find python gnuplot wrapper . Won't be able to plot
-</span><span class='line'>INFO: Can't open /etc/ethertypes file
-</span><span class='line'>Usage: wifidns -b &lt;BSSID&gt; -a &lt;IP&gt; [-o &lt;iface&gt;] [-i &lt;iface&gt;]
-</span><span class='line'>                          [-s &lt;SMAC&gt;] [-t &lt;TTL&gt;] [-w &lt;WEP key&gt;]
-</span><span class='line'>                          [-k &lt;key id&gt;]] [-d [-v]] [-h]
-</span><span class='line'>     -b &lt;BSSID&gt;    specify BSSID for injection
-</span><span class='line'>     -a &lt;IP&gt;       specify IP address for DNS answers
-</span><span class='line'>     -t &lt;TTL&gt;      Set TTL (default: 64)
-</span><span class='line'>     -o &lt;iface&gt;    specify interface for injection (default: ath0)
-</span><span class='line'>     -i &lt;iface&gt;    specify interface for listening (default: ath0)
-</span><span class='line'>     -s &lt;SMAC&gt;     specify source MAC address for injected frames
-</span><span class='line'>     -w &lt;key&gt;      WEP mode and key
-</span><span class='line'>     -k &lt;key id&gt;   WEP key id (default: 0)
-</span><span class='line'>     -d            activate debug
-</span><span class='line'>     -v            verbose debugging
-</span><span class='line'>     -h            this so helpful output</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>wifi-honey</strong></p>
-
-<p>This script creates five monitor mode interfaces, four are used as APs and the fifth is used for airodump-ng. To make things easier, rather than having five windows all this is done in a screen session which allows you to switch between screens to see what is going on. All sessions are labelled so you know which is which.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: /usr/bin/wifi-honey &lt;essid&gt; &lt;channel&gt; &lt;interface&gt;
-</span><span class='line'>
-</span><span class='line'>Default channel is 1
-</span><span class='line'>Default interface is wlan0
-</span><span class='line'>
-</span><span class='line'>Robin Wood &lt;robin@digininja.org&gt;
-</span><span class='line'>See Security Tube Wifi Mega Primer episode 26 for more information</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>wifiping</strong></p>
-
-<p>Wifi injection based answering tool based on Wifitap</p>
-
-<p><strong>wifitap</strong></p>
-
-<p>Wifitap is a proof of concept for communication over WiFi networks using traffic injection.</p>
-
-<p>Wifitap allows any application do send and receive IP packets using 802.11 traffic capture and injection over a WiFi network simply configuring wj0, which means :</p>
-
-<ul>
-<li><p>setting an IP address consistent with target network address range</p></li>
-<li><p>routing desired traffic through it</p></li>
-</ul>
-
-
-<p>In particular, it’s a cheap method for arbitrary packets injection in 802.11 frames without specific library.</p>
-
-<p>In addition, it will allow one to get rid of any limitation set at access point level, such as bypassing inter-client communications prevention systems (e.g. Cisco PSPF) or reaching multiple SSID handled by the same access point.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/wifitap.png" title="wifitap" alt="wifitap"></p>
-
-<p><strong>wifite</strong></p>
-
-<p>An automated wireless attack tool. To attack multiple WEP, WPA, and WPS encrypted networks in a row. This tool is customizable to be automated with only a few arguments. Wifite aims to be the &ldquo;set it and forget it&rdquo; wireless auditing tool.</p>
-
-<p>Features</p>
-
-<ul>
-<li><p>sorts targets by signal strength (in dB); cracks closest access points first</p></li>
-<li><p>automatically de-authenticates clients of hidden networks to reveal SSIDs</p></li>
-<li><p>numerous filters to specify exactly what to attack (wep/wpa/both, above certain signal strengths, channels, etc)</p></li>
-<li><p>customizable settings (timeouts, packets/sec, etc)</p></li>
-<li><p>&ldquo;anonymous&rdquo; feature; changes MAC to a random address before attacking, then changes back when attacks are complete</p></li>
-<li><p>all captured WPA handshakes are backed up to wifite.py&rsquo;s current directory</p></li>
-<li><p>smart WPA de-authentication; cycles between all clients and broadcast deauths</p></li>
-<li><p>stop any attack with Ctrl+C, with options to continue, move onto next target, skip to cracking, or exit</p></li>
-<li><p>displays session summary at exit; shows any cracked keys</p></li>
-<li><p>all passwords saved to cracked.txt</p></li>
-<li><p>built-in updater: ./wifite.py -upgrade</p></li>
-</ul>
-
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> .;'                     `;,    
-</span><span class='line'> .;'  ,;'             `;,  `;,   WiFite v2 (r85)
-</span><span class='line'>.;'  ,;'  ,;'     `;,  `;,  `;,  
-</span><span class='line'>::   ::   :   ( )   :   ::   ::  automated wireless auditor
-</span><span class='line'>':.  ':.  ':. /_\ ,:'  ,:'  ,:'  
-</span><span class='line'> ':.  ':.    /___\    ,:'  ,:'   designed for Linux
-</span><span class='line'>  ':.       /_____\      ,:'     
-</span><span class='line'>           /       \             
-</span><span class='line'>
-</span><span class='line'>   COMMANDS
-</span><span class='line'>  -check &lt;file&gt; check capfile &lt;file&gt; for handshakes.
-</span><span class='line'>  -cracked        display previously-cracked access points
-</span><span class='line'>
-</span><span class='line'>   GLOBAL
-</span><span class='line'>  -all            attack all targets.              [off]
-</span><span class='line'>  -i &lt;iface&gt;    wireless interface for capturing [auto]
-</span><span class='line'>  -mac            anonymize mac address            [off]
-</span><span class='line'>  -c &lt;channel&gt;  channel to scan for targets      [auto]
-</span><span class='line'>  -e &lt;essid&gt;    target a specific access point by ssid (name)  [ask]
-</span><span class='line'>  -b &lt;bssid&gt;    target a specific access point by bssid (mac)  [auto]
-</span><span class='line'>  -showb          display target BSSIDs after scan               [off]
-</span><span class='line'>  -pow &lt;db&gt;     attacks any targets with signal strenghth &gt; db [0]
-</span><span class='line'>  -quiet          do not print list of APs during scan           [off]
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>   WPA
-</span><span class='line'>  -wpa            only target WPA networks (works with -wps -wep)   [off]
-</span><span class='line'>  -wpat &lt;sec&gt;       time to wait for WPA attack to complete (seconds) [500]
-</span><span class='line'>  -wpadt &lt;sec&gt;      time to wait between sending deauth packets (sec) [10]
-</span><span class='line'>  -strip          strip handshake using tshark or pyrit             [off]
-</span><span class='line'>  -crack &lt;dic&gt;  crack WPA handshakes using &lt;dic&gt; wordlist file    [off]
-</span><span class='line'>  -dict &lt;file&gt;  specify dictionary to use when cracking WPA [phpbb.txt]
-</span><span class='line'>  -aircrack       verify handshake using aircrack [on]
-</span><span class='line'>  -pyrit          verify handshake using pyrit    [off]
-</span><span class='line'>  -tshark         verify handshake using tshark   [on]
-</span><span class='line'>  -cowpatty       verify handshake using cowpatty [off]
-</span><span class='line'>
-</span><span class='line'>   WEP
-</span><span class='line'>  -wep            only target WEP networks [off]
-</span><span class='line'>  -pps &lt;num&gt;    set the number of packets per second to inject [600]
-</span><span class='line'>  -wept &lt;sec&gt;   sec to wait for each attack, 0 implies endless [600]
-</span><span class='line'>  -chopchop       use chopchop attack      [on]
-</span><span class='line'>  -arpreplay      use arpreplay attack     [on]
-</span><span class='line'>  -fragment       use fragmentation attack [on]
-</span><span class='line'>  -caffelatte     use caffe-latte attack   [on]
-</span><span class='line'>  -p0841          use -p0841 attack        [on]
-</span><span class='line'>  -hirte          use hirte (cfrag) attack [on]
-</span><span class='line'>  -nofakeauth     stop attack if fake authentication fails    [off]
-</span><span class='line'>  -wepca &lt;n&gt;    start cracking when number of ivs surpass n [10000]
-</span><span class='line'>  -wepsave        save a copy of .cap files to this directory [off]
-</span><span class='line'>
-</span><span class='line'>   WPS
-</span><span class='line'>  -wps        only target WPS networks         [off]
-</span><span class='line'>  -wpst &lt;sec&gt;   max wait for new retry before giving up (0: never)  [660]
-</span><span class='line'>  -wpsratio &lt;per&gt;   min ratio of successful PIN attempts/total tries    [0]
-</span><span class='line'>  -wpsretry &lt;num&gt;   max number of retries for same PIN before giving up [0]
-</span><span class='line'>
-</span><span class='line'>   EXAMPLE
-</span><span class='line'>  ./wifite.py -wps -wep -c 6 -pps 600
-</span><span class='line'>
-</span><span class='line'> [+] quitting</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Bluetooth Tools</h3>
-
-<p><strong>bluelog</strong></p>
-
-<p>Bluelog  is  a simple Bluetooth scanner that is designed to essentially
-do just one thing, log all the discoverable devices in the area. It  is
-intended  to  be  used as a site survey tool, identifying the number of
-possible Bluetooth targets there are in the surrounding environment.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Bluelog (v1.1.2) by Tom Nardi "MS3FGX" (MS3FGX@gmail.com)
-</span><span class='line'>----------------------------------------------------------------
-</span><span class='line'>Bluelog is a Bluetooth site survey tool, designed to tell you how
-</span><span class='line'>many discoverable devices there are in an area as quickly as possible.
-</span><span class='line'>As the name implies, its primary function is to log discovered devices
-</span><span class='line'>to file rather than to be used interactively. Bluelog could run on a
-</span><span class='line'>system unattended for long periods of time to collect data.
-</span><span class='line'>
-</span><span class='line'>Bluelog also includes a mode called "Bluelog Live" which creates a
-</span><span class='line'>webpage of the results that you can serve up with your HTTP daemon of
-</span><span class='line'>choice. See the "README.LIVE" file for details.
-</span><span class='line'>
-</span><span class='line'>For more information, see: www.digifail.com
-</span><span class='line'>
-</span><span class='line'>Basic Options:
-</span><span class='line'>  -i &lt;interface&gt;     Sets scanning device, default is "hci0"
-</span><span class='line'>  -o &lt;filename&gt;      Sets output filename, default is "devices.log"
-</span><span class='line'>  -v                 Verbose, prints discovered devices to the terminal
-</span><span class='line'>  -q                 Quiet, turns off nonessential terminal outout
-</span><span class='line'>  -d                 Enables daemon mode, Bluelog will run in background
-</span><span class='line'>  -k                 Kill an already running Bluelog process
-</span><span class='line'>  -l                 Start "Bluelog Live", default is disabled
-</span><span class='line'>
-</span><span class='line'>Logging Options:
-</span><span class='line'>  -n                 Write device names to log, default is disabled
-</span><span class='line'>  -m                 Write device manufacturer to log, default is disabled
-</span><span class='line'>  -c                 Write device class to log, default is disabled
-</span><span class='line'>  -f                 Use "friendly" device class, default is disabled
-</span><span class='line'>  -t                 Write timestamps to log, default is disabled
-</span><span class='line'>  -x                 Obfuscate discovered MACs, default is disabled
-</span><span class='line'>  -e                 Encode discovered MACs with CRC32, default disabled
-</span><span class='line'>  -b                 Enable BlueProPro log format, see README
-</span><span class='line'>
-</span><span class='line'>Advanced Options:
-</span><span class='line'>  -r &lt;retries&gt;       Name resolution retries, default is 3
-</span><span class='line'>  -a &lt;minutes&gt;       Amnesia, Bluelog will forget device after given time
-</span><span class='line'>  -w &lt;seconds&gt;       Scanning window in seconds, see README
-</span><span class='line'>  -s                 Syslog only mode, no log file. Default is disabled</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>bluemaho</strong></p>
-
-<p>BlueMaho is GUI-shell (interface) for suite of tools for testing security of bluetooth devices. It is freeware, opensource, written on python, uses wxPyhon. It can be used for testing BT-devices for known vulnerabilities and major thing to do – testing to find unknown vulns. Also it can form nice statistics.</p>
-
-<p>Features:</p>
-
-<ul>
-<li><p>scan for devices, show advanced info, SDP records, vendor etc</p></li>
-<li><p>track devices – show where and how much times device was seen, its name changes</p></li>
-<li><p>loop scan – it can scan all time, showing you online devices</p></li>
-<li><p>alerts with sound if new device found</p></li>
-<li><p>on_new_device – you can specify what command should it run when it founds new device</p></li>
-<li><p>it can use separate dongles – one for scaning (loop scan) and one for running tools or exploits</p></li>
-<li><p>send files</p></li>
-<li><p>change name, class, mode, BD_ADDR of local HCI devices</p></li>
-<li><p>save results in database</p></li>
-<li><p>form nice statistics (uniq devices by day/hour, vendors, services etc)</p></li>
-<li><p>test remote device for known vulnerabilities (see exploits for more details)</p></li>
-<li><p>test remote device for unknown vulnerabilities (see tools for more details)</p></li>
-<li><p>themes! you can customize it</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/bluemaho.png" title="bluemaho" alt="bluemaho"></p>
-
-<p><strong>blueranger</strong></p>
-
-<p>BlueRanger is a simple Bash script which uses Link Quality to locate Bluetooth device radios. It sends l2cap (Bluetooth) pings to create a connection between Bluetooth interfaces, since most devices allow pings without any authentication or authorization. The higher the link quality, the closer the device (in theory).</p>
-
-<p>Use a Bluetooth Class 1 adapter for long range location detection. Switch to a Class 3 adapter for more precise short range locating. The recision and accuracy depend on the build quality of the Bluetooth adapter, interference, and response from the remote device. Fluctuations may occur even when neither device is in motion.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>BlueRanger 1.0 by JP Dunning (.ronin) 
-</span><span class='line'>&lt;www.hackfromacave.com&gt;
-</span><span class='line'>(c) 2009-2012 Shadow Cave LLC.
-</span><span class='line'>
-</span><span class='line'>NAME
-</span><span class='line'>  blueranger
-</span><span class='line'>
-</span><span class='line'>SYNOPSIS
-</span><span class='line'>        blueranger.sh &lt;hciX&gt; &lt;bdaddr&gt;
-</span><span class='line'>
-</span><span class='line'>DESCRIPTION
-</span><span class='line'>  &lt;hciX&gt;         Local interface
-</span><span class='line'>  &lt;bdaddr&gt;       Remote Device Address</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>bluesnarfer</strong></p>
-
-<p>A Bluetooth bluesnarfing Utility.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/bluesnarfer.png" title="bluesnarfer" alt="bluesnarfer"></p>
-
-<p><strong>btscanner</strong></p>
-
-<p>btscanner is a tool designed specifically to extract as  much  information  as  possible  from  a Bluetooth device without the requirement to
-pair. A detailed information screen extracts HCI and  SDP  information,
-and  maintains an open connection to monitor the RSSI and link quality.
-btscanner is based on the BlueZ Bluetooth stack, which is included with
-recent  Linux kernels, and the BlueZ toolset. btscanner also contains a
-complete listing of the IEEE OUI numbers and class lookup tables. Using
-the information gathered from these sources it is possible to make educated guesses as to the host device type.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: btscanner [options]
-</span><span class='line'>options
-</span><span class='line'>  --help  Display help
-</span><span class='line'>  --cfg=&lt;file&gt;  Use &lt;file&gt; as the config file
-</span><span class='line'>  --no-reset  Do not reset the Bluetooth adapter before scanning</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>redfang</strong></p>
-
-<p>RedFang is a small proof-of-concept application to find non discoverable Bluetooth devices. This is done by brute forcing the last six (6) bytes of the Bluetooth address of the device and doing a read_remote_name().</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/redfang.png" title="redfang" alt="redfang"></p>
-
-<p><strong>spooftooph</strong></p>
-
-<p>Spooftooph is designed to automate spoofing or cloning Bluetooth device information. Make a Bluetooth device hide in plain site.</p>
-
-<p>Features:</p>
-
-<ul>
-<li><p>Clone and log Bluetooth device information</p></li>
-<li><p>Generate a random new Bluetooth profile</p></li>
-<li><p>Change Bluetooth profile every X seconds</p></li>
-<li><p>Specify device information for Bluetooth interface</p></li>
-<li><p>Select device to clone from scan log</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/spooftooph.png" title="spooftooph" alt="spooftooph"></p>
-
-<h3>Other Wireless Tools</h3>
-
-<p><strong>zbassocflood</strong></p>
-
-<p>Transmit a flood of associate requests to a target network.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbassocflood: Transmit a flood of associate requests to a target network.
-</span><span class='line'>jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbassocflood [-pcDis] [-i devnumstring] [-p PANID] [-c channel]
-</span><span class='line'>                        [-s per-packet delay/float]
-</span><span class='line'>
-</span><span class='line'>e.x. zbassocflood -p 0xBAAD -c 11 -s 0.1</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>zbdsniff</strong></p>
-
-<p>Decode plaintext key ZigBee delivery from a capture file.  Will
-process libpcap or Daintree SNA capture files.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbdsniff: Decode plaintext key ZigBee delivery from a capture file.  Will
-</span><span class='line'>process libpcap or Daintree SNA capture files.    jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbdsniff [capturefiles ...]</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>zbdump</strong></p>
-
-<p>A tcpdump-like tool for ZigBee/IEEE 802.15.4 networks</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbdump - a tcpdump-like tool for ZigBee/IEEE 802.15.4 networks
-</span><span class='line'>Compatible with Wireshark 1.1.2 and later - jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbdump [-fiwDch] [-f channel] [-w pcapfile] [-W daintreefile] 
-</span><span class='line'>         [-i devnumstring]</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>zbfind</strong></p>
-
-<p>zbfind provides a GTK-based GUI to the user which displays the results of a zbstumbler-like functionality. zbfind sends beacon requests as it cycles through channels and listens for a response, adding the response to a table as well as displaying signal strength on a gauge widget.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/zbfind.png" title="zbfind" alt="zbfind"></p>
-
-<p><strong>zbgoodfind</strong></p>
-
-<p>Search a binary file to identify the encryption key for a given
-SNA or libpcap IEEE 802.15.4 encrypted packet</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbgoodfind - search a binary file to identify the encryption key for a given
-</span><span class='line'>SNA or libpcap IEEE 802.15.4 encrypted packet - jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbgoodfind [-frRFd] [-f binary file] [-r pcapfile] [-R daintreefile] 
-</span><span class='line'>         [-F Don't skip 2-byte FCS at end of each frame]
-</span><span class='line'>         [-d genenerate binary file (test mode)]</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>zbreplay</strong></p>
-
-<p>Replay ZigBee/802.15.4 network traffic from libpcap or Daintree files</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbreplay: replay ZigBee/802.15.4 network traffic from libpcap or Daintree files
-</span><span class='line'>jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbreplay [-rRfiDch] [-f channel] [-r pcapfile] [-R daintreefile] 
-</span><span class='line'>         [-i devnumstring] [-s delay/float] [-c countpackets]</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>zbstumbler</strong></p>
-
-<p>Transmit beacon request frames to the broadcast address while
-channel hopping to identify ZC/ZR devices.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zbstumbler: Transmit beacon request frames to the broadcast address while
-</span><span class='line'>channel hopping to identify ZC/ZR devices.  jwright@willhackforsushi.com
-</span><span class='line'>
-</span><span class='line'>Usage: zbstumbler [-iscwD] [-i devnumstring] [-s per-channel delay] [-c channel]
-</span><span class='line'>                          [-w report.csv]</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>RFID / NFC Tools</h3>
-
-<h3>NFC Tools</h3>
-
-<p><strong>mfcuk</strong></p>
-
-<p>Toolkit containing samples and various tools based on and around libnfc and crapto1, with emphasis on Mifare Classic NXP/Philips RFID cards. Special emphasis of the toolkit is on the following:</p>
-
-<ul>
-<li><p>mifare classic weakness demonstration/exploitation</p></li>
-<li><p>demonstrate use of libnfc (and ACR122 readers)</p></li>
-<li><p>demonstrate use of Crapto1 implementation to confirm internal workings and to verify theoretical/practical weaknesses/attacks</p></li>
-</ul>
-
-
-<p><strong>mfoc</strong></p>
-
-<p>MFOC is an open source implementation of “offline nested” attack by Nethemba.
-This program allow to recover authentication keys from MIFARE Classic card.
-Please note MFOC is able to recover keys from target only if it have a known key: default one (hardcoded in MFOC) or custom one (user provided using command line).</p>
-
-<p><strong>mfterm</strong></p>
-
-<p>A terminal interface for working with Mifare tags.</p>
-
-<p>The  program  is  used as an interactive shell to read and write Mifare
-tags using libnfc and a libnfc compatible reader or to  simply  manipulate Mifare data dumps from files.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>A terminal interface for working with Mifare Classic tags.
-</span><span class='line'>Usage: mfterm [-v] [-h] [-k keyfile]
-</span><span class='line'>
-</span><span class='line'>Options: 
-</span><span class='line'>  --help          (-h)   Show this help message.
-</span><span class='line'>  --version       (-v)   Display version information.
-</span><span class='line'>  --tag=tagfile   (-t)   Load a tag from the specified file.
-</span><span class='line'>  --keys=keyfile  (-k)   Load keys from the specified file.
-</span><span class='line'>  --dict=dictfile (-d)   Load dictionary from the specified file.
-</span><span class='line'>
-</span><span class='line'>Report bugs to: anders@4zm.org
-</span><span class='line'>mfterm home page: &lt;https://github.com/4zm/mfterm&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>mifare-classic-format</strong></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>usage: mifare-classic-format [-fy] [keyfile]
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'>  -f      Fast format (only erase MAD)
-</span><span class='line'>  -y      Do not ask for confirmation (dangerous)
-</span><span class='line'>  keyfile Use keys from dump in addition to internal default keys</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>nfc-list</strong></p>
-
-<p>nfc-list  is  a utility for listing any available tags like ISO14443-A,
-FeliCa, Jewel or ISO14443-B (according to the device capabilities).  It
-may  detect several tags at once thanks to a mechanism called anti-collision but all types of tags don&rsquo;t support anti-collision and there  is
-some physical limitation of the number of tags the reader can discover.</p>
-
-<p>This tool displays all available information at selection time.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nfc-list uses libnfc 1.7.0
-</span><span class='line'>usage: nfc-list [-v]
-</span><span class='line'>  -v   verbose display</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>nfc-mfclassic</strong></p>
-
-<p>nfc-mfclassic is a MIFARE Classic tool that allow to read or write DUMP
-file using MIFARE keys provided in KEYS file.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: nfc-mfclassic r|R|w|W a|b &lt;dump.mfd&gt; [&lt;keys.mfd&gt; [f]]
-</span><span class='line'>  r|R|w|W       - Perform read from (r) or unlocked read from (R) or write to (w) or unlocked write to (W) card
-</span><span class='line'>                  *** note that unlocked write will attempt to overwrite block 0 including UID
-</span><span class='line'>                  *** unlocked read does not require authentication and will reveal A and B keys
-</span><span class='line'>                  *** unlocking only works with special Mifare 1K cards (Chinese clones)
-</span><span class='line'>  a|A|b|B       - Use A or B keys for action; Halt on errors (a|b) or tolerate errors (A|B)
-</span><span class='line'>  &lt;dump.mfd&gt;    - MiFare Dump (MFD) used to write (card to MFD) or (MFD to card)
-</span><span class='line'>  &lt;keys.mfd&gt;    - MiFare Dump (MFD) that contain the keys (optional)
-</span><span class='line'>  f             - Force using the keyfile even if UID does not match (optional)</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>RFIDiot ACG</h3>
-
-<h3>RFIDiot FROSCH</h3>
-
-<h3>RFIDiot PCSC</h3>
-
-<p>A collection of tools and libraries for exploring RFID technology, written
-in Python.</p>
-
-<p><strong>ChAP.py</strong></p>
-
-<p>Script that tries to select the EMV Payment Systems Directory on all inserted cards.</p>
-
-<p><strong>bruteforce.py</strong></p>
-
-<p>Try random numbers to login to sector 0</p>
-
-<p><strong>cardselect.py</strong></p>
-
-<p>Select card and display ID</p>
-
-<p><strong>copytag.py</strong></p>
-
-<p>Read all sectors from a standard tag and write them back to a blank</p>
-
-<p><strong>demotag.py</strong></p>
-
-<p>Test IAIK TUG DemoTag</p>
-
-<p><strong>eeprom.py</strong></p>
-
-<p>Display reader&rsquo;s eeprom settings</p>
-
-<p><strong>fdxbnum.py</strong></p>
-
-<p>Generate / decode FDX-B EM4x05 compliant IDs</p>
-
-<p><strong>formatmifare1kvalue.py</strong></p>
-
-<p>Format value blocks on a mifare standard tag</p>
-
-<p><strong>froschtest.py</strong></p>
-
-<p>Test frosch HTRM112 reader</p>
-
-<p><strong>hidprox.py</strong></p>
-
-<p>Show HID Prox card type and site/id code</p>
-
-<p><strong>hitag2brute.py</strong></p>
-
-<p>Brute Force hitag2 password</p>
-
-<p><strong>hitag2reset.py</strong></p>
-
-<p>Reset hitag2 password</p>
-
-<p><strong>isotype.py</strong></p>
-
-<p>Determine ISO tag type</p>
-
-<p><strong>jcopmifare.py</strong></p>
-
-<p>Test program for mifare emulation on JCOP</p>
-
-<p><strong>jcopsetatrhist.py</strong></p>
-
-<p>Set ATR History bytes on JCOP cards</p>
-
-<p><strong>jcoptool.py</strong></p>
-
-<p>JCOP card toolkit</p>
-
-<p><strong>lfxtype.py</strong></p>
-
-<p>Select card and display tag type</p>
-
-<p><strong>loginall.py</strong></p>
-
-<p>Attempt to login to each sector with transport keys</p>
-
-<p><strong>mifarekeys.py</strong></p>
-
-<p>Calculate 3DES key for Mifare access on JCOP cards</p>
-
-<p><strong>mrpkey.py</strong></p>
-
-<p>Calculate 3DES key for Machine Readable Passport</p>
-
-<p><strong>multiselect.py</strong></p>
-
-<p>Continuously select card and display ID</p>
-
-<p><strong>nfcid.py</strong></p>
-
-<p>Python code for Identifying NFC cards</p>
-
-<p><strong>pn532emulate.py</strong></p>
-
-<p>Switch NXP PN532 reader chip into TAG emulation mode</p>
-
-<p><strong>pn532mitm.py</strong></p>
-
-<p>NXP PN532 Man-In-The_Middle &ndash; log conversations between TAG and external reader</p>
-
-<p><strong>q5reset.py</strong></p>
-
-<p>Reset q5 tag</p>
-
-<p><strong>readlfx.py</strong></p>
-
-<p>Read all sectors from a LFX reader</p>
-
-<p><strong>readmifare1k.py</strong></p>
-
-<p>Read all sectors from a mifare standard tag</p>
-
-<p><strong>readmifaresimple.py</strong></p>
-
-<p>Read all sectors from a mifare tag</p>
-
-<p><strong>readmifareultra.py</strong></p>
-
-<p>Read all sectors from a Ultralight tag</p>
-
-<p><strong>readtag.py</strong></p>
-
-<p>Read all sectors from a standard tag</p>
-
-<p><strong>rfidiot-cli.py</strong></p>
-
-<p>CLI for rfidiot</p>
-
-<p><strong>send_apdu.py</strong></p>
-
-<p>Python code for Sending raw APDU commands</p>
-
-<p><strong>sod.py</strong></p>
-
-<p>Try to find X509 data in EF.SOD</p>
-
-<p><strong>transit.py</strong></p>
-
-<p>Generate / decode FDI Matalec Transit 500 and Transit 999 UIDs</p>
-
-<p><strong>unique.py</strong></p>
-
-<p>Generate EM4x02 and/or UNIQUE compliant IDs</p>
-
-<p><strong>writelfx.py</strong></p>
-
-<p>Read and then write all sectors from a LFX reader</p>
-
-<p><strong>writemifare1k.py</strong></p>
-
-<p>Write all blocks on a mifare standard tag</p>
-
-<p>Check <a href="http://rfidiot.org/">http://rfidiot.org/</a> for more information and examples</p>
-
-<h3>Software Defined Radio</h3>
-
-<p><strong>gnuradio-companion</strong></p>
-
-<p>A graphical tool for creating signal flow graphs and generating flow-graph source code.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/gnuradio.png" title="gnuradio-companion" alt="gnuradio"></p>
-
-<p><strong>gqrx</strong></p>
-
-<p>Gqrx is a software defined radio receiver powered by the GNU Radio SDR framework and the Qt graphical toolkit. Gqrx supports many of the SDR hardware available, including Funcube Dongles, rtl-sdr, HackRF and USRP devices.</p>
-
-<p>Currently it works on Linux and Mac and supports the following devices:. Funcube Dongle Pro and Pro+ RTL2832U-based DVB-T dongles (rtlsdr via USB and TCP) OsmoSDR USRP HackRF Jawbreaker Nuand bladeRF any other device supported by the gr-osmosdr library</p>
-
-<p>The latest stable version of Gqrx is 2.2, it is available for Linux, FreeBSD and Mac and it offers the following features:</p>
-
-<ul>
-<li><p>Discover devices attached to the computer.</p></li>
-<li><p>Process I/Q data from the supported devices.</p></li>
-<li><p>Change frequency, gain and apply various corrections (frequency, I/Q balance).</p></li>
-<li><p>AM, SSB, FM-N and FM-W (mono and stereo) demodulators.</p></li>
-<li><p>Special FM mode for NOAA APT.</p></li>
-<li><p>Variable band pass filter.</p></li>
-<li><p>AGC, squelch and noise blankers.</p></li>
-<li><p>FFT plot and waterfall.</p></li>
-<li><p>Record and playback audio to / from WAV file.</p></li>
-<li><p>Spectrum analyzer mode where all signal processing is disabled.</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/gqrx.png" title="gqrx" alt="gqrx"></p>
-
-<p><strong>gr-scan</strong></p>
-
-<p>gr-scan is a program written in C++, and built upon GNU Radio, rtl-sdr, and the OsmoSDR Source Block. It is intended to scan a range of frequencies and print a list of discovered signals. It should work with any device that works with that block, including Realtek RTL2832U devices. This software was developed using a Compro U620F, which uses an E4000 tuner</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/gr-scan.png" title="gr-scan" alt="gr-scan"></p>
-
-<p><strong>modes_gui</strong></p>
-
-<p>Part of gr-air-modes</p>
-
-<p>gr-air-modes implements a software-defined radio receiver for Mode S
-transponder signals, including ADS-B reports from equipped aircraft.</p>
-
-<p><strong>rtl_adsb</strong></p>
-
-<p>A simple ADS-B decoder</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/rtl_adsb.png" title="rtl_adsb" alt="rtl_adsb"></p>
-
-<p><strong>rtl_fm</strong></p>
-
-<p>A simple narrow band FM demodulator for RTL2832 based DVB-T receivers</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Use: rtl_fm -f freq [-options] [filename]
-</span><span class='line'>  -f frequency_to_tune_to [Hz]
-</span><span class='line'>   (use multiple -f for scanning, requires squelch)
-</span><span class='line'>   (ranges supported, -f 118M:137M:25k)
-</span><span class='line'>  [-s sample_rate (default: 24k)]
-</span><span class='line'>  [-d device_index (default: 0)]
-</span><span class='line'>  [-g tuner_gain (default: automatic)]
-</span><span class='line'>  [-l squelch_level (default: 0/off)]
-</span><span class='line'>  [-o oversampling (default: 1, 4 recommended)]
-</span><span class='line'>  [-p ppm_error (default: 0)]
-</span><span class='line'>  [-E sets lower edge tuning (default: center)]
-</span><span class='line'>  [-N enables NBFM mode (default: on)]
-</span><span class='line'>  [-W enables WBFM mode (default: off)]
-</span><span class='line'>   (-N -s 170k -o 4 -A fast -r 32k -l 0 -D)
-</span><span class='line'>  filename (a '-' dumps samples to stdout)
-</span><span class='line'>   (omitting the filename also uses stdout)
-</span><span class='line'>
-</span><span class='line'>Experimental options:
-</span><span class='line'>  [-r output_rate (default: same as -s)]
-</span><span class='line'>  [-t squelch_delay (default: 20)]
-</span><span class='line'>   (+values will mute/scan, -values will exit)
-</span><span class='line'>  [-M enables AM mode (default: off)]
-</span><span class='line'>  [-L enables LSB mode (default: off)]
-</span><span class='line'>  [-U enables USB mode (default: off)]
-</span><span class='line'>  [-R enables raw mode (default: off, 2x16 bit output)]
-</span><span class='line'>  [-F enables high quality FIR (default: off/square)]
-</span><span class='line'>  [-D enables de-emphasis (default: off)]
-</span><span class='line'>  [-C enables DC blocking of output (default: off)]
-</span><span class='line'>  [-A std/fast/lut choose atan math (default: std)]
-</span><span class='line'>
-</span><span class='line'>Produces signed 16 bit ints, use Sox or aplay to hear them.
-</span><span class='line'>  rtl_fm ... - | play -t raw -r 24k -e signed-integer -b 16 -c 1 -V1 -
-</span><span class='line'>               | aplay -r 24k -f S16_LE -t raw -c 1
-</span><span class='line'>    -s 22.5k - | multimon -t raw /dev/stdin</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>rtl_sdr</strong></p>
-
-<p>An I/Q recorder for RTL2832 based DVB-T receivers</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage:    -f frequency_to_tune_to [Hz]
-</span><span class='line'>  [-s samplerate (default: 2048000 Hz)]
-</span><span class='line'>  [-d device_index (default: 0)]
-</span><span class='line'>  [-g gain (default: 0 for auto)]
-</span><span class='line'>  [-b output_block_size (default: 16 * 16384)]
-</span><span class='line'>  [-n number of samples to read (default: 0, infinite)]
-</span><span class='line'>  [-S force sync output (default: async)]
-</span><span class='line'>  filename (a '-' dumps samples to stdout)</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>rtlsdr-scanner</strong></p>
-
-<p>A cross platform Python frequency scanning GUI for USB TV dongles, using the OsmoSDR rtl-sdr library.
-In other words a cheap, simple Spectrum Analyser.
-The scanner attempts to overcome the tuner’s frequency response by averaging scans from both the positive and negative frequency offets of the baseband data.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/kali/wifi/rtlsdr-scanner.png" title="rtlsdr-scanner" alt="rtlsdr-scanner"></p>
-
-<p><strong>rtl_tcp</strong></p>
-
-<p>An I/Q spectrum server for RTL2832 based DVB-T receivers</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage:   [-a listen address]
-</span><span class='line'>  [-p listen port (default: 1234)]
-</span><span class='line'>  [-f frequency to tune to [Hz]]
-</span><span class='line'>  [-g gain (default: 0 for auto)]
-</span><span class='line'>  [-s samplerate in Hz (default: 2048000 Hz)]
-</span><span class='line'>  [-b number of buffers (default: 32, set by library)]
-</span><span class='line'>  [-n max number of linked list buffers to keep (default: 500)]
-</span><span class='line'>  [-d device index (default: 0)]</span></code></pre></td></tr></table></div></figure>
-
-
-<p><strong>rtl_test</strong></p>
-
-<p>A benchmark tool for RTL2832 based DVB-T receivers</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Usage:
-</span><span class='line'>  [-s samplerate (default: 2048000 Hz)]
-</span><span class='line'>  [-d device_index (default: 0)]
-</span><span class='line'>  [-t enable Elonics E4000 tuner benchmark]
-</span><span class='line'>  [-p enable PPM error measurement]
-</span><span class='line'>  [-b output_block_size (default: 16 * 16384)]
-</span><span class='line'>  [-S force sync output (default: async)]</span></code></pre></td></tr></table></div></figure>
-
-
-<blockquote><p>Noise proves nothing.  Often a hen who has merely laid an egg cackles
-as if she laid an asteroid.</p>
-
-<p>&mdash; Mark Twain</p></blockquote>
 ]]></content>
   </entry>
   
