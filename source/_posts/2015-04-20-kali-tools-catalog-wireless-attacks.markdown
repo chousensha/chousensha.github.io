@@ -3,8 +3,8 @@ layout: post
 title: "Kali tools catalog - Wireless Attacks"
 date: 2015-04-20 16:31:23 +0300
 comments: true
-categories: [kali, security]
-keywords: kali, security, tools, wireless, wifi
+categories: [kali, tools, penetration testing]
+keywords: kali, security, tools, wireless, wifi, kali wifi, kali wireless, wireless tools, wireless attacks, wireless hacking, wifi hacking, wireless security, wifi security
 description: Overview of Kali Linux tools for the Wireless Attacks category
 ---
 

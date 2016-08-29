@@ -3,7 +3,7 @@ layout: post
 title: "Nmap cheatsheet"
 date: 2016-07-31 06:40:43 -0400
 comments: true
-categories: [pentesting, networking, tools]
+categories: [penetration testing, networking, tools]
 keywords: pentesting, nmap, hacking, penetration testing, nmap tutorial, nmap guide, port scan, scanner, port scanner, nmap cheatsheet, port scanning, exploit, vulnerability, security audit
 description: Nmap 101
 ---

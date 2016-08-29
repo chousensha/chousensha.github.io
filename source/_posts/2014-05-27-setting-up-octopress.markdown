@@ -3,8 +3,8 @@ layout: post
 title: "Setting up Octopress"
 date: 2014-05-27 21:44:43 +0300
 comments: true
-categories: [octopress, blog]
-keywords: octopress, blog
+categories: [octopress]
+keywords: octopress, blog, set up octopress, install octopress, octopress config, octopress blog, octopress seo, github pages, jekyll, octopress tutorial
 description: Setting up an Octopress blog
 ---
 

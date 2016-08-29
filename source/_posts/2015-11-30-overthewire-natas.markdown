@@ -3,8 +3,8 @@ layout: post
 title: "OverTheWire: Natas"
 date: 2015-11-30 04:50:00 -0500
 comments: true
-categories: [overthewire, wargames, linux]
-keywords: overthewire, wargames, natas
+categories: [writeups, wargames, linux]
+keywords: overthewire, wargames, natas, overthewire natas, overthewire natas solutions, overthewire natas walkthrough
 description: OverTheWire Natas wargame
 ---
 

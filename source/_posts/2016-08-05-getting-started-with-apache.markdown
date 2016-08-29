@@ -4,7 +4,7 @@ title: "Getting started with Apache"
 date: 2016-08-05 07:26:16 -0400
 comments: true
 categories: [linux, sysadmin]
-keywords: apache, apache web server, apache server, apache 2.4, apache on centos, install apache, configure apache, apache linux
+keywords: apache, apache web server, apache server, apache 2.4, apache on centos, install apache, configure apache, apache linux, apache centos, apache tutorial
 description: Installing and configuring Apache 2.4 on CentOS 7
 ---
 

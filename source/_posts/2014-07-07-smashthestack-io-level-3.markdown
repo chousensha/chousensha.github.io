@@ -3,8 +3,8 @@ layout: post
 title: "SmashTheStack IO Level 3"
 date: 2014-07-07 21:37:07 +0300
 comments: true
-categories: [smashthestack, wargames, exploit]
-keywords: smash the stack, wargames
+categories: [writeups, wargames]
+keywords: smash the stack, wargames, smashthestack io, smashthestack io level 3, smashthestack
 description: SmashTheStack IO Level 3
 ---
 

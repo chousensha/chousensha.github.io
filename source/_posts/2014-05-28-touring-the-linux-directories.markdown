@@ -3,8 +3,8 @@ layout: post
 title: "Touring the Linux directories"
 date: 2014-05-28 21:58:52 +0300
 comments: true
-categories: [Linux]
-keywords: linux, directory structure
+categories: [linux, sysadmin]
+keywords: linux, linux directory structure, linux folders, linux directories, linux directory hierarchy, linux folder hierarchy, linux filesystem, linux directories explained, linux directories description
 description: Overview of Linux directories
 ---
 

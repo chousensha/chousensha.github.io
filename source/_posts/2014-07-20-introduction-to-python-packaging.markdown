@@ -4,7 +4,7 @@ title: "Introduction to Python packaging"
 date: 2014-07-20 22:14:31 +0300
 comments: true
 categories: [python, programming]
-keywords: python, packaging, pip, easyinstall, setuptools, distutils
+keywords: python, packaging, pip, easyinstall, setuptools, distutils, python packaging, python packaging tutorial, python packaging tools
 description: Introduction to the Python packaging system
 ---
 

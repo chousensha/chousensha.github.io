@@ -3,8 +3,8 @@ layout: post
 title: "OverTheWire: Leviathan"
 date: 2015-07-30 17:01:22 +0300
 comments: true
-categories: [overthewire, wargames, linux]
-keywords: overthewire, wargames, leviathan
+categories: [writeups, wargames, linux]
+keywords: overthewire, wargames, leviathan, overthewire leviathan, overthewire leviathan solutions, overthewire leviathan walkthrough
 description: OverTheWire Leviathan wargame
 ---
 

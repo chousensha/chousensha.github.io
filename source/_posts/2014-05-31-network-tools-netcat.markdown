@@ -3,8 +3,8 @@ layout: post
 title: "Network tools - Netcat"
 date: 2014-05-31 00:20:29 +0300
 comments: true
-categories: [netcat, networking]
-keywords: netcat, networking, penetration testing
+categories: [tools, penetration testing, networking]
+keywords: netcat, networking, penetration testing, netcat tutorial, nc, netcat examples, netcat commands
 description: Netcat usage examples
 ---
 

@@ -3,8 +3,8 @@ layout: post
 title: "Getting Pure-FTPd up and running"
 date: 2014-06-09 23:20:06 +0300
 comments: true
-categories: [ftp, pure-ftpd]
-keywords: ftp, pure-ftpd, server
+categories: [sysadmin, linux]
+keywords: ftp, pure-ftpd, server, install pure-ftpd, pure-ftpd config, pure-ftpd tutorial, ftp tutorial, pure ftpd, pure ftpd config, pure ftpd commands
 description: Setting up a Pure-FTPd server
 ---
 

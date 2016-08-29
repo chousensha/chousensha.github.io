@@ -3,8 +3,8 @@ layout: post
 title: "Infosec Institute n00bs CTF Labs"
 date: 2015-06-05 20:39:07 +0300
 comments: true
-categories: [web security, penetration testing, ctf]
-keywords: infosec, ctf, hacking labs
+categories: [penetration testing, ctf, writeups]
+keywords: infosec, ctf, hacking labs, infosec institute ctf, infosec institute ctf solutions
 description: Walkthrough for the Infosec Institute n00bs CTF Labs
 ---
 

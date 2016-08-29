@@ -3,8 +3,8 @@ layout: post
 title: "Kali tools catalog - Information Gathering"
 date: 2014-07-17 21:25:37 +0300
 comments: true
-categories: [kali, security]
-keywords: kali, security, tools, information gathering
+categories: [kali, tools, penetration testing]
+keywords: kali, security, tools, information gathering, kali tools, kali linux
 description: Overview of Kali Linux tools for the Information Gathering category
 ---
 

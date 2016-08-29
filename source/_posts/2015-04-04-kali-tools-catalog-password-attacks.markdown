@@ -3,8 +3,8 @@ layout: post
 title: "Kali tools catalog - Password Attacks"
 date: 2015-04-04 18:08:57 +0300
 comments: true
-categories: [kali, security]
-keywords: kali, security, tools, password
+categories: [kali, tools, penetration testing]
+keywords: kali, security, tools, password, password attacks, password cracking
 description: Overview of Kali Linux tools for the Password Attacks category
 ---
 

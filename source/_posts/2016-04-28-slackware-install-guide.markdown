@@ -4,7 +4,7 @@ title: "Slackware install guide"
 date: 2016-04-28 13:23:59 -0400
 comments: true
 categories: [linux, sysadmin]
-keywords: slackware, linux, install, installation guide
+keywords: slackware, linux, install, installation guide, install slackware, slackware install, slackware install tutorial
 description: How to install Slackware
 ---
 

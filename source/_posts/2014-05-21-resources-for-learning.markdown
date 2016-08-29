@@ -3,8 +3,8 @@ layout: post
 title: "Resources for learning"
 date: 2014-05-21 21:06:58 +0300
 comments: true
-categories: [e-learning, online courses, study]
-keywords: e-learning, online courses
+categories: [study]
+keywords: e-learning, online courses, study, self study, online classes, infosec, learn programming, coursera, edx, udacity, computer science,security, information security, hacking, python, hacking books, python books, hacking challenges, learn hacking, how to be a hacker, pentesting, penetration testing, become a pentester
 description: Online resources, classes and hands-on challenges for information security and programming 
 ---
 

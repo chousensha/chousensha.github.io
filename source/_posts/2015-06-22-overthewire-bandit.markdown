@@ -3,8 +3,8 @@ layout: post
 title: "OverTheWire: Bandit"
 date: 2015-06-22 20:11:18 +0300
 comments: true
-categories: [overthewire, wargames, linux]
-keywords: overthewire, wargames, bandit
+categories: [writeups, wargames, linux]
+keywords: overthewire, wargames, bandit, overthewire bandit, overthewire bandit walkthrough, overthewire bandit solutions
 description: OverTheWire Bandit wargame
 ---
 

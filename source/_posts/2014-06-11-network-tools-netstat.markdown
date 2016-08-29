@@ -3,8 +3,8 @@ layout: post
 title: "Network tools - netstat"
 date: 2014-06-11 21:14:59 +0300
 comments: true
-categories: [networking, netstat]
-keywords: networking, netstat
+categories: [networking, tools, sysadmin]
+keywords: networking, netstat, netstat tutorial, netstat commands
 description: Netstat usage examples
 ---
 

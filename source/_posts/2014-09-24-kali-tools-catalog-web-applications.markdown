@@ -3,8 +3,8 @@ layout: post
 title: "Kali tools catalog - Web Applications"
 date: 2014-09-24 13:35:03 +0300
 comments: true
-categories: [kali, security]
-keywords: kali, security, tools, web application
+categories: [kali, tools, penetration testing]
+keywords: kali, security, tools, web application, kali web hacking, kali linux, kali web tools, kali web pentesting
 description: Overview of Kali Linux tools for the Web Applications category
 ---
 

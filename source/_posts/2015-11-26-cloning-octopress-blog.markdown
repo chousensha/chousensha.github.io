@@ -3,8 +3,8 @@ layout: post
 title: "Cloning Octopress blog"
 date: 2015-11-26 11:16:32 -0500
 comments: true
-categories: [octopress, blog]
-keywords: octopress, blog
+categories: [octopress]
+keywords: octopress, blog, cloning octopress, octopress clone, clone octopress
 description: Cloning Octopress blog
 ---
 
