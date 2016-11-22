@@ -4,6 +4,8 @@ title: "where to start"
 comments: true
 sharing: true
 footer: true
+keywords: start in infosec, infosec learning, infosec, become a pentester, learn pentesting, penetration testing, pentester, learn programming, infosec resources
+description: Resources to get started in infosec
 ---
 
 This is a compilation of resources that aided me (and still do) in my studies. When I started in 2012 there weren't so many tutorials/MOOCs and whatnot as there are now. Some of them I have covered in my [first Octopress post](http://chousensha.github.io/blog/2014/05/21/resources-for-learning/)
@@ -43,6 +45,7 @@ I will be updating this list and I will also try to keep it short, for sanity re
 - [Social-Engineer](http://www.social-engineer.org/)
 - [Security Tube](http://www.securitytube.net/)
 - [Binary Auditing](http://www.binary-auditing.com/)
+- [Corelan exploit writing tutorials](https://www.corelan.be/index.php/category/security/exploit-writing-tutorials/)
 
 # Hands-on challenges
 
@@ -72,6 +75,7 @@ I will be updating this list and I will also try to keep it short, for sanity re
 - [Practical Malware Analysis: The Hands-On Guide to Dissecting Malicious Software](https://www.amazon.com/Practical-Malware-Analysis-Hands-Dissecting/dp/1593272901)
 - [The Art of Software Security Assessment: Identifying and Preventing Software Vulnerabilities](https://www.amazon.com/Art-Software-Security-Assessment-Vulnerabilities/dp/0321444426)
 - [Stealing the Network](https://www.amazon.com/Stealing-Network-Complete-Collectors-Chapter/dp/159749299X)
+- [Web Hacking 101](https://leanpub.com/web-hacking-101) (you can get it free from HackerOne)
 
 # Tools collections
 
@@ -86,6 +90,7 @@ I will be updating this list and I will also try to keep it short, for sanity re
 
 - [Phrack Magazine](http://phrack.org/)
 - [Getting started in pentesting collection](http://www.pentester.tips/gettingstarted.html)
+- [Public pentesting reports](https://github.com/juliocesarfort/public-pentesting-reports)
 
 # Checklists
 
@@ -97,3 +102,4 @@ I will be updating this list and I will also try to keep it short, for sanity re
 # Forums
 
 - [TechExams](http://www.techexams.net/forums/)
+- [JollyFrogs OSCP tale](http://www.techexams.net/forums/security-certifications/110760-oscp-jollyfrogs-tale.html) - incredibly comprehensive resource on studying for OSCP 

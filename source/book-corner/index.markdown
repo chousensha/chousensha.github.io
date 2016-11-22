@@ -2,6 +2,8 @@
 layout: page
 title: "book corner"
 sharing: true
+keywords: book reviews, infosec books, hacking books, pentesting books, penetration testing books, information security books, it books, security books
+description: Book reviews
 ---
 
 <div id="blog-archives">
