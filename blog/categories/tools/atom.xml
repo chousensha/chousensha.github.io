@@ -4,7 +4,7 @@
   <title><![CDATA[Category: tools | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/tools/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-09-12T06:57:15-04:00</updated>
+  <updated>2016-11-22T14:21:15-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,174 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Introduction to Burp Suite]]></title>
+    <link href="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/"/>
+    <updated>2016-11-19T17:01:23-05:00</updated>
+    <id>http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite</id>
+    <content type="html"><![CDATA[<p>Yes, the time has come for a full post on Burp Suite! I have delayed it for too long!</p>
+
+<p>Before starting, here are some resources for learning about Burp:</p>
+
+<p><a href="https://portswigger.net/burp/help/contents.html">Burp Suite Documentation</a></p>
+
+<p><a href="http://aetherlab.teachable.com/p/burp-suite">Free introductory course on Burp Suite</a></p>
+
+<p><a href="https://vimeo.com/album/3510171">Burp Suite for Web Application Security</a></p>
+
+<!-- more -->
+
+
+<p>Burp Suite is the primary tool used for performing web application security assessments. It acts as a proxy between your browser and the target, and it comes packed with powerful features to assist in penetration testing: spidering fuctionality, web scanning for vulnerabilities (pro version only), tools that allow you to perform different actions with web requests (will be covered in detail below), and customization ability through plugins.</p>
+
+<h1>Introduction to Burp Suite</h1>
+
+<p>Burp is a Java application, so you need to have Java installed (version 1.6 or later) to run it. It comes pre-installed in Kali, where you can find it in the Web Application Analysis category.</p>
+
+<p>To use Burp, you need to configure your browser&rsquo;s proxy settings. Burp&rsquo;s proxy is listening on 127.0.0.1:8080. If you want to manually configure your browser to use it, refer to this <a href="https://portswigger.net/burp/help/suite_gettingstarted.html">getting started post</a>. I recommend using a browser add-on like <a href="https://addons.mozilla.org/en-US/firefox/addon/foxyproxy-standard/">FoxyProxy</a> to set up your proxies and toggle them with a click.</p>
+
+<p>For <strong>Burp to work with HTTPS</strong> requests, you need to add Burp&rsquo;s CA certificate to your browser. Go to <a href="http://burp/">http://burp/</a> and click on CA Certificate to download it to your computer. In this demo I&rsquo;m using Firefox, but the steps should be similar in the rest of the browsers. In the Firefox menu, select Options or Preferences, then go to Advanced &ndash;> Certificates &ndash;> View Certificates. Click on the Authorities tab and choose Import to select your CA certificate, and check the option &ldquo;Trust this CA to identify web sites&rdquo;. Then click Ok, and restart Firefox. Burp should work now with HTTPS traffic, without issuing any security warnings.</p>
+
+<h1>Burp Suite components</h1>
+
+<p>The power of Burp comes from the interaction between its components, which you can individually access from the application tabs. Let&rsquo;s see each of them in action!</p>
+
+<h2>Target</h2>
+
+<p>Here you can see information about your target. The site map constructs a hierarchical representation of your target. Items requested are shown in black, those that Burp inferred from links etc. are in gray. As you browse with the proxy on, Burp will keep building the site map.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap.png" title="&lsquo;sitemap&rsquo; &lsquo;target sitemap&rsquo;" ></p>
+
+<p>You can configure the scope of your targets from the Scope tab. Alternately, you can right-click on the sitemap entries to perform other actions:</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-menu.png" title="&lsquo;sitemap menu&rsquo; &lsquo;target sitemap menu&rsquo;" ></p>
+
+<p>Clicking on the Filter bar lets you customize filtering options. Before starting the demo, I added my target to the scope and selected to hide the out-of scope items for a clearer view.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-filter.png" title="&lsquo;sitemap filter&rsquo; &lsquo;target sitemap filter&rsquo;" ></p>
+
+<h2>Proxy</h2>
+
+<p>This is the component that allows you to intercept and modify the requests between your browser and the target. You will get familiar with the Intercept tab, where you can inspect each request and response, modify it, or send it to other tools. The history tabs keep records for the HTTP and WebSockets messages. In the Options tab you have a plethora of configuration options for your Proxy. Take special note of the Response Modification options, which you can use to automatically modify the responses HTML to remove client-side logic and controls, or perform SSL stripping.</p>
+
+<p><img class="center" src="/images/tools/burp/proxy-options.png" title="&lsquo;proxy response options&rsquo; &lsquo;response modification options&rsquo;" ></p>
+
+<p>Right-clicking in the Raw tab will give you more options, among which there are some very useful ones such as copying the request as a Curl command, or constructing selected strings in Javascript and SQL (MySQL, Oracle, MS-SQL)</p>
+
+<h2>Spider</h2>
+
+<p>You can use Burp&rsquo;s spider to automatically crawl target applications. After you&rsquo;ve manually browsed the application, right-click the host or URL that you want to crawl in the site map, and choose &ldquo;Spider this host / branch&rdquo;. Then watch the number of requests being made in the Control tab. You can customize the spider in the Options tab. Passive spidering is enabled by default, allowing Burp to update the site map while you are manually browsing. Also, you can specify what the spider should do when encountering forms (ignoring them, automatically submitting with pre-determined values, prompting for guidance etc.) Be careful, as the spider may perform actions with repercussions on the target application, so an initial manual assessment followed by a strict configuration of the spidering scope would be preferred.</p>
+
+<h2>Scanner</h2>
+
+<p>Burp has an automatic vulnerability scanner <em>uncontrolled drooling</em> that seems excellent from the reviews, but it&rsquo;s only available for Pro users. If you look in the Issue definitions tab, you can see the <a href="https://portswigger.net/KnowledgeBase/Issues/">vulnerabilites that Burp can detect</a>, among with a description for each of them <em>drooling intensifies</em></p>
+
+<p><img class="center" src="/images/tools/burp/scanner.png" title="&lsquo;burp scanner&rsquo; &lsquo;burp web scanner&rsquo;" ></p>
+
+<h2>Intruder</h2>
+
+<p>With Burp Intruder you can perform highly-customized automated attacks against your targets, including brute forcing, fuzzing, enumeration etc. Usually, you select an interesting request and send it to Intruder. You can see the positions where payloads will be placed, marked in orange in this dummy request:</p>
+
+<p><img class="center" src="/images/tools/burp/intruder-position.png" title="&lsquo;intruder positions&rsquo; &lsquo;intruder payload positions&rsquo;" ></p>
+
+<h3>Attack types</h3>
+
+<p>In the Position tab, you can also choose the type of attack you want to perform:</p>
+
+<ul>
+<li><p><strong>Sniper</strong> &ndash; single set of payloads, places each payload into each position in turn, useful for individual parameter fuzzing</p></li>
+<li><p><strong>Battering ram</strong> &ndash; single set of payloads, places the the same payload into all positions at the same time</p></li>
+<li><p><strong>Pitchfork</strong> &ndash; multiple payload sets, different payload set for each position</p></li>
+<li><p><strong>Cluster bomb</strong> &ndash; multiple payload sets, tests all permutations of the payload combinations, so depending on your payloads, this attack might grow to gigantic proportions</p></li>
+</ul>
+
+
+<h3>Payload types</h3>
+
+<p>You have lots of payload types available for testing, so choose what is appropriate for your target:</p>
+
+<ul>
+<li><p><strong>Simple list</strong> &ndash; list of strings</p></li>
+<li><p><strong>Runtime file</strong> &ndash; read strings at runtime from a file (for very large lists)</p></li>
+<li><p><strong>Custom iterator</strong> &ndash; permutations of characters in multiple lists</p></li>
+<li><p><strong>Character substitution</strong> &ndash; substitute characters, for instance when you are testing for 53cur3 p455w0rd5</p></li>
+<li><p><strong>Case modification</strong> &ndash; change the characters' case according to the pre-defined rules</p></li>
+<li><p><strong>Recursive grep</strong> &ndash; recursively extract data from the responses of previous requests</p></li>
+<li><p><strong>Illegal Unicode</strong> &ndash; by using illegal Unicode representations, it might be possible to bypass filters etc.</p></li>
+<li><p><strong>Character blocks</strong> &ndash; creates blocks of characters of specified sizes, can aid in detecting buffer overflows</p></li>
+<li><p><strong>Numbers</strong> &ndash; numeric payloads</p></li>
+<li><p><strong>Dates</strong> &ndash; date values</p></li>
+<li><p><strong>Brute forcer</strong> &ndash; sets of permutations generated from specified characters</p></li>
+<li><p><strong>Null payloads</strong> &ndash; empty string payloads</p></li>
+<li><p><strong>Character frobber</strong> &ndash; changes the value of each character in turn, useful for determining what characters are being used for session tokens etc.</p></li>
+<li><p><strong>Bit flipper</strong> &ndash; flips individual bits in the payload</p></li>
+<li><p><strong>Username generator</strong> &ndash; generates usernames from the given input</p></li>
+<li><p><strong>ECB block shuffler</strong> &ndash; shuffles ECB-encrypted blocks</p></li>
+<li><p><strong>Extension generated</strong> &ndash; uses an extension to create the payloads</p></li>
+<li><p><strong>Copy other payload</strong> &ndash; copies the current payload value to a different position</p></li>
+</ul>
+
+
+<h2>Repeater</h2>
+
+<p>This tool is useful for sending requests over and over to the target application.</p>
+
+<p><img class="center" src="/images/tools/burp/repeater.png" title="&lsquo;repeater&rsquo; &lsquo;repeater&rsquo;" ></p>
+
+<h2>Sequencer</h2>
+
+<p>With the Sequencer tool you can test for the randomness of data tokens in an target application. The analysis is more accurate if the number of captured tokens is larger.</p>
+
+<p><img class="center" src="/images/tools/burp/sequencer.png" title="&lsquo;Burp sequencer&rsquo; &lsquo;Burp sequencer&rsquo;" ></p>
+
+<h2>Decoder</h2>
+
+<p>The Decoder tool performs encoding and decoding of different data formats, such as HTML, URL, Base64, ASCII hex, Hex, Octal, Binary, Gzip, and it also has hashing functionality for MD2, SHA-224, MD5, SHA1, SHA-384, SHA, SHA-512 and SHA-256.</p>
+
+<p><img class="center" src="/images/tools/burp/decoder.png" title="&lsquo;Burp decoder&rsquo; &lsquo;Burp decoder&rsquo;" ></p>
+
+<h2>Comparer</h2>
+
+<p>If you want to compare different responses, this tool gives you the options of words or bytes comparison</p>
+
+<p><img class="center" src="/images/tools/burp/comparer.png" title="&lsquo;Burp comparer&rsquo; &lsquo;Burp comparer&rsquo;" ></p>
+
+<h2>Extender</h2>
+
+<p>Here you can add extensions to Burp that add more functionality than what is available by default. Take a look at what extensions you can find in the BApp Store:</p>
+
+<p><img class="center" src="/images/tools/burp/extensions.png" title="&lsquo;burp extensions&rsquo; &lsquo;burp extensions&rsquo;" ></p>
+
+<p>In this screenshot I am sorting by rating. There are many extensions available and I suggest looking at each and determining if you will need it before choosing to install.</p>
+
+<h3>Burp Clickbandit</h3>
+
+<p>We&rsquo;re done with the main tools, but Burp has more. It even includes a cool tool for creating clickjacking attacks.</p>
+
+<p><img class="center" src="/images/tools/burp/clickbandit.png" title="&lsquo;burp clickbandit&rsquo; &lsquo;burp clickbandit&rsquo;" ></p>
+
+<p>In a future post I will do a lab featuring Burp&rsquo;s capabilities that I&rsquo;ve enumerated so far. Expect some Mutillidae! :&ndash;)</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p>/ Don&rsquo;t you wish you had more energy&hellip; \
+\ or less ambition?                     /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest tools - Dirbuster]]></title>
@@ -473,9 +641,9 @@ given company search string. Updates the respective tables with the results.</p>
 [<em>] Netblock: 64.56.197.208/28
 [</em>] Netblock: 67.72.118.0/23
 [<em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/pocs">http://whois.arin.net/rest/org/YAHOO-1/pocs</a>
-[</em>] Contact: Netblock Admin (<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#x6e;&#x65;&#116;&#98;&#x6c;&#111;&#99;&#107;&#x61;&#x64;&#109;&#105;&#110;&#x40;&#x79;&#x61;&#104;&#x6f;&#111;&#45;&#x69;&#x6e;&#99;&#46;&#99;&#x6f;&#109;">&#110;&#x65;&#x74;&#98;&#x6c;&#x6f;&#x63;&#x6b;&#97;&#x64;&#x6d;&#105;&#110;&#64;&#x79;&#97;&#104;&#111;&#x6f;&#x2d;&#x69;&#110;&#99;&#x2e;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
-[<em>] Contact: Netblock Admin (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#110;&#x65;&#116;&#x62;&#108;&#111;&#99;&#107;&#x61;&#100;&#109;&#105;&#x6e;&#x40;&#121;&#97;&#104;&#x6f;&#x6f;&#45;&#x69;&#x6e;&#99;&#46;&#x63;&#111;&#x6d;">&#x6e;&#101;&#x74;&#98;&#108;&#111;&#x63;&#107;&#97;&#x64;&#109;&#105;&#110;&#x40;&#x79;&#97;&#104;&#111;&#x6f;&#45;&#105;&#110;&#x63;&#x2e;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
-[</em>] Contact: Network Abuse (<a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#58;&#x61;&#x62;&#117;&#115;&#x65;&#64;&#x79;&#97;&#x68;&#111;&#x6f;&#45;&#105;&#x6e;&#99;&#x2e;&#x63;&#111;&#109;">&#x61;&#x62;&#x75;&#x73;&#101;&#x40;&#x79;&#x61;&#104;&#x6f;&#111;&#45;&#105;&#110;&#99;&#46;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
+[</em>] Contact: Netblock Admin (<a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#58;&#x6e;&#101;&#116;&#x62;&#x6c;&#x6f;&#99;&#x6b;&#x61;&#100;&#x6d;&#x69;&#x6e;&#64;&#x79;&#97;&#104;&#x6f;&#111;&#x2d;&#x69;&#x6e;&#99;&#x2e;&#99;&#x6f;&#x6d;">&#x6e;&#101;&#x74;&#x62;&#x6c;&#x6f;&#x63;&#x6b;&#x61;&#100;&#x6d;&#105;&#x6e;&#x40;&#x79;&#97;&#104;&#111;&#x6f;&#x2d;&#105;&#x6e;&#x63;&#x2e;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
+[<em>] Contact: Netblock Admin (<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#110;&#101;&#x74;&#x62;&#x6c;&#111;&#99;&#x6b;&#97;&#x64;&#109;&#105;&#110;&#x40;&#121;&#x61;&#104;&#111;&#111;&#x2d;&#105;&#110;&#x63;&#x2e;&#x63;&#x6f;&#109;">&#110;&#x65;&#x74;&#x62;&#x6c;&#x6f;&#99;&#x6b;&#x61;&#100;&#x6d;&#105;&#x6e;&#64;&#121;&#x61;&#104;&#x6f;&#x6f;&#45;&#x69;&#x6e;&#99;&#46;&#x63;&#x6f;&#x6d;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
+[</em>] Contact: Network Abuse (<a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#97;&#x62;&#x75;&#115;&#101;&#64;&#x79;&#x61;&#104;&#111;&#111;&#x2d;&#x69;&#110;&#99;&#46;&#99;&#111;&#x6d;">&#x61;&#98;&#x75;&#115;&#101;&#64;&#121;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#110;&#99;&#x2e;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
 
 <hr />
 
@@ -485,9 +653,9 @@ given company search string. Updates the respective tables with the results.</p>
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/nets">http://whois.arin.net/rest/org/YAHOO-10/nets</a>
 [<em>] Netblock: 12.23.247.176/29
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/pocs">http://whois.arin.net/rest/org/YAHOO-10/pocs</a>
-[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#x3a;&#106;&#107;&#x69;&#108;&#98;&#117;&#114;&#x6e;&#x31;&#115;&#x74;&#111;&#112;&#x40;&#121;&#97;&#104;&#111;&#111;&#46;&#x63;&#111;&#x6d;">&#x6a;&#x6b;&#x69;&#x6c;&#98;&#x75;&#x72;&#x6e;&#x31;&#x73;&#116;&#111;&#x70;&#64;&#121;&#x61;&#104;&#111;&#111;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
-[</em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x6a;&#x6b;&#x69;&#x6c;&#98;&#x75;&#114;&#x6e;&#49;&#115;&#x74;&#x6f;&#112;&#64;&#x79;&#97;&#x68;&#x6f;&#111;&#x2e;&#99;&#x6f;&#x6d;">&#106;&#107;&#105;&#x6c;&#x62;&#117;&#x72;&#x6e;&#49;&#115;&#116;&#x6f;&#112;&#x40;&#x79;&#97;&#x68;&#x6f;&#x6f;&#46;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
-[<em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#x6a;&#107;&#x69;&#108;&#x62;&#117;&#114;&#x6e;&#x31;&#115;&#x74;&#x6f;&#x70;&#64;&#121;&#x61;&#104;&#111;&#111;&#x2e;&#99;&#111;&#109;">&#106;&#x6b;&#x69;&#108;&#x62;&#117;&#x72;&#110;&#x31;&#x73;&#x74;&#x6f;&#x70;&#64;&#121;&#97;&#x68;&#111;&#x6f;&#x2e;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#105;&#108;&#116;&#x6f;&#x3a;&#x6a;&#x6b;&#x69;&#x6c;&#x62;&#117;&#x72;&#110;&#49;&#x73;&#116;&#x6f;&#112;&#x40;&#121;&#x61;&#104;&#x6f;&#111;&#46;&#99;&#x6f;&#x6d;">&#x6a;&#x6b;&#x69;&#x6c;&#98;&#x75;&#x72;&#x6e;&#49;&#115;&#116;&#x6f;&#x70;&#x40;&#x79;&#x61;&#x68;&#111;&#x6f;&#46;&#x63;&#111;&#109;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
+[</em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#106;&#x6b;&#x69;&#x6c;&#98;&#x75;&#x72;&#x6e;&#49;&#x73;&#116;&#111;&#x70;&#x40;&#x79;&#97;&#x68;&#x6f;&#111;&#46;&#x63;&#x6f;&#x6d;">&#106;&#107;&#x69;&#x6c;&#98;&#117;&#x72;&#110;&#x31;&#115;&#x74;&#111;&#x70;&#64;&#x79;&#97;&#104;&#x6f;&#111;&#46;&#99;&#111;&#109;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#x69;&#108;&#x74;&#111;&#58;&#106;&#107;&#105;&#108;&#98;&#117;&#114;&#x6e;&#49;&#x73;&#116;&#x6f;&#112;&#x40;&#x79;&#x61;&#x68;&#x6f;&#111;&#46;&#99;&#111;&#109;">&#106;&#107;&#x69;&#x6c;&#x62;&#117;&#x72;&#x6e;&#x31;&#115;&#x74;&#x6f;&#112;&#x40;&#x79;&#x61;&#104;&#x6f;&#x6f;&#x2e;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
 [</em>] URL: <a href="http://whois.arin.net/rest/customers;name=yahoo">http://whois.arin.net/rest/customers;name=yahoo</a></p>
 
 <hr />
@@ -1904,10 +2072,10 @@ msf > info exploit/windows/smb/ms08_067_netapi</p>
 <p>  Disclosed: 2008-10-28</p>
 
 <p>Provided by:
-  hdm <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x78;&#64;&#x68;&#100;&#109;&#46;&#105;&#111;">&#x78;&#64;&#x68;&#100;&#x6d;&#46;&#105;&#x6f;</a>
-  Brett Moore <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#98;&#x72;&#x65;&#116;&#116;&#x2e;&#109;&#111;&#111;&#114;&#x65;&#x40;&#x69;&#x6e;&#x73;&#x6f;&#109;&#x6e;&#105;&#x61;&#x73;&#x65;&#x63;&#46;&#x63;&#x6f;&#109;">&#x62;&#114;&#101;&#x74;&#x74;&#x2e;&#109;&#x6f;&#111;&#x72;&#x65;&#64;&#105;&#x6e;&#x73;&#x6f;&#109;&#110;&#105;&#x61;&#x73;&#101;&#99;&#46;&#x63;&#x6f;&#x6d;</a>
-  frank2 <a href="&#x6d;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#x66;&#114;&#97;&#x6e;&#x6b;&#50;&#64;&#100;&#99;&#57;&#52;&#x39;&#x2e;&#111;&#x72;&#103;">&#102;&#114;&#97;&#110;&#107;&#x32;&#x40;&#100;&#99;&#x39;&#x34;&#57;&#x2e;&#111;&#x72;&#103;</a>
-  jduck <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#x6a;&#100;&#x75;&#99;&#107;&#x40;&#x6d;&#101;&#x74;&#97;&#115;&#x70;&#108;&#x6f;&#105;&#116;&#x2e;&#99;&#x6f;&#109;">&#x6a;&#100;&#x75;&#99;&#x6b;&#64;&#x6d;&#x65;&#x74;&#x61;&#115;&#112;&#108;&#x6f;&#105;&#116;&#x2e;&#x63;&#111;&#109;</a></p>
+  hdm <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#x3a;&#120;&#64;&#104;&#x64;&#x6d;&#x2e;&#x69;&#x6f;">&#120;&#64;&#x68;&#x64;&#x6d;&#x2e;&#105;&#x6f;</a>
+  Brett Moore <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x62;&#x72;&#101;&#x74;&#116;&#46;&#109;&#111;&#111;&#114;&#101;&#x40;&#105;&#x6e;&#x73;&#x6f;&#x6d;&#x6e;&#105;&#97;&#x73;&#x65;&#99;&#46;&#x63;&#x6f;&#109;">&#x62;&#x72;&#x65;&#116;&#116;&#46;&#109;&#x6f;&#x6f;&#x72;&#x65;&#x40;&#x69;&#110;&#x73;&#x6f;&#109;&#110;&#105;&#x61;&#x73;&#x65;&#x63;&#x2e;&#99;&#111;&#x6d;</a>
+  frank2 <a href="&#109;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#x66;&#x72;&#97;&#x6e;&#x6b;&#x32;&#64;&#100;&#99;&#57;&#52;&#x39;&#x2e;&#111;&#x72;&#x67;">&#x66;&#114;&#97;&#110;&#x6b;&#x32;&#64;&#100;&#x63;&#57;&#x34;&#57;&#x2e;&#111;&#x72;&#103;</a>
+  jduck <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#106;&#100;&#117;&#x63;&#x6b;&#64;&#109;&#101;&#116;&#97;&#115;&#112;&#x6c;&#x6f;&#x69;&#116;&#x2e;&#x63;&#x6f;&#x6d;">&#106;&#x64;&#117;&#99;&#x6b;&#64;&#x6d;&#101;&#116;&#x61;&#115;&#x70;&#x6c;&#111;&#105;&#116;&#46;&#x63;&#111;&#109;</a></p>
 
 <p>Available targets:
   Id  Name</p>
@@ -4116,370 +4284,6 @@ Copyright &copy; 2009 Microsoft Corporation.  All rights reserved.</p>
 </code></pre>
 
 <p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Kali tools catalog - Exploitation Tools]]></title>
-    <link href="http://chousensha.github.io/blog/2015/06/01/kali-tools-catalog-exploitation-tools/"/>
-    <updated>2015-06-01T10:56:26-04:00</updated>
-    <id>http://chousensha.github.io/blog/2015/06/01/kali-tools-catalog-exploitation-tools</id>
-    <content type="html"><![CDATA[<h3>BeEF XSS Framework</h3>
-
-<p><strong>beef</strong></p>
-
-<p>BeEF is short for The Browser Exploitation Framework. It is a penetration testing tool that focuses on the web browser.</p>
-
-<p>Amid growing concerns about web-borne attacks against clients, including mobile clients, BeEF allows the professional penetration tester to assess the actual security posture of a target environment by using client-side attack vectors. Unlike other security frameworks, BeEF looks past the hardened network perimeter and client system, and examines exploitability within the context of the one open door: the web browser. BeEF will hook one or more web browsers and use them as beachheads for launching directed command modules and further attacks against the system from within the browser context.</p>
-
-<!-- more -->
-
-
-<p><img class="center" src="/images/kali/exploit/beef.png" title="&lsquo;beef&rsquo; &lsquo;beef&rsquo;" ></p>
-
-<h3>Exploit Database</h3>
-
-<p><strong>searchsploit</strong></p>
-
-<p>Exploit Database Archive Search</p>
-
-<p>``` plain
-Usage: searchsploit [options] term1 [term2] &hellip; [termN]
-Example: searchsploit oracle windows local</p>
-
-<p>=========</p>
-
-<h1> Options </h1>
-
-<p>   -c            Perform case-sensitive searches; by default, searches will</p>
-
-<pre><code>             try to be greedy
-</code></pre>
-
-<p>   -h, &mdash;help    Show help screen
-   -v            By setting verbose output, description lines are allowed to</p>
-
-<pre><code>             overflow their columns
-</code></pre>
-
-<p>=======</p>
-
-<h1> NOTES </h1>
-
-<ul>
-<li>Use any number of search terms you would like (minimum: 1)</li>
-<li>Search terms are not case sensitive, and order is irrelevant
-```</li>
-</ul>
-
-
-<h3>Exploit Development Tools</h3>
-
-<p><strong>edb-debugger</strong></p>
-
-<p>A Linux equivalent of the famous Olly debugger on the Windows platform. Some of its features are:</p>
-
-<ul>
-<li><p>Intuitive GUI interface</p></li>
-<li><p>The usual debugging operations (step-into/step-over/run/break)</p></li>
-<li><p>Conditional breakpoints</p></li>
-<li><p>Debugging core is implemented as a plugin so people can have drop in replacements. Of course if a given platform has several debugging APIs available, then you may have a plugin that implements any of them.</p></li>
-<li><p>Basic instruction analysis</p></li>
-<li><p>View/Dump memory regions</p></li>
-<li><p>Effective address inspection</p></li>
-<li><p>The data dump view is tabbed, allowing you to have several views of memory open at the same time and quickly switch between them.</p></li>
-<li><p>Importing and generation of symbol maps</p></li>
-<li><p>Plugins</p></li>
-</ul>
-
-
-<p><img class="center" src="/images/kali/exploit/edb.png" title="&lsquo;edb-debugger&rsquo; &lsquo;edb&rsquo;" ></p>
-
-<p><strong>NASM shell</strong></p>
-
-<p>This tool provides an easy way to see what opcodes are associated with
-certain x86 instructions by making use of nasm if it is installed and
-reachable through the PATH environment variable.</p>
-
-<p><strong>ollydbg</strong></p>
-
-<p>OllyDbg is a 32-bit assembler level analysing debugger for Microsoft Windows. Emphasis on binary code analysis makes it particularly useful in cases where source is unavailable.</p>
-
-<p>Features:</p>
-
-<ul>
-<li><p>Intuitive user interface, no cryptical commands</p></li>
-<li><p>Code analysis – traces registers, recognizes procedures, loops, API calls, switches, tables, constants and strings</p></li>
-<li><p>Directly loads and debugs DLLs</p></li>
-<li><p>Object file scanning – locates routines from object files and libraries</p></li>
-<li><p>Allows for user-defined labels, comments and function descriptions</p></li>
-<li><p>Understands debugging information in Borland® format</p></li>
-<li><p>Saves patches between sessions, writes them back to executable file and updates fixups</p></li>
-<li><p>Open architecture – many third-party plugins are available</p></li>
-<li><p>No installation – no trash in registry or system directories</p></li>
-<li><p>Debugs multithread applications</p></li>
-<li><p>Attaches to running programs</p></li>
-<li><p>Configurable disassembler, supports both MASM and IDEAL formats</p></li>
-<li><p>MMX, 3DNow! and SSE data types and instructions, including Athlon extensions</p></li>
-<li><p>Full UNICODE support</p></li>
-<li><p>Dynamically recognizes ASCII and UNICODE strings – also in Delphi format!</p></li>
-<li><p>Recognizes complex code constructs, like call to jump to procedure</p></li>
-<li><p>Decodes calls to more than 1900 standard API and 400 C functions</p></li>
-<li><p>Gives context-sensitive help on API functions from external help file</p></li>
-<li><p>Sets conditional, logging, memory and hardware breakpoints</p></li>
-<li><p>Traces program execution, logs arguments of known functions</p></li>
-<li><p>Shows fixups</p></li>
-<li><p>Dynamically traces stack frames</p></li>
-<li><p>Searches for imprecise commands and masked binary sequences</p></li>
-<li><p>Searches whole allocated memory</p></li>
-<li><p>Finds references to constant or address range</p></li>
-<li><p>Examines and modifies memory, sets breakpoints and pauses program on-the-fly</p></li>
-<li><p>Assembles commands into the shortest binary form</p></li>
-<li><p>Starts from the floppy disk</p></li>
-</ul>
-
-
-<p><img class="center" src="/images/kali/exploit/ollydbg.png" title="&lsquo;ollydbg&rsquo; &lsquo;ollydbg&rsquo;" ></p>
-
-<p><strong>pattern create</strong></p>
-
-<p>Generate a string composed of unique patterns</p>
-
-<p><code>plain
-root@kali:/usr/share/metasploit-framework/tools# ./pattern_create.rb 25
-Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7A
-</code></p>
-
-<p><strong>pattern offset</strong></p>
-
-<p>Find the offset in an exploit string where your address to overwrite EIP should be</p>
-
-<p><code>plain
-Usage: pattern_offset.rb &lt;search item&gt; &lt;length of buffer&gt;
-Default length of buffer if none is inserted: 8192
-This buffer is generated by pattern_create() in the Rex library automatically
-</code></p>
-
-<h3>Metasploit</h3>
-
-<p>World&rsquo;s most used penetration testing software&hellip;the hacker&rsquo;s best friend. No further description needed</p>
-
-<p>``` plain
-root@kali:~# msfconsole
-[*] Starting the Metasploit Framework console&hellip;|
-Call trans opt: received. 2-19-98 13:24:18 REC:Loc</p>
-
-<pre><code> Trace program: running
-
-       wake up, Neo...
-    the matrix has you
-  follow the white rabbit.
-
-      knock, knock, Neo.
-
-                    (`.         ,-,
-                    ` `.    ,;' /
-                     `.  ,'/ .'
-                      `. X /.'
-            .-;--''--.._` ` (
-          .'            /   `
-         ,           ` '   Q '
-         ,         ,   `._    \
-      ,.|         '     `-.;_'
-      :  . `  ;    `  ` --,.._;
-       ' `    ,   )   .'
-          `._ ,  '   /_
-             ; ,''-,;' ``-
-              ``-..__``--`
-
-                         http://metasploit.pro
-</code></pre>
-
-<p>Validate lots of vulnerabilities to demonstrate exposure
-with Metasploit Pro &mdash; Learn more on <a href="http://rapid7.com/metasploit">http://rapid7.com/metasploit</a></p>
-
-<pre><code>   =[ metasploit v4.11.0-2015013101 [core:4.11.0.pre.2015013101 api:1.0.0]]
-</code></pre>
-
-<ul>
-<li>&mdash; &mdash;=[ 1399 exploits &ndash; 788 auxiliary &ndash; 224 post        ]</li>
-<li>&mdash; &mdash;=[ 356 payloads &ndash; 37 encoders &ndash; 8 nops             ]</li>
-<li>&mdash; &mdash;=[ Free Metasploit Pro trial: <a href="http://r-7.co/trymsp">http://r-7.co/trymsp</a> ]</li>
-</ul>
-
-
-<p>msf >
-```</p>
-
-<h3>Network Exploitation</h3>
-
-<p><strong>armitage</strong></p>
-
-<p>Armitage is a scriptable red team collaboration tool for Metasploit that visualizes targets, recommends exploits, and exposes the advanced post-exploitation features in the framework.</p>
-
-<p>Through one Metasploit instance, your team will:</p>
-
-<ul>
-<li><p>Use the same sessions</p></li>
-<li><p>Share hosts, captured data, and downloaded files</p></li>
-<li><p>Communicate through a shared event log.</p></li>
-<li><p>Run bots to automate red team tasks.</p></li>
-</ul>
-
-
-<p>Armitage organizes Metasploit&rsquo;s capabilities around the hacking process. There are features for discovery, access, post-exploitation, and maneuver.</p>
-
-<p><img class="center" src="/images/kali/exploit/armitage.png" title="&lsquo;armitage&rsquo; &lsquo;armitage&rsquo;" ></p>
-
-<p><strong>exploit6</strong></p>
-
-<p>Performs exploits of various CVE known IPv6 vulnerabilities on the destination</p>
-
-<p>``` plain
-exploit6 v2.5 &copy; 2013 by van Hauser / THC <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#118;&#104;&#64;&#116;&#104;&#99;&#x2e;&#111;&#x72;&#x67;">&#x76;&#104;&#64;&#x74;&#x68;&#99;&#x2e;&#111;&#114;&#x67;</a> www.thc.org</p>
-
-<p>Syntax: exploit6 interface destination [test-case-number]</p>
-
-<p>Performs exploits of various CVE known IPv6 vulnerabilities on the destination
-Note that for exploitable overflows only &lsquo;AAA&hellip;&rsquo; strings are used.
-If a system is vulnerable, it will crash, so be careful!
-```</p>
-
-<p><strong>ikat</strong></p>
-
-<p>iKAT is designed to provide access to the underlying operating system of a Kiosk terminal by invoking native OS functionality.</p>
-
-<p><strong>jboss-autopwn</strong></p>
-
-<p>This JBoss script deploys a JSP shell on the target JBoss AS server. Once deployed, the script uses its upload and command execution capability to provide an interactive session.</p>
-
-<p>Features include:</p>
-
-<ul>
-<li><p>Multiplatform support – tested on Windows, Linux and Mac targets</p></li>
-<li><p>Support for bind and reverse bind shells</p></li>
-<li><p>Meterpreter shells and VNC support for Windows targets</p></li>
-</ul>
-
-
-<p><a href="https://github.com/SpiderLabs/jboss-autopwn">Example from the homepage</a>:</p>
-
-<p>``` plain
-Linux bind shell:</p>
-
-<p>[root@nitrogen jboss]# ./e.sh 192.168.1.2 8080 2>/dev/null
-[x] Retrieving cookie
-[x] Now creating BSH script&hellip;
-[x] .war file created successfully in /tmp
-[x] Now deploying .war file:
-<a href="http://192.168.1.2:8080/browser/browser/browser.jsp">http://192.168.1.2:8080/browser/browser/browser.jsp</a>
-[x] Running as user&hellip;:
-uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel)
-[x] Server uname&hellip;:
- Linux nitrogen 2.6.29.6-213.fc11.x86_64 #1 SMP Tue Jul 7 21:02:57 EDT 2009 x86_64 x86_64 x86_64 GNU/Linux
-[!] Would you like to upload a reverse or a bind shell? bind
-[!] On which port would you like the bindshell to listen on? 31337
-[x] Uploading bind shell payload..
-[x] Verifying if upload was successful&hellip;
--rwxrwxrwx 1 root root 172 2009-11-22 19:48 /tmp/payload
-[x] You should have a bind shell on 192.168.1.2:31337..
-[x] Dropping you into a shell&hellip;
-Connection to 192.168.1.2 31337 port [tcp/*] succeeded!
-id
-uid=0(root) gid=0(root) groups=0(root),1(bin),2(daemon),3(sys),4(adm),6(disk),10(wheel)
-python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/bash&rdquo;)&rsquo;
-[root@nitrogen /]# full interactive shell :&ndash;)
-```</p>
-
-<p><strong>termineter</strong></p>
-
-<p>Termineter is a framework written in python to provide a platform for the security testing of smart meters. It implements the C12.18 and C12.19 protocols for communication. Currently supported are Meters using C12.19 with 7-bit character sets. Termineter communicates with Smart Meters via a connection using an ANSI type-2 optical probe with a serial interface.</p>
-
-<p>``` plain
-root@kali:~# termineter</p>
-
-<hr />
-
-<p>  /<em>  <strong>/</strong> </em><strong><strong><em> _  (</em>)</strong>  </strong><em> / /</em><em><strong> </strong>__
-   / / / &ndash;</em>) <strong>/  &lsquo; \/ / _ \/ &ndash;_) </strong>/ &ndash;<em>) __/
-  /</em>/  _<em>/</em>/ /<em>/</em>/<em>/</em>/<em>//</em>/_<em>/_</em>/_<em>/</em>/</p>
-
-<p>  &lt;[ termineter                     v0.1.0
-  &lt;[ model:                          T-800
-  &lt;[ loaded modules:                    12</p>
-
-<p>termineter > show modules</p>
-
-<h1>Modules</h1>
-
-<p>  Name               Description</p>
-
-<hr />
-
-<p>  brute_force_login  Brute Force Credentials
-  dump_tables        Dump Readable C12.19 Tables From The Device To A CSV File
-  enum_tables        Enumerate Readable C12.19 Tables From The Device
-  get_info           Get Basic Meter Information By Reading Tables
-  get_log_info       Get Information About The Meter&rsquo;s Logs
-  get_modem_info     Get Information About The Integrated Modem
-  get_security_info  Get Information About The Meter&rsquo;s Access Control
-  read_table         Read Data From A C12.19 Table
-  run_procedure      Initiate A Custom Procedure
-  set_meter_id       Set The Meter&rsquo;s I.D.
-  set_meter_mode     Change the Meter&rsquo;s Operating Mode
-  write_table        Write Data To A C12.19 Table</p>
-
-<p>termineter >
-```</p>
-
-<h3>Social Engineering Toolkit</h3>
-
-<p>The Social-Engineer Toolkit is an open-source penetration testing framework designed for Social-Engineering. SET has a number of custom attack vectors that allow you to make a believable attack in a fraction of the time.</p>
-
-<p>``` plain</p>
-
-<pre><code>      _______________________________
-     /   _____/\_   _____/\__    ___/
-     \_____  \  |    __)_   |    |
-     /        \ |        \  |    |
-    /_______  //_______  /  |____|
-            \/         \/            
-</code></pre>
-
-<p>[&mdash;&ndash;]        The Social-Engineer Toolkit (SET)         [&mdash;&ndash;]
-[&mdash;&ndash;]        Created by: David Kennedy (ReL1K)         [&mdash;&ndash;]
-[&mdash;&ndash;]                  Version: 6.3                    [&mdash;&ndash;]
-[&mdash;&ndash;]              Codename: &lsquo;#HugLife&rsquo;                [&mdash;&ndash;]
-[&mdash;&ndash;]        Follow us on Twitter: @TrustedSec         [&mdash;&ndash;]
-[&mdash;&ndash;]        Follow me on Twitter: @HackingDave        [&mdash;&ndash;]
-[&mdash;&ndash;]       Homepage: <a href="https://www.trustedsec.com">https://www.trustedsec.com</a>       [&mdash;&ndash;]</p>
-
-<pre><code>    Welcome to the Social-Engineer Toolkit (SET). 
-     The one stop shop for all of your SE needs.
-
- Join us on irc.freenode.net in channel #setoolkit
-</code></pre>
-
-<p>   The Social-Engineer Toolkit is a product of TrustedSec.</p>
-
-<pre><code>         Visit: https://www.trustedsec.com
-</code></pre>
-
-<p> Select from the menu:</p>
-
-<p>   1) Social-Engineering Attacks
-   2) Fast-Track Penetration Testing
-   3) Third Party Modules
-   4) Update the Social-Engineer Toolkit
-   5) Update SET configuration
-   6) Help, Credits, and About</p>
-
-<p>  99) Exit the Social-Engineer Toolkit</p>
-
-<p>set>
-```</p>
-
-<p><img class="center" src="/images/kali/exploit/cookie.png" title="&lsquo;cookie&rsquo; &lsquo;cookie&rsquo;" ></p>
 ]]></content>
   </entry>
   

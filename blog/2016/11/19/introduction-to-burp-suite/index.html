@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Introduction to Burp Suite - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Burp Suite intro">
+  <meta name="keywords" content="burpsuite, burp suite, burpsuite lab, burp suite lab, burpsuite tutorial, burp suite tutorial, burpsuite walkthrough, burp suite walkthrough, burpsuite kali, burp suite kali, burp">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Introduction to Burp Suite</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-11-19T17:01:23-05:00" pubdate data-updated="true">Nov 19<span>th</span>, 2016</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Yes, the time has come for a full post on Burp Suite! I have delayed it for too long!</p>
+
+<p>Before starting, here are some resources for learning about Burp:</p>
+
+<p><a href="https://portswigger.net/burp/help/contents.html">Burp Suite Documentation</a></p>
+
+<p><a href="http://aetherlab.teachable.com/p/burp-suite">Free introductory course on Burp Suite</a></p>
+
+<p><a href="https://vimeo.com/album/3510171">Burp Suite for Web Application Security</a></p>
+
+<!-- more -->
+
+
+<p>Burp Suite is the primary tool used for performing web application security assessments. It acts as a proxy between your browser and the target, and it comes packed with powerful features to assist in penetration testing: spidering fuctionality, web scanning for vulnerabilities (pro version only), tools that allow you to perform different actions with web requests (will be covered in detail below), and customization ability through plugins.</p>
+
+<h1>Introduction to Burp Suite</h1>
+
+<p>Burp is a Java application, so you need to have Java installed (version 1.6 or later) to run it. It comes pre-installed in Kali, where you can find it in the Web Application Analysis category.</p>
+
+<p>To use Burp, you need to configure your browser&rsquo;s proxy settings. Burp&rsquo;s proxy is listening on 127.0.0.1:8080. If you want to manually configure your browser to use it, refer to this <a href="https://portswigger.net/burp/help/suite_gettingstarted.html">getting started post</a>. I recommend using a browser add-on like <a href="https://addons.mozilla.org/en-US/firefox/addon/foxyproxy-standard/">FoxyProxy</a> to set up your proxies and toggle them with a click.</p>
+
+<p>For <strong>Burp to work with HTTPS</strong> requests, you need to add Burp&rsquo;s CA certificate to your browser. Go to <a href="http://burp/">http://burp/</a> and click on CA Certificate to download it to your computer. In this demo I&rsquo;m using Firefox, but the steps should be similar in the rest of the browsers. In the Firefox menu, select Options or Preferences, then go to Advanced &ndash;> Certificates &ndash;> View Certificates. Click on the Authorities tab and choose Import to select your CA certificate, and check the option &ldquo;Trust this CA to identify web sites&rdquo;. Then click Ok, and restart Firefox. Burp should work now with HTTPS traffic, without issuing any security warnings.</p>
+
+<h1>Burp Suite components</h1>
+
+<p>The power of Burp comes from the interaction between its components, which you can individually access from the application tabs. Let&rsquo;s see each of them in action!</p>
+
+<h2>Target</h2>
+
+<p>Here you can see information about your target. The site map constructs a hierarchical representation of your target. Items requested are shown in black, those that Burp inferred from links etc. are in gray. As you browse with the proxy on, Burp will keep building the site map.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap.png" title="sitemap" alt="target sitemap"></p>
+
+<p>You can configure the scope of your targets from the Scope tab. Alternately, you can right-click on the sitemap entries to perform other actions:</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-menu.png" title="sitemap menu" alt="target sitemap menu"></p>
+
+<p>Clicking on the Filter bar lets you customize filtering options. Before starting the demo, I added my target to the scope and selected to hide the out-of scope items for a clearer view.</p>
+
+<p><img class="center" src="/images/tools/burp/sitemap-filter.png" title="sitemap filter" alt="target sitemap filter"></p>
+
+<h2>Proxy</h2>
+
+<p>This is the component that allows you to intercept and modify the requests between your browser and the target. You will get familiar with the Intercept tab, where you can inspect each request and response, modify it, or send it to other tools. The history tabs keep records for the HTTP and WebSockets messages. In the Options tab you have a plethora of configuration options for your Proxy. Take special note of the Response Modification options, which you can use to automatically modify the responses HTML to remove client-side logic and controls, or perform SSL stripping.</p>
+
+<p><img class="center" src="/images/tools/burp/proxy-options.png" title="proxy response options" alt="response modification options"></p>
+
+<p>Right-clicking in the Raw tab will give you more options, among which there are some very useful ones such as copying the request as a Curl command, or constructing selected strings in Javascript and SQL (MySQL, Oracle, MS-SQL)</p>
+
+<h2>Spider</h2>
+
+<p>You can use Burp&rsquo;s spider to automatically crawl target applications. After you&rsquo;ve manually browsed the application, right-click the host or URL that you want to crawl in the site map, and choose &ldquo;Spider this host / branch&rdquo;. Then watch the number of requests being made in the Control tab. You can customize the spider in the Options tab. Passive spidering is enabled by default, allowing Burp to update the site map while you are manually browsing. Also, you can specify what the spider should do when encountering forms (ignoring them, automatically submitting with pre-determined values, prompting for guidance etc.) Be careful, as the spider may perform actions with repercussions on the target application, so an initial manual assessment followed by a strict configuration of the spidering scope would be preferred.</p>
+
+<h2>Scanner</h2>
+
+<p>Burp has an automatic vulnerability scanner <em>uncontrolled drooling</em> that seems excellent from the reviews, but it&rsquo;s only available for Pro users. If you look in the Issue definitions tab, you can see the <a href="https://portswigger.net/KnowledgeBase/Issues/">vulnerabilites that Burp can detect</a>, among with a description for each of them <em>drooling intensifies</em></p>
+
+<p><img class="center" src="/images/tools/burp/scanner.png" title="burp scanner" alt="burp web scanner"></p>
+
+<h2>Intruder</h2>
+
+<p>With Burp Intruder you can perform highly-customized automated attacks against your targets, including brute forcing, fuzzing, enumeration etc. Usually, you select an interesting request and send it to Intruder. You can see the positions where payloads will be placed, marked in orange in this dummy request:</p>
+
+<p><img class="center" src="/images/tools/burp/intruder-position.png" title="intruder positions" alt="intruder payload positions"></p>
+
+<h3>Attack types</h3>
+
+<p>In the Position tab, you can also choose the type of attack you want to perform:</p>
+
+<ul>
+<li><p><strong>Sniper</strong> &ndash; single set of payloads, places each payload into each position in turn, useful for individual parameter fuzzing</p></li>
+<li><p><strong>Battering ram</strong> &ndash; single set of payloads, places the the same payload into all positions at the same time</p></li>
+<li><p><strong>Pitchfork</strong> &ndash; multiple payload sets, different payload set for each position</p></li>
+<li><p><strong>Cluster bomb</strong> &ndash; multiple payload sets, tests all permutations of the payload combinations, so depending on your payloads, this attack might grow to gigantic proportions</p></li>
+</ul>
+
+
+<h3>Payload types</h3>
+
+<p>You have lots of payload types available for testing, so choose what is appropriate for your target:</p>
+
+<ul>
+<li><p><strong>Simple list</strong> &ndash; list of strings</p></li>
+<li><p><strong>Runtime file</strong> &ndash; read strings at runtime from a file (for very large lists)</p></li>
+<li><p><strong>Custom iterator</strong> &ndash; permutations of characters in multiple lists</p></li>
+<li><p><strong>Character substitution</strong> &ndash; substitute characters, for instance when you are testing for 53cur3 p455w0rd5</p></li>
+<li><p><strong>Case modification</strong> &ndash; change the characters&#8217; case according to the pre-defined rules</p></li>
+<li><p><strong>Recursive grep</strong> &ndash; recursively extract data from the responses of previous requests</p></li>
+<li><p><strong>Illegal Unicode</strong> &ndash; by using illegal Unicode representations, it might be possible to bypass filters etc.</p></li>
+<li><p><strong>Character blocks</strong> &ndash; creates blocks of characters of specified sizes, can aid in detecting buffer overflows</p></li>
+<li><p><strong>Numbers</strong> &ndash; numeric payloads</p></li>
+<li><p><strong>Dates</strong> &ndash; date values</p></li>
+<li><p><strong>Brute forcer</strong> &ndash; sets of permutations generated from specified characters</p></li>
+<li><p><strong>Null payloads</strong> &ndash; empty string payloads</p></li>
+<li><p><strong>Character frobber</strong> &ndash; changes the value of each character in turn, useful for determining what characters are being used for session tokens etc.</p></li>
+<li><p><strong>Bit flipper</strong> &ndash; flips individual bits in the payload</p></li>
+<li><p><strong>Username generator</strong> &ndash; generates usernames from the given input</p></li>
+<li><p><strong>ECB block shuffler</strong> &ndash; shuffles ECB-encrypted blocks</p></li>
+<li><p><strong>Extension generated</strong> &ndash; uses an extension to create the payloads</p></li>
+<li><p><strong>Copy other payload</strong> &ndash; copies the current payload value to a different position</p></li>
+</ul>
+
+
+<h2>Repeater</h2>
+
+<p>This tool is useful for sending requests over and over to the target application.</p>
+
+<p><img class="center" src="/images/tools/burp/repeater.png" title="repeater" alt="repeater"></p>
+
+<h2>Sequencer</h2>
+
+<p>With the Sequencer tool you can test for the randomness of data tokens in an target application. The analysis is more accurate if the number of captured tokens is larger.</p>
+
+<p><img class="center" src="/images/tools/burp/sequencer.png" title="Burp sequencer" alt="Burp sequencer"></p>
+
+<h2>Decoder</h2>
+
+<p>The Decoder tool performs encoding and decoding of different data formats, such as HTML, URL, Base64, ASCII hex, Hex, Octal, Binary, Gzip, and it also has hashing functionality for MD2, SHA-224, MD5, SHA1, SHA-384, SHA, SHA-512 and SHA-256.</p>
+
+<p><img class="center" src="/images/tools/burp/decoder.png" title="Burp decoder" alt="Burp decoder"></p>
+
+<h2>Comparer</h2>
+
+<p>If you want to compare different responses, this tool gives you the options of words or bytes comparison</p>
+
+<p><img class="center" src="/images/tools/burp/comparer.png" title="Burp comparer" alt="Burp comparer"></p>
+
+<h2>Extender</h2>
+
+<p>Here you can add extensions to Burp that add more functionality than what is available by default. Take a look at what extensions you can find in the BApp Store:</p>
+
+<p><img class="center" src="/images/tools/burp/extensions.png" title="burp extensions" alt="burp extensions"></p>
+
+<p>In this screenshot I am sorting by rating. There are many extensions available and I suggest looking at each and determining if you will need it before choosing to install.</p>
+
+<h3>Burp Clickbandit</h3>
+
+<p>We&rsquo;re done with the main tools, but Burp has more. It even includes a cool tool for creating clickjacking attacks.</p>
+
+<p><img class="center" src="/images/tools/burp/clickbandit.png" title="burp clickbandit" alt="burp clickbandit"></p>
+
+<p>In a future post I will do a lab featuring Burp&rsquo;s capabilities that I&rsquo;ve enumerated so far. Expect some Mutillidae! :&ndash;)</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
+</span><span class='line'>/ Don't you wish you had more energy... \
+</span><span class='line'>\ or less ambition?                     /
+</span><span class='line'> ---------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-11-19T17:01:23-05:00" pubdate data-updated="true">Nov 19<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/tools/'>tools</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/09/12/pentest-tools-dirbuster/" title="Previous Post: Pentest tools - Dirbuster">&laquo; Pentest tools - Dirbuster</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2016/11/19/introduction-to-burp-suite/">Introduction to Burp Suite</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/09/12/pentest-tools-dirbuster/">Pentest tools - Dirbuster</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/08/29/pentest-tools-recon-ng/">Pentest tools - Recon-ng</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/08/24/book-review-nmap-network-scanning/">Book review - Nmap Network Scanning</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/08/05/getting-started-with-apache/">Getting started with Apache</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2016 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/';
+        var disqus_url = 'http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
