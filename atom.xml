@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-11-22T14:21:15-05:00</updated>
+  <updated>2017-02-25T04:13:08-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,476 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Setting up MySQL and PHP on Apache]]></title>
+    <link href="http://chousensha.github.io/blog/2017/02/25/setting-up-mysql-and-php-on-apache/"/>
+    <updated>2017-02-25T03:58:37-05:00</updated>
+    <id>http://chousensha.github.io/blog/2017/02/25/setting-up-mysql-and-php-on-apache</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s been a while since my last post, but a full time job + the Cisco Cybersecurity scholarship are really eating into my time. But I will try to sneak a post here and there, whenever I can!</p>
+
+<p>In a <a href="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/">previous post</a>, I made a tutorial about setting up Apache on CentOS. The next step is to fire a MySQL server and put some databases on that web server!</p>
+
+<!-- more -->
+
+
+<h2>Installing MySQL server</h2>
+
+<p>First, we need to visit the <a href="https://dev.mysql.com/downloads/repo/yum/">MySQL community repository</a> to download the server package:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm
+</span><span class='line'>--2017-01-19 10:06:02--  https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm
+</span><span class='line'>Resolving repo.mysql.com (repo.mysql.com)... 104.87.9.47
+</span><span class='line'>Connecting to repo.mysql.com (repo.mysql.com)|104.87.9.47|:443... connected.
+</span><span class='line'>HTTP request sent, awaiting response... 200 OK
+</span><span class='line'>Length: 9224 (9.0K) [application/x-redhat-package-manager]
+</span><span class='line'>Saving to: ‘mysql57-community-release-el7-9.noarch.rpm’
+</span><span class='line'>
+</span><span class='line'>100%[===========================================================================================================&gt;] 9,224       --.-K/s   in 0s      
+</span><span class='line'>
+</span><span class='line'>2017-01-19 10:06:02 (137 MB/s) - ‘mysql57-community-release-el7-9.noarch.rpm’ saved [9224/9224]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next we install the package:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -ivh mysql57-community-release-el7-9.noarch.rpm 
+</span><span class='line'>warning: mysql57-community-release-el7-9.noarch.rpm: Header V3 DSA/SHA1 Signature, key ID 5072e1f5: NOKEY
+</span><span class='line'>Preparing...                          ################################# [100%]
+</span><span class='line'>Updating / installing...
+</span><span class='line'>   1:mysql57-community-release-el7-9  ################################# [100%]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After running <code>yum update</code> and waiting for a while, you can install MySQL server from the newly added repository with <code>yum install mysql-server</code>.</p>
+
+<p>After the installation, a new user has been created in <code>/etc/passwd</code>, and a group in <code>/etc/group</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/passwd | grep mysql
+</span><span class='line'>mysql:x:27:27:MySQL Server:/var/lib/mysql:/bin/false
+</span><span class='line'>
+</span><span class='line'>cat /etc/group | grep mysql
+</span><span class='line'>mysql:x:27:</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Configuration</h2>
+
+<p>Next, start the service with <code>systemctl start mysqld</code>. The next step is to run the <code>mysql_secure_installation</code> binary to make some security configurations to your server, but for that you need the temporary root password that was generated during installation:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>grep 'password' /var/log/mysqld.log
+</span><span class='line'>2017-01-19T08:53:45.638708Z 1 [Note] A temporary password is generated for root@localhost: hoPAejdrk6_a</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After running <code>mysql_secure_installation</code>, you will be asked to change the root password in accordance with a policy that requires 12 characters, with a mix of uppercase, lowercase, numbers and special characters. Then you will be prompted to answer some questions regarding the removal of anonymous users, test databases, and disallowing remote root login.</p>
+
+<p>To access your MySQL instance via the command line, log in as root and give your password:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql -u root -p
+</span><span class='line'>Enter password: 
+</span><span class='line'>Welcome to the MySQL monitor.  Commands end with ; or \g.
+</span><span class='line'>Your MySQL connection id is 16
+</span><span class='line'>Server version: 5.7.17 MySQL Community Server (GPL)
+</span><span class='line'>
+</span><span class='line'>Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+</span><span class='line'>
+</span><span class='line'>Oracle is a registered trademark of Oracle Corporation and/or its
+</span><span class='line'>affiliates. Other names may be trademarks of their respective
+</span><span class='line'>owners.
+</span><span class='line'>
+</span><span class='line'>Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+</span><span class='line'>
+</span><span class='line'>mysql&gt; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s look at what databases are available:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>show databases;
+</span><span class='line'>+--------------------+
+</span><span class='line'>| Database           |
+</span><span class='line'>+--------------------+
+</span><span class='line'>| information_schema |
+</span><span class='line'>| mysql              |
+</span><span class='line'>| performance_schema |
+</span><span class='line'>| sys                |
+</span><span class='line'>+--------------------+
+</span><span class='line'>4 rows in set (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I created a new database to play with:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; create database vip;
+</span><span class='line'>Query OK, 1 row affected (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now change the current DB to point the one you created:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; use vip;
+</span><span class='line'>Database changed</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Backup and restoration</h3>
+
+<p>Before throwing some data into it, let&rsquo;s first see how to back up data and restore it. For this, we have the <strong>mysqldump</strong> utility. To make a backup of my newly created DB, I typed: <code>mysqldump -u root -p vip > backup.sql</code>.</p>
+
+<p>Then I deleted the DB with the <code>drop database vip;</code> command. For some reason though, I could not restore the DB without first creating a DB with the same name. The restore command is <code>mysql -u root -p vip &lt; backup.sql</code>.</p>
+
+<h3>Adding data to DB</h3>
+
+<p>The database is all well and good, but we need to put a table in there!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='sql'><span class='line'><span class="k">create</span> <span class="k">table</span> <span class="n">users</span> <span class="p">(</span>
+</span><span class='line'><span class="n">name</span> <span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+</span><span class='line'><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I made a <em>users</em> table with one column for the <em>name</em>. Let&rsquo;s confirm this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; show tables;
+</span><span class='line'>+---------------+
+</span><span class='line'>| Tables_in_vip |
+</span><span class='line'>+---------------+
+</span><span class='line'>| users         |
+</span><span class='line'>+---------------+
+</span><span class='line'>1 row in set (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I made some users:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; insert into users values ('root');
+</span><span class='line'>Query OK, 1 row affected (0.04 sec)
+</span><span class='line'>
+</span><span class='line'>mysql&gt; insert into users values ('guest');
+</span><span class='line'>Query OK, 1 row affected (0.00 sec)
+</span><span class='line'>
+</span><span class='line'>mysql&gt; select * from users;
+</span><span class='line'>+-------+
+</span><span class='line'>| name  |
+</span><span class='line'>+-------+
+</span><span class='line'>| root  |
+</span><span class='line'>| guest |
+</span><span class='line'>+-------+
+</span><span class='line'>2 rows in set (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see the DB in action by integrating it with some PHP!</p>
+
+<h2>Installing PHP</h2>
+
+<p>Installing PHP on CentOS can be done with the following command: <code>yum install php php-mysql</code></p>
+
+<p>The next step is to write some PHP code to connect to the DB. But this is not Debian, so nothing just works! There is the pesky SELinux to take into account, and it&rsquo;s not letting Apache to reach the MySQL DB. Use <strong>getsebool</strong> to see the boolean values for the web server:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>getsebool -a | grep httpd
+</span><span class='line'>httpd_anon_write --&gt; off
+</span><span class='line'>httpd_builtin_scripting --&gt; on
+</span><span class='line'>httpd_can_check_spam --&gt; off
+</span><span class='line'>httpd_can_connect_ftp --&gt; off
+</span><span class='line'>httpd_can_connect_ldap --&gt; off
+</span><span class='line'>httpd_can_connect_mythtv --&gt; off
+</span><span class='line'>httpd_can_connect_zabbix --&gt; off
+</span><span class='line'>httpd_can_network_connect --&gt; off
+</span><span class='line'>httpd_can_network_connect_cobbler --&gt; off
+</span><span class='line'>httpd_can_network_connect_db --&gt; off
+</span><span class='line'>httpd_can_network_memcache --&gt; off
+</span><span class='line'>httpd_can_network_relay --&gt; off
+</span><span class='line'>httpd_can_sendmail --&gt; off
+</span><span class='line'>httpd_dbus_avahi --&gt; off
+</span><span class='line'>httpd_dbus_sssd --&gt; off
+</span><span class='line'>httpd_dontaudit_search_dirs --&gt; off
+</span><span class='line'>httpd_enable_cgi --&gt; on
+</span><span class='line'>httpd_enable_ftp_server --&gt; off
+</span><span class='line'>httpd_enable_homedirs --&gt; off
+</span><span class='line'>httpd_execmem --&gt; off
+</span><span class='line'>httpd_graceful_shutdown --&gt; on
+</span><span class='line'>httpd_manage_ipa --&gt; off
+</span><span class='line'>httpd_mod_auth_ntlm_winbind --&gt; off
+</span><span class='line'>httpd_mod_auth_pam --&gt; off
+</span><span class='line'>httpd_read_user_content --&gt; off
+</span><span class='line'>httpd_run_ipa --&gt; off
+</span><span class='line'>httpd_run_preupgrade --&gt; off
+</span><span class='line'>httpd_run_stickshift --&gt; off
+</span><span class='line'>httpd_serve_cobbler_files --&gt; off
+</span><span class='line'>httpd_setrlimit --&gt; off
+</span><span class='line'>httpd_ssi_exec --&gt; off
+</span><span class='line'>httpd_sys_script_anon_write --&gt; off
+</span><span class='line'>httpd_tmp_exec --&gt; off
+</span><span class='line'>httpd_tty_comm --&gt; off
+</span><span class='line'>httpd_unified --&gt; off
+</span><span class='line'>httpd_use_cifs --&gt; off
+</span><span class='line'>httpd_use_fusefs --&gt; off
+</span><span class='line'>httpd_use_gpg --&gt; off
+</span><span class='line'>httpd_use_nfs --&gt; off
+</span><span class='line'>httpd_use_openstack --&gt; off
+</span><span class='line'>httpd_use_sasl --&gt; off
+</span><span class='line'>httpd_verify_dns --&gt; off</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, by default Apache is very limited in what it can do. Let&rsquo;s change that and allow it to connect to the DB server, and make the change persist across reboots:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>setsebool -P httpd_can_network_connect_db 1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you check again, you will see that the <code>httpd_can_network_connect_db</code> boolean is now set to on. I&rsquo;ve used the code from the <a href="http://php.net/manual/en/function.mysqli-connect.php">PHP mysqli_connect() documentation</a> to check the connection status, and finally, it went from failure to success.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="nv">$link</span> <span class="o">=</span> <span class="nb">mysqli_connect</span><span class="p">(</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="s2">&quot;my_user&quot;</span><span class="p">,</span> <span class="s2">&quot;my_password&quot;</span><span class="p">,</span> <span class="s2">&quot;my_db&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nv">$link</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">echo</span> <span class="s2">&quot;Error: Unable to connect to MySQL.&quot;</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">echo</span> <span class="s2">&quot;Debugging errno: &quot;</span> <span class="o">.</span> <span class="nx">mysqli_connect_errno</span><span class="p">()</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">echo</span> <span class="s2">&quot;Debugging error: &quot;</span> <span class="o">.</span> <span class="nx">mysqli_connect_error</span><span class="p">()</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">exit</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">echo</span> <span class="s2">&quot;Success: A proper connection to MySQL was made! The my_db database is great.&quot;</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
+</span><span class='line'><span class="k">echo</span> <span class="s2">&quot;Host information: &quot;</span> <span class="o">.</span> <span class="nx">mysqli_get_host_info</span><span class="p">(</span><span class="nv">$link</span><span class="p">)</span> <span class="o">.</span> <span class="nx">PHP_EOL</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">mysqli_close</span><span class="p">(</span><span class="nv">$link</span><span class="p">);</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I made a really basic, vulnerable page just to see if things are working. I placed the following PHP file in my web server directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;</span><span class="nx">html</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">form</span> <span class="nx">action</span><span class="o">=</span><span class="s2">&quot;reallyproform.php&quot;</span> <span class="nx">method</span><span class="o">=</span><span class="s2">&quot;post&quot;</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="nx">Enter</span> <span class="nx">a</span> <span class="nx">name</span> <span class="nx">in</span> <span class="k">this</span> <span class="nx">box</span> <span class="nx">to</span> <span class="nx">see</span> <span class="k">if</span> <span class="nx">you</span> <span class="nx">know</span> <span class="nx">anyone</span> <span class="nx">in</span> <span class="nx">the</span> <span class="nx">VIP</span> <span class="nx">area</span><span class="o">:</span> <span class="o">&lt;</span><span class="nx">input</span> <span class="nx">type</span><span class="o">=</span><span class="s2">&quot;text&quot;</span> <span class="nx">name</span><span class="o">=</span><span class="s2">&quot;username&quot;</span> <span class="o">/&gt;&lt;/</span><span class="nx">p</span><span class="o">&gt;</span>
+</span><span class='line'>   <span class="o">&lt;</span><span class="nx">input</span> <span class="nx">type</span><span class="o">=</span><span class="s2">&quot;submit&quot;</span> <span class="nx">name</span><span class="o">=</span><span class="s2">&quot;submit&quot;</span> <span class="nx">value</span><span class="o">=</span><span class="s2">&quot;Submit&quot;</span> <span class="o">/&gt;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nx">form</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;/</span><span class="nx">body</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;/</span><span class="nx">html</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="nv">$link</span> <span class="o">=</span> <span class="nb">mysqli_connect</span><span class="p">(</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">,</span> <span class="s2">&quot;password&quot;</span><span class="p">,</span> <span class="s2">&quot;database name&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="nv">$username</span> <span class="o">=</span> <span class="nv">$_POST</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'><span class="nv">$query</span> <span class="o">=</span> <span class="s2">&quot;SELECT * FROM users WHERE name = &#39;&quot;</span><span class="o">.</span><span class="nv">$username</span><span class="o">.</span><span class="s2">&quot;&#39;&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="nv">$result</span> <span class="o">=</span> <span class="nx">mysqli_query</span><span class="p">(</span><span class="nv">$link</span><span class="p">,</span><span class="nv">$query</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nx">mysqli_num_rows</span><span class="p">(</span><span class="nv">$result</span><span class="p">)</span><span class="o">&gt;=</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>           <span class="p">{</span>
+</span><span class='line'>            <span class="k">echo</span><span class="s2">&quot;Yes you are. Proceed&quot;</span><span class="p">;</span>
+</span><span class='line'>           <span class="p">}</span>
+</span><span class='line'><span class="k">else</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="k">echo</span> <span class="s2">&quot;Are you sure you&#39;re supposed to be here?&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">mysqli_close</span><span class="p">(</span><span class="nv">$link</span><span class="p">);</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/page.png" title="Sample PHP page" alt="PHP form"></p>
+
+<p>If you enter a valid username, you will just get a message, but this was just an example to show a working connection between the PHP code hosted on the server and the MySQL database.</p>
+
+<h3>phpMyAdmin setup</h3>
+
+<p>Chances are, you won&rsquo;t feel an urge to always interact with your DB via the command line. The last step in this post is to install and configure phpMyAdmin in order to do all the SQL operations from a web interface.</p>
+
+<p>First, install it with the following command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install phpmyadmin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Restart Apache and go to <a href="http://127.0.0.1/phpmyadmin">http://127.0.0.1/phpmyadmin</a> to see your new phpMyAdmin interface.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ You plan things that you do not even \
+</span><span class='line'>| attempt because of your extreme      |
+</span><span class='line'>\ caution.                             /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Introduction to Burp Suite]]></title>
@@ -16173,445 +16643,6 @@ bundle install</p>
 </span><span class='line'>| -- "Mark Twain, Pudd'nhead Wilson's   |
 </span><span class='line'>\ Calendar"                             /
 </span><span class='line'> ---------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OverTheWire: Leviathan]]></title>
-    <link href="http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan/"/>
-    <updated>2015-07-30T10:01:22-04:00</updated>
-    <id>http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan</id>
-    <content type="html"><![CDATA[<p>The next step in difficulty for the OverTheWire wargames is Leviathan. From the description:</p>
-
-<blockquote><p>This wargame doesn&rsquo;t require any knowledge about programming &ndash; just a bit of common sense and some knowledge about basic *nix commands.</p></blockquote>
-
-<p>Leviathan’s levels are called leviathan0, leviathan1, … etc. and can be accessed on <strong>leviathan.labs.overthewire.org</strong> through SSH.</p>
-
-<p>To login to the first level use:</p>
-
-<p>Username: leviathan0</p>
-
-<p>Password: leviathan0</p>
-
-<p>Data for the levels can be found in the homedirectories.</p>
-
-<!-- more -->
-
-
-<h3>Level 0 &ndash;> Level 1</h3>
-
-<p>There is no information about what you have to do for each level to progress, so you just have to look around.</p>
-
-<p>If you do a <em>ls -la</em> in the home directory, you will see an interesting hidden directory owned by leviathan1:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan0@melinda:~$ ls -la
-</span><span class='line'>total 24
-</span><span class='line'>drwxr-xr-x   3 root       root       4096 Nov 14  2014 .
-</span><span class='line'>drwxr-xr-x 167 root       root       4096 Jul  9 16:27 ..
-</span><span class='line'>drwxr-x---   2 leviathan1 leviathan0 4096 Jul 17 16:44 .backup
-</span><span class='line'>-rw-r--r--   1 root       root        220 Apr  9  2014 .bash_logout
-</span><span class='line'>-rw-r--r--   1 root       root       3637 Apr  9  2014 .bashrc
-</span><span class='line'>-rw-r--r--   1 root       root        675 Apr  9  2014 .profile</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Inside there is a bookmarks.html file with lots of links, so I tried grepping for the word password and wasn&rsquo;t disappointed:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan0@melinda:~/.backup$ cat bookmarks.html  | grep password
-</span><span class='line'>&lt;DT&gt;&lt;A HREF="http://leviathan.labs.overthewire.org/passwordus.html | This will be fixed later, the password for leviathan1 is rioGegei8m" ADD_DATE="1155384634" LAST_CHARSET="ISO-8859-1" ID="rdf:#$2wIU71"&gt;password to leviathan1&lt;/A&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Level 1 &ndash;> Level 2</h3>
-
-<p>There is a setuid binary in the home folder that asks for a password. Running <em>strings</em> on it didn&rsquo;t reveal much, except that it uses <em>strcmp</em>..so it compares the input it receives with something..</p>
-
-<p>I solved this by running <em>ltrace</em> on the binary. <em>ltrace</em> is a library call tracer:</p>
-
-<blockquote><p>ltrace  is  a  program  that simply runs the specified command until it
-exits.  It intercepts and records the dynamic library calls  which  are
-called  by  the  executed process and the signals which are received by
- that process.  It can also intercept and print the  system  calls  executed by the program.</p></blockquote>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan1@melinda:~$ ltrace ./check
-</span><span class='line'>__libc_start_main(0x804852d, 1, 0xffffd7a4, 0x80485f0 &lt;unfinished ...&gt;
-</span><span class='line'>printf("password: ")                                                                        = 10
-</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642password: abcd
-</span><span class='line'>)                                                = 97
-</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 98
-</span><span class='line'>getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 99
-</span><span class='line'>strcmp("abc", "sex")                                                                        = -1
-</span><span class='line'>puts("Wrong password, Good Bye ..."Wrong password, Good Bye ...
-</span><span class='line'>)                                                        = 29
-</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
-
-
-<p>In the <em>ltrace</em> output you can actually see the password that your input is compared with. Give it to the program and you will get a shell as leviathan2:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan1@melinda:~$ ./check 
-</span><span class='line'>password: sex
-</span><span class='line'>$ whoami
-</span><span class='line'>leviathan2</span></code></pre></td></tr></table></div></figure>
-
-
-<p>As in the previous wargame, look in <em>/etc/</em> for the password:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /etc/leviathan_pass/leviathan2
-</span><span class='line'>ougahZi8Ta</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Level 2 &ndash;> Level 3</h3>
-
-<p>In this level we have another setuid binary named printfile. If you try to read the password file for the next level you just get a message that you an&rsquo;t have that file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ./printfile /etc/leviathan_pass/leviathan3
-</span><span class='line'>You cant have that file...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Running <em>ltrace</em> again we see the <em>access</em> system call is being used:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /etc/leviathan_pass/leviathan3   
-</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd774, 0x8048600 &lt;unfinished ...&gt;
-</span><span class='line'>access("/etc/leviathan_pass/leviathan3", 4)                                                 = -1
-</span><span class='line'>puts("You cant have that file..."You cant have that file...
-</span><span class='line'>)                                                          = 27
-</span><span class='line'>+++ exited (status 1) +++</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This is good news, because <em>access</em> is vulnerable to race conditions, as can be seen from its man page:</p>
-
-<blockquote><p>access() checks whether the calling process can access the file pathname. If pathname is a symbolic link, it is dereferenced.</p>
-
-<p>The check is done using the calling process&rsquo;s real UID and GID,  rather than the effective IDs as is done when actually attempting an operation
-(e.g., open(2)) on the file.  This allows set-user-ID programs to  easily determine the invoking user&rsquo;s authority.</p>
-
-<p>Warning: Using access() to check if a user is authorized to, for  example, open a file before actually doing so using open(2) creates a security
-hole, because the user  might  exploit  the  short  time  interval between  checking and opening the file to manipulate it. For this reason, the   > use of this system call should be avoided.</p></blockquote>
-
-<p>A more detailed description from <a href="https://www.owasp.org/index.php/File_Access_Race_Condition:_TOCTOU">OWASP</a>:</p>
-
-<blockquote><p>The window of time between when a file property is checked and when the file is used can be exploited to launch a privilege escalation attack.</p>
-
-<p>File access race conditions, known as time-of-check, time-of-use (TOCTOU) race conditions, occur when:</p>
-
-<p>The program checks a property of a file, referencing the file by name.
-The program later performs a filesystem operation using the same filename and assumes that the previously-checked property still holds.</p></blockquote>
-
-<p>The first thing I thought was to create a file and make it a symlink to the password file, but it didn&rsquo;t work. So I just made a random file for test purposes and used <em>ltrace</em> again to see what is happening when accessing it:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/readme
-</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd784, 0x8048600 &lt;unfinished ...&gt;
-</span><span class='line'>access("/tmp/baka/readme", 4)                                                               = 0
-</span><span class='line'>snprintf("/bin/cat /tmp/baka/readme", 511, "/bin/cat %s", "/tmp/baka/readme")               = 25
-</span><span class='line'>system("/bin/cat /tmp/baka/readme"test
-</span><span class='line'> &lt;no return ...&gt;
-</span><span class='line'>--- SIGCHLD (Child exited) ---
-</span><span class='line'>&lt;... system resumed&gt; )                                                                      = 0
-</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I have to say, I used help for this one, because it wasn&rsquo;t clear to me on how to proceed (it&rsquo;s also where I got stuck when I first attempted this wargame). If <em>access</em> returns successfully, it will <em>cat</em> the file that was passed to it (and it&rsquo;s actually <em>snprintf</em> that does the <em>cat</em>. Remember from Bandit how <em>cat</em> won&rsquo;t print files with spaces in their names, unless the spaces are escaped or the filename is surrounded by quotes. I made a new dummy file with a space in its name:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:/tmp/baka$ cat space\ file 
-</span><span class='line'>test
-</span><span class='line'>leviathan2@melinda:/tmp/baka$ cat space file
-</span><span class='line'>cat: space: No such file or directory
-</span><span class='line'>cat: file: No such file or directory</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now I ran <em>ltrace</em> again and tried to print this new file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/space\ file 
-</span><span class='line'>__libc_start_main(0x804852d, 2, 0xffffd764, 0x8048600 &lt;unfinished ...&gt;
-</span><span class='line'>access("/tmp/baka/space file", 4)                                                           = 0
-</span><span class='line'>snprintf("/bin/cat /tmp/baka/space file", 511, "/bin/cat %s", "/tmp/baka/space file")       = 29
-</span><span class='line'>system("/bin/cat /tmp/baka/space file"/bin/cat: /tmp/baka/space: No such file or directory
-</span><span class='line'>/bin/cat: file: No such file or directory
-</span><span class='line'> &lt;no return ...&gt;
-</span><span class='line'>--- SIGCHLD (Child exited) ---
-</span><span class='line'>&lt;... system resumed&gt; )                                                                      = 256
-</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
-
-
-<p>There is a discrepancy between <em>access</em>, which checks the path of the file, and what <em>cat</em> tries to print, two different files that don&rsquo;t exist, <em>space</em> and <em>file</em> (because the space isn&rsquo;t seen as part of the filename, but as a separator between arguments):</p>
-
-<ul>
-<li><p><em>cat</em> tries /tmp/baka/space</p></li>
-<li><p><em>cat</em> tries file</p></li>
-</ul>
-
-
-<p>This is where the symbolic link exploitation part comes in place. It didn&rsquo;t work before, but if I now create a symlink to the password file and name it <em>space</em>, it will match the first half of the file that <em>cat</em> will try to print:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:/tmp/baka$ ls -l
-</span><span class='line'>total 8
-</span><span class='line'>-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 12:18 readme
-</span><span class='line'>lrwxrwxrwx 1 leviathan2 leviathan2 30 Jul 31 15:45 space -&gt; /etc/leviathan_pass/leviathan3
-</span><span class='line'>-rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 15:01 space file</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And now I run <em>printfile</em> again:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan2@melinda:~$ ./printfile /tmp/baka/'space file'
-</span><span class='line'>Ahdiemoo1j
-</span><span class='line'>/bin/cat: file: No such file or directory</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Yay! It worked! Because <em>cat</em> first tried to print <em>space</em>, it followed the symlink with the same name and printed the password!</p>
-
-<h3>Level 3 &ndash;> Level 4</h3>
-
-<p>And another setuid binary! Running <em>strings</em> on it revealed it&rsquo;s a program that gives you a shell if you enter the right password. Along with string names such as do_stuff, nothing and morenothing xD</p>
-
-<p><em>ltrace</em> keeps helping a lot with these challenges:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan3@melinda:~$ ltrace ./level3 
-</span><span class='line'>__libc_start_main(0x80485fe, 1, 0xffffd794, 0x80486d0 &lt;unfinished ...&gt;
-</span><span class='line'>strcmp("h0no33", "kakaka")                                                                  = -1
-</span><span class='line'>printf("Enter the password&gt; ")                                                              = 20
-</span><span class='line'>fgets(Enter the password&gt; huh
-</span><span class='line'>"huh\n", 256, 0xf7fcac20)                                                             = 0xffffd58c
-</span><span class='line'>strcmp("huh\n", "snlprintf\n")                                                              = -1
-</span><span class='line'>puts("bzzzzzzzzap. WRONG"bzzzzzzzzap. WRONG
-</span><span class='line'>)                                                                  = 19
-</span><span class='line'>+++ exited (status 0) +++</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The first <em>strcmp</em> doesn&rsquo;t seem to be used for anything, but the second one is interesting. It compares the given input with..snlprintf?! There is no such function in the C library, so I assumed it&rsquo;s just a string..and:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan3@melinda:~$ ./level3 
-</span><span class='line'>Enter the password&gt; snlprintf
-</span><span class='line'>[You've got shell]!
-</span><span class='line'>$ whoami
-</span><span class='line'>leviathan4
-</span><span class='line'>$ cat /etc/leviathan_pass/leviathan4
-</span><span class='line'>vuH0coox6m</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Awesome! On to the next level!</p>
-
-<h3>Level 4 &ndash;> Level 5</h3>
-
-<p>There is a hidden directory in the home folder:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan4@melinda:~$ ls -la
-</span><span class='line'>total 24
-</span><span class='line'>drwxr-xr-x   3 root root       4096 Nov 14  2014 .
-</span><span class='line'>drwxr-xr-x 167 root root       4096 Jul  9 16:27 ..
-</span><span class='line'>-rw-r--r--   1 root root        220 Apr  9  2014 .bash_logout
-</span><span class='line'>-rw-r--r--   1 root root       3637 Apr  9  2014 .bashrc
-</span><span class='line'>-rw-r--r--   1 root root        675 Apr  9  2014 .profile
-</span><span class='line'>dr-xr-x---   2 root leviathan4 4096 Nov 14  2014 .trash</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Inside there&rsquo;s a program that gives some binary output when run:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan4@melinda:~/.trash$ ./bin 
-</span><span class='line'>01010100 01101001 01110100 01101000 00110100 01100011 01101111 01101011 01100101 01101001 00001010 </span></code></pre></td></tr></table></div></figure>
-
-
-<p>Convert it to Ascii for the password: <code>Tith4cokei</code></p>
-
-<h3>Level 5 &ndash;> Level 6</h3>
-
-<p>Another binary! If you run it, it says it can&rsquo;t find a file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan5@melinda:~$ ./leviathan5 
-</span><span class='line'>Cannot find /tmp/file.log</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This is a setuid binary, so maybe we can trick it into reading the password file for the leviathan5 user. I made a symlink to the password file with the name of the missing file, and the binary followed it right to the password:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan5@melinda:~$ ln -s /etc/leviathan_pass/leviathan6 /tmp/file.log
-</span><span class='line'>leviathan5@melinda:~$ ./leviathan5 
-</span><span class='line'>UgaoFee4li</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Level 6 &ndash;> Level 7</h3>
-
-<p>And yet another binary! This one asks for a 4-digit code:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan6@melinda:~$ ./leviathan6 
-</span><span class='line'>usage: ./leviathan6 &lt;4 digit code&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Lookint at the strings, it seems this program will give us a shell if we can find the right code. I was going to use Python again but I found a quick and easy way to bruteforce the code with a very small Bash script:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="c">#!/bin/bash</span>
-</span><span class='line'>
-</span><span class='line'><span class="k">for </span>i in <span class="o">{</span>0000..9999<span class="o">}</span>
-</span><span class='line'><span class="k">do</span>
-</span><span class='line'><span class="nb">echo</span> <span class="s1">&#39;Trying&#39;</span> <span class="nv">$i</span>
-</span><span class='line'>~/leviathan6 <span class="nv">$i</span>
-</span><span class='line'><span class="k">done</span>
-</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This script iterates over the range of possible codes and tries each of them as input for the leviathan6 binary:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>...
-</span><span class='line'>Trying 7122
-</span><span class='line'>Wrong
-</span><span class='line'>Trying 7123
-</span><span class='line'>$ whoami
-</span><span class='line'>leviathan7
-</span><span class='line'>$ cat /etc/leviathan_pass/leviathan7
-</span><span class='line'>ahy7MaeBo9</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Level 7 &ndash;> Level 8</h3>
-
-<p>This is the final level, as you can see from the congratulatory note:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>leviathan7@melinda:~$ ls
-</span><span class='line'>CONGRATULATIONS
-</span><span class='line'>leviathan7@melinda:~$ cat CONGRATULATIONS 
-</span><span class='line'>Well Done, you seem to have used a *nix system before, now try something more serious.
-</span><span class='line'>(Please don't post writeups, solutions or spoilers about the games on the web. Thank you!)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Better skip over that last line&hellip;</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
-</span><span class='line'>/ Tomorrow will be cancelled due to lack \
-</span><span class='line'>\ of interest.                           /
-</span><span class='line'> ----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\

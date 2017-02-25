@@ -4,7 +4,7 @@
   <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2016-11-22T14:21:15-05:00</updated>
+  <updated>2017-02-25T04:13:08-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,323 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Setting up MySQL and PHP on Apache]]></title>
+    <link href="http://chousensha.github.io/blog/2017/02/25/setting-up-mysql-and-php-on-apache/"/>
+    <updated>2017-02-25T03:58:37-05:00</updated>
+    <id>http://chousensha.github.io/blog/2017/02/25/setting-up-mysql-and-php-on-apache</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s been a while since my last post, but a full time job + the Cisco Cybersecurity scholarship are really eating into my time. But I will try to sneak a post here and there, whenever I can!</p>
+
+<p>In a <a href="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/">previous post</a>, I made a tutorial about setting up Apache on CentOS. The next step is to fire a MySQL server and put some databases on that web server!</p>
+
+<!-- more -->
+
+
+<h2>Installing MySQL server</h2>
+
+<p>First, we need to visit the <a href="https://dev.mysql.com/downloads/repo/yum/">MySQL community repository</a> to download the server package:</p>
+
+<p>``` plain
+wget <a href="https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm">https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm</a>
+&mdash;2017-01-19 10:06:02&mdash;  <a href="https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm">https://repo.mysql.com/mysql57-community-release-el7-9.noarch.rpm</a>
+Resolving repo.mysql.com (repo.mysql.com)&hellip; 104.87.9.47
+Connecting to repo.mysql.com (repo.mysql.com)|104.87.9.47|:443&hellip; connected.
+HTTP request sent, awaiting response&hellip; 200 OK
+Length: 9224 (9.0K) [application/x-redhat-package-manager]
+Saving to: ‘mysql57-community-release-el7-9.noarch.rpm’</p>
+
+<p>100%[===========================================================================================================>] 9,224       &mdash;.-K/s   in 0s</p>
+
+<p>2017-01-19 10:06:02 (137 MB/s) &ndash; ‘mysql57-community-release-el7-9.noarch.rpm’ saved [9224/9224]
+```</p>
+
+<p>Next we install the package:</p>
+
+<p><code>plain
+rpm -ivh mysql57-community-release-el7-9.noarch.rpm
+warning: mysql57-community-release-el7-9.noarch.rpm: Header V3 DSA/SHA1 Signature, key ID 5072e1f5: NOKEY
+Preparing...                          ################################# [100%]
+Updating / installing...
+   1:mysql57-community-release-el7-9  ################################# [100%]
+</code></p>
+
+<p>After running <code>yum update</code> and waiting for a while, you can install MySQL server from the newly added repository with <code>yum install mysql-server</code>.</p>
+
+<p>After the installation, a new user has been created in <code>/etc/passwd</code>, and a group in <code>/etc/group</code>:</p>
+
+<p>``` plain
+cat /etc/passwd | grep mysql
+mysql:x:27:27:MySQL Server:/var/lib/mysql:/bin/false</p>
+
+<p>cat /etc/group | grep mysql
+mysql:x:27:
+```</p>
+
+<h2>Configuration</h2>
+
+<p>Next, start the service with <code>systemctl start mysqld</code>. The next step is to run the <code>mysql_secure_installation</code> binary to make some security configurations to your server, but for that you need the temporary root password that was generated during installation:</p>
+
+<p><code>plain
+grep 'password' /var/log/mysqld.log
+2017-01-19T08:53:45.638708Z 1 [Note] A temporary password is generated for root@localhost: hoPAejdrk6_a
+</code></p>
+
+<p>After running <code>mysql_secure_installation</code>, you will be asked to change the root password in accordance with a policy that requires 12 characters, with a mix of uppercase, lowercase, numbers and special characters. Then you will be prompted to answer some questions regarding the removal of anonymous users, test databases, and disallowing remote root login.</p>
+
+<p>To access your MySQL instance via the command line, log in as root and give your password:</p>
+
+<p>``` plain
+mysql -u root -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 16
+Server version: 5.7.17 MySQL Community Server (GPL)</p>
+
+<p>Copyright &copy; 2000, 2016, Oracle and/or its affiliates. All rights reserved.</p>
+
+<p>Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.</p>
+
+<p>Type &lsquo;help;&rsquo; or &lsquo;\h&rsquo; for help. Type &lsquo;\c&rsquo; to clear the current input statement.</p>
+
+<p>mysql>
+```</p>
+
+<p>Let&rsquo;s look at what databases are available:</p>
+
+<p><code>plain
+show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+</code></p>
+
+<p>I created a new database to play with:</p>
+
+<p><code>plain
+mysql&gt; create database vip;
+Query OK, 1 row affected (0.00 sec)
+</code></p>
+
+<p>Now change the current DB to point the one you created:</p>
+
+<p><code>plain
+mysql&gt; use vip;
+Database changed
+</code></p>
+
+<h3>Backup and restoration</h3>
+
+<p>Before throwing some data into it, let&rsquo;s first see how to back up data and restore it. For this, we have the <strong>mysqldump</strong> utility. To make a backup of my newly created DB, I typed: <code>mysqldump -u root -p vip > backup.sql</code>.</p>
+
+<p>Then I deleted the DB with the <code>drop database vip;</code> command. For some reason though, I could not restore the DB without first creating a DB with the same name. The restore command is <code>mysql -u root -p vip &lt; backup.sql</code>.</p>
+
+<h3>Adding data to DB</h3>
+
+<p>The database is all well and good, but we need to put a table in there!</p>
+
+<p><code>sql
+create table users (
+name VARCHAR(10)
+);
+</code></p>
+
+<p>I made a <em>users</em> table with one column for the <em>name</em>. Let&rsquo;s confirm this:</p>
+
+<p><code>plain
+mysql&gt; show tables;
++---------------+
+| Tables_in_vip |
++---------------+
+| users         |
++---------------+
+1 row in set (0.00 sec)
+</code></p>
+
+<p>Next, I made some users:</p>
+
+<p>``` plain
+mysql> insert into users values (&lsquo;root&rsquo;);
+Query OK, 1 row affected (0.04 sec)</p>
+
+<p>mysql> insert into users values (&lsquo;guest&rsquo;);
+Query OK, 1 row affected (0.00 sec)</p>
+
+<p>mysql> select * from users;
++&mdash;&mdash;&mdash;&ndash;+
+| name  |
++&mdash;&mdash;&mdash;&ndash;+
+| root  |
+| guest |
++&mdash;&mdash;&mdash;&ndash;+
+2 rows in set (0.00 sec)
+```</p>
+
+<p>Let&rsquo;s see the DB in action by integrating it with some PHP!</p>
+
+<h2>Installing PHP</h2>
+
+<p>Installing PHP on CentOS can be done with the following command: <code>yum install php php-mysql</code></p>
+
+<p>The next step is to write some PHP code to connect to the DB. But this is not Debian, so nothing just works! There is the pesky SELinux to take into account, and it&rsquo;s not letting Apache to reach the MySQL DB. Use <strong>getsebool</strong> to see the boolean values for the web server:</p>
+
+<p><code>plain
+getsebool -a | grep httpd
+httpd_anon_write --&gt; off
+httpd_builtin_scripting --&gt; on
+httpd_can_check_spam --&gt; off
+httpd_can_connect_ftp --&gt; off
+httpd_can_connect_ldap --&gt; off
+httpd_can_connect_mythtv --&gt; off
+httpd_can_connect_zabbix --&gt; off
+httpd_can_network_connect --&gt; off
+httpd_can_network_connect_cobbler --&gt; off
+httpd_can_network_connect_db --&gt; off
+httpd_can_network_memcache --&gt; off
+httpd_can_network_relay --&gt; off
+httpd_can_sendmail --&gt; off
+httpd_dbus_avahi --&gt; off
+httpd_dbus_sssd --&gt; off
+httpd_dontaudit_search_dirs --&gt; off
+httpd_enable_cgi --&gt; on
+httpd_enable_ftp_server --&gt; off
+httpd_enable_homedirs --&gt; off
+httpd_execmem --&gt; off
+httpd_graceful_shutdown --&gt; on
+httpd_manage_ipa --&gt; off
+httpd_mod_auth_ntlm_winbind --&gt; off
+httpd_mod_auth_pam --&gt; off
+httpd_read_user_content --&gt; off
+httpd_run_ipa --&gt; off
+httpd_run_preupgrade --&gt; off
+httpd_run_stickshift --&gt; off
+httpd_serve_cobbler_files --&gt; off
+httpd_setrlimit --&gt; off
+httpd_ssi_exec --&gt; off
+httpd_sys_script_anon_write --&gt; off
+httpd_tmp_exec --&gt; off
+httpd_tty_comm --&gt; off
+httpd_unified --&gt; off
+httpd_use_cifs --&gt; off
+httpd_use_fusefs --&gt; off
+httpd_use_gpg --&gt; off
+httpd_use_nfs --&gt; off
+httpd_use_openstack --&gt; off
+httpd_use_sasl --&gt; off
+httpd_verify_dns --&gt; off
+</code></p>
+
+<p>As you can see, by default Apache is very limited in what it can do. Let&rsquo;s change that and allow it to connect to the DB server, and make the change persist across reboots:</p>
+
+<p><code>plain
+setsebool -P httpd_can_network_connect_db 1
+</code></p>
+
+<p>If you check again, you will see that the <code>httpd_can_network_connect_db</code> boolean is now set to on. I&rsquo;ve used the code from the <a href="http://php.net/manual/en/function.mysqli-connect.php">PHP mysqli_connect() documentation</a> to check the connection status, and finally, it went from failure to success.</p>
+
+<p>``` php</p>
+
+<p>&lt;?php
+$link = mysqli_connect(&ldquo;127.0.0.1&rdquo;, &ldquo;my_user&rdquo;, &ldquo;my_password&rdquo;, &ldquo;my_db&rdquo;);</p>
+
+<p>if (!$link) {</p>
+
+<pre><code>echo "Error: Unable to connect to MySQL." . PHP_EOL;
+echo "Debugging errno: " . mysqli_connect_errno() . PHP_EOL;
+echo "Debugging error: " . mysqli_connect_error() . PHP_EOL;
+exit;
+</code></pre>
+
+<p>}</p>
+
+<p>echo &ldquo;Success: A proper connection to MySQL was made! The my_db database is great.&rdquo; . PHP_EOL;
+echo &ldquo;Host information: &rdquo; . mysqli_get_host_info($link) . PHP_EOL;</p>
+
+<p>mysqli_close($link);
+?>
+```</p>
+
+<p>Next, I made a really basic, vulnerable page just to see if things are working. I placed the following PHP file in my web server directory:</p>
+
+<p>``` php</p>
+
+<p><html></p>
+
+<p><form action="reallyproform.php" method="post">
+   <p>Enter a name in this box to see if you know anyone in the VIP area: <input type="text" name="username" /></p>
+   <input type="submit" name="submit" value="Submit" />
+</form></p>
+
+<p></body></p>
+
+<p></html></p>
+
+<p>&lt;?php
+$link = mysqli_connect(&ldquo;127.0.0.1&rdquo;, &ldquo;username&rdquo;, &ldquo;password&rdquo;, &ldquo;database name&rdquo;);</p>
+
+<p>$username = $_POST[&lsquo;username&rsquo;];</p>
+
+<p>$query = &ldquo;SELECT * FROM users WHERE name = &lsquo;&rdquo;.$username.&ldquo;&rsquo;&rdquo;;
+$result = mysqli_query($link,$query);</p>
+
+<p>if(mysqli_num_rows($result)>=1)</p>
+
+<pre><code>       {
+        echo"Yes you are. Proceed";
+       }
+</code></pre>
+
+<p>else
+{
+echo &ldquo;Are you sure you&rsquo;re supposed to be here?&rdquo;;
+}</p>
+
+<p>mysqli_close($link);
+?></p>
+
+<p>```</p>
+
+<p><img class="center" src="/images/sysadmin/page.png" title="&lsquo;Sample PHP page&rsquo; &lsquo;PHP form&rsquo;" ></p>
+
+<p>If you enter a valid username, you will just get a message, but this was just an example to show a working connection between the PHP code hosted on the server and the MySQL database.</p>
+
+<h3>phpMyAdmin setup</h3>
+
+<p>Chances are, you won&rsquo;t feel an urge to always interact with your DB via the command line. The last step in this post is to install and configure phpMyAdmin in order to do all the SQL operations from a web interface.</p>
+
+<p>First, install it with the following command:</p>
+
+<p><code>plain
+yum install phpmyadmin
+</code></p>
+
+<p>Restart Apache and go to <a href="http://127.0.0.1/phpmyadmin">http://127.0.0.1/phpmyadmin</a> to see your new phpMyAdmin interface.</p>
+
+<p>``` plain
+/ You plan things that you do not even \
+| attempt because of your extreme      |
+\ caution.                             /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Getting started with Apache]]></title>
@@ -567,7 +884,7 @@ Group apache</p>
 
 <h1>e-mailed.  This address appears on some server-generated pages, such</h1>
 
-<h1>as error documents.  e.g. <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#x61;&#100;&#109;&#x69;&#x6e;&#64;&#x79;&#x6f;&#117;&#114;&#x2d;&#100;&#x6f;&#x6d;&#97;&#x69;&#110;&#46;&#99;&#111;&#109;">&#97;&#100;&#x6d;&#105;&#x6e;&#x40;&#121;&#111;&#117;&#114;&#x2d;&#100;&#111;&#x6d;&#97;&#105;&#110;&#x2e;&#99;&#x6f;&#109;</a></h1>
+<h1>as error documents.  e.g. <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x61;&#100;&#109;&#105;&#x6e;&#x40;&#121;&#111;&#117;&#114;&#x2d;&#100;&#x6f;&#x6d;&#97;&#105;&#x6e;&#x2e;&#99;&#111;&#109;">&#97;&#x64;&#109;&#x69;&#x6e;&#64;&#x79;&#111;&#x75;&#114;&#x2d;&#x64;&#111;&#x6d;&#x61;&#x69;&#110;&#x2e;&#x63;&#111;&#109;</a></h1>
 
 <p>#
 ServerAdmin root@localhost</p>
@@ -1561,58 +1878,6 @@ chgrp -R ftpgroup /home/ftpusers
 <p>Cookie:</p>
 
 <blockquote><p>You don&rsquo;t become a failure until you&rsquo;re satisfied with being one.</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Touring the Linux directories]]></title>
-    <link href="http://chousensha.github.io/blog/2014/05/28/touring-the-linux-directories/"/>
-    <updated>2014-05-28T14:58:52-04:00</updated>
-    <id>http://chousensha.github.io/blog/2014/05/28/touring-the-linux-directories</id>
-    <content type="html"><![CDATA[<p>The Linux directory tree can be a bit daunting, to say the least, for those coming from Windows backgrounds and accustomed to visiting only Documents and Program Files directories. So I thought about summarizing the important directories in the filesystem hierarchy. Here it goes.</p>
-
-<!-- more -->
-
-
-<p><strong>/</strong> This is the root directory, the starting point for the filesystem tree. This is not the same as the root user&rsquo;s home directory, which is /root. Only the root user has write privileges inside this directory.</p>
-
-<p><strong>/boot</strong> Contains static files needed for booting. The boot loader, the initial RAM disk image and the Linux kernel are among the most important things you&rsquo;ll find here.</p>
-
-<p><strong>/bin</strong> Binaries (executables) for the common utilities that are used by all users on the system (such as ls, grep, shells etc.) are located here. The programs stored here need to be available in single user mode.</p>
-
-<p><strong>/dev</strong> Device files associated with physical hardware are found here. There are some virtual devices here that don&rsquo;t correspond to physical devices, like /dev/random, that creates random numbers, and the (in)famous black hole, /dev/null.</p>
-
-<p><strong>/etc</strong> In here there are system-wide configuration files for all programs. Scripts for starting / stopping services are also found here. This is a very important directory, since the configuration of the entire system depends on it. That&rsquo;s why it should be backed up on a regular basis, to save all the configuration details in case something bad might happen that requires re-installation. The configuration files are text files that can be edited manually.</p>
-
-<p><strong>/home</strong> The home directories for all users reside here. Every user keeps his data and user defined configuration files here. Users have supreme power and privileges inside their home directory.</p>
-
-<p><strong>/lib</strong> Here you can find the shared libraries (the equivalents of Windows DLLs) required by the core system binaries. The /modules subdirectory contains kernel modules (drivers that can be loaded and unloaded as needed.</p>
-
-<p><strong>/media</strong> Mount points for removable media, such as CDs, DVDs, USBs, are found in this directory.</p>
-
-<p><strong>/mnt</strong> This is a generic mount point for mounting temporary filesystems.</p>
-
-<p><strong>/opt</strong> This directory holds optional software packages and third party applications that aren&rsquo;t found in a default Linux installation, such as commercial software.</p>
-
-<p><strong>/proc</strong> This is a pseudo filesystem that contains information about the system resources and running processes.</p>
-
-<p><strong>/root</strong> This is the home directory for the root user.</p>
-
-<p><strong>/sbin</strong> Here you can find system binaries that are used for system maintenance and administrative tasks, like ifconfig, fdisk etc.</p>
-
-<p><strong>/tmp</strong> In here you can find temporary files that are normally deleted when the system restarts. Applications may store here some files needed for their operation, that can get deleted on the fly by utilities such as cron jobs when they are no longer required.</p>
-
-<p><strong>/lost+found</strong> In case of a system crash, the system will do a filesystem check at the next boot, attempting to recover files that got corrupted during the crash. These files will be placed here. Note that there is a high change the files aren&rsquo;t completely recovered.</p>
-
-<p><strong>/usr</strong> Non critical user binaries are placed here, along with their documentation and libraries. This is the largest directory on a Linux system. In the /usr/local directory you can find locally compiled software. The /usr/src directory holds kernel source files and headers.</p>
-
-<p><strong>/var</strong> This directory holds variable files that are expected to grow in size. Various types of files can be found here, such as log files, databases, mail, print queues, lock files and other runtime files.</p>
-
-<p><strong>/srv</strong> Contains data for services provided by servers.</p>
-
-<p>And the cookie:</p>
-
-<blockquote><p>Try to have as good a life as you can under the circumstances.</p></blockquote>
 ]]></content>
   </entry>
   
