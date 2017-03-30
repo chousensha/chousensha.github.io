@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-02-25T04:13:08-05:00</updated>
+  <updated>2017-03-30T09:12:19-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,210 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Using Git for code deployment]]></title>
+    <link href="http://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment/"/>
+    <updated>2017-03-30T07:09:46-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment</id>
+    <content type="html"><![CDATA[<p>Imagine you have a local server where you work on developing the code for a web application. After doing your magic, you want to upload it to the web server so the rest of the world can access your shiny new web app. To do that, you have to place your code on another server, which serves as the production environment. Moreover, when making changes to your code, you only want to update the modified files, not everything.</p>
+
+<!-- more -->
+
+
+<p>You could keep track of what files have been changed on your dev server, and then manually transfer them to the web server in production. Now that we have established how much time and sanity you would lose, especially with a big app, let&rsquo;s see how Git can make this kind of code deployment not only possible, but also smooth and efficient.</p>
+
+<p>I will be using the root account for this demo, which is of course a bad idea in a live environment, so keep that in mind =D</p>
+
+<p>On the server side, say we have a folder named Prod. Here we will push the code for a website, and then we&rsquo;ll transfer it to the web directory.</p>
+
+<p>First, initialize a bare repository inside the Prod folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git init --bare
+</span><span class='line'>Initialized empty Git repository in /root/Prod/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For better security, we&rsquo;ll keep the git repository outside the web root directory. To automatically update the code, we&rsquo;ll use a git hook, which is a script that runs when a certain event occurs. In this case, we&rsquo;ll create a <code>post-receive</code> hook, which runs on a remote repository after a git push</p>
+
+<p>In the hooks directory, I created a hook called post-receive, with the following code in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/bin/sh
+</span><span class='line'>GIT_WORK_TREE=/var/www/html/myweb/site git checkout -f # path to the web root, it has to be created beforehand</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looking inside the hooks directory, you will see the samples are executable. We also have to make ours executable, so use <code>chmod +x</code></p>
+
+<p>With that, the production server setup is complete. On the local development server, make a repository and add some files that you want to end up in production:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@pwnbox:~/Testing/Dev#git add .
+</span><span class='line'>root@pwnbox:~/Testing/Dev#git status
+</span><span class='line'>On branch master
+</span><span class='line'>
+</span><span class='line'>Initial commit
+</span><span class='line'>
+</span><span class='line'>Changes to be committed:
+</span><span class='line'>  (use "git rm --cached &lt;file&gt;..." to unstage)
+</span><span class='line'>
+</span><span class='line'>  new file:   index.html
+</span><span class='line'>  new file:   updates.html
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now add a remote, which will point to the production repository:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git remote add production root@192.168.217.131:Prod</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Make a commit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git commit -m '1st commit'
+</span><span class='line'>[master (root-commit) bac80ea] 1st commit
+</span><span class='line'> 2 files changed, 2 insertions(+)
+</span><span class='line'> create mode 100644 index.html
+</span><span class='line'> create mode 100644 updates.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now push the changes to production &mdash; note the use of the <a href="https://www.git-scm.com/book/tr/v2/Git-Internals-The-Refspec">refspec</a>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git push production +master:refs/heads/master
+</span><span class='line'>root@192.168.217.131's password: 
+</span><span class='line'>Counting objects: 4, done.
+</span><span class='line'>Compressing objects: 100% (2/2), done.
+</span><span class='line'>Writing objects: 100% (4/4), 331 bytes | 0 bytes/s, done.
+</span><span class='line'>Total 4 (delta 0), reused 0 (delta 0)
+</span><span class='line'>To 192.168.217.131:Prod
+</span><span class='line'> * [new branch]      master -&gt; master</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see if it worked! On my production server:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/git1.png" title="Code updated" alt="Code was pushed to web server"></p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/git2.png" title="Code updated" alt="Code was pushed to web server"></p>
+
+<p>It did work! Now let&rsquo;s update a file, and only push this file which has been modified. After making the modifications, look at the current status:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git status
+</span><span class='line'>On branch master
+</span><span class='line'>Changes not staged for commit:
+</span><span class='line'>  (use "git add &lt;file&gt;..." to update what will be committed)
+</span><span class='line'>  (use "git checkout -- &lt;file&gt;..." to discard changes in working directory)
+</span><span class='line'>
+</span><span class='line'>  modified:   updates.html
+</span><span class='line'>
+</span><span class='line'>no changes added to commit (use "git add" and/or "git commit -a")</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Commit the modified file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git commit -a -m 'Update to 1 file'</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now push to production and also set the remote branch so next time you can do it with a simple <code>git push production</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git push --set-upstream production master
+</span><span class='line'>root@192.168.217.131's password: 
+</span><span class='line'>Counting objects: 3, done.
+</span><span class='line'>Compressing objects: 100% (3/3), done.
+</span><span class='line'>Writing objects: 100% (3/3), 345 bytes | 0 bytes/s, done.
+</span><span class='line'>Total 3 (delta 0), reused 0 (delta 0)
+</span><span class='line'>To 192.168.217.131:Prod
+</span><span class='line'>   bac80ea..6fcdb86  master -&gt; master
+</span><span class='line'>Branch master set up to track remote branch master from production.</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/git3.png" title="Changed file uploaded" alt="The modified file was successfully updated"></p>
+
+<p>And to confirm that on the production environment, only the modified file was updated, but the unchanged one remained the same:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost site]# ls -la
+</span><span class='line'>total 8
+</span><span class='line'>drwxr-xr-x. 2 root root 42 Mar 30 14:03 .
+</span><span class='line'>drwxr-xr-x. 3 root root 76 Mar 30 13:30 ..
+</span><span class='line'>-rw-r--r--. 1 root root 26 Mar 30 13:21 index.html
+</span><span class='line'>-rw-r--r--. 1 root root 71 Mar 30 14:03 updates.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It might not look like much for the 2 small files I have here, but in a huge code environment, you will feel the difference!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Your boss climbed the corporate ladder, \
+</span><span class='line'>\ wrong by wrong.                         /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Setting up MySQL and PHP on Apache]]></title>
@@ -16552,104 +16756,6 @@ supported for such classes.</p></blockquote>
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||
 </span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Cloning Octopress blog]]></title>
-    <link href="http://chousensha.github.io/blog/2015/11/26/cloning-octopress-blog/"/>
-    <updated>2015-11-26T11:16:32-05:00</updated>
-    <id>http://chousensha.github.io/blog/2015/11/26/cloning-octopress-blog</id>
-    <content type="html"><![CDATA[<p>I&rsquo;ve recently had some problems with Octopress breaking on my old Kali 1.0 box. And since the Kali 1.0 reached its end of life, figured this might be a good time to jump ship and install the 2.0 version, and set up a fresh Octopress there. So in this post I will quickly overview the steps needed to clone an already existing Octopress blog on a new machine and resume blogging from there.</p>
-
-<!-- more -->
-
-
-<h4>clone the source branch repository</h4>
-
-<p>git clone -b source <a href="https://github.com/chousensha/chousensha.github.io.git">https://github.com/chousensha/chousensha.github.io.git</a> octopress</p>
-
-<p>cd octopress</p>
-
-<h4>clone master branch to _deploy</h4>
-
-<p>git clone <a href="https://github.com/chousensha/chousensha.github.io.git">https://github.com/chousensha/chousensha.github.io.git</a> _deploy</p>
-
-<p>The <code>source</code> branch contains the source of your blog, while the content that you generate is in the <code>master</code> branch.</p>
-
-<p>Before proceeding with installing dependencies, I followed the instructions on <a href="http://octopress.org/docs/setup/">http://octopress.org/docs/setup/</a> to install rvm, Ruby 1.9.3 and ExecJs:</p>
-
-<h4>install rvm</h4>
-
-<p>command curl -sSL <a href="https://rvm.io/mpapis.asc">https://rvm.io/mpapis.asc</a> | gpg2 &mdash;import &ndash;
-curl -L <a href="https://get.rvm.io">https://get.rvm.io</a> | bash -s stable &mdash;ruby</p>
-
-<h4>run below to be able to use rvm in the shell windows, and add it to your shell rc file or you will need to always run it before using rvm</h4>
-
-<p>source /usr/local/rvm/scripts/rvm</p>
-
-<h4>install Ruby 1.9.3</h4>
-
-<p>rvm install 1.9.3</p>
-
-<p>You will get a message that this version of Ruby is no longer maintained, but I had problems with Ruby 2~ so keeping this for Octopress.</p>
-
-<h4>use Ruby 1.9.3</h4>
-
-<p>rvm use 1.9.3</p>
-
-<h4>update the rubygems to the latest available</h4>
-
-<p>rvm rubygems latest</p>
-
-<h4>optional: check that your Ruby version is the right one</h4>
-
-<p>ruby &mdash;version</p>
-
-<h4>install JS runtime for Ruby</h4>
-
-<p>gem install execjs</p>
-
-<h4>now install dependencies</h4>
-
-<p>gem install bundler
-bundle install</p>
-
-<h4>setup github pages</h4>
-
-<p>bundle exec rake setup_github_pages</p>
-
-<p>And you&rsquo;re good to go!</p>
-
-<p>Note for <em>zsh</em> users: because of the globbing of <em>zsh</em>, you will need to add <code>alias rake=&ldquo;noglob rake&rdquo;</code> to your .zshrc file or you will get a no matches found error. Or you can quote the arguments given to rake: <code>rake &ldquo;new_post[Whatever]&rdquo;</code></p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
-</span><span class='line'>/ Few things are harder to put up with  \
-</span><span class='line'>| than the annoyance of a good example. |
-</span><span class='line'>|                                       |
-</span><span class='line'>| -- "Mark Twain, Pudd'nhead Wilson's   |
-</span><span class='line'>\ Calendar"                             /
-</span><span class='line'> ---------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 ]]></content>
   </entry>

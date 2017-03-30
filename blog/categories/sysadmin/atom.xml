@@ -4,7 +4,7 @@
   <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-02-25T04:13:08-05:00</updated>
+  <updated>2017-03-30T09:12:19-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,165 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Using Git for code deployment]]></title>
+    <link href="http://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment/"/>
+    <updated>2017-03-30T07:09:46-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment</id>
+    <content type="html"><![CDATA[<p>Imagine you have a local server where you work on developing the code for a web application. After doing your magic, you want to upload it to the web server so the rest of the world can access your shiny new web app. To do that, you have to place your code on another server, which serves as the production environment. Moreover, when making changes to your code, you only want to update the modified files, not everything.</p>
+
+<!-- more -->
+
+
+<p>You could keep track of what files have been changed on your dev server, and then manually transfer them to the web server in production. Now that we have established how much time and sanity you would lose, especially with a big app, let&rsquo;s see how Git can make this kind of code deployment not only possible, but also smooth and efficient.</p>
+
+<p>I will be using the root account for this demo, which is of course a bad idea in a live environment, so keep that in mind =D</p>
+
+<p>On the server side, say we have a folder named Prod. Here we will push the code for a website, and then we&rsquo;ll transfer it to the web directory.</p>
+
+<p>First, initialize a bare repository inside the Prod folder:</p>
+
+<p><code>plain
+git init --bare
+Initialized empty Git repository in /root/Prod/
+</code></p>
+
+<p>For better security, we&rsquo;ll keep the git repository outside the web root directory. To automatically update the code, we&rsquo;ll use a git hook, which is a script that runs when a certain event occurs. In this case, we&rsquo;ll create a <code>post-receive</code> hook, which runs on a remote repository after a git push</p>
+
+<p>In the hooks directory, I created a hook called post-receive, with the following code in it:</p>
+
+<p>``` plain</p>
+
+<h1>!/bin/sh</h1>
+
+<p>GIT_WORK_TREE=/var/www/html/myweb/site git checkout -f # path to the web root, it has to be created beforehand
+```</p>
+
+<p>Looking inside the hooks directory, you will see the samples are executable. We also have to make ours executable, so use <code>chmod +x</code></p>
+
+<p>With that, the production server setup is complete. On the local development server, make a repository and add some files that you want to end up in production:</p>
+
+<p>``` plain
+root@pwnbox:~/Testing/Dev#git add .
+root@pwnbox:~/Testing/Dev#git status
+On branch master</p>
+
+<p>Initial commit</p>
+
+<p>Changes to be committed:
+  (use &ldquo;git rm &mdash;cached <file>&hellip;&rdquo; to unstage)</p>
+
+<pre><code>new file:   index.html
+new file:   updates.html
+</code></pre>
+
+<p>```</p>
+
+<p>Now add a remote, which will point to the production repository:</p>
+
+<p><code>plain
+git remote add production root@192.168.217.131:Prod
+</code></p>
+
+<p>Make a commit:</p>
+
+<p><code>plain
+git commit -m '1st commit'
+[master (root-commit) bac80ea] 1st commit
+ 2 files changed, 2 insertions(+)
+ create mode 100644 index.html
+ create mode 100644 updates.html
+</code></p>
+
+<p>And now push the changes to production &mdash; note the use of the <a href="https://www.git-scm.com/book/tr/v2/Git-Internals-The-Refspec">refspec</a>:</p>
+
+<p><code>plain
+git push production +master:refs/heads/master
+root@192.168.217.131's password:
+Counting objects: 4, done.
+Compressing objects: 100% (2/2), done.
+Writing objects: 100% (4/4), 331 bytes | 0 bytes/s, done.
+Total 4 (delta 0), reused 0 (delta 0)
+To 192.168.217.131:Prod
+ * [new branch]      master -&gt; master
+</code></p>
+
+<p>Let&rsquo;s see if it worked! On my production server:</p>
+
+<p><img class="center" src="/images/sysadmin/git1.png" title="&lsquo;Code updated&rsquo; &lsquo;Code was pushed to web server&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/git2.png" title="&lsquo;Code updated&rsquo; &lsquo;Code was pushed to web server&rsquo;" ></p>
+
+<p>It did work! Now let&rsquo;s update a file, and only push this file which has been modified. After making the modifications, look at the current status:</p>
+
+<p>``` plain
+git status
+On branch master
+Changes not staged for commit:
+  (use &ldquo;git add <file>&hellip;&rdquo; to update what will be committed)
+  (use &ldquo;git checkout &mdash; <file>&hellip;&rdquo; to discard changes in working directory)</p>
+
+<pre><code>modified:   updates.html
+</code></pre>
+
+<p>no changes added to commit (use &ldquo;git add&rdquo; and/or &ldquo;git commit -a&rdquo;)
+```</p>
+
+<p>Commit the modified file:</p>
+
+<p><code>plain
+git commit -a -m 'Update to 1 file'
+</code></p>
+
+<p>And now push to production and also set the remote branch so next time you can do it with a simple <code>git push production</code>:</p>
+
+<p><code>plain
+git push --set-upstream production master
+root@192.168.217.131's password:
+Counting objects: 3, done.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 345 bytes | 0 bytes/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+To 192.168.217.131:Prod
+   bac80ea..6fcdb86  master -&gt; master
+Branch master set up to track remote branch master from production.
+</code></p>
+
+<p><img class="center" src="/images/sysadmin/git3.png" title="&lsquo;Changed file uploaded&rsquo; &lsquo;The modified file was successfully updated&rsquo;" ></p>
+
+<p>And to confirm that on the production environment, only the modified file was updated, but the unchanged one remained the same:</p>
+
+<p><code>plain
+[root@localhost site]# ls -la
+total 8
+drwxr-xr-x. 2 root root 42 Mar 30 14:03 .
+drwxr-xr-x. 3 root root 76 Mar 30 13:30 ..
+-rw-r--r--. 1 root root 26 Mar 30 13:21 index.html
+-rw-r--r--. 1 root root 71 Mar 30 14:03 updates.html
+</code></p>
+
+<p>It might not look like much for the 2 small files I have here, but in a huge code environment, you will feel the difference!</p>
+
+<p>``` plain</p>
+
+<hr />
+
+<p>/ Your boss climbed the corporate ladder, \
+\ wrong by wrong.                         /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Setting up MySQL and PHP on Apache]]></title>
@@ -884,7 +1043,7 @@ Group apache</p>
 
 <h1>e-mailed.  This address appears on some server-generated pages, such</h1>
 
-<h1>as error documents.  e.g. <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x61;&#100;&#109;&#105;&#x6e;&#x40;&#121;&#111;&#117;&#114;&#x2d;&#100;&#x6f;&#x6d;&#97;&#105;&#x6e;&#x2e;&#99;&#111;&#109;">&#97;&#x64;&#109;&#x69;&#x6e;&#64;&#x79;&#111;&#x75;&#114;&#x2d;&#x64;&#111;&#x6d;&#x61;&#x69;&#110;&#x2e;&#x63;&#111;&#109;</a></h1>
+<h1>as error documents.  e.g. <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x61;&#100;&#x6d;&#105;&#x6e;&#64;&#x79;&#x6f;&#117;&#114;&#x2d;&#100;&#111;&#109;&#97;&#105;&#110;&#46;&#x63;&#111;&#109;">&#97;&#x64;&#109;&#x69;&#110;&#64;&#x79;&#111;&#117;&#x72;&#x2d;&#100;&#111;&#x6d;&#x61;&#105;&#110;&#46;&#x63;&#111;&#x6d;</a></h1>
 
 <p>#
 ServerAdmin root@localhost</p>
@@ -1783,101 +1942,6 @@ A:    In the United States you can&rsquo;t buy anything for zlotys and in
   Poland you can&rsquo;t either, while in the U.S. you can get whatever
   you want for dollars, just as you can in Poland.
   &mdash; being told in Poland, 1987</p></blockquote>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Getting Pure-FTPd up and running]]></title>
-    <link href="http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running/"/>
-    <updated>2014-06-09T16:20:06-04:00</updated>
-    <id>http://chousensha.github.io/blog/2014/06/09/getting-pure-ftpd-up-and-running</id>
-    <content type="html"><![CDATA[<p>In this tutorial I&rsquo;ll present the steps I took to set up Pure-FTPd on a Backtrack system. There might be slight differences for other distributions, particularly where file names and locations are concerned.</p>
-
-<!-- more -->
-
-
-<p>First, a brief description of Pure-FTPd, from the official documentation:</p>
-
-<blockquote><p>Pure-FTPd is a fast, production-quality, standard-conformant FTP server, based upon
-Troll-FTPd.</p>
-
-<p>Features include chroot()ed and/or virtual chroot()ed home directories, virtual
-domains, built-in &lsquo;ls&rsquo;, anti warez system, configurable ports for passive
-downloads, FXP protocol, bandwidth throttling, ratios, LDAP / MySQL / PostgreSQL-
-based authentication, fortune files, Apache-like log files, fast standalone mode,
-text / HTML / XML real-time status report, virtual users, virtual quotas, privilege > separation, SSL/TLS and more.</p></blockquote>
-
-<p>Something to keep in mind is that, unlike other FTP servers, Pure-FTPd is controlled through command line arguments, rather than a configuration file. The latter is possible, but I won&rsquo;t cover it here.</p>
-
-<p>Before going into the commands, I want to explain the concept of <strong>virtual users</strong>. These are FTP-only accounts that don&rsquo;t have to exit on the system, since they&rsquo;re used only for FTP. They have to be associated with a system user, so a good practice which I&rsquo;ll follow here is to create a dedicated system account just for FTP. Thousands of virtual users can share the same system user, as long as they all are chrooted and they have their own home directory.</p>
-
-<p>Now, on to getting the server ready to..serve. First, create a group for FTP activities:</p>
-
-<p><code>plain
-groupadd ftpgroup
-</code></p>
-
-<p>Now, create a system user that will be used for FTP only:</p>
-
-<p><code>plain
-useradd -g ftpgroup -d /dev/null -s /etc ftpuser
-</code></p>
-
-<p>The name of the user is ftpuser. The -g flag associates it with the previously created group. Since I don&rsquo;t want the user to have a home directory or a login shell for security reasons, the -d option nukes the home directory by assigning it to /dev/null, and -s option sets /etc as a  fake shell.</p>
-
-<p>Next, make a directory for FTP users:</p>
-
-<p><code>plain
-mkdir /home/ftpusers
-</code></p>
-
-<p>Now we want to create our first virtual user. First, make a home directory for that user (note that there is a switch to automate this, but I use the manual approach here):</p>
-
-<p><code>plain
-mkdir /home/ftpusers/testuser
-</code></p>
-
-<p>The <strong>pure-pw</strong> utility is what we&rsquo;ll use for managing virtual users. We could manually edit files instead, but who would want that when there&rsquo;s a nice, clean way?</p>
-
-<p><code>plain
-pure-pw useradd testuser -u ftpuser -d /home/ftpusers/testuser
-</code></p>
-
-<p>This creates a virtual user named testuser, with the same UID as ftpuser, and that is chrooted to its home directory.</p>
-
-<p>Next step is to commit all the virtual users changes to a PureDB file. Without committing changes to the database, the accounts won&rsquo;t be activated, and unusable.</p>
-
-<p><code>plain
-pure-pw mkdb
-</code></p>
-
-<p>We then have to set up some symbolic links to add PureDB to the authentication methods:</p>
-
-<p><code>plain
-ln -s /etc/pure-ftpd/pureftpd.passwd /etc/pureftpd.passwd
-ln -s /etc/pure-ftpd/pureftpd.pdb /etc/pureftpd.pdb
-ln -s /etc/pure-ftpd/conf/PureDB /etc/pure-ftpd/auth/PureDB
-</code></p>
-
-<p>If you don&rsquo;t need Unix and PAM authentication, you can do the following:</p>
-
-<p><code>plain
-echo no &gt; /etc/pure-ftpd/conf/UnixAuthentication
-echo no &gt; /etc/pure-ftpd/conf/PAMAuthentication
-</code></p>
-
-<p>Lastly, change the permissions of /home/ftpusers and its subdirectories to have ftpuser as owner and ftpgroup as group:</p>
-
-<p><code>plain
-chown -R ftpuser /home/ftpusers
-chgrp -R ftpgroup /home/ftpusers
-</code></p>
-
-<p>From here on there are a lot of options which you can use to customize your FTP server to suit your needs. As always, a good place to start looking for more advanced options is in the man pages and official documentation.</p>
-
-<p>Cookie:</p>
-
-<blockquote><p>You don&rsquo;t become a failure until you&rsquo;re satisfied with being one.</p></blockquote>
 ]]></content>
   </entry>
   
