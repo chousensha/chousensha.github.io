@@ -4,7 +4,7 @@
   <title><![CDATA[Category: python | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/python/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-03-30T09:12:19-04:00</updated>
+  <updated>2017-04-03T06:18:15-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,604 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Remote task automation with Fabric]]></title>
+    <link href="http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/"/>
+    <updated>2017-04-03T03:01:29-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric</id>
+    <content type="html"><![CDATA[<p>Today I will go over the use of <a href="http://docs.fabfile.org/en/1.13/">Fabric</a>, a Python library and CLI tool for executing local / remote tasks via SSH.</p>
+
+<p><strong>Requirements</strong>:</p>
+
+<ul>
+<li>Python 2.5 or 2.7</li>
+<li>Paramiko</li>
+<li>SSH</li>
+</ul>
+
+
+<p><strong>Features at a glance</strong>:</p>
+
+<ul>
+<li>run local or remote shell commands (also with the sudo option)</li>
+<li>upload / download files</li>
+<li>prompt for input</li>
+<li>run Python functions</li>
+<li>abort execution when encountering errors by default, but also allow for error handling</li>
+</ul>
+
+
+<p>Install Fabric with <code>pip install fabric</code></p>
+
+<!-- more -->
+
+
+<h2>Usage</h2>
+
+<p>The way Fabric works is by creating a file named <code>fabfile.py</code>, containing some functions, and then using the <strong>fab</strong> CLI tool to run them.</p>
+
+<p>Let&rsquo;s look at the options available with the <strong>fab</strong> tool:</p>
+
+<p>``` plain
+fab &mdash;help
+Usage: fab [options] <command>[:arg1,arg2=val2,host=foo,hosts=&lsquo;h1;h2&rsquo;,&hellip;] &hellip;</p>
+
+<p>Options:
+  -h, &mdash;help            show this help message and exit
+  -d NAME, &mdash;display=NAME</p>
+
+<pre><code>                    print detailed info about command NAME
+</code></pre>
+
+<p>  -F FORMAT, &mdash;list-format=FORMAT</p>
+
+<pre><code>                    formats --list, choices: short, normal, nested
+</code></pre>
+
+<p>  -I, &mdash;initial-password-prompt</p>
+
+<pre><code>                    Force password prompt up-front
+</code></pre>
+
+<p>  &mdash;initial-sudo-password-prompt</p>
+
+<pre><code>                    Force sudo password prompt up-front
+</code></pre>
+
+<p>  -l, &mdash;list            print list of possible commands and exit
+  &mdash;set=KEY=VALUE,&hellip;   comma separated KEY=VALUE pairs to set Fab env vars
+  &mdash;shortlist           alias for -F short &mdash;list
+  -V, &mdash;version         show program&rsquo;s version number and exit
+  -a, &mdash;no_agent        don&rsquo;t use the running SSH agent
+  -A, &mdash;forward-agent   forward local agent to remote end
+  &mdash;abort-on-prompts    abort instead of prompting (for password, host, etc)
+  -c PATH, &mdash;config=PATH</p>
+
+<pre><code>                    specify location of config file to use
+</code></pre>
+
+<p>  &mdash;colorize-errors     Color error output
+  -D, &mdash;disable-known-hosts</p>
+
+<pre><code>                    do not load user known_hosts file
+</code></pre>
+
+<p>  -e, &mdash;eagerly-disconnect</p>
+
+<pre><code>                    disconnect from hosts as soon as possible
+</code></pre>
+
+<p>  -f PATH, &mdash;fabfile=PATH</p>
+
+<pre><code>                    python module file to import, e.g. '../other.py'
+</code></pre>
+
+<p>  -g HOST, &mdash;gateway=HOST</p>
+
+<pre><code>                    gateway host to connect through
+</code></pre>
+
+<p>  &mdash;gss-auth            Use GSS-API authentication
+  &mdash;gss-deleg           Delegate GSS-API client credentials or not
+  &mdash;gss-kex             Perform GSS-API Key Exchange and user authentication
+  &mdash;hide=LEVELS         comma-separated list of output levels to hide
+  -H HOSTS, &mdash;hosts=HOSTS</p>
+
+<pre><code>                    comma-separated list of hosts to operate on
+</code></pre>
+
+<p>  -i PATH               path to SSH private key file. May be repeated.
+  -k, &mdash;no-keys         don&rsquo;t load private key files from ~/.ssh/
+  &mdash;keepalive=N         enables a keepalive every N seconds
+  &mdash;linewise            print line-by-line instead of byte-by-byte
+  -n M, &mdash;connection-attempts=M</p>
+
+<pre><code>                    make M attempts to connect before giving up
+</code></pre>
+
+<p>  &mdash;no-pty              do not use pseudo-terminal in run/sudo
+  -p PASSWORD, &mdash;password=PASSWORD</p>
+
+<pre><code>                    password for use with authentication and/or sudo
+</code></pre>
+
+<p>  -P, &mdash;parallel        default to parallel execution method
+  &mdash;port=PORT           SSH connection port
+  -r, &mdash;reject-unknown-hosts</p>
+
+<pre><code>                    reject unknown hosts
+</code></pre>
+
+<p>  &mdash;sudo-password=SUDO_PASSWORD</p>
+
+<pre><code>                    password for use with sudo only
+</code></pre>
+
+<p>  &mdash;system-known-hosts=SYSTEM_KNOWN_HOSTS</p>
+
+<pre><code>                    load system known_hosts file before reading user
+                    known_hosts
+</code></pre>
+
+<p>  -R ROLES, &mdash;roles=ROLES</p>
+
+<pre><code>                    comma-separated list of roles to operate on
+</code></pre>
+
+<p>  -s SHELL, &mdash;shell=SHELL</p>
+
+<pre><code>                    specify a new shell, defaults to '/bin/bash -l -c'
+</code></pre>
+
+<p>  &mdash;show=LEVELS         comma-separated list of output levels to show
+  &mdash;skip-bad-hosts      skip over hosts that can&rsquo;t be reached
+  &mdash;skip-unknown-tasks  skip over unknown tasks
+  &mdash;ssh-config-path=PATH</p>
+
+<pre><code>                    Path to SSH config file
+</code></pre>
+
+<p>  -t N, &mdash;timeout=N     set connection timeout to N seconds
+  -T N, &mdash;command-timeout=N</p>
+
+<pre><code>                    set remote command timeout to N seconds
+</code></pre>
+
+<p>  -u USER, &mdash;user=USER  username to use when connecting to remote hosts
+  -w, &mdash;warn-only       warn, instead of abort, when commands fail
+  -x HOSTS, &mdash;exclude-hosts=HOSTS</p>
+
+<pre><code>                    comma-separated list of hosts to exclude
+</code></pre>
+
+<p>  -z INT, &mdash;pool-size=INT</p>
+
+<pre><code>                    number of concurrent processes to use in parallel mode
+</code></pre>
+
+<p>```</p>
+
+<p>The <strong>fab</strong> tool can execute functions from a fabfile.py by passing the function name, like so: <code>fab func-name</code></p>
+
+<h2>Examples</h2>
+
+<p>Let&rsquo;s take a look at a couple of simple fabfiles, before making a more contrived one:</p>
+
+<h3>Run commands on the local host</h3>
+
+<p>``` python
+from fabric.api import *</p>
+
+<p>@task
+def local_info():</p>
+
+<pre><code>    local('whoami')
+</code></pre>
+
+<p>```</p>
+
+<p>Run it:</p>
+
+<p>``` plain
+fab local_info          <br/>
+[localhost] local: whoami
+root</p>
+
+<p>Done.
+```</p>
+
+<h3>Run commands on remote host &ndash; password authentication</h3>
+
+<p>Next, let&rsquo;s use SSH with a password to log in to a remote host and do something on it:</p>
+
+<p>``` python
+from fabric.api import *</p>
+
+<p>env.hosts = [&lsquo;192.168.216.128&rsquo;]
+env.user = &lsquo;root&rsquo; # default is the local user
+env.password = &lsquo;password&rsquo; # can be used both for SSH authentication and sudo</p>
+
+<p>@task
+def remote_info():</p>
+
+<pre><code>    run('uname -a')
+</code></pre>
+
+<p>```</p>
+
+<p>And the output:</p>
+
+<p>``` plain
+fab remote_info
+[192.168.216.128] Executing task &lsquo;remote_info&rsquo;
+[192.168.216.128] run: uname -a
+[192.168.216.128] out: Linux localhost.localdomain 3.10.0-514.2.2.el7.x86_64 #1 SMP Tue Dec 6 23:06:41 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+[192.168.216.128] out:</p>
+
+<p>Done.
+Disconnecting from 192.168.216.128&hellip; done.
+```</p>
+
+<h3>Run commands on remote host &ndash; key authentication</h3>
+
+<p>SSH with a password might be ok for demonstration purposes, but we will most likely want to use public key authentication. First, generate the key that we&rsquo;ll use later:</p>
+
+<p><code>plain
+ssh-keygen -t rsa -b 2048 -v
+Generating public/private rsa key pair.
+Enter file in which to save the key (/root/.ssh/id_rsa): mykey.pem
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in mykey.pem.
+Your public key has been saved in mykey.pem.pub.
+</code></p>
+
+<p>Next, copy the key to the remote host&rsquo;s <code>~/.ssh/authorized_keys</code> location:</p>
+
+<p>``` plain
+ssh-copy-id -i ~/mykey.pem.pub <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#x72;&#x6f;&#111;&#x74;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#56;&#x2e;&#x32;&#x31;&#x36;&#46;&#x31;&#50;&#56;">&#x72;&#111;&#111;&#x74;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#50;&#49;&#x36;&#46;&#x31;&#50;&#x38;</a>
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: &ldquo;/root/mykey.pem.pub&rdquo;
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
+<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#114;&#x6f;&#x6f;&#116;&#64;&#x31;&#57;&#x32;&#x2e;&#x31;&#x36;&#56;&#46;&#50;&#x31;&#x36;&#x2e;&#x31;&#50;&#56;">&#114;&#x6f;&#x6f;&#x74;&#64;&#x31;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#x31;&#54;&#x2e;&#49;&#x32;&#56;</a>&rsquo;s password:</p>
+
+<p>Number of key(s) added: 1</p>
+
+<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#114;&#x6f;&#x6f;&#x74;&#x40;&#49;&#57;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#x36;&#x2e;&#49;&#x32;&#x38;">&#x72;&#x6f;&#x6f;&#116;&#64;&#x31;&#57;&#x32;&#46;&#49;&#54;&#x38;&#46;&#x32;&#49;&#x36;&#x2e;&#49;&#50;&#56;</a>&rsquo;&rdquo;
+and check to make sure that only the key(s) you wanted were added.
+```</p>
+
+<p>Make the .pem key read-only and then try logging in by passing it to the ssh -i option:</p>
+
+<p><code>plain
+chmod 400 mykey.pem
+ssh -i mykey.pem root@192.168.216.128
+Last failed login: Tue Mar 28 12:28:43 EEST 2017 from 192.168.216.1 on ssh:notty
+There were 2 failed login attempts since the last successful login.
+Last login: Tue Mar 28 11:30:19 2017 from 192.168.216.1
+[root@localhost ~]#
+</code></p>
+
+<p>Now add the key file in Fabric:</p>
+
+<p>``` python
+from fabric.api import *</p>
+
+<p>env.hosts = [&lsquo;192.168.217.131&rsquo;]
+env.user = &lsquo;root&rsquo;
+env.key_filename = &lsquo;~/.ssh/mykey.pem&rsquo;</p>
+
+<p>@task
+def remote_info():</p>
+
+<pre><code>    run('uptime')
+</code></pre>
+
+<p>```</p>
+
+<h3>Run commands on multiple hosts</h3>
+
+<p>If you want to run a command on a host, and a different command on another host, you can do so by specifying which host you want to run a command on:</p>
+
+<p>``` python
+from fabric.api import *</p>
+
+<p>env.user = &lsquo;root&rsquo;
+env.key_filename = &lsquo;~/mykey.pem&rsquo;</p>
+
+<p>@task
+def local_info():</p>
+
+<pre><code>print('This runs only on the localhost')
+</code></pre>
+
+<p>@hosts(&lsquo;192.168.216.128&rsquo;)
+@task
+def remote_info():</p>
+
+<pre><code>    print('This runs only on the remote host')
+</code></pre>
+
+<p>```</p>
+
+<p>Here is how it would look like:</p>
+
+<p>``` plain
+fab local_info remote_info
+This runs only on the localhost
+[192.168.216.128] Executing task &lsquo;remote_info&rsquo;
+This runs only on the remote host</p>
+
+<p>Done.
+```</p>
+
+<h3>Download / upload files</h3>
+
+<p>Fabric also has built-in functionality for downloading and uploading files:</p>
+
+<p>``` python
+@task
+def download():</p>
+
+<pre><code>    get('~/Desktop/ssh.sh')
+</code></pre>
+
+<p>```</p>
+
+<p>Result:</p>
+
+<p>``` plain
+fab download
+[192.168.23.128] Executing task &lsquo;download&rsquo;
+[192.168.23.128] download: path/192.168.23.128/ssh.sh &lt;&ndash; /root/Desktop/ssh.sh</p>
+
+<p>Done.
+Disconnecting from 192.168.23.128&hellip; done.
+```</p>
+
+<p>And the upload:</p>
+
+<p>``` python
+@task
+def upload():</p>
+
+<pre><code>    put('file.txt', '~/Desktop')
+</code></pre>
+
+<p>```</p>
+
+<p>Output:</p>
+
+<p>``` plain
+fab upload
+[192.168.23.128] Executing task &lsquo;upload&rsquo;
+[192.168.23.128] put: file.txt &ndash;> /root/Desktop/file.txt</p>
+
+<p>Done.
+Disconnecting from 192.168.23.128&hellip; done.
+```</p>
+
+<h3>Run sudo commands</h3>
+
+<p>We saw some examples of using the root user, but Fabric allows running sudo commands from users with lower privileges:</p>
+
+<p>``` python
+from fabric.api import *</p>
+
+<p>env.hosts = [&lsquo;192.168.217.131&rsquo;]
+env.user = &lsquo;nixhat&rsquo;</p>
+
+<p>@task
+def cfg_test():</p>
+
+<pre><code>    sudo('apachectl configtest')
+</code></pre>
+
+<p>```</p>
+
+<p>And here it is in action:</p>
+
+<p>``` plain
+fab cfg_test
+[192.168.217.131] Executing task &lsquo;cfg_test&rsquo;
+[192.168.217.131] sudo: apachectl configtest
+[192.168.217.131] Login password for &lsquo;nixhat&rsquo;:
+[192.168.217.131] out: sudo password:
+[192.168.217.131] out: AH00558: httpd: Could not reliably determine the server&rsquo;s
+ fully qualified domain name, using localhost.localdomain. Set the &lsquo;ServerName&rsquo;
+directive globally to suppress this message
+[192.168.217.131] out: Syntax OK
+[192.168.217.131] out:</p>
+
+<p>Done.
+Disconnecting from 192.168.217.131&hellip; done.
+```</p>
+
+<h3>Specifying multiple hosts with different users and passwords</h3>
+
+<p>In case you have many hosts that you would like to run commands on as different users, you can do so:</p>
+
+<p><code>python
+env.hosts = ['root@192.168.217.130', 'nixhat@192.168.216.128'] # hosts to run cmds on
+env.passwords = {'root@192.168.217.130':'password1', 'nixhat@192.168.216.128':'password2'}
+</code></p>
+
+<h3>Running tasks on predefined hosts</h3>
+
+<p>If you have tasks that you want to run on certain hosts only, you can specify that:</p>
+
+<p>``` python
+@hosts(&lsquo;host1&rsquo;, &lsquo;host2&rsquo;)
+def mytask():</p>
+
+<pre><code>run('cmd')
+</code></pre>
+
+<p>```</p>
+
+<h3>Classifying hosts into roles</h3>
+
+<p>In a large environment, you are most likely to have many hosts that fulfill some roles, such as development machines and production servers. You can organize them in the Fabric code:</p>
+
+<p>``` python
+env.roledefs = {</p>
+
+<pre><code>'production': ['prod1', 'prod2'],
+'development': ['dev1', 'dev2']
+</code></pre>
+
+<p>}
+```</p>
+
+<h3>Automating code deployment</h3>
+
+<p>In a <a href="https://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment/">previous post</a>, we used Git for updating the code on a live server from a development machine. This time, we&rsquo;ll use Fabric to automate the process!</p>
+
+<p>Besides the development and production servers we had before, we&rsquo;ll use a third computer to run the Fabric commands from. Let&rsquo;s assume this is your sysadmin machine, from which magic happens on the network. The developers made some changes to the code on the dev server, and you want to push them to production:</p>
+
+<p>``` python
+from fabric.api import *</p>
+
+<h1>script must be called fabfile.py</h1>
+
+<h1>fab -l &ndash; list available cmds</h1>
+
+<h1>fab CMDNAME &ndash; run cmd</h1>
+
+<h1>the env dictionary allows for setting different variables for customizing the configuration</h1>
+
+<p>env.colorize_errors = &lsquo;true&rsquo; # color errors in red and warnings in magenta</p>
+
+<p>env.roledefs = {</p>
+
+<pre><code>'dev': ['root@192.168.217.130:22 '],
+'prod': ['root@192.168.217.131:22'],
+}
+</code></pre>
+
+<p>env.passwords = {&lsquo;root@192.168.217.130:22&rsquo;:&lsquo;5t0rm80rn&rsquo;, &lsquo;root@192.168.217.131:22&rsquo;:&lsquo;hakubo10&rsquo;}</p>
+
+<p>@roles(&lsquo;dev&rsquo;)
+@task
+def prep():</p>
+
+<pre><code>'''
+Stage and commit new and modified files
+:return:
+'''
+with settings(warn_only=True): # continue executing even if errors were encountered
+    with cd('/root/Testing/Dev'):
+        run('git add . &amp;&amp; git commit -m "Add changes"')
+</code></pre>
+
+<p>@roles(&lsquo;dev&rsquo;)
+@task
+def push():</p>
+
+<pre><code>with cd('/root/Testing/Dev'):
+    run('git push production')
+</code></pre>
+
+<p>@roles(&lsquo;prod&rsquo;)
+@task
+def chk():</p>
+
+<pre><code>'''
+Confirm that files have been updated on the web server
+:return:
+'''
+run('ls /var/www/html/myweb/site')
+</code></pre>
+
+<p>```</p>
+
+<p>Now list the available commands:</p>
+
+<p>``` plain
+fab -l
+Available commands:</p>
+
+<pre><code>chk   Confirm that files have been updated on the web server
+prep  Stage and commit new and modified files
+push
+</code></pre>
+
+<p>```</p>
+
+<p>And run them:</p>
+
+<p>``` plain
+fab prep push chk
+[root@192.168.217.130:22] Executing task &lsquo;prep&rsquo;
+[root@192.168.217.130:22] run: git add . &amp;&amp; git commit -m &ldquo;Add changes&rdquo;
+[root@192.168.217.130:22] out: [master 5719a02] Add changes
+[root@192.168.217.130:22] out:  1 file changed, 1 insertion(+), 1 deletion(&ndash;)
+[root@192.168.217.130:22] out:</p>
+
+<p>[root@192.168.217.130:22] Executing task &lsquo;push&rsquo;
+[root@192.168.217.130:22] run: git push production
+[root@192.168.217.130:22] out: <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#114;&#x6f;&#111;&#x74;&#x40;&#x31;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#46;&#50;&#x31;&#x37;&#46;&#x31;&#x33;&#x31;">&#114;&#x6f;&#111;&#116;&#x40;&#x31;&#57;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x32;&#x31;&#55;&#46;&#x31;&#x33;&#49;</a>&rsquo;s password:
+[root@192.168.217.130:22] out: Counting objects: 3, done.
+[root@192.168.217.130:22] out: Compressing objects:  33% (1/3)
+[root@192.168.217.130:22] out: Compressing objects:  66% (2/3)
+[root@192.168.217.130:22] out: Compressing objects: 100% (3/3)
+[root@192.168.217.130:22] out: Compressing objects: 100% (3/3), done.
+[root@192.168.217.130:22] out: Writing objects:  33% (1/3)
+[root@192.168.217.130:22] out: Writing objects:  66% (2/3)
+[root@192.168.217.130:22] out: Writing objects: 100% (3/3)
+[root@192.168.217.130:22] out: Writing objects: 100% (3/3), 294 bytes | 0 bytes/
+s, done.
+[root@192.168.217.130:22] out: Total 3 (delta 2), reused 0 (delta 0)
+[root@192.168.217.130:22] out: To 192.168.217.131:Prod
+[root@192.168.217.130:22] out:    39e598d..5719a02  master &ndash;> master
+[root@192.168.217.130:22] out:</p>
+
+<p>[root@192.168.217.131:22] Executing task &lsquo;chk&rsquo;
+[root@192.168.217.131:22] run: ls /var/www/html/myweb/site
+[root@192.168.217.131:22] out: index.html  new.html  updates.html
+[root@192.168.217.131:22] out:</p>
+
+<p>Done.
+Disconnecting from <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#114;&#x6f;&#x6f;&#116;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#50;&#x31;&#55;&#x2e;&#49;&#x33;&#x30;&#46;&#46;&#46;">&#114;&#111;&#111;&#x74;&#64;&#x31;&#57;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x32;&#x31;&#55;&#46;&#49;&#51;&#x30;&#x2e;&#46;&#46;</a> done.
+Disconnecting from <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#114;&#x6f;&#111;&#x74;&#64;&#49;&#57;&#50;&#46;&#x31;&#54;&#56;&#x2e;&#x32;&#x31;&#55;&#x2e;&#49;&#x33;&#49;&#x2e;&#46;&#46;">&#x72;&#x6f;&#111;&#x74;&#x40;&#49;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#x33;&#x31;&#46;&#x2e;&#46;</a> done.
+```</p>
+
+<p>In a file with many tasks, it will get tiresome to always specify them on the command line. You can organize your code to have a function that calls other tasks, respecting the roles and settings for each. Add this to the previous code:</p>
+
+<p>``` python
+@task
+def deploy():</p>
+
+<pre><code>'''
+Execute previous tasks by taking into account the defined roles 
+:return:
+'''
+execute(prep) # on dev
+execute (push) # on dev
+execute(chk) # on prod
+</code></pre>
+
+<p>```</p>
+
+<p>Now you can run only <code>fab deploy</code> to get the same results!</p>
+
+<p>``` plain
+/ In the stairway of life, you&rsquo;d best \
+\ take the elevator.                  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Python virtualenv]]></title>
@@ -270,7 +868,7 @@ import itertools</p>
 
 <p>url = &lsquo;<a href="http://pentesteracademylab.appspot.com/lab/webapp/1">http://pentesteracademylab.appspot.com/lab/webapp/1</a>&rsquo;</p>
 
-<p>emails = [&lsquo;<a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#58;&#106;&#97;&#x63;&#x6b;&#64;&#x70;&#x65;&#110;&#116;&#101;&#x73;&#116;&#101;&#114;&#x61;&#99;&#97;&#x64;&#101;&#109;&#121;&#x2e;&#99;&#111;&#109;">&#x6a;&#97;&#99;&#107;&#64;&#112;&#101;&#110;&#x74;&#x65;&#x73;&#x74;&#x65;&#x72;&#x61;&#x63;&#x61;&#x64;&#x65;&#x6d;&#121;&#x2e;&#x63;&#x6f;&#x6d;</a>&rsquo;, \</p>
+<p>emails = [&lsquo;<a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x6a;&#97;&#x63;&#x6b;&#x40;&#112;&#x65;&#x6e;&#x74;&#101;&#x73;&#x74;&#101;&#114;&#97;&#99;&#97;&#100;&#101;&#x6d;&#x79;&#46;&#99;&#111;&#x6d;">&#x6a;&#97;&#x63;&#x6b;&#64;&#x70;&#101;&#110;&#116;&#x65;&#115;&#116;&#x65;&#x72;&#97;&#x63;&#97;&#x64;&#101;&#x6d;&#x79;&#46;&#x63;&#111;&#109;</a>&rsquo;, \</p>
 
 <pre><code>      'admin@pentesteracademy.com']
 </code></pre>
