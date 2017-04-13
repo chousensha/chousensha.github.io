@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-04-09T03:23:31-04:00</updated>
+  <updated>2017-04-13T14:03:59-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,270 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[DHCP server on CentOS]]></title>
+    <link href="http://chousensha.github.io/blog/2017/04/13/dhcp-server-on-centos/"/>
+    <updated>2017-04-13T13:59:25-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/04/13/dhcp-server-on-centos</id>
+    <content type="html"><![CDATA[<p>In this post I will continue the series on configuring various servers on the CentOS 7 distribution. Let&rsquo;s see how we can get a DHCP server up and running!</p>
+
+<!-- more -->
+
+
+<h2>Installing DHCP server</h2>
+
+<p>First, we need to intall the server component, which can be done with the <code>yum install dhcp</code> command:</p>
+
+<h1>``` plain</h1>
+
+<h1> Package                       Arch                            Version                                           Repository                     Size</h1>
+
+<p>Installing:
+ dhcp                          x86_64                          12:4.2.5-47.el7.centos                            base                          511 k</p>
+
+<h1>Transaction Summary</h1>
+
+<p>Install  1 Package</p>
+
+<p>Total download size: 511 k
+Installed size: 1.4 M
+Is this ok [y/d/N]: y
+Downloading packages:
+dhcp-4.2.5-47.el7.centos.x86_64.rpm                                                                                           | 511 kB  00:00:00   <br/>
+Running transaction check
+Running transaction test
+Transaction test succeeded
+Running transaction
+  Installing : 12:dhcp-4.2.5-47.el7.centos.x86_64                                                                                                1/1
+  Verifying  : 12:dhcp-4.2.5-47.el7.centos.x86_64                                                                                                1/1</p>
+
+<p>Installed:
+  dhcp.x86_64 12:4.2.5-47.el7.centos</p>
+
+<p>Complete!
+```</p>
+
+<p>We now have a <code>/etc/dhcp/dhcpd.conf</code> file for configuring the server. There isn&rsquo;t much in it to start with, except pointers to the <code>dhcpd.conf</code> man page and a sample config file in <code>/usr/share/doc/dhcp*/dhcpd.conf.example</code>:</p>
+
+<p>``` plain</p>
+
+<h1>dhcpd.conf</h1>
+
+<p>#</p>
+
+<h1>Sample configuration file for ISC dhcpd</h1>
+
+<p>#</p>
+
+<h1>option definitions common to all supported networks&hellip;</h1>
+
+<p>option domain-name &ldquo;example.org&rdquo;;
+option domain-name-servers ns1.example.org, ns2.example.org;</p>
+
+<p>default-lease-time 600;
+max-lease-time 7200;</p>
+
+<h1>Use this to enble / disable dynamic dns updates globally.</h1>
+
+<h1>ddns-update-style none;</h1>
+
+<h1>If this DHCP server is the official DHCP server for the local</h1>
+
+<h1>network, the authoritative directive should be uncommented.</h1>
+
+<h1>authoritative;</h1>
+
+<h1>Use this to send dhcp log messages to a different log file (you also</h1>
+
+<h1>have to hack syslog.conf to complete the redirection).</h1>
+
+<p>log-facility local7;</p>
+
+<h1>No service will be given on this subnet, but declaring it helps the</h1>
+
+<h1>DHCP server to understand the network topology.</h1>
+
+<p>subnet 10.152.187.0 netmask 255.255.255.0 {
+}</p>
+
+<h1>This is a very basic subnet declaration.</h1>
+
+<p>subnet 10.254.239.0 netmask 255.255.255.224 {
+  range 10.254.239.10 10.254.239.20;
+  option routers rtr-239-0-1.example.org, rtr-239-0-2.example.org;
+}</p>
+
+<h1>This declaration allows BOOTP clients to get dynamic addresses,</h1>
+
+<h1>which we don&rsquo;t really recommend.</h1>
+
+<p>subnet 10.254.239.32 netmask 255.255.255.224 {
+  range dynamic-bootp 10.254.239.40 10.254.239.60;
+  option broadcast-address 10.254.239.31;
+  option routers rtr-239-32-1.example.org;
+}</p>
+
+<h1>A slightly different configuration for an internal subnet.</h1>
+
+<p>subnet 10.5.5.0 netmask 255.255.255.224 {
+  range 10.5.5.26 10.5.5.30;
+  option domain-name-servers ns1.internal.example.org;
+  option domain-name &ldquo;internal.example.org&rdquo;;
+  option routers 10.5.5.1;
+  option broadcast-address 10.5.5.31;
+  default-lease-time 600;
+  max-lease-time 7200;
+}</p>
+
+<h1>Hosts which require special configuration options can be listed in</h1>
+
+<h1>host statements.   If no address is specified, the address will be</h1>
+
+<h1>allocated dynamically (if possible), but the host-specific information</h1>
+
+<h1>will still come from the host declaration.</h1>
+
+<p>host passacaglia {
+  hardware ethernet 0:0:c0:5d:bd:95;
+  filename &ldquo;vmunix.passacaglia&rdquo;;
+  server-name &ldquo;toccata.fugue.com&rdquo;;
+}</p>
+
+<h1>Fixed IP addresses can also be specified for hosts.   These addresses</h1>
+
+<h1>should not also be listed as being available for dynamic assignment.</h1>
+
+<h1>Hosts for which fixed IP addresses have been specified can boot using</h1>
+
+<h1>BOOTP or DHCP.   Hosts for which no fixed address is specified can only</h1>
+
+<h1>be booted with DHCP, unless there is an address range on the subnet</h1>
+
+<h1>to which a BOOTP client is connected which has the dynamic-bootp flag</h1>
+
+<h1>set.</h1>
+
+<p>host fantasia {
+  hardware ethernet 08:00:07:26:c0:a5;
+  fixed-address fantasia.fugue.com;
+}</p>
+
+<h1>You can declare a class of clients and then do address allocation</h1>
+
+<h1>based on that.   The example below shows a case where all clients</h1>
+
+<h1>in a certain class get addresses on the 10.17.224/24 subnet, and all</h1>
+
+<h1>other clients get addresses on the 10.0.29/24 subnet.</h1>
+
+<p>class &ldquo;foo&rdquo; {
+  match if substring (option vendor-class-identifier, 0, 4) = &ldquo;SUNW&rdquo;;
+}</p>
+
+<p>shared-network 224-29 {
+  subnet 10.17.224.0 netmask 255.255.255.0 {</p>
+
+<pre><code>option routers rtr-224.example.org;
+</code></pre>
+
+<p>  }
+  subnet 10.0.29.0 netmask 255.255.255.0 {</p>
+
+<pre><code>option routers rtr-29.example.org;
+</code></pre>
+
+<p>  }
+  pool {</p>
+
+<pre><code>allow members of "foo";
+range 10.17.224.10 10.17.224.250;
+</code></pre>
+
+<p>  }
+  pool {</p>
+
+<pre><code>deny members of "foo";
+range 10.0.29.10 10.0.29.230;
+</code></pre>
+
+<p>  }
+}
+```</p>
+
+<p>This is how the config file looks like. We&rsquo;ll use this example as a basis for making our own. Copy the example file and name it <strong>dhcpd.conf</strong> file:</p>
+
+<p><code>plain
+cp /usr/share/doc/dhcp*/dhcpd.conf.example /etc/dhcp/dhcpd.conf
+</code></p>
+
+<p>Now edit it and make changes according to your network:</p>
+
+<p>``` plain</p>
+
+<h1>option definitions common to all supported networks&hellip;</h1>
+
+<p>option domain-name &ldquo;localdomain.com&rdquo;;</p>
+
+<h1>DNS server address &ndash; look in your /etc/resolv.conf</h1>
+
+<p>option domain-name-servers 192.168.217.2;</p>
+
+<p>default-lease-time 600;
+max-lease-time 7200;</p>
+
+<h1>declare your subnet config</h1>
+
+<p>subnet 192.168.217.0 netmask 255.255.255.0 {
+  # range of IPs to serve
+  range 192.168.217.10 192.168.217.20;
+  # the address of the routers &ndash; look for the gateway address in the route -n # command (entry containing UG)
+  option routers 192.168.217.2;
+}</p>
+
+<p>host kaliclient {
+hardware ethernet 00:0c:29:22:f9:ae;
+fixed-address 192.168.217.12;
+}
+```</p>
+
+<p>Here I declared the subnet for which the server would handle addresses, and I reserved an IP address for a client. For more options, you can look at the <code>dhcpd-options</code> man page.</p>
+
+<p>Time to start the server. First, verify that the <code>/var/lib/dhcpd/dhcpd.leases</code> file exists, otherwise you will need to create an empty one before starting the server with the command <code>systemctl start dhcpd</code>. I changed my VMs connection settings to host-only, and then looked at the new IP configuration:</p>
+
+<p>``` plain</p>
+
+<h1>ifconfig on the host running the DHCP server</h1>
+
+<p>inet 192.168.217.10  netmask 255.255.255.0  broadcast 192.168.217.255</p>
+
+<h1>ifconfig on the kali client</h1>
+
+<p>inet 192.168.217.12  netmask 255.255.255.0  broadcast 192.168.217.255
+```</p>
+
+<p>Success! Our DHCP server kicked in and gave addresses to 2 machines on the network!</p>
+
+<p>``` plain
+/ F.S. Fitzgerald to Hemingway:        \
+|                                      |
+| &ldquo;Ernest, the rich are different from |
+| us.&rdquo; Hemingway:                      |
+|                                      |
+\ &ldquo;Yes. They have more money.&rdquo;         /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Setting up MySQL and PHP on Apache]]></title>
@@ -884,7 +1148,7 @@ Group apache</p>
 
 <h1>e-mailed.  This address appears on some server-generated pages, such</h1>
 
-<h1>as error documents.  e.g. <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#97;&#x64;&#109;&#105;&#x6e;&#64;&#x79;&#x6f;&#117;&#x72;&#45;&#x64;&#111;&#x6d;&#97;&#105;&#x6e;&#46;&#x63;&#x6f;&#x6d;">&#x61;&#x64;&#x6d;&#105;&#x6e;&#64;&#x79;&#x6f;&#117;&#x72;&#x2d;&#x64;&#x6f;&#x6d;&#97;&#105;&#110;&#46;&#99;&#x6f;&#109;</a></h1>
+<h1>as error documents.  e.g. <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#97;&#100;&#109;&#x69;&#110;&#x40;&#x79;&#111;&#117;&#x72;&#x2d;&#100;&#x6f;&#109;&#97;&#105;&#110;&#46;&#99;&#111;&#109;">&#x61;&#x64;&#x6d;&#105;&#x6e;&#x40;&#x79;&#111;&#x75;&#114;&#45;&#x64;&#111;&#109;&#x61;&#x69;&#x6e;&#x2e;&#99;&#x6f;&#109;</a></h1>
 
 <p>#
 ServerAdmin root@localhost</p>
@@ -3945,342 +4209,6 @@ with the space trimming, the code returns both the original and my inserted user
 <hr />
 
 <p>&lt; You will triumph over your enemy. ></p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[OverTheWire: Leviathan]]></title>
-    <link href="http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan/"/>
-    <updated>2015-07-30T10:01:22-04:00</updated>
-    <id>http://chousensha.github.io/blog/2015/07/30/overthewire-leviathan</id>
-    <content type="html"><![CDATA[<p>The next step in difficulty for the OverTheWire wargames is Leviathan. From the description:</p>
-
-<blockquote><p>This wargame doesn&rsquo;t require any knowledge about programming &ndash; just a bit of common sense and some knowledge about basic *nix commands.</p></blockquote>
-
-<p>Leviathan’s levels are called leviathan0, leviathan1, … etc. and can be accessed on <strong>leviathan.labs.overthewire.org</strong> through SSH.</p>
-
-<p>To login to the first level use:</p>
-
-<p>Username: leviathan0</p>
-
-<p>Password: leviathan0</p>
-
-<p>Data for the levels can be found in the homedirectories.</p>
-
-<!-- more -->
-
-
-<h3>Level 0 &ndash;> Level 1</h3>
-
-<p>There is no information about what you have to do for each level to progress, so you just have to look around.</p>
-
-<p>If you do a <em>ls -la</em> in the home directory, you will see an interesting hidden directory owned by leviathan1:</p>
-
-<p><code>plain
-leviathan0@melinda:~$ ls -la
-total 24
-drwxr-xr-x   3 root       root       4096 Nov 14  2014 .
-drwxr-xr-x 167 root       root       4096 Jul  9 16:27 ..
-drwxr-x---   2 leviathan1 leviathan0 4096 Jul 17 16:44 .backup
--rw-r--r--   1 root       root        220 Apr  9  2014 .bash_logout
--rw-r--r--   1 root       root       3637 Apr  9  2014 .bashrc
--rw-r--r--   1 root       root        675 Apr  9  2014 .profile
-</code></p>
-
-<p>Inside there is a bookmarks.html file with lots of links, so I tried grepping for the word password and wasn&rsquo;t disappointed:</p>
-
-<p><code>plain
-leviathan0@melinda:~/.backup$ cat bookmarks.html  | grep password
-&lt;DT&gt;&lt;A HREF="http://leviathan.labs.overthewire.org/passwordus.html | This will be fixed later, the password for leviathan1 is rioGegei8m" ADD_DATE="1155384634" LAST_CHARSET="ISO-8859-1" ID="rdf:#$2wIU71"&gt;password to leviathan1&lt;/A&gt;
-</code></p>
-
-<h3>Level 1 &ndash;> Level 2</h3>
-
-<p>There is a setuid binary in the home folder that asks for a password. Running <em>strings</em> on it didn&rsquo;t reveal much, except that it uses <em>strcmp</em>..so it compares the input it receives with something..</p>
-
-<p>I solved this by running <em>ltrace</em> on the binary. <em>ltrace</em> is a library call tracer:</p>
-
-<blockquote><p>ltrace  is  a  program  that simply runs the specified command until it
-exits.  It intercepts and records the dynamic library calls  which  are
-called  by  the  executed process and the signals which are received by
- that process.  It can also intercept and print the  system  calls  executed by the program.</p></blockquote>
-
-<p><code>plain
-leviathan1@melinda:~$ ltrace ./check
-__libc_start_main(0x804852d, 1, 0xffffd7a4, 0x80485f0 &lt;unfinished ...&gt;
-printf("password: ")                                                                        = 10
-getchar(0x8048680, 47, 0x804a000, 0x8048642password: abcd
-)                                                = 97
-getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 98
-getchar(0x8048680, 47, 0x804a000, 0x8048642)                                                = 99
-strcmp("abc", "sex")                                                                        = -1
-puts("Wrong password, Good Bye ..."Wrong password, Good Bye ...
-)                                                        = 29
-+++ exited (status 0) +++
-</code></p>
-
-<p>In the <em>ltrace</em> output you can actually see the password that your input is compared with. Give it to the program and you will get a shell as leviathan2:</p>
-
-<p><code>plain
-leviathan1@melinda:~$ ./check
-password: sex
-$ whoami
-leviathan2
-</code></p>
-
-<p>As in the previous wargame, look in <em>/etc/</em> for the password:</p>
-
-<p><code>plain
-$ cat /etc/leviathan_pass/leviathan2
-ougahZi8Ta
-</code></p>
-
-<h3>Level 2 &ndash;> Level 3</h3>
-
-<p>In this level we have another setuid binary named printfile. If you try to read the password file for the next level you just get a message that you an&rsquo;t have that file:</p>
-
-<p><code>plain
-leviathan2@melinda:~$ ./printfile /etc/leviathan_pass/leviathan3
-You cant have that file...
-</code></p>
-
-<p>Running <em>ltrace</em> again we see the <em>access</em> system call is being used:</p>
-
-<p><code>plain
-leviathan2@melinda:~$ ltrace ./printfile /etc/leviathan_pass/leviathan3   
-__libc_start_main(0x804852d, 2, 0xffffd774, 0x8048600 &lt;unfinished ...&gt;
-access("/etc/leviathan_pass/leviathan3", 4)                                                 = -1
-puts("You cant have that file..."You cant have that file...
-)                                                          = 27
-+++ exited (status 1) +++
-</code></p>
-
-<p>This is good news, because <em>access</em> is vulnerable to race conditions, as can be seen from its man page:</p>
-
-<blockquote><p>access() checks whether the calling process can access the file pathname. If pathname is a symbolic link, it is dereferenced.</p>
-
-<p>The check is done using the calling process&rsquo;s real UID and GID,  rather than the effective IDs as is done when actually attempting an operation
-(e.g., open(2)) on the file.  This allows set-user-ID programs to  easily determine the invoking user&rsquo;s authority.</p>
-
-<p>Warning: Using access() to check if a user is authorized to, for  example, open a file before actually doing so using open(2) creates a security
-hole, because the user  might  exploit  the  short  time  interval between  checking and opening the file to manipulate it. For this reason, the   > use of this system call should be avoided.</p></blockquote>
-
-<p>A more detailed description from <a href="https://www.owasp.org/index.php/File_Access_Race_Condition:_TOCTOU">OWASP</a>:</p>
-
-<blockquote><p>The window of time between when a file property is checked and when the file is used can be exploited to launch a privilege escalation attack.</p>
-
-<p>File access race conditions, known as time-of-check, time-of-use (TOCTOU) race conditions, occur when:</p>
-
-<p>The program checks a property of a file, referencing the file by name.
-The program later performs a filesystem operation using the same filename and assumes that the previously-checked property still holds.</p></blockquote>
-
-<p>The first thing I thought was to create a file and make it a symlink to the password file, but it didn&rsquo;t work. So I just made a random file for test purposes and used <em>ltrace</em> again to see what is happening when accessing it:</p>
-
-<p><code>plain
-leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/readme
-__libc_start_main(0x804852d, 2, 0xffffd784, 0x8048600 &lt;unfinished ...&gt;
-access("/tmp/baka/readme", 4)                                                               = 0
-snprintf("/bin/cat /tmp/baka/readme", 511, "/bin/cat %s", "/tmp/baka/readme")               = 25
-system("/bin/cat /tmp/baka/readme"test
- &lt;no return ...&gt;
---- SIGCHLD (Child exited) ---
-&lt;... system resumed&gt; )                                                                      = 0
-+++ exited (status 0) +++
-</code></p>
-
-<p>I have to say, I used help for this one, because it wasn&rsquo;t clear to me on how to proceed (it&rsquo;s also where I got stuck when I first attempted this wargame). If <em>access</em> returns successfully, it will <em>cat</em> the file that was passed to it (and it&rsquo;s actually <em>snprintf</em> that does the <em>cat</em>. Remember from Bandit how <em>cat</em> won&rsquo;t print files with spaces in their names, unless the spaces are escaped or the filename is surrounded by quotes. I made a new dummy file with a space in its name:</p>
-
-<p><code>plain
-leviathan2@melinda:/tmp/baka$ cat space\ file
-test
-leviathan2@melinda:/tmp/baka$ cat space file
-cat: space: No such file or directory
-cat: file: No such file or directory
-</code></p>
-
-<p>Now I ran <em>ltrace</em> again and tried to print this new file:</p>
-
-<p><code>plain
-leviathan2@melinda:~$ ltrace ./printfile /tmp/baka/space\ file
-__libc_start_main(0x804852d, 2, 0xffffd764, 0x8048600 &lt;unfinished ...&gt;
-access("/tmp/baka/space file", 4)                                                           = 0
-snprintf("/bin/cat /tmp/baka/space file", 511, "/bin/cat %s", "/tmp/baka/space file")       = 29
-system("/bin/cat /tmp/baka/space file"/bin/cat: /tmp/baka/space: No such file or directory
-/bin/cat: file: No such file or directory
- &lt;no return ...&gt;
---- SIGCHLD (Child exited) ---
-&lt;... system resumed&gt; )                                                                      = 256
-+++ exited (status 0) +++
-</code></p>
-
-<p>There is a discrepancy between <em>access</em>, which checks the path of the file, and what <em>cat</em> tries to print, two different files that don&rsquo;t exist, <em>space</em> and <em>file</em> (because the space isn&rsquo;t seen as part of the filename, but as a separator between arguments):</p>
-
-<ul>
-<li><p><em>cat</em> tries /tmp/baka/space</p></li>
-<li><p><em>cat</em> tries file</p></li>
-</ul>
-
-
-<p>This is where the symbolic link exploitation part comes in place. It didn&rsquo;t work before, but if I now create a symlink to the password file and name it <em>space</em>, it will match the first half of the file that <em>cat</em> will try to print:</p>
-
-<p><code>plain
-leviathan2@melinda:/tmp/baka$ ls -l
-total 8
--rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 12:18 readme
-lrwxrwxrwx 1 leviathan2 leviathan2 30 Jul 31 15:45 space -&gt; /etc/leviathan_pass/leviathan3
--rw-rw-r-- 1 leviathan2 leviathan2  5 Jul 31 15:01 space file
-</code></p>
-
-<p>And now I run <em>printfile</em> again:</p>
-
-<p><code>plain
-leviathan2@melinda:~$ ./printfile /tmp/baka/'space file'
-Ahdiemoo1j
-/bin/cat: file: No such file or directory
-</code></p>
-
-<p>Yay! It worked! Because <em>cat</em> first tried to print <em>space</em>, it followed the symlink with the same name and printed the password!</p>
-
-<h3>Level 3 &ndash;> Level 4</h3>
-
-<p>And another setuid binary! Running <em>strings</em> on it revealed it&rsquo;s a program that gives you a shell if you enter the right password. Along with string names such as do_stuff, nothing and morenothing xD</p>
-
-<p><em>ltrace</em> keeps helping a lot with these challenges:</p>
-
-<p><code>plain
-leviathan3@melinda:~$ ltrace ./level3
-__libc_start_main(0x80485fe, 1, 0xffffd794, 0x80486d0 &lt;unfinished ...&gt;
-strcmp("h0no33", "kakaka")                                                                  = -1
-printf("Enter the password&gt; ")                                                              = 20
-fgets(Enter the password&gt; huh
-"huh\n", 256, 0xf7fcac20)                                                             = 0xffffd58c
-strcmp("huh\n", "snlprintf\n")                                                              = -1
-puts("bzzzzzzzzap. WRONG"bzzzzzzzzap. WRONG
-)                                                                  = 19
-+++ exited (status 0) +++
-</code></p>
-
-<p>The first <em>strcmp</em> doesn&rsquo;t seem to be used for anything, but the second one is interesting. It compares the given input with..snlprintf?! There is no such function in the C library, so I assumed it&rsquo;s just a string..and:</p>
-
-<p><code>plain
-leviathan3@melinda:~$ ./level3
-Enter the password&gt; snlprintf
-[You've got shell]!
-$ whoami
-leviathan4
-$ cat /etc/leviathan_pass/leviathan4
-vuH0coox6m
-</code></p>
-
-<p>Awesome! On to the next level!</p>
-
-<h3>Level 4 &ndash;> Level 5</h3>
-
-<p>There is a hidden directory in the home folder:</p>
-
-<p><code>plain
-leviathan4@melinda:~$ ls -la
-total 24
-drwxr-xr-x   3 root root       4096 Nov 14  2014 .
-drwxr-xr-x 167 root root       4096 Jul  9 16:27 ..
--rw-r--r--   1 root root        220 Apr  9  2014 .bash_logout
--rw-r--r--   1 root root       3637 Apr  9  2014 .bashrc
--rw-r--r--   1 root root        675 Apr  9  2014 .profile
-dr-xr-x---   2 root leviathan4 4096 Nov 14  2014 .trash
-</code></p>
-
-<p>Inside there&rsquo;s a program that gives some binary output when run:</p>
-
-<p><code>plain
-leviathan4@melinda:~/.trash$ ./bin
-01010100 01101001 01110100 01101000 00110100 01100011 01101111 01101011 01100101 01101001 00001010
-</code></p>
-
-<p>Convert it to Ascii for the password: <code>Tith4cokei</code></p>
-
-<h3>Level 5 &ndash;> Level 6</h3>
-
-<p>Another binary! If you run it, it says it can&rsquo;t find a file:</p>
-
-<p><code>plain
-leviathan5@melinda:~$ ./leviathan5
-Cannot find /tmp/file.log
-</code></p>
-
-<p>This is a setuid binary, so maybe we can trick it into reading the password file for the leviathan5 user. I made a symlink to the password file with the name of the missing file, and the binary followed it right to the password:</p>
-
-<p><code>plain
-leviathan5@melinda:~$ ln -s /etc/leviathan_pass/leviathan6 /tmp/file.log
-leviathan5@melinda:~$ ./leviathan5
-UgaoFee4li
-</code></p>
-
-<h3>Level 6 &ndash;> Level 7</h3>
-
-<p>And yet another binary! This one asks for a 4-digit code:</p>
-
-<p><code>plain
-leviathan6@melinda:~$ ./leviathan6
-usage: ./leviathan6 &lt;4 digit code&gt;
-</code></p>
-
-<p>Lookint at the strings, it seems this program will give us a shell if we can find the right code. I was going to use Python again but I found a quick and easy way to bruteforce the code with a very small Bash script:</p>
-
-<p>``` bash</p>
-
-<h1>!/bin/bash</h1>
-
-<p>for i in {0000..9999}
-do
-echo &lsquo;Trying&rsquo; $i
-~/leviathan6 $i
-done
-```</p>
-
-<p>This script iterates over the range of possible codes and tries each of them as input for the leviathan6 binary:</p>
-
-<p><code>plain
-...
-Trying 7122
-Wrong
-Trying 7123
-$ whoami
-leviathan7
-$ cat /etc/leviathan_pass/leviathan7
-ahy7MaeBo9
-</code></p>
-
-<h3>Level 7 &ndash;> Level 8</h3>
-
-<p>This is the final level, as you can see from the congratulatory note:</p>
-
-<p><code>plain
-leviathan7@melinda:~$ ls
-CONGRATULATIONS
-leviathan7@melinda:~$ cat CONGRATULATIONS
-Well Done, you seem to have used a *nix system before, now try something more serious.
-(Please don't post writeups, solutions or spoilers about the games on the web. Thank you!)
-</code></p>
-
-<p>Better skip over that last line&hellip;</p>
-
-<p>``` plain</p>
-
-<hr />
-
-<p>/ Tomorrow will be cancelled due to lack \
-\ of interest.                           /</p>
 
 <hr />
 
