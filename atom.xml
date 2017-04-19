@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-04-19T07:43:14-04:00</updated>
+  <updated>2017-04-19T07:48:14-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -190,15 +190,19 @@
 </pre></td><td class='code'><pre><code class=''><span class='line'>hydra 192.168.217.135 http-form-post "/kzMb5nVYJw/index.php:key=^PASS^:invalid key" -l meh -P /usr/share/dict/words -t 10 -w 10</span></code></pre></td></tr></table></div></figure>
 
 
-<p>This looks ugly, so let me break it into pieces:
-* 192.168.217.135 = target name
-* http-form-post = the method used
-* &ldquo;/kzMb5nVYJw/index.php&rdquo; = URL
-* key=^PASS^:invalid key&#8221; = the form parameter is called key, the PASS variable will be replaced with passwords from the password file, and Hydra will see as successful a response that doesn&rsquo;t contain the string &ldquo;invalid key&rdquo;
-* -l meh = you have to specify a username for Hydra to work, even though in this case there was no user, so I put something random
-* -P /usr/share/dict/words = password File
-* -t 10 = number of Threads
-* -w 10 = timeout value</p>
+<p>This looks ugly, so let me break it into pieces:</p>
+
+<ul>
+<li><p>192.168.217.135 = target name</p></li>
+<li><p>http-form-post = the method used</p></li>
+<li><p>&ldquo;/kzMb5nVYJw/index.php&rdquo; = URL</p></li>
+<li><p>key=^PASS^:invalid key&#8221; = the form parameter is called key, the PASS variable will be replaced with passwords from the password file, and Hydra will see as successful a response that doesn&rsquo;t contain the string &ldquo;invalid key&rdquo;</p></li>
+<li><p>-l meh = you have to specify a username for Hydra to work, even though in this case there was no user, so I put something random</p></li>
+<li><p>-P /usr/share/dict/words = password File</p></li>
+<li><p>-t 10 = number of Threads</p></li>
+<li><p>-w 10 = timeout value</p></li>
+</ul>
+
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -515,11 +519,9 @@
 
 <p>I played around with the executable, tried passing arguments, but it looks like it just calls ps and nothing else. In the ps manual, I paid attention to this:</p>
 
-<blockquote><p>By default, ps selects all processes with the same effective user ID</p>
-
-<pre><code>   (euid=EUID) as the current user and associated with the same terminal
-   as the invoker.
-</code></pre></blockquote>
+<blockquote><p>By default, ps selects all processes with the same effective user ID
+(euid=EUID) as the current user and associated with the same terminal
+as the invoker.</p></blockquote>
 
 <p>So, we can see the succession for a normal ps is bash &ndash;> ps, and for the SUID binary is procwatch &ndash;> sh &ndash;> ps. Maybe we can intercept the call to ps by creating an arbitrary binary called ps and placing it in the PATH variable. And of course, we want a shell!</p>
 
