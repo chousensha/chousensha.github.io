@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-05-14T15:24:19-04:00</updated>
+  <updated>2017-05-23T12:36:17-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,254 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iptables firewall]]></title>
+    <link href="http://chousensha.github.io/blog/2017/05/23/iptables-firewall/"/>
+    <updated>2017-05-23T12:27:45-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/05/23/iptables-firewall</id>
+    <content type="html"><![CDATA[<p>iptables is a CLI tool for configuring firewall functionality in Linux. It operates on a series of tables, which on a CentOS 7 system are:</p>
+
+<!-- more -->
+
+
+<ul>
+<li><p><strong>filter</strong> &ndash; the default table used for packet filtering</p></li>
+<li><p><strong>nat</strong> &ndash; for nat</p></li>
+<li><p><strong>mangle</strong> &ndash; specialized packet alteration</p></li>
+<li><p><strong>raw</strong> &ndash; used mainly for configuring connection exemptions</p></li>
+<li><p><strong>security</strong> &ndash; Mandatory Access Control networking rules</p></li>
+</ul>
+
+
+<p>For the purpose of this post, we will be focusing on the filter table, which uses sets of rules to send (or not) packets on their merry way. These rules are called chains and they are as follows:</p>
+
+<ul>
+<li><p>INPUT &ndash; incoming connections</p></li>
+<li><p>OUTPUT &ndash; outbound connections</p></li>
+<li><p>FORWARD &ndash; packets being forwarded through the system</p></li>
+</ul>
+
+
+<p>Let&rsquo;s see the currently configured rules:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -t filter -L | grep policy
+</span><span class='line'>Chain INPUT (policy ACCEPT)
+</span><span class='line'>Chain FORWARD (policy ACCEPT)
+</span><span class='line'>Chain OUTPUT (policy ACCEPT)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, everything is set to ACCEPT. The opposite of accepting connections is DROP, where the packets are silently dropped. Let&rsquo;s see it in action. First, change the policy to drop the packets: <code>iptables -P INPUT DROP</code>. Then try to ping the machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ping 192.168.217.131
+</span><span class='line'>
+</span><span class='line'>Pinging 192.168.217.131 with 32 bytes of data:
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>
+</span><span class='line'>Ping statistics for 192.168.217.131:
+</span><span class='line'>    Packets: Sent = 4, Received = 0, Lost = 4 (100% loss),</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It is possible to also use the REJECT extension,  where packets are being dropped but the source host receives an error, thereby being notified that there may be filtering in place: <code>iptables -I INPUT -j REJECT</code>. Here the REJECT was inserted at the beginning of the INPUT chain, to ensure that it will be matched before anything else:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ping 192.168.217.131
+</span><span class='line'>
+</span><span class='line'>Pinging 192.168.217.131 with 32 bytes of data:
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>
+</span><span class='line'>Ping statistics for 192.168.217.131:
+</span><span class='line'>    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some example scenarios:</p>
+
+<h3>only allow SSH connections from specific IP</h3>
+
+<p>Let&rsquo;s assume that a computer has to be locked down, and only accept SSH connections from a certain IP:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -I INPUT -p tcp --dport 22 -s 192.168.217.137 -j ACCEPT</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With a policy of dropping packets, running the above will allow TCP connections for port 22, from the 192.168.217.137 source address, while still denying everything else.</p>
+
+<h3>traffic forwarding</h3>
+
+<p>Next, we have a machine with the IP 192.168.217.131 that we want to use to forward traffic to 192.168.217.137. How would we accomplish that?</p>
+
+<p>First, we enable forwarding in the forwarding machine&rsquo;s kernel by putting a 1 inside <code>/proc/sys/net/ipv4/ip_forward</code>. On the .137 machine, I have a netcat listener on port 8000. On the .131 box, I also have netcat listening on port 4444. All connections coming to port 4444 on this machine will be routed to port 8000 on .137. The iptables rules to make that happen are:</p>
+
+<ul>
+<li><p><code>iptables -t nat -A PREROUTING -p tcp &mdash;dport 4444 -j DNAT &mdash;to-destination 192.168.217.137:8000</code> &ndash; we operate on the nat table. PREROUTING is used for altering packets as soon as they  come  in. We append a rule to this chain, stating that for TCP packets coming to port 4444 on this host, the destination IP will be changed to 192.168.217.137, on port 8000</p></li>
+<li><p><code>iptables -t nat -A POSTROUTING -j MASQUERADE</code> &ndash; next we append to the POSTROUTING chain, that alters packets as they are about to go out, telling iptables to masquerate packets: replacing the IP of the sender to the IP of the forwarding machine</p></li>
+</ul>
+
+
+<p>Now I connect to port 4444 on 192.168.217.131 and send some random text, and checking my 192.168.217.137 listener, I see the traffic:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>c -vnlp 8000
+</span><span class='line'>listening on [any] 8000 ...
+</span><span class='line'>connect to [192.168.217.137] from (UNKNOWN) [192.168.217.131] 1859
+</span><span class='line'>dasa
+</span><span class='line'>knock kncok</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>list rules of a table</h3>
+
+<ul>
+<li><code>iptables -L -n -v</code> &ndash; display the rules of the default filter table, also printing the number of packets and bytes processed by each chain, and use numerical format for ports and addresses</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Chain INPUT (policy ACCEPT 172 packets, 21210 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>
+</span><span class='line'>Chain FORWARD (policy ACCEPT 37 packets, 1523 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>
+</span><span class='line'>Chain OUTPUT (policy ACCEPT 82 packets, 6554 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination   </span></code></pre></td></tr></table></div></figure>
+
+
+<h3>flush all the rules</h3>
+
+<ul>
+<li><code>iptables -F</code> &ndash; delete your rules and start anew</li>
+</ul>
+
+
+<h3>save rules to survive reboots</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service iptables save
+</span><span class='line'>iptables: Saving firewall rules to /etc/sysconfig/iptables:[  OK  ]</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>block specific IP</h3>
+
+<ul>
+<li><code>iptables -A INPUT -s 192.168.217.137 -j DROP</code> &ndash; packets from .137 will be dropped</li>
+</ul>
+
+
+<h3>block outgoing connections to a host or range</h3>
+
+<p>Let&rsquo;s imagine that you are tired of your users spending all their day on Twitter. First, find out Twitter&rsquo;s IPs:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>host twitter.com
+</span><span class='line'>twitter.com has address 104.244.42.65
+</span><span class='line'>twitter.com has address 104.244.42.1
+</span><span class='line'>twitter.com mail is handled by 20 alt1.aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 30 aspmx2.googlemail.com.
+</span><span class='line'>twitter.com mail is handled by 20 alt2.aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 10 aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 30 aspmx3.googlemail.com.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, do a whois lookup on the IP, looking for the CIDR range it belongs to:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>hois 104.244.42.65 | grep CIDR
+</span><span class='line'>CIDR:           104.244.40.0/21</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Block access to Twitter&rsquo;s IP range: <code>iptables -A OUTPUT -p tcp -d 66.220.144.0/20 -j DROP</code></p>
+
+<h3>log dropped packets</h3>
+
+<ul>
+<li><code>iptables -A INPUT -i eth0 -j LOG &mdash;log-prefix &ldquo;Packets dropped by firewall:&rdquo;</code> &ndash; turn on kernel logging for matching packets and prefix the log messages with some text to make them stand out</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@pwnbox:~#grep "Packets dropped by firewall:" /var/log/messages
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.154203] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=288 TOS=0x00 PREC=0x00 TTL=128 ID=20858 PROTO=UDP SPT=53 DPT=57477 LEN=268
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.158231] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=356 TOS=0x00 PREC=0x00 TTL=128 ID=20859 PROTO=UDP SPT=53 DPT=36464 LEN=336
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.162645] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=360 TOS=0x00 PREC=0x00 TTL=128 ID=20860 PROTO=UDP SPT=53 DPT=47777 LEN=340
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This post only scratched the tip of the iceberg when it comes to Linux firewalls. The key takeaway should be that iptables is a very powerful utility that can be customized to meet your specific networking needs.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>___________________________
+</span><span class='line'>&lt; You will wish you hadn't. &gt;
+</span><span class='line'> ---------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Web for Pentester]]></title>
@@ -13893,240 +14141,6 @@ available, you can even conduct web app security checks just with Nmap!</p>
 </span><span class='line'>| because you're going in the wrong  |
 </span><span class='line'>\ direction.                         /
 </span><span class='line'> ------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Slackware install guide]]></title>
-    <link href="http://chousensha.github.io/blog/2016/04/28/slackware-install-guide/"/>
-    <updated>2016-04-28T13:23:59-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/04/28/slackware-install-guide</id>
-    <content type="html"><![CDATA[<p>Ever since I got into Linux and wanting to learn more and get better at it, I always held an interest towards Slackware. Being one of the oldest distributions around, with a hardcore community and an old-school reputation, it always came in the top answers when it comes to learning Linux without fancy hand holding and the like (along with Arch). But I always liked Slackware, its name is awesome, and well, slackwarez for a slacker! So I&rsquo;ve finally set up some time to install it in a VM, and will get to work on it to deepen my Linux knowledge.</p>
-
-<p>So in this post I will list the steps I went through to install Slackware 14.1 in VMware.</p>
-
-<!-- more -->
-
-
-<p>The cool thing about this installation was that I had to do some things manually without a GUI where all you do is press next. After selecting your installation media, which was the DVD ISO for me, power up the machine and you will get some command line action!</p>
-
-<p>The first screen is for selecting which kernel to boot to</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/bootkernel.png" title="boot to kernel" alt="kernel booting"></p>
-
-<p>Select keyboard map</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/keyboard.png" title="keyboard map" alt="select key map"></p>
-
-<p>Log in as root</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/root.png" title="root login" alt="root login"></p>
-
-<h3>Partitioning</h3>
-
-<p>You have to set up partitions before beginning the installation process</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/partition.png" title="partition" alt="partitioning"></p>
-
-<p>I will use cfdisk for this. As you can see, my disk is /dev/sda and is yet yet unpartitioned, so just a big lump of free space.</p>
-
-<blockquote><p>cfdisk &ndash; display or manipulate a disk partition table</p></blockquote>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/cfdisk.png" title="cfdisk" alt="cfdisk"></p>
-
-<p>I will make 3 partitions, for swap, root and home. Select [New] to create a new partition. The MBR partitioning scheme supports up to 4 primary partitions, and if you need more than that you can make one of them an extended partition and create  logical partitions inside it. Choose [Primary] to continue</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/primary.png" title="primary partition" alt="primary partition"></p>
-
-<p>Since this will be the swap partition, I will make it a size of 512 MB.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/size.png" title="partition size" alt="swap size"></p>
-
-<p>Next I selected to place it at the beginning of the drive, for simplicity. I&rsquo;ve also read that doing so might make it faster.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/beginning.png" title="partition beginning" alt="beginning partition"></p>
-
-<p>Note how the first partition labeled sda1 was created. Next you have to choose the partition&rsquo;s type</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/type.png" title="partition type" alt="partition type"></p>
-
-<p>See how many different file systems can be created. Choose 82 for swap.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/swap.png" title="type swap" alt="swap partition"></p>
-
-<p>Next make the root and home partitions, as described above. Only difference will be that you need to make the root partition bootable</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/bootable.png" title="bootable partition" alt="root bootable"></p>
-
-<p>Now write the changes to disk. You will be asked to confirm that you want to write the data</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/write.png" title="write partitions" alt="write data"></p>
-
-<p>After it&rsquo;s done you will see a message at the bottom: &ldquo;Wrote partition table to disk&rdquo;. You can quit cfdisk now</p>
-
-<h3>Setup</h3>
-
-<p>Type setup to begin the installation setup process</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/slacksetup.png" title="slackware setup" alt="install setup"></p>
-
-<p>Choose ADDSWAP to format the swap partition that was created earlier. It will be automatically detected by the setup wizard</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/swapsetup.png" title="add swap" alt="swap setup"></p>
-
-<p>You can choose to check for bad blocks if you want, but I skipped it</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/badblocks.png" title="check bad blocks" alt="bad blocks"></p>
-
-<p>You will get a message when the swap space is configured</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/swapdone.png" title="swap conf" alt="swap conf"></p>
-
-<p>Next you have to choose the root partition, which in my case is sda2</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/sda2root.png" title="root partition" alt="root sda2"></p>
-
-<p>I selected the quick format option</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/formatroot.png" title="root format" alt="quick format"></p>
-
-<p>For the filesystem I chose ext4</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/ext4.png" title="ext4" alt="ext4"></p>
-
-<p>The last partition is the home one</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/sda3home.png" title="sda3 home" alt="home"></p>
-
-<p>After formatting and choosing its filesystem, you have to specify where you want it mounted. Type /home</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/home.png" title="mount home" alt="home"></p>
-
-<p>The setup of the partitions is now complete</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/partitionsdone.png" title="partitions complete" alt="finished partitioning"></p>
-
-<p>Next you have to choose the source media for the installation. In my case, it is the DVD</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/sourcemedia.png" title="source media" alt="source dvd"></p>
-
-<p>Let the wizard auto scan for the DVD</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/autoscan.png" title="autoscan" alt="dvd scan"></p>
-
-<p>Select the general packages that you want, I kept all except for the KDE ones, since I will be using XFCE for my GUI</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/packages.png" title="package selection" alt="install packages"></p>
-
-<p>I chose the full option for simplicity</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/full.png" title="full install" alt="full"></p>
-
-<p>After the installation process, you can create a boot stick if you want, but I skipped it</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/bootdisk.png" title="boot stick" alt="boot disk"></p>
-
-<p>The bootloader used by Slackware is LILO. I selected the simple install and the standard console</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/lilo.png" title="lilo" alt="lilo"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/lilosplash.png" title="lilo splash screen" alt="lilo console"></p>
-
-<p>Skip the extra parameters unless you know what you&rsquo;re doing</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/kernelparams.png" title="lilo extra parameters" alt="lilo parameters"></p>
-
-<p>You will next be prompted where to install they bootloader. I chose the MBR, since this is a VM dedicated to Slackware. But if this was on a dual booting system with Windows, you would want to install it on root</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/lilombr.png" title="lilo mbr" alt="lilo install"></p>
-
-<p>Choose your mouse type</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/mouse.png" title="mouse type" alt="mouse"></p>
-
-<p>The General Purpose Mouse software provides support for mouse devices in Linux virtual consoles.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/gpm.png" title="general purpose mouse" alt="gpm"></p>
-
-<p>Next is the network configuration</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/net.png" title="network" alt="net config"></p>
-
-<p>Enter your hostname and domain</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/hostname.png" title="hostname" alt="host"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/domain.png" title="domain name" alt="domain"></p>
-
-<p>For simplicity, I chose the Network Manager configuration</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/netconf.png" title="network configuration" alt="network config"></p>
-
-<p>Confirm your choices before continuing</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/netdone.png" title="network setup" alt="net setup"></p>
-
-<p>I went with the default startup services. Will add more on a need-to-use basis</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/startup.png" title="startup services" alt="startup"></p>
-
-<p>You can try custom screen fonts if you want</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/fonts.png" title="custom fonts" alt="screen fonts"></p>
-
-<p>Next is the hardware clock and timezone</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/hwclock.png" title="hardware clock" alt="clock"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/timezone.png" title="timezone" alt="timezone"></p>
-
-<p>For the GUI, I went with XFCE</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/gui.png" title="gui" alt="xfce"></p>
-
-<p>You will be asked to choose a root password next</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/pass.png" title="root password" alt="password"></p>
-
-<p>With this, the installation setup is complete</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/complete.png" title="setup complete" alt="setup finished"></p>
-
-<p>Exit the wizard and reboot your brand new Slackware machine. Hit Enter when you see the splash screen, or it will boot automatically in a couple of minutes</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/slacksplash.png" title="lilo splash screen" alt="lilo boot"></p>
-
-<h3>Booting into your system</h3>
-
-<p>Slackware doesn&rsquo;t run the GUI automatically. You can change this by modifying the default runlevel</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/textlogin.png" title="text login" alt="no gui"></p>
-
-<p>I chose to manually start the GUI so I can read the random quotes that are given at login. You can load the GUI with the <strong>startx</strong> command</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/slackware/finished.png" title="slackware" alt="slackware install"></p>
-
-<p>All done! From here you can proceed to use your new distro, or customize it to your liking</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/ You will experience a strong urge to do \
-</span><span class='line'>\ good; but it will pass.                 /
-</span><span class='line'> -----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
