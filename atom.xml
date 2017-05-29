@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-05-23T12:36:17-04:00</updated>
+  <updated>2017-05-29T05:36:11-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,665 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[dnsenum - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools/"/>
+    <updated>2017-05-29T05:32:26-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at dnsenum, one of the tools that come preinstalled on Kali for DNS information gathering.</p>
+
+<!-- more -->
+
+
+<p>Homepage: <a href="https://github.com/fwaeytens/dnsenum">https://github.com/fwaeytens/dnsenum</a></p>
+
+<h3>dnsenum description</h3>
+
+<blockquote><p>multithreaded perl script to enumerate DNS information of a domain and to discover non-contiguous ip blocks.</p>
+
+<p>OPERATIONS:</p>
+
+<p>1) Get the host&rsquo;s addresse (A record).</p>
+
+<p>2) Get the namservers (threaded).</p>
+
+<p>3) Get the MX record (threaded).</p>
+
+<p>4) Perform axfr queries on nameservers and get BIND VERSION (threaded).</p>
+
+<p>5) Get extra names and subdomains via google scraping (google query = &ldquo;allinurl: -www site:domain&rdquo;).</p>
+
+<p>6) Brute force subdomains from file, can also perform recursion on subdomain that have NS records (all threaded).</p>
+
+<p>7) Calculate C class domain network ranges and perform whois queries on them (threaded).</p>
+
+<p>8) Perform reverse lookups on netranges ( C class or/and whois netranges) (threaded).</p>
+
+<p>9) Write to domain_ips.txt file ip-blocks.</p></blockquote>
+
+<h3>dnsenum options</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dnsenum -h
+</span><span class='line'>dnsenum.pl VERSION:1.2.3
+</span><span class='line'>Usage: dnsenum.pl [Options] &lt;domain&gt;
+</span><span class='line'>[Options]:
+</span><span class='line'>Note: the brute force -f switch is obligatory.
+</span><span class='line'>GENERAL OPTIONS:
+</span><span class='line'>  --dnsserver     &lt;server&gt;
+</span><span class='line'>          Use this DNS server for A, NS and MX queries.
+</span><span class='line'>  --enum      Shortcut option equivalent to --threads 5 -s 15 -w.
+</span><span class='line'>  -h, --help      Print this help message.
+</span><span class='line'>  --noreverse     Skip the reverse lookup operations.
+</span><span class='line'>  --nocolor       Disable ANSIColor output.
+</span><span class='line'>  --private       Show and save private ips at the end of the file domain_ips.txt.
+</span><span class='line'>  --subfile &lt;file&gt;  Write all valid subdomains to this file.
+</span><span class='line'>  -t, --timeout &lt;value&gt; The tcp and udp timeout values in seconds (default: 10s).
+</span><span class='line'>  --threads &lt;value&gt; The number of threads that will perform different queries.
+</span><span class='line'>  -v, --verbose       Be verbose: show all the progress and all the error messages.
+</span><span class='line'>GOOGLE SCRAPING OPTIONS:
+</span><span class='line'>  -p, --pages &lt;value&gt;   The number of google search pages to process when scraping names,
+</span><span class='line'>          the default is 5 pages, the -s switch must be specified.
+</span><span class='line'>  -s, --scrap &lt;value&gt;   The maximum number of subdomains that will be scraped from Google (default 15).
+</span><span class='line'>BRUTE FORCE OPTIONS:
+</span><span class='line'>  -f, --file &lt;file&gt; Read subdomains from this file to perform brute force.
+</span><span class='line'>  -u, --update    &lt;a|g|r|z&gt;
+</span><span class='line'>          Update the file specified with the -f switch with valid subdomains.
+</span><span class='line'>  a (all)     Update using all results.
+</span><span class='line'>  g       Update using only google scraping results.
+</span><span class='line'>  r       Update using only reverse lookup results.
+</span><span class='line'>  z       Update using only zonetransfer results.
+</span><span class='line'>  -r, --recursion Recursion on subdomains, brute force all discovred subdomains that have an NS record.
+</span><span class='line'>WHOIS NETRANGE OPTIONS:
+</span><span class='line'>  -d, --delay &lt;value&gt;   The maximum value of seconds to wait between whois queries, the value is defined randomly, default: 3s.
+</span><span class='line'>  -w, --whois     Perform the whois queries on c class network ranges.
+</span><span class='line'>           **Warning**: this can generate very large netranges and it will take lot of time to performe reverse lookups.
+</span><span class='line'>REVERSE LOOKUP OPTIONS:
+</span><span class='line'>  -e, --exclude   &lt;regexp&gt;
+</span><span class='line'>          Exclude PTR records that match the regexp expression from reverse lookup results, useful on invalid hostnames.
+</span><span class='line'>OUTPUT OPTIONS:
+</span><span class='line'>  -o --output &lt;file&gt;    Output in XML format. Can be imported in MagicTree (www.gremwell.com)</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Fix dnsenum whois and autoloader errors</h3>
+
+<p>First, some preliminary troubleshooting information: dnsenum relies on some Perl modules that may not be already on your system. When running it with certain flags, you might see some warnings like this one: Warning: can&rsquo;t load Net::Whois::IP module, whois queries disabled. To fix it, install the module by running <code>perl -MCPAN -e shell</code> and then at the prompt: <code>install Net::Whois::IP</code>. If you try again, you might get a different error, however: Can&rsquo;t locate package AutoLoader for @net::Whois::IP::ISA at /usr/bin/dnsenum line 536. I scoured the Internet for a bit before finding a workaround: you can make it go away by adding <code>require AutoLoader;</code> to the module source code, or by removing the Autuloader reference: changing <code>@ISA = qw(Exporter AutoLoader);</code> to <code>@ISA = qw(Exporter);</code>. To find out where the module is located, use the CPAN tool:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cpan -D Net::Whois::IP
+</span><span class='line'>Loading internal null logger. Install Log::Log4perl for logging messages
+</span><span class='line'>Reading '/root/.cpan/Metadata'
+</span><span class='line'>  Database was generated on Wed, 17 May 2017 06:54:04 GMT
+</span><span class='line'>Net::Whois::IP
+</span><span class='line'>-------------------------------------------------------------------------
+</span><span class='line'>  (no description)
+</span><span class='line'>  B/BS/BSCHMITZ/Net-Whois-IP-1.19.tar.gz
+</span><span class='line'>  /usr/local/share/perl/5.24.1/Net/Whois/IP.pm
+</span><span class='line'>  Installed: 1.19
+</span><span class='line'>  CPAN:      1.19  up to date
+</span><span class='line'>  Ben Schmitz (BSCHMITZ)
+</span><span class='line'>  ben@foink.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can see the path here, now go apply the fix in the IP.pm file and the error should go away.</p>
+
+<h3>dnsenum usage</h3>
+
+<ul>
+<li>default</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dnsenum yahoo.com
+</span><span class='line'>dnsenum.pl VERSION:1.2.3
+</span><span class='line'>
+</span><span class='line'>-----   yahoo.com   -----
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Host's addresses:
+</span><span class='line'>__________________
+</span><span class='line'>
+</span><span class='line'>yahoo.com.                               5        IN    A        206.190.36.45
+</span><span class='line'>yahoo.com.                               5        IN    A        98.139.183.24
+</span><span class='line'>yahoo.com.                               5        IN    A        98.138.253.109
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Name Servers:
+</span><span class='line'>______________
+</span><span class='line'>
+</span><span class='line'>ns1.yahoo.com.                           5        IN    A        68.180.131.16
+</span><span class='line'>ns3.yahoo.com.                           5        IN    A        203.84.221.53
+</span><span class='line'>ns4.yahoo.com.                           5        IN    A        98.138.11.157
+</span><span class='line'>ns2.yahoo.com.                           5        IN    A        68.142.255.16
+</span><span class='line'>ns5.yahoo.com.                           5        IN    A        119.160.247.124
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Mail (MX) Servers:
+</span><span class='line'>___________________
+</span><span class='line'>
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.32
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.37
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        63.250.192.45
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.34
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.37
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.240
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        98.136.216.26
+</span><span class='line'>mta7.am0.yahoodns.net.                   5        IN    A        98.136.217.202
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.33
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.34
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.33
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.34
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.35
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.36
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        98.136.216.25
+</span><span class='line'>mta5.am0.yahoodns.net.                   5        IN    A        98.136.217.202
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        98.136.216.25
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.38
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.37
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        98.136.217.203
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.35
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.36
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        63.250.192.46
+</span><span class='line'>mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.37
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfers and getting Bind Versions:
+</span><span class='line'>_________________________________________________
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for yahoo.com on ns4.yahoo.com ...
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for yahoo.com on ns5.yahoo.com ...
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for yahoo.com on ns2.yahoo.com ...
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for yahoo.com on ns3.yahoo.com ...
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for yahoo.com on ns1.yahoo.com ...
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>brute force file not specified, bay.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From this output, you can see that the script performed DNS queries of the yahoo.com domain, enumerated the DNS and mail servers, and attempted zone transfers through the AXFR record type. Successful zone transfers are a misconfiguration that can have serious security impacts, because the DNS server sends its zone records to whoever requested them, thus revealing potentially sensitive information about the internal network topology, etc.</p>
+
+<ul>
+<li>with the &mdash;enum shortcut, which includes the flags: &mdash;threads 5 (5 threads), -s 15 (15 maximum subdomains to be scraped from Google), and -w (perform whois queries on class C ranges)</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dnsenum --enum kali.org
+</span><span class='line'>dnsenum.pl VERSION:1.2.3
+</span><span class='line'>
+</span><span class='line'>-----   kali.org   -----
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Host's addresses:
+</span><span class='line'>__________________
+</span><span class='line'>
+</span><span class='line'>kali.org.                                5        IN    A        192.124.249.10
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Name Servers:
+</span><span class='line'>______________
+</span><span class='line'>
+</span><span class='line'>ns5.no-ip.com.                           5        IN    A        204.16.255.155
+</span><span class='line'>ns4.no-ip.com.                           5        IN    A        204.16.254.44
+</span><span class='line'>ns1.no-ip.com.                           5        IN    A        204.16.255.55
+</span><span class='line'>ns3.no-ip.com.                           5        IN    A        207.34.6.1
+</span><span class='line'>ns2.no-ip.com.                           5        IN    A        204.16.254.6
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Mail (MX) Servers:
+</span><span class='line'>___________________
+</span><span class='line'>
+</span><span class='line'>aspmx.l.google.com.                      5        IN    A        108.177.15.27
+</span><span class='line'>alt3.aspmx.l.google.com.                 5        IN    A        74.125.23.26
+</span><span class='line'>alt4.aspmx.l.google.com.                 5        IN    A        74.125.28.26
+</span><span class='line'>alt1.aspmx.l.google.com.                 5        IN    A        108.177.14.27
+</span><span class='line'>alt2.aspmx.l.google.com.                 5        IN    A        74.125.200.27
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfers and getting Bind Versions:
+</span><span class='line'>_________________________________________________
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for kali.org on ns2.no-ip.com ... 
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for kali.org on ns4.no-ip.com ... 
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for kali.org on ns3.no-ip.com ... 
+</span><span class='line'>AXFR record query failed: REFUSED
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for kali.org on ns1.no-ip.com ... 
+</span><span class='line'>AXFR record query failed: NOTAUTH
+</span><span class='line'>
+</span><span class='line'>Trying Zone Transfer for kali.org on ns5.no-ip.com ... 
+</span><span class='line'>AXFR record query failed: NOTAUTH
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Scraping kali.org subdomains from Google:
+</span><span class='line'>__________________________________________
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ----   Google search page: 1   ---- 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ----   Google search page: 2   ---- 
+</span><span class='line'>
+</span><span class='line'>  docs
+</span><span class='line'>
+</span><span class='line'> ----   Google search page: 3   ---- 
+</span><span class='line'>
+</span><span class='line'>  de.docs
+</span><span class='line'>  archive
+</span><span class='line'>
+</span><span class='line'> ----   Google search page: 4   ---- 
+</span><span class='line'>
+</span><span class='line'>  archive-4
+</span><span class='line'>  ja.docs
+</span><span class='line'>
+</span><span class='line'> ----   Google search page: 5   ---- 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Google Results:
+</span><span class='line'>________________
+</span><span class='line'>
+</span><span class='line'>de.docs.kali.org.                        5        IN    A        192.124.249.10
+</span><span class='line'>ja.docs.kali.org.                        5        IN    A        192.124.249.10
+</span><span class='line'>docs.kali.org.                           5        IN    A        192.124.249.10
+</span><span class='line'>archive.kali.org.                        5        IN    CNAME    hera.kali.org.
+</span><span class='line'>hera.kali.org.                           5        IN    A        192.99.45.140
+</span><span class='line'>archive-4.kali.org.                      5        IN    CNAME    hecate.kali.org.
+</span><span class='line'>hecate.kali.org.                         5        IN    A        149.202.201.51
+</span><span class='line'>
+</span><span class='line'>brute force file not specified, bay.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One thing that you should keep in mind is that the Google scraping feature might not always work. In that case, you can check manually by using the same Google operator that dnsenum uses, with &ldquo;allinurl:-www site:target.com&rdquo;</p>
+
+<ul>
+<li>bruteforce subdomains and perform whois queries</li>
+</ul>
+
+
+<p>dnsenum has a domain bruteforce file located at <code>/usr/share/dnsenum/dns.txt</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wc -l /usr/share/dnsenum/dns.txt 
+</span><span class='line'>1480 /usr/share/dnsenum/dns.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see some domain bruteforcing in action! Again, looking at kali.org:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dnsenum -f /usr/share/dnsenum/dns.txt -w --noreverse kali.org
+</span><span class='line'>[...]
+</span><span class='line'>Brute forcing with /usr/share/dnsenum/dns.txt:
+</span><span class='line'>_______________________________________________
+</span><span class='line'>
+</span><span class='line'>archive.kali.org.                        5        IN    CNAME    hera.kali.org.
+</span><span class='line'>hera.kali.org.                           5        IN    A        192.99.45.140
+</span><span class='line'>bugs.kali.org.                           5        IN    A        198.50.203.236
+</span><span class='line'>bugs.kali.org.                           5        IN    A        198.50.203.235
+</span><span class='line'>forums.kali.org.                         5        IN    A        192.124.249.12
+</span><span class='line'>hermes.kali.org.                         5        IN    A        198.27.70.128
+</span><span class='line'>http.kali.org.                           5        IN    CNAME    hebe.kali.org.
+</span><span class='line'>hebe.kali.org.                           5        IN    A        192.99.200.113
+</span><span class='line'>mail.kali.org.                           5        IN    CNAME    apollo.kali.org.
+</span><span class='line'>apollo.kali.org.                         5        IN    A        23.239.31.82
+</span><span class='line'>old.kali.org.                            5        IN    CNAME    hermes.kali.org.
+</span><span class='line'>hermes.kali.org.                         5        IN    A        198.27.70.128
+</span><span class='line'>pan.kali.org.                            5        IN    A        167.114.101.148
+</span><span class='line'>shop.kali.org.                           5        IN    A        45.79.147.167
+</span><span class='line'>www.kali.org.                            5        IN    A        192.124.249.10
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Launching Whois Queries:
+</span><span class='line'>_________________________
+</span><span class='line'>
+</span><span class='line'> whois ip result:   23.239.31.0        -&gt;      23.239.0.0/19
+</span><span class='line'> whois ip result:   45.79.147.0        -&gt;      45.79.0.0/16
+</span><span class='line'> whois ip result:   167.114.101.0      -&gt;      167.114.0.0/16
+</span><span class='line'> whois ip result:   192.99.45.0        -&gt;      192.99.0.0/16
+</span><span class='line'> whois ip result:   192.124.249.0      -&gt;      192.124.249.0/24
+</span><span class='line'> whois ip result:   198.27.70.0        -&gt;      198.27.64.0/18
+</span><span class='line'> whois ip result:   198.50.203.0       -&gt;      198.50.203.0/27
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>kali.org________
+</span><span class='line'>
+</span><span class='line'> 192.99.0.0/16
+</span><span class='line'> 23.239.0.0/19
+</span><span class='line'> 45.79.0.0/16
+</span><span class='line'> 198.50.203.0/27
+</span><span class='line'> 192.124.249.0/24
+</span><span class='line'> 167.114.0.0/16
+</span><span class='line'> 198.27.64.0/18
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>kali.org ip blocks:
+</span><span class='line'>____________________
+</span><span class='line'>
+</span><span class='line'> 23.239.31.82/32
+</span><span class='line'> 45.79.147.167/32
+</span><span class='line'> 167.114.101.148/32
+</span><span class='line'> 192.99.45.140/32
+</span><span class='line'> 192.99.200.113/32
+</span><span class='line'> 192.124.249.10/32
+</span><span class='line'> 192.124.249.12/32
+</span><span class='line'> 198.27.70.128/32
+</span><span class='line'> 198.50.203.235/32
+</span><span class='line'> 198.50.203.236/32
+</span><span class='line'>
+</span><span class='line'>done.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And today&rsquo;s cow saying is:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ Tomorrow, this will be part of the    \
+</span><span class='line'>| unchangeable past but fortunately, it |
+</span><span class='line'>\ can still be changed today.           /
+</span><span class='line'> ---------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iptables firewall]]></title>
@@ -13822,332 +14481,6 @@ available, you can even conduct web app security checks just with Nmap!</p>
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - LAMPSecurity CTF5]]></title>
-    <link href="http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5/"/>
-    <updated>2016-05-05T12:24:38-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/05/05/pentest-lab-lampsecurity-ctf5</id>
-    <content type="html"><![CDATA[<p>Continuing the LAMPSecurity series, the next machine I&rsquo;m going after is CTF5.</p>
-
-<!-- more -->
-
-
-<h3>Recon</h3>
-
-<p>Nmap scan reveals there are plenty of open ports:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -sS -sV -p1-65535 192.168.80.154
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 6.49BETA5 ( https://nmap.org ) at 2016-05-09 12:17 EDT
-</span><span class='line'>Nmap scan report for 192.168.80.154
-</span><span class='line'>Host is up, received arp-response (0.00024s latency).
-</span><span class='line'>Not shown: 65524 closed ports
-</span><span class='line'>Reason: 65524 resets
-</span><span class='line'>PORT      STATE SERVICE     REASON         VERSION
-</span><span class='line'>22/tcp    open  ssh         syn-ack ttl 64 OpenSSH 4.7 (protocol 2.0)
-</span><span class='line'>25/tcp    open  smtp        syn-ack ttl 64 Sendmail 8.14.1/8.14.1
-</span><span class='line'>80/tcp    open  http        syn-ack ttl 64 Apache httpd 2.2.6 ((Fedora))
-</span><span class='line'>110/tcp   open  pop3        syn-ack ttl 64 ipop3d 2006k.101
-</span><span class='line'>111/tcp   open  rpcbind     syn-ack ttl 64 2-4 (RPC #100000)
-</span><span class='line'>139/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
-</span><span class='line'>143/tcp   open  imap        syn-ack ttl 64 University of Washington IMAP imapd 2006k.396 (time zone: -0400)
-</span><span class='line'>445/tcp   open  netbios-ssn syn-ack ttl 64 Samba smbd 3.X (workgroup: MYGROUP)
-</span><span class='line'>901/tcp   open  http        syn-ack ttl 64 Samba SWAT administration server
-</span><span class='line'>3306/tcp  open  mysql       syn-ack ttl 64 MySQL 5.0.45
-</span><span class='line'>38972/tcp open  status      syn-ack ttl 64 1 (RPC #100024)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I searched for exploits for the versions of the listed services, but I couldn&rsquo;t find anything usable. So it&rsquo;s back to the web server..</p>
-
-<h4>Web server</h4>
-
-<p>The website provides some potential entry points that we&rsquo;ll have to take a closer look at:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/ctf5/phake.png" title="phake home" alt="phake org"></p>
-
-<p>We can register for a mailing list:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/ctf5/list.png" title="mail list" alt="mailing list"></p>
-
-<p>Tampering with the about page URL <code><a href="http://192.168.80.154/?page=about">http://192.168.80.154/?page=about</a></code> gives errors, so LFI might be possible</p>
-
-<p>The blog page also has an admin login page and another Squirrel Mail page:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/ctf5/blog.png" title="blog" alt="blog"></p>
-
-<p>The contact form allows you to send a message to the staff, and there is another app that acts as an event manager:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/ctf5/event.png" title="event manager" alt="event planner"></p>
-
-<p>Also, on port 901 there is a Samba SWAT server protected by basic authentication. This server provides a web-based interface for configuring Samba.</p>
-
-<h3>Exploiting the CMS</h3>
-
-<p>I made an account on the event manager, but that doesn&rsquo;t seem to help me much besides creating new blog posts. Next I tested to see if there might be any SQLi in the contact form, but no luck there either. And despite the path traversal error, I wasn&rsquo;t able to navigate to any arbitrary files on the system.</p>
-
-<p>It turns out I had actually overlooked an important information. On Andy Carp&rsquo;s blog, we can see the site is powered by NanoCMS. I noticed it but I didn&rsquo;t give it any thought. When I finally thought to click on it and learn more, it took me to a domain-for-sale page, so I figured it might be some simulated CMS created for this challenge only. Good that I thought to google it and see how wrong I was :p <a href="https://github.com/kalyan02/NanoCMS">NanoCMS</a> is a lightweight CMS based on PHP that is now discontinued. However, I found a super useful <a href="http://www.madirish.net/304">NanoCMS security review</a> that made possible the compromising of the target ;)</p>
-
-<p>Among the vulnerabilities present in the CMS, there is one that allows unrestricted access to the <code>/data/pagesdata.txt</code>. This file contains the username and password hash of the administrator:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>a:12:{s:8:"homepage";s:1:"1";s:10:"links_cats";a:4:{s:7:"sidebar";a:2:{i:0;i:1;i:1;i:4;}s:11:"other-pages";a:0:{}s:14:"top-navigation";a:2:{i:0;s:1:"1";i:1;s:1:"4";}s:12:"Footer-Right";a:2:{i:0;s:1:"1";i:1;s:1:"4";}}s:5:"slugs";a:2:{i:1;s:4:"home";i:4;s:7:"contact";}s:6:"titles";a:2:{i:1;s:4:"Home";i:4;s:7:"Contact";}s:10:"slug_count";i:11;s:8:"settings";a:3:{s:19:"index-last-modified";i:1234513760;s:18:"def-template-areas";a:4:{i:0;s:12:"website name";i:2;s:14:"website slogan";i:3;s:16:"below navigation";i:4;s:16:"copyright notice";}s:18:"def-template-links";a:2:{i:0;s:14:"top-navigation";i:1;s:12:"Footer-Right";}}s:13:"active-tweaks";a:2:{i:0;s:7:"deutsch";i:1;s:19:"language-pack-tweak";}s:11:"lang-select";s:7:"english";s:6:"seourl";s:1:"0";s:8:"username";s:5:"admin";s:8:"password";s:32:"9d2f75377ac0ab991d40c91fd27e52fd";s:7:"version";s:4:"v_4f";}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I cracked the hash with my favorite <a href="https://hashkiller.co.uk/md5-decrypter.aspx">online cracker</a> and found out the password is <em>shannon</em>. Next, I logged in to the admin panel:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/ctf5/nanocms.png" title="nanocms admin panel" alt="admin panel"></p>
-
-<p>Now we have the ability to add new pages with our own PHP code. I used <a href="http://pentestmonkey.net/tools/web-shells/php-reverse-shell">pentestmonkey&rsquo;s reverse PHP shell</a>. I changed the IP and port, and set up a netcat listener to catch the reverse connection. Then I clicked on the newly created page on the blog and looked to my netcat for the goodies:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vvnlp 5555
-</span><span class='line'>listening on [any] 5555 ...
-</span><span class='line'>connect to [192.168.80.155] from (UNKNOWN) [192.168.80.154] 43028
-</span><span class='line'>Linux localhost.localdomain 2.6.23.1-42.fc8 #1 SMP Tue Oct 30 13:55:12 EDT 2007 i686 i686 i386 GNU/Linux
-</span><span class='line'> 11:02:41 up  3:30,  0 users,  load average: 0.24, 0.05, 0.02
-</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-</span><span class='line'>uid=48(apache) gid=48(apache) groups=48(apache) context=system_u:system_r:httpd_t:s0
-</span><span class='line'>sh: no job control in this shell
-</span><span class='line'>sh-3.2$ whoami
-</span><span class='line'>apache</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Time for some enumeration! Looking in the home directory, I noticed quite a few user folders:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.2$ ls
-</span><span class='line'>amy
-</span><span class='line'>andy
-</span><span class='line'>jennifer
-</span><span class='line'>loren
-</span><span class='line'>patrick</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I looked inside them with <code>ls -al</code>. The content was very similar among them and I could find nothing interesting in the files I was allowed to read. Until patrick&rsquo;s directory, that contained more hidden files than the others:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.2$ ls -al patrick
-</span><span class='line'>total 344
-</span><span class='line'>drwxrwxr-x 25 patrick patrick 4096 Dec  5  2012 .
-</span><span class='line'>drwxr-xr-x  7 root    root    4096 Apr 28  2009 ..
-</span><span class='line'>-rw-------  1 patrick patrick    0 Dec  5  2012 .ICEauthority
-</span><span class='line'>drwx------  2 patrick patrick 4096 Apr 28  2009 .Trash
-</span><span class='line'>-rw-------  1 patrick patrick  530 Dec  5  2012 .bash_history
-</span><span class='line'>-rw-r--r--  1 patrick patrick   33 Aug 31  2007 .bash_logout
-</span><span class='line'>-rw-r--r--  1 patrick patrick  176 Aug 31  2007 .bash_profile
-</span><span class='line'>-rw-r--r--  1 patrick patrick  124 Aug 31  2007 .bashrc
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .config
-</span><span class='line'>-rw-r--r--  1 patrick patrick   28 Apr 29  2009 .dmrc
-</span><span class='line'>drwxrwxr-x  8 patrick patrick 4096 Apr 29  2009 .evolution
-</span><span class='line'>drwx------  5 patrick patrick 4096 Dec  5  2012 .gconf
-</span><span class='line'>drwx------  2 patrick patrick 4096 Dec  5  2012 .gconfd
-</span><span class='line'>drwxrwxr-x  3 patrick patrick 4096 Apr 28  2009 .gnome
-</span><span class='line'>drwxr-xr-x  7 patrick patrick 4096 Dec  5  2012 .gnome2
-</span><span class='line'>drwx------  2 patrick patrick 4096 Apr 28  2009 .gnome2_private
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 .gstreamer-0.10
-</span><span class='line'>-rw-rw-r--  1 patrick patrick  146 Dec  5  2012 .gtk-bookmarks
-</span><span class='line'>-rw-r--r--  1 patrick patrick   89 Apr 28  2009 .gtkrc-1.2-gnome2
-</span><span class='line'>drwxr-xr-x  3 patrick patrick 4096 Apr 28  2009 .local
-</span><span class='line'>-rw-rw-r--  1 patrick patrick   18 Apr 29  2009 .mailboxlist
-</span><span class='line'>drwx------  3 patrick patrick 4096 Apr 28  2009 .metacity
-</span><span class='line'>drwx------  3 patrick patrick 4096 Apr 28  2009 .mozilla
-</span><span class='line'>-rw-------  1 patrick patrick   37 Apr 29  2009 .mysql_history
-</span><span class='line'>drwxr-xr-x  3 patrick patrick 4096 Dec  5  2012 .nautilus
-</span><span class='line'>-rw-rw-r--  1 patrick patrick  773 Dec  5  2012 .recently-used.xbel
-</span><span class='line'>drwxrwxr-x  4 patrick patrick 4096 Dec  5  2012 .tomboy
-</span><span class='line'>-rw-r--r--  1 patrick patrick 5128 Dec  5  2012 .tomboy.log
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Dec  5  2012 .wapi
-</span><span class='line'>-rw-r--r--  1 patrick patrick  847 Dec  5  2012 .xsession-errors
-</span><span class='line'>-rw-r--r--  1 patrick patrick  658 Oct 11  2007 .zshrc
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Desktop
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Documents
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Download
-</span><span class='line'>-rw-------  1 patrick patrick  509 Apr 29  2009 Drafts
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Music
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Pictures
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Public
-</span><span class='line'>-rw-------  1 patrick patrick 4329 Apr 29  2009 Sent
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Templates
-</span><span class='line'>-rw-------  1 patrick patrick 1243 Apr 29  2009 Trash
-</span><span class='line'>drwxr-xr-x  2 patrick patrick 4096 Apr 28  2009 Videos
-</span><span class='line'>-rwxrw----  1 patrick patrick    0 Apr 29  2009 test.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I couldn&rsquo;t read the .mysql_history or test.txt files, but the next one I tried, the <code>.tomboy.log</code> file, was really interesting! I only show the interesting bits here:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.2$ cat .tomboy.log
-</span><span class='line'>...
-</span><span class='line'>12/5/2012 7:24:34 AM [DEBUG]: Creating Buffer for 'New Note 3'...
-</span><span class='line'>12/5/2012 7:24:34 AM [DEBUG]: New Note 3 tags:
-</span><span class='line'>12/5/2012 7:24:38 AM [DEBUG]: Saving 'New Note 3'...
-</span><span class='line'>12/5/2012 7:24:46 AM [DEBUG]: Renaming note from New Note 3 to Root password
-</span><span class='line'>12/5/2012 7:24:56 AM [DEBUG]: Saving 'Root password'...
-</span><span class='line'>12/5/2012 7:25:03 AM [DEBUG]: Saving 'Root password'...
-</span><span class='line'>12/5/2012 7:27:41 AM [DEBUG]: Received request for saving session
-</span><span class='line'>12/5/2012 7:27:41 AM [DEBUG]: Saving unsaved notes...
-</span><span class='line'>12/5/2012 7:27:41 AM [DEBUG]: All done.  Ciao!</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Tomboy is a note-taking application and it looks like the root password was saved in a note?! I went to the <code>.tomboy</code> directory and found some notes:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.2$ ls
-</span><span class='line'>481bca0d-7206-45dd-a459-a72ea1131329.note
-</span><span class='line'>addin-db-000
-</span><span class='line'>addins
-</span><span class='line'>ae9cfc26-64e8-4f6f-a8b4-0296e8173504.note
-</span><span class='line'>d2684fad-3aab-444c-b90a-4f307c0818f6.note
-</span><span class='line'>manifest.xml</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Found the jackpot in the first one!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-3.2$ cat 481bca0d-7206-45dd-a459-a72ea1131329.note
-</span><span class='line'>&lt;?xml version="1.0" encoding="utf-8"?&gt;
-</span><span class='line'>&lt;note version="0.2" xmlns:link="http://beatniksoftware.com/tomboy/link" xmlns:size="http://beatniksoftware.com/tomboy/size" xmlns="http://beatniksoftware.com/tomboy"&gt;
-</span><span class='line'>  &lt;title&gt;Root password&lt;/title&gt;
-</span><span class='line'>  &lt;text xml:space="preserve"&gt;&lt;note-content version="0.1"&gt;Root password
-</span><span class='line'>
-</span><span class='line'>Root password
-</span><span class='line'>
-</span><span class='line'>50$cent&lt;/note-content&gt;&lt;/text&gt;
-</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now all that is left is to become root! I SSH&#8217;ed with the root credentials and the machine is mine now!</p>
-
-<h5>Concluding remarks</h5>
-
-<p>This was another cool challenge in the LAMPSecurity series! The exploitation was possible because of the vulnerable CMS that not only disclosed credentials, but also allowed an attacker to execute code on the target. Although the foothold gained was under an unprivileged user, certain files of the home directories were readable when they shouldn&rsquo;t have been, and the root password was sitting in an unprotected file for anyone to read. A good example of how a chain of misconfigurations can lead to total compromise of a machine.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/ It's lucky you're going so slowly, \
-</span><span class='line'>| because you're going in the wrong  |
-</span><span class='line'>\ direction.                         /
-</span><span class='line'> ------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 ]]></content>
   </entry>

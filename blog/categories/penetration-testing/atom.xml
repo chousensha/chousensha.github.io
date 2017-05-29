@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-05-23T12:36:17-04:00</updated>
+  <updated>2017-05-29T05:36:11-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,401 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[dnsenum - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools/"/>
+    <updated>2017-05-29T05:32:26-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at dnsenum, one of the tools that come preinstalled on Kali for DNS information gathering.</p>
+
+<!-- more -->
+
+
+<p>Homepage: <a href="https://github.com/fwaeytens/dnsenum">https://github.com/fwaeytens/dnsenum</a></p>
+
+<h3>dnsenum description</h3>
+
+<blockquote><p>multithreaded perl script to enumerate DNS information of a domain and to discover non-contiguous ip blocks.</p>
+
+<p>OPERATIONS:</p>
+
+<p>1) Get the host&rsquo;s addresse (A record).</p>
+
+<p>2) Get the namservers (threaded).</p>
+
+<p>3) Get the MX record (threaded).</p>
+
+<p>4) Perform axfr queries on nameservers and get BIND VERSION (threaded).</p>
+
+<p>5) Get extra names and subdomains via google scraping (google query = &ldquo;allinurl: -www site:domain&rdquo;).</p>
+
+<p>6) Brute force subdomains from file, can also perform recursion on subdomain that have NS records (all threaded).</p>
+
+<p>7) Calculate C class domain network ranges and perform whois queries on them (threaded).</p>
+
+<p>8) Perform reverse lookups on netranges ( C class or/and whois netranges) (threaded).</p>
+
+<p>9) Write to domain_ips.txt file ip-blocks.</p></blockquote>
+
+<h3>dnsenum options</h3>
+
+<p>``` plain
+dnsenum -h
+dnsenum.pl VERSION:1.2.3
+Usage: dnsenum.pl <a href="">Options</a> <domain>
+Note: the brute force -f switch is obligatory.
+GENERAL OPTIONS:
+  &mdash;dnsserver   <server></p>
+
+<pre><code>        Use this DNS server for A, NS and MX queries.
+</code></pre>
+
+<p>  &mdash;enum        Shortcut option equivalent to &mdash;threads 5 -s 15 -w.
+  -h, &mdash;help        Print this help message.
+  &mdash;noreverse       Skip the reverse lookup operations.
+  &mdash;nocolor     Disable ANSIColor output.
+  &mdash;private     Show and save private ips at the end of the file domain_ips.txt.
+  &mdash;subfile <file>  Write all valid subdomains to this file.
+  -t, &mdash;timeout <value> The tcp and udp timeout values in seconds (default: 10s).
+  &mdash;threads <value> The number of threads that will perform different queries.
+  -v, &mdash;verbose     Be verbose: show all the progress and all the error messages.
+GOOGLE SCRAPING OPTIONS:
+  -p, &mdash;pages <value>   The number of google search pages to process when scraping names,</p>
+
+<pre><code>        the default is 5 pages, the -s switch must be specified.
+</code></pre>
+
+<p>  -s, &mdash;scrap <value>   The maximum number of subdomains that will be scraped from Google (default 15).
+BRUTE FORCE OPTIONS:
+  -f, &mdash;file <file> Read subdomains from this file to perform brute force.
+  -u, &mdash;update  &lt;a|g|r|z></p>
+
+<pre><code>        Update the file specified with the -f switch with valid subdomains.
+a (all)     Update using all results.
+g       Update using only google scraping results.
+r       Update using only reverse lookup results.
+z       Update using only zonetransfer results.
+</code></pre>
+
+<p>  -r, &mdash;recursion   Recursion on subdomains, brute force all discovred subdomains that have an NS record.
+WHOIS NETRANGE OPTIONS:
+  -d, &mdash;delay <value>   The maximum value of seconds to wait between whois queries, the value is defined randomly, default: 3s.
+  -w, &mdash;whois       Perform the whois queries on c class network ranges.</p>
+
+<pre><code>         **Warning**: this can generate very large netranges and it will take lot of time to performe reverse lookups.
+</code></pre>
+
+<p>REVERSE LOOKUP OPTIONS:
+  -e, &mdash;exclude <regexp></p>
+
+<pre><code>        Exclude PTR records that match the regexp expression from reverse lookup results, useful on invalid hostnames.
+</code></pre>
+
+<p>OUTPUT OPTIONS:
+  -o &mdash;output <file>    Output in XML format. Can be imported in MagicTree (www.gremwell.com)
+```</p>
+
+<h3>Fix dnsenum whois and autoloader errors</h3>
+
+<p>First, some preliminary troubleshooting information: dnsenum relies on some Perl modules that may not be already on your system. When running it with certain flags, you might see some warnings like this one: Warning: can&rsquo;t load Net::Whois::IP module, whois queries disabled. To fix it, install the module by running <code>perl -MCPAN -e shell</code> and then at the prompt: <code>install Net::Whois::IP</code>. If you try again, you might get a different error, however: Can&rsquo;t locate package AutoLoader for @net::Whois::IP::ISA at /usr/bin/dnsenum line 536. I scoured the Internet for a bit before finding a workaround: you can make it go away by adding <code>require AutoLoader;</code> to the module source code, or by removing the Autuloader reference: changing <code>@ISA = qw(Exporter AutoLoader);</code> to <code>@ISA = qw(Exporter);</code>. To find out where the module is located, use the CPAN tool:</p>
+
+<p>``` plain
+cpan -D Net::Whois::IP
+Loading internal null logger. Install Log::Log4perl for logging messages
+Reading &lsquo;/root/.cpan/Metadata&rsquo;
+  Database was generated on Wed, 17 May 2017 06:54:04 GMT</p>
+
+<h2>Net::Whois::IP</h2>
+
+<pre><code>(no description)
+B/BS/BSCHMITZ/Net-Whois-IP-1.19.tar.gz
+/usr/local/share/perl/5.24.1/Net/Whois/IP.pm
+Installed: 1.19
+CPAN:      1.19  up to date
+Ben Schmitz (BSCHMITZ)
+ben@foink.com
+</code></pre>
+
+<p>```</p>
+
+<p>You can see the path here, now go apply the fix in the IP.pm file and the error should go away.</p>
+
+<h3>dnsenum usage</h3>
+
+<ul>
+<li>default</li>
+</ul>
+
+
+<p>``` plain
+dnsenum yahoo.com
+dnsenum.pl VERSION:1.2.3</p>
+
+<p>&mdash;&mdash;&ndash;   yahoo.com   &mdash;&mdash;&ndash;</p>
+
+<p>Host&rsquo;s addresses:</p>
+
+<hr />
+
+<p>yahoo.com.                               5        IN    A        206.190.36.45
+yahoo.com.                               5        IN    A        98.139.183.24
+yahoo.com.                               5        IN    A        98.138.253.109</p>
+
+<p>Name Servers:</p>
+
+<hr />
+
+<p>ns1.yahoo.com.                           5        IN    A        68.180.131.16
+ns3.yahoo.com.                           5        IN    A        203.84.221.53
+ns4.yahoo.com.                           5        IN    A        98.138.11.157
+ns2.yahoo.com.                           5        IN    A        68.142.255.16
+ns5.yahoo.com.                           5        IN    A        119.160.247.124</p>
+
+<p>Mail (MX) Servers:</p>
+
+<hr />
+
+<p>mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.32
+mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.37
+mta7.am0.yahoodns.net.                   5        IN    A        63.250.192.45
+mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.34
+mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.37
+mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.240
+mta7.am0.yahoodns.net.                   5        IN    A        98.136.216.26
+mta7.am0.yahoodns.net.                   5        IN    A        98.136.217.202
+mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.33
+mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.34
+mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.33
+mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.34
+mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.35
+mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.36
+mta5.am0.yahoodns.net.                   5        IN    A        98.136.216.25
+mta5.am0.yahoodns.net.                   5        IN    A        98.136.217.202
+mta6.am0.yahoodns.net.                   5        IN    A        98.136.216.25
+mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.38
+mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.37
+mta6.am0.yahoodns.net.                   5        IN    A        98.136.217.203
+mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.35
+mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.36
+mta6.am0.yahoodns.net.                   5        IN    A        63.250.192.46
+mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.37</p>
+
+<p>Trying Zone Transfers and getting Bind Versions:</p>
+
+<hr />
+
+<p>Trying Zone Transfer for yahoo.com on ns4.yahoo.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for yahoo.com on ns5.yahoo.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for yahoo.com on ns2.yahoo.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for yahoo.com on ns3.yahoo.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for yahoo.com on ns1.yahoo.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>brute force file not specified, bay.
+```</p>
+
+<p>From this output, you can see that the script performed DNS queries of the yahoo.com domain, enumerated the DNS and mail servers, and attempted zone transfers through the AXFR record type. Successful zone transfers are a misconfiguration that can have serious security impacts, because the DNS server sends its zone records to whoever requested them, thus revealing potentially sensitive information about the internal network topology, etc.</p>
+
+<ul>
+<li>with the &mdash;enum shortcut, which includes the flags: &mdash;threads 5 (5 threads), -s 15 (15 maximum subdomains to be scraped from Google), and -w (perform whois queries on class C ranges)</li>
+</ul>
+
+
+<p>``` plain
+dnsenum &mdash;enum kali.org
+dnsenum.pl VERSION:1.2.3</p>
+
+<p>&mdash;&mdash;&ndash;   kali.org   &mdash;&mdash;&ndash;</p>
+
+<p>Host&rsquo;s addresses:</p>
+
+<hr />
+
+<p>kali.org.                                5        IN    A        192.124.249.10</p>
+
+<p>Name Servers:</p>
+
+<hr />
+
+<p>ns5.no-ip.com.                           5        IN    A        204.16.255.155
+ns4.no-ip.com.                           5        IN    A        204.16.254.44
+ns1.no-ip.com.                           5        IN    A        204.16.255.55
+ns3.no-ip.com.                           5        IN    A        207.34.6.1
+ns2.no-ip.com.                           5        IN    A        204.16.254.6</p>
+
+<p>Mail (MX) Servers:</p>
+
+<hr />
+
+<p>aspmx.l.google.com.                      5        IN    A        108.177.15.27
+alt3.aspmx.l.google.com.                 5        IN    A        74.125.23.26
+alt4.aspmx.l.google.com.                 5        IN    A        74.125.28.26
+alt1.aspmx.l.google.com.                 5        IN    A        108.177.14.27
+alt2.aspmx.l.google.com.                 5        IN    A        74.125.200.27</p>
+
+<p>Trying Zone Transfers and getting Bind Versions:</p>
+
+<hr />
+
+<p>Trying Zone Transfer for kali.org on ns2.no-ip.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for kali.org on ns4.no-ip.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for kali.org on ns3.no-ip.com &hellip;
+AXFR record query failed: REFUSED</p>
+
+<p>Trying Zone Transfer for kali.org on ns1.no-ip.com &hellip;
+AXFR record query failed: NOTAUTH</p>
+
+<p>Trying Zone Transfer for kali.org on ns5.no-ip.com &hellip;
+AXFR record query failed: NOTAUTH</p>
+
+<p>Scraping kali.org subdomains from Google:</p>
+
+<hr />
+
+<p> &mdash;&mdash;   Google search page: 1   &mdash;&mdash;</p>
+
+<p> &mdash;&mdash;   Google search page: 2   &mdash;&mdash;</p>
+
+<p>  docs</p>
+
+<p> &mdash;&mdash;   Google search page: 3   &mdash;&mdash;</p>
+
+<p>  de.docs
+  archive</p>
+
+<p> &mdash;&mdash;   Google search page: 4   &mdash;&mdash;</p>
+
+<p>  archive-4
+  ja.docs</p>
+
+<p> &mdash;&mdash;   Google search page: 5   &mdash;&mdash;</p>
+
+<p>Google Results:</p>
+
+<hr />
+
+<p>de.docs.kali.org.                        5        IN    A        192.124.249.10
+ja.docs.kali.org.                        5        IN    A        192.124.249.10
+docs.kali.org.                           5        IN    A        192.124.249.10
+archive.kali.org.                        5        IN    CNAME    hera.kali.org.
+hera.kali.org.                           5        IN    A        192.99.45.140
+archive-4.kali.org.                      5        IN    CNAME    hecate.kali.org.
+hecate.kali.org.                         5        IN    A        149.202.201.51</p>
+
+<p>brute force file not specified, bay.
+```</p>
+
+<p>One thing that you should keep in mind is that the Google scraping feature might not always work. In that case, you can check manually by using the same Google operator that dnsenum uses, with &ldquo;allinurl:-www site:target.com&rdquo;</p>
+
+<ul>
+<li>bruteforce subdomains and perform whois queries</li>
+</ul>
+
+
+<p>dnsenum has a domain bruteforce file located at <code>/usr/share/dnsenum/dns.txt</code>:</p>
+
+<p><code>plain
+wc -l /usr/share/dnsenum/dns.txt
+1480 /usr/share/dnsenum/dns.txt
+</code></p>
+
+<p>Let&rsquo;s see some domain bruteforcing in action! Again, looking at kali.org:</p>
+
+<p>``` plain
+dnsenum -f /usr/share/dnsenum/dns.txt -w &mdash;noreverse kali.org
+[&hellip;]
+Brute forcing with /usr/share/dnsenum/dns.txt:</p>
+
+<hr />
+
+<p>archive.kali.org.                        5        IN    CNAME    hera.kali.org.
+hera.kali.org.                           5        IN    A        192.99.45.140
+bugs.kali.org.                           5        IN    A        198.50.203.236
+bugs.kali.org.                           5        IN    A        198.50.203.235
+forums.kali.org.                         5        IN    A        192.124.249.12
+hermes.kali.org.                         5        IN    A        198.27.70.128
+http.kali.org.                           5        IN    CNAME    hebe.kali.org.
+hebe.kali.org.                           5        IN    A        192.99.200.113
+mail.kali.org.                           5        IN    CNAME    apollo.kali.org.
+apollo.kali.org.                         5        IN    A        23.239.31.82
+old.kali.org.                            5        IN    CNAME    hermes.kali.org.
+hermes.kali.org.                         5        IN    A        198.27.70.128
+pan.kali.org.                            5        IN    A        167.114.101.148
+shop.kali.org.                           5        IN    A        45.79.147.167
+www.kali.org.                            5        IN    A        192.124.249.10</p>
+
+<p>Launching Whois Queries:</p>
+
+<hr />
+
+<p> whois ip result:   23.239.31.0        &ndash;>      23.239.0.0/19
+ whois ip result:   45.79.147.0        &ndash;>      45.79.0.0/16
+ whois ip result:   167.114.101.0      &ndash;>      167.114.0.0/16
+ whois ip result:   192.99.45.0        &ndash;>      192.99.0.0/16
+ whois ip result:   192.124.249.0      &ndash;>      192.124.249.0/24
+ whois ip result:   198.27.70.0        &ndash;>      198.27.64.0/18
+ whois ip result:   198.50.203.0       &ndash;>      198.50.203.0/27</p>
+
+<p>kali.org________</p>
+
+<p> 192.99.0.0/16
+ 23.239.0.0/19
+ 45.79.0.0/16
+ 198.50.203.0/27
+ 192.124.249.0/24
+ 167.114.0.0/16
+ 198.27.64.0/18</p>
+
+<p>kali.org ip blocks:</p>
+
+<hr />
+
+<p> 23.239.31.82/32
+ 45.79.147.167/32
+ 167.114.101.148/32
+ 192.99.45.140/32
+ 192.99.200.113/32
+ 192.124.249.10/32
+ 192.124.249.12/32
+ 198.27.70.128/32
+ 198.50.203.235/32
+ 198.50.203.236/32</p>
+
+<p>done.
+```</p>
+
+<p>And today&rsquo;s cow saying is:</p>
+
+<p>``` plain
+/ Tomorrow, this will be part of the    \
+| unchangeable past but fortunately, it |
+\ can still be changed today.           /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Web for Pentester]]></title>
@@ -1492,8 +1887,8 @@ Database: seth
 <p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
 
 <p>``` plain
-ssh -p 777 <a href="&#109;&#x61;&#105;&#108;&#x74;&#x6f;&#58;&#114;&#x61;&#109;&#x73;&#101;&#115;&#64;&#x31;&#x39;&#50;&#46;&#49;&#x36;&#56;&#46;&#x32;&#x31;&#55;&#x2e;&#49;&#51;&#53;">&#114;&#97;&#109;&#x73;&#x65;&#115;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#x2e;&#50;&#49;&#55;&#46;&#x31;&#51;&#53;</a>
-<a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#114;&#97;&#109;&#115;&#101;&#x73;&#x40;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#50;&#49;&#55;&#46;&#49;&#x33;&#x35;">&#114;&#x61;&#109;&#115;&#101;&#x73;&#64;&#49;&#x39;&#50;&#46;&#49;&#x36;&#56;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#51;&#53;</a>&rsquo;s password:</p>
+ssh -p 777 <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#114;&#97;&#x6d;&#x73;&#x65;&#115;&#64;&#49;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#46;&#x32;&#x31;&#55;&#x2e;&#x31;&#x33;&#x35;">&#x72;&#97;&#109;&#x73;&#101;&#x73;&#64;&#49;&#57;&#x32;&#46;&#x31;&#54;&#x38;&#x2e;&#50;&#49;&#55;&#x2e;&#x31;&#51;&#53;</a>
+<a href="&#x6d;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#114;&#97;&#x6d;&#115;&#101;&#115;&#64;&#49;&#x39;&#50;&#46;&#49;&#54;&#x38;&#46;&#50;&#49;&#55;&#46;&#49;&#x33;&#x35;">&#114;&#x61;&#x6d;&#x73;&#x65;&#x73;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#56;&#46;&#x32;&#49;&#x37;&#x2e;&#49;&#x33;&#53;</a>&rsquo;s password:</p>
 
 <p>The programs included with the Debian GNU/Linux system are free software;
 the exact distribution terms for each program are described in the
@@ -1549,8 +1944,8 @@ adf11c7a9e6523e630aaf3b9b7acb51d</p>
 
 <p>It seems that you have pwned the box, congrats.
 Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#120;&#108;&#121;&#x30;&#x6e;&#x40;&#x73;&#105;&#x67;&#x61;&#x69;&#110;&#x74;&#x2e;&#x6f;&#x72;&#x67;">&#x78;&#x6c;&#121;&#x30;&#x6e;&#64;&#115;&#105;&#x67;&#97;&#x69;&#110;&#x74;&#x2e;&#111;&#114;&#103;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#110;&#98;&#115;&#108;&#x79;&#x30;&#x6e;&#x40;&#103;&#x6d;&#97;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;">&#x6e;&#x62;&#115;&#108;&#x79;&#48;&#110;&#64;&#x67;&#x6d;&#97;&#105;&#108;&#x2e;&#x63;&#111;&#x6d;</a></p>
+<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x78;&#x6c;&#121;&#x30;&#110;&#x40;&#115;&#105;&#103;&#97;&#x69;&#110;&#116;&#x2e;&#x6f;&#114;&#x67;">&#x78;&#x6c;&#x79;&#48;&#x6e;&#64;&#115;&#x69;&#103;&#97;&#105;&#110;&#116;&#46;&#x6f;&#114;&#103;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#x6e;&#x62;&#115;&#108;&#x79;&#x30;&#110;&#64;&#103;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#x6d;">&#x6e;&#x62;&#115;&#x6c;&#x79;&#48;&#x6e;&#x40;&#103;&#109;&#97;&#x69;&#x6c;&#46;&#99;&#x6f;&#x6d;</a></p>
 
 <p>USE THIS PGP PUBLIC KEY</p>
 
@@ -1928,1236 +2323,6 @@ ramses@NullByte:/var/www/backup$ ./procwatch</p>
 
 <p>/ Fine day for friends. So-so day for \
 \ you.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest tools - Recon-ng]]></title>
-    <link href="http://chousensha.github.io/blog/2016/08/29/pentest-tools-recon-ng/"/>
-    <updated>2016-08-29T15:30:18-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/08/29/pentest-tools-recon-ng</id>
-    <content type="html"><![CDATA[<p>In this post I&rsquo;ll discuss the use of the powerful web reconaissance framework, Recon-ng.</p>
-
-<p><a href="https://bitbucket.org/LaNMaSteR53/recon-ng">Recon-ng is a full-featured Web Reconnaissance framework written in Python. Complete with independent modules, database interaction, built in convenience functions, interactive help, and command completion, Recon-ng provides a powerful environment in which open source web-based reconnaissance can be conducted quickly and thoroughly.</a></p>
-
-<!-- more -->
-
-
-<p>Recon-ng is an invaluable tool for performing information gathering. It is modeled on the Metasploit framework, so the interface and functionality are pretty similar.</p>
-
-<p><img class="center" src="/images/tools/recon-ng.png" title="&lsquo;recon-ng&rsquo; &lsquo;recon-ng&rsquo;" ></p>
-
-<h1>Recon-ng core commands</h1>
-
-<p>With the help menu, you can get an overview of what commands are available:</p>
-
-<p>``` plain
-[recon-ng][default] > help</p>
-
-<h2>Commands (type [help|?] <topic>):</h2>
-
-<p>add             Adds records to the database
-back            Exits the current context
-delete          Deletes records from the database
-exit            Exits the framework
-help            Displays this menu
-keys            Manages framework API keys
-load            Loads specified module
-pdb             Starts a Python Debugger session
-query           Queries the database
-record          Records commands to a resource file
-reload          Reloads all modules
-resource        Executes commands from a resource file
-search          Searches available modules
-set             Sets module options
-shell           Executes shell commands
-show            Shows various framework items
-snapshots       Manages workspace snapshots
-spool           Spools output to a file
-unset           Unsets module options
-use             Loads specified module
-workspaces      Manages workspaces
-```</p>
-
-<p>You can already see the similarity with Metasploit. Let&rsquo;s focus on what&rsquo;s exclusive to to Recon-ng, the powerful recon capabilities. You can leverage different search engines and social media for information gathering. To leverage the most of this functionality, you will need to use API keys. Below you can see the available APIs:</p>
-
-<p>``` plain
-[recon-ng][default] > keys list</p>
-
-<p>  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-  |        Name       | Value |
-  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-  | bing_api          |       |
-  | builtwith_api     |       |
-  | facebook_api      |       |
-  | facebook_password |       |
-  | facebook_secret   |       |
-  | facebook_username |       |
-  | flickr_api        |       |
-  | fullcontact_api   |       |
-  | google_api        |       |
-  | google_cse        |       |
-  | instagram_api     |       |
-  | instagram_secret  |       |
-  | ipinfodb_api      |       |
-  | jigsaw_api        |       |
-  | jigsaw_password   |       |
-  | jigsaw_username   |       |
-  | linkedin_api      |       |
-  | linkedin_secret   |       |
-  | pwnedlist_api     |       |
-  | pwnedlist_iv      |       |
-  | pwnedlist_secret  |       |
-  | shodan_api        |       |
-  | twitter_api       |       |
-  | twitter_secret    |       |
-  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-```</p>
-
-<p>In addition to the well known APIs of the main search engines and social media, there are the following:</p>
-
-<ul>
-<li><p>the BuiltWith Domain API, which provides XML and JSON access to the technology information of a website</p></li>
-<li><p>FullContact lets you easily query by email, phone number, or Twitter username. Results include publicly- available social profiles, photos, basic demographics, job titles, company stats, and over 100 other public data points.</p></li>
-<li><p>IPInfoDB, which provides free access to IP geolocation tools</p></li>
-<li><p>Jigsaw is an online directory of free, downloadable Company information and more than 11 million business Contacts. Every Jigsaw business Contact is complete with hard-to-find direct dials and email addresses, while each Company record gives the low down on Company size, location, and industry.</p></li>
-<li><p>PwnedList is designed for consumers to check if their email address has been found on commonly circulating lists of stolen accounts and passwords (this has been shut down at the time of this writing)</p></li>
-</ul>
-
-
-<p>If you were to add a new API key, you could do it like this:</p>
-
-<p>``` plain
-[recon-ng][default] > keys add bing_api 007007
-[*] Key &lsquo;bing_api&rsquo; added.
-[recon-ng][default] > keys list</p>
-
-<p>  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
-  |        Name       | Value  |
-  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
-  | bing_api          | 007007 |
-```</p>
-
-<p>To delete an API key, you can use the <code>keys delete</code> command.</p>
-
-<p>To see what items are available in the framework, use the <strong>show</strong> command:</p>
-
-<p>``` plain
-[recon-ng][default] > show
-Shows various framework items</p>
-
-<p>Usage: show [banner|companies|contacts|credentials|dashboard|domains|hosts|leaks|locations|modules|netblocks|options|ports|profiles|pushpins|schema|vulnerabilities]
-```</p>
-
-<p>This should give you an idea of the kinds of data you can look for. Again, this should feel similar to Metasploit. In fact, like in the msfconsole, the modules are what you will use to perform different tasks. Let&rsquo;s take a look at all the currently available modules. Oh, and did I mention there is tab completion as well? :D</p>
-
-<h1>Recon-ng modules</h1>
-
-<p>``` plain
-show modules</p>
-
-<p>  Discovery</p>
-
-<hr />
-
-<pre><code>discovery/info_disclosure/cache_snoop
-discovery/info_disclosure/interesting_files
-</code></pre>
-
-<p>  Exploitation</p>
-
-<hr />
-
-<pre><code>exploitation/injection/command_injector
-exploitation/injection/xpath_bruter
-</code></pre>
-
-<p>  Import</p>
-
-<hr />
-
-<pre><code>import/csv_file
-import/list
-</code></pre>
-
-<p>  Recon</p>
-
-<hr />
-
-<pre><code>recon/companies-contacts/facebook
-recon/companies-contacts/jigsaw/point_usage
-recon/companies-contacts/jigsaw/purchase_contact
-recon/companies-contacts/jigsaw/search_contacts
-recon/companies-contacts/jigsaw_auth
-recon/companies-contacts/linkedin_auth
-recon/companies-multi/whois_miner
-recon/companies-profiles/bing_linkedin
-recon/contacts-contacts/mailtester
-recon/contacts-contacts/mangle
-recon/contacts-contacts/unmangle
-recon/contacts-credentials/hibp_breach
-recon/contacts-credentials/hibp_paste
-recon/contacts-credentials/pwnedlist
-recon/contacts-domains/migrate_contacts
-recon/contacts-profiles/fullcontact
-recon/credentials-credentials/adobe
-recon/credentials-credentials/bozocrack
-recon/credentials-credentials/hashes_org
-recon/credentials-credentials/leakdb
-recon/domains-contacts/pgp_search
-recon/domains-contacts/salesmaple
-recon/domains-contacts/whois_pocs
-recon/domains-credentials/pwnedlist/account_creds
-recon/domains-credentials/pwnedlist/api_usage
-recon/domains-credentials/pwnedlist/domain_creds
-recon/domains-credentials/pwnedlist/domain_ispwned
-recon/domains-credentials/pwnedlist/leak_lookup
-recon/domains-credentials/pwnedlist/leaks_dump
-recon/domains-domains/brute_suffix
-recon/domains-hosts/baidu_site
-recon/domains-hosts/bing_domain_api
-recon/domains-hosts/bing_domain_web
-recon/domains-hosts/brute_hosts
-recon/domains-hosts/builtwith
-recon/domains-hosts/google_site_api
-recon/domains-hosts/google_site_web
-recon/domains-hosts/netcraft
-recon/domains-hosts/shodan_hostname
-recon/domains-hosts/ssl_san
-recon/domains-hosts/vpnhunter
-recon/domains-hosts/yahoo_domain
-recon/domains-vulnerabilities/punkspider
-recon/domains-vulnerabilities/xssed
-recon/domains-vulnerabilities/xssposed
-recon/hosts-domains/migrate_hosts
-recon/hosts-hosts/bing_ip
-recon/hosts-hosts/freegeoip
-recon/hosts-hosts/ip_neighbor
-recon/hosts-hosts/ipinfodb
-recon/hosts-hosts/resolve
-recon/hosts-hosts/reverse_resolve
-recon/locations-locations/geocode
-recon/locations-locations/reverse_geocode
-recon/locations-pushpins/flickr
-recon/locations-pushpins/instagram
-recon/locations-pushpins/picasa
-recon/locations-pushpins/shodan
-recon/locations-pushpins/twitter
-recon/locations-pushpins/youtube
-recon/netblocks-companies/whois_orgs
-recon/netblocks-hosts/reverse_resolve
-recon/netblocks-hosts/shodan_net
-recon/netblocks-ports/census_2012
-recon/ports-hosts/migrate_ports
-recon/profiles-contacts/dev_diver
-recon/profiles-contacts/linkedin
-recon/profiles-profiles/linkedin_crawl
-recon/profiles-profiles/namechk
-recon/profiles-profiles/profiler
-recon/profiles-profiles/twitter
-</code></pre>
-
-<p>  Reporting</p>
-
-<hr />
-
-<pre><code>reporting/csv
-reporting/html
-reporting/json
-reporting/list
-reporting/pushpin
-reporting/xlsx
-reporting/xml
-</code></pre>
-
-<p>```</p>
-
-<p>You can select a module via the <strong>load</strong> or <strong>use</strong> commands. Once in a module&rsquo;s context, you can see information about it with the <code>show info</code> command. Similarly, you can see the required options for a module with the <code>show options</code> command, and change them with <strong>set</strong>. Let&rsquo;s look at each module and see some usage examples</p>
-
-<h2>Discovery</h2>
-
-<ul>
-<li><p>DNS Cache Snooper &ndash; Uses the DNS cache snooping technique to check for visited domains</p></li>
-<li><p>Interesting File Finder &ndash; Checks hosts for interesting files in predictable locations</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see more about this module:</p>
-
-<p>``` plain
-[recon-ng][default][interesting_files] > show info</p>
-
-<pre><code>  Name: Interesting File Finder
-  Path: modules/discovery/info_disclosure/interesting_files.py
-Author: Tim Tomes (@LaNMaSteR53), thrapt (thrapt@gmail.com), Jay Turla (@shipcod3), and Mark Jeffery
-</code></pre>
-
-<p>Description:
-  Checks hosts for interesting files in predictable locations.</p>
-
-<p>Options:
-  Name      Current Value  Required  Description</p>
-
-<hr />
-
-<p>  DOWNLOAD  True           yes       download discovered files
-  PORT      80             yes       request port
-  PROTOCOL  http           yes       request protocol
-  SOURCE    default        yes       source of input (see &lsquo;show info&rsquo; for details)</p>
-
-<p>Source Options:
-  default        SELECT DISTINCT host FROM hosts WHERE host IS NOT NULL ORDER BY host
-  <string>       string representing a single input
-  <path>         path to a file containing a list of inputs
-  query <sql>    database query returning one column of inputs</p>
-
-<p>Comments:
-  * Files: robots.txt, sitemap.xml, sitemap.xml.gz, crossdomain.xml, phpinfo.php, test.php, elmah.axd,
-  server-status, jmx-console/, admin-console/, web-console/
-  * Google Dorks:</p>
-
-<pre><code>- inurl:robots.txt ext:txt
-- inurl:elmah.axd ext:axd intitle:"Error log for"
-- inurl:server-status "Apache Status"
-</code></pre>
-
-<p>```</p>
-
-<p>I found this a bit confusing at first, but the SOURCE is the equivalent of the target you do recon on. I ran this on my own blog for a demo. When setting a target, keep in mind not to include the http or https (the protocol setting handles that), and also to exclude the trailing slash (I got errors until I did that).</p>
-
-<p><code>plain
-[recon-ng][default][interesting_files] &gt; run
-[*] http://chousensha.github.io:80/robots.txt =&gt; 200. 'robots.txt' found!
-[*] http://chousensha.github.io:80/sitemap.xml =&gt; 200. 'sitemap.xml' found!
-[*] http://chousensha.github.io:80/sitemap.xml.gz =&gt; 404
-[*] http://chousensha.github.io:80/crossdomain.xml =&gt; 404
-[*] http://chousensha.github.io:80/phpinfo.php =&gt; 404
-[*] http://chousensha.github.io:80/test.php =&gt; 404
-[*] http://chousensha.github.io:80/elmah.axd =&gt; 404
-[*] http://chousensha.github.io:80/server-status =&gt; 404
-[*] http://chousensha.github.io:80/jmx-console/ =&gt; 404
-[*] http://chousensha.github.io:80/admin-console/ =&gt; 404
-[*] http://chousensha.github.io:80/web-console/ =&gt; 404
-[*] 2 interesting files found.
-[*] ...downloaded to '/root/.recon-ng/workspaces/default/'
-</code></p>
-
-<p>You can see recon-ng found 2 interesting files and it downloaded them to my machine</p>
-
-<h2>Exploitation</h2>
-
-<ul>
-<li><p>Remote Command Injection Shell Interface &ndash; Provides a shell interface for remote command injection flaws in web applications</p></li>
-<li><p>Xpath Injection Brute Forcer &ndash; Exploits XPath injection flaws to enumerate the contents of serverside XML documents</p></li>
-</ul>
-
-
-<h2>Import</h2>
-
-<ul>
-<li><p>Advanced CSV File Importer &ndash; Imports values from a CSV file into a database table.</p></li>
-<li><p>List File Importer &ndash; Imports values from a list file into a database table and column</p></li>
-</ul>
-
-
-<h2>Recon</h2>
-
-<ul>
-<li><p>Facebook Contact Enumerator &ndash; Harvests contacts from Facebook.com. Updates the &lsquo;contacts&rsquo; table with the results</p></li>
-<li><p>Jigsaw &ndash; Point Usage Statistics Fetcher &ndash; Queries the Jigsaw API for the point usage statistics of the given account.</p></li>
-<li><p>Jigsaw &ndash; Single Contact Retriever &ndash; Retrieves a single complete contact from the Jigsaw.com API using points from the given account</p></li>
-<li><p>Jigsaw Contact Enumerator &ndash; Harvests contacts from the Jigsaw.com API. Updates the &lsquo;contacts&rsquo; table with the results</p></li>
-<li><p>Jigsaw Authenticated Contact Enumerator &ndash; Harvests contacts from Data.com using an authenticated user account. Updates the &lsquo;contacts&rsquo; table
-with the results. Use &lsquo;keys&rsquo; to set your jigsaw username and password before use.</p></li>
-<li><p>LinkedIn Authenticated Contact Enumerator &ndash; Harvests contacts from the LinkedIn.com API using an authenticated connections network. Updates the
-&lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Whois Data Miner &ndash; Uses the ARIN Whois RWS to harvest companies, locations, netblocks, and contacts associated with the
-given company search string. Updates the respective tables with the results.</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see this in action against Yahoo:</p>
-
-<p>``` plain
-[recon-ng][default][whois_miner] > run
-[*] URL: <a href="http://whois.arin.net/rest/orgs;name=yahoo">http://whois.arin.net/rest/orgs;name=yahoo</a></p>
-
-<hr />
-
-<h2>YAHOO</h2>
-
-<p>[<em>] Location: 701 First Avenue, Sunnyvale, CA 94089
-[</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/nets">http://whois.arin.net/rest/org/YAHOO-1/nets</a>
-[<em>] Netblock: 8.3.34.0/23
-[</em>] Netblock: 216.34.77.0/25
-[<em>] Netblock: 8.8.178.0/24
-[</em>] Netblock: 64.209.232.0/24
-[<em>] Netblock: 64.39.38.208/28
-[</em>] Netblock: 204.71.177.0/24
-[<em>] Netblock: 204.71.188.0/24
-[</em>] Netblock: 216.136.220.128/25
-[<em>] Netblock: 64.56.197.208/28
-[</em>] Netblock: 67.72.118.0/23
-[<em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-1/pocs">http://whois.arin.net/rest/org/YAHOO-1/pocs</a>
-[</em>] Contact: Netblock Admin (<a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#x6e;&#101;&#x74;&#98;&#x6c;&#111;&#x63;&#107;&#x61;&#x64;&#x6d;&#105;&#110;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#x2d;&#x69;&#x6e;&#x63;&#46;&#99;&#x6f;&#109;">&#110;&#101;&#x74;&#x62;&#108;&#x6f;&#x63;&#107;&#97;&#x64;&#x6d;&#x69;&#x6e;&#64;&#121;&#x61;&#104;&#x6f;&#111;&#45;&#105;&#110;&#99;&#x2e;&#99;&#x6f;&#x6d;</a>) &ndash; Whois contact (Admin) (Sunnyvale, CA &ndash; United States)
-[<em>] Contact: Netblock Admin (<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#110;&#x65;&#x74;&#x62;&#x6c;&#x6f;&#x63;&#107;&#97;&#100;&#109;&#105;&#x6e;&#x40;&#121;&#x61;&#x68;&#111;&#111;&#x2d;&#105;&#110;&#99;&#x2e;&#99;&#x6f;&#x6d;">&#x6e;&#101;&#116;&#x62;&#108;&#x6f;&#99;&#107;&#97;&#100;&#x6d;&#105;&#110;&#x40;&#x79;&#x61;&#104;&#111;&#x6f;&#45;&#x69;&#x6e;&#99;&#46;&#x63;&#111;&#109;</a>) &ndash; Whois contact (Tech) (Sunnyvale, CA &ndash; United States)
-[</em>] Contact: Network Abuse (<a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#x61;&#x62;&#117;&#115;&#x65;&#64;&#121;&#97;&#x68;&#111;&#x6f;&#45;&#x69;&#110;&#99;&#46;&#99;&#x6f;&#109;">&#97;&#x62;&#x75;&#115;&#x65;&#64;&#121;&#97;&#104;&#111;&#x6f;&#45;&#105;&#110;&#99;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Abuse) (Sunnyvale, CA &ndash; United States)</p>
-
-<hr />
-
-<h2>YAHOO</h2>
-
-<p>[<em>] Location: 325 Geri St, Lawrenceburg, TN 38464
-[</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/nets">http://whois.arin.net/rest/org/YAHOO-10/nets</a>
-[<em>] Netblock: 12.23.247.176/29
-[</em>] URL: <a href="http://whois.arin.net/rest/org/YAHOO-10/pocs">http://whois.arin.net/rest/org/YAHOO-10/pocs</a>
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#106;&#107;&#105;&#x6c;&#98;&#117;&#114;&#110;&#49;&#x73;&#116;&#111;&#x70;&#64;&#x79;&#97;&#104;&#x6f;&#111;&#x2e;&#x63;&#111;&#109;">&#x6a;&#x6b;&#105;&#x6c;&#x62;&#117;&#x72;&#x6e;&#49;&#115;&#x74;&#x6f;&#112;&#x40;&#x79;&#97;&#x68;&#111;&#111;&#x2e;&#x63;&#111;&#109;</a>) &ndash; Whois contact (Admin) (Lawrenceburg, TN &ndash; United States)
-[</em>] Contact: Janice Kilburn (<a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#106;&#x6b;&#x69;&#108;&#x62;&#117;&#114;&#110;&#x31;&#115;&#116;&#111;&#x70;&#x40;&#x79;&#97;&#x68;&#111;&#111;&#46;&#x63;&#x6f;&#109;">&#106;&#107;&#x69;&#x6c;&#x62;&#x75;&#114;&#x6e;&#x31;&#x73;&#116;&#x6f;&#112;&#64;&#x79;&#x61;&#x68;&#x6f;&#x6f;&#x2e;&#99;&#111;&#109;</a>) &ndash; Whois contact (Abuse) (Lawrenceburg, TN &ndash; United States)
-[<em>] Contact: Janice Kilburn (<a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#106;&#107;&#x69;&#108;&#x62;&#x75;&#x72;&#x6e;&#49;&#x73;&#x74;&#x6f;&#112;&#x40;&#x79;&#97;&#104;&#x6f;&#x6f;&#46;&#99;&#111;&#109;">&#x6a;&#107;&#105;&#x6c;&#x62;&#117;&#x72;&#110;&#x31;&#x73;&#116;&#x6f;&#x70;&#x40;&#121;&#97;&#x68;&#x6f;&#x6f;&#46;&#99;&#x6f;&#109;</a>) &ndash; Whois contact (Tech) (Lawrenceburg, TN &ndash; United States)
-[</em>] URL: <a href="http://whois.arin.net/rest/customers;name=yahoo">http://whois.arin.net/rest/customers;name=yahoo</a></p>
-
-<hr />
-
-<h2>YAHOO</h2>
-
-<p>[<em>] Location: 225 Broadway, San Diego, CA 92101
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C00146168/nets">http://whois.arin.net/rest/customer/C00146168/nets</a>
-[<em>] Netblock: 209.132.98.0/29
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C00146168/pocs">http://whois.arin.net/rest/customer/C00146168/pocs</a>
-[*] No POCS found.</p>
-
-<hr />
-
-<h2>YAHOO</h2>
-
-<p>[<em>] Location: 225 Broadway, San Diego, CA 92101
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C00146169/nets">http://whois.arin.net/rest/customer/C00146169/nets</a>
-[<em>] Netblock: 209.132.98.8/29
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C00146169/pocs">http://whois.arin.net/rest/customer/C00146169/pocs</a>
-[*] No POCS found.</p>
-
-<hr />
-
-<h2>YAHOO</h2>
-
-<p>[<em>] Location: 624 S Grand, Los Angeles, CA 90017
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C01196389/nets">http://whois.arin.net/rest/customer/C01196389/nets</a>
-[<em>] Netblock: 65.91.7.80/29
-[</em>] URL: <a href="http://whois.arin.net/rest/customer/C01196389/pocs">http://whois.arin.net/rest/customer/C01196389/pocs</a>
-[*] No POCS found.</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[<em>] 5 total (2 new) companies found.
-[</em>] 5 total (4 new) locations found.
-[<em>] 14 total (14 new) netblocks found.
-[</em>] 6 total (6 new) contacts found.
-```</p>
-
-<ul>
-<li><p>Bing Linkedin Profile Harvester &ndash; Harvests contacts from linkedin.com by querying Bing for Linkedin pages related to the given
-companies, parsing the profiles, and adding them to the &lsquo;profiles&rsquo; table</p></li>
-<li><p>MailTester Email Validator &ndash; Leverages MailTester.com to validate email addresses</p></li>
-<li><p>Contact Name Mangler &ndash; Applies a mangle pattern to all of the contacts stored in the database, creating email addresses or
-usernames for each harvested contact. Updates the &lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Contact Name Unmangler &ndash; Applies a regex or unmangle pattern to all of the contacts stored in the database, pulling out the
-individual name components. Updates the &lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Have I been pwned? Breach Search &ndash; Leverages the haveibeenpwned.com API to determine if email addresses are associated with breached
-credentials. Adds compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>Have I been pwned? Paste Search &ndash; Leverages the haveibeenpwned.com API to determine if email addresses have been published to various
-paste sites. Adds compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>PwnedList Validator &ndash; Leverages PwnedList.com to determine if email addresses are associated with leaked credentials. Adds
-compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>Contacts to Domains Data Migrator &ndash; Adds a new domain for all the hostnames associated with email addresses stored in the &lsquo;contacts&rsquo;
-table.</p></li>
-<li><p>FullContact Contact Enumerator &ndash; Harvests contact information and profiles from the fullcontact.com API using email addresses as
-input. Updates the &lsquo;contacts&rsquo; and &lsquo;profiles&rsquo; tables with the results.</p></li>
-<li><p>Adobe Hash Cracker &ndash; Decrypts hashes leaked from the 2013 Adobe breach. First, the module cross references the leak ID to
-identify Adobe hashes in the &lsquo;password&rsquo; column of the &lsquo;creds&rsquo; table, moves the Adobe hashes to the
-&lsquo;hash&rsquo; column, and changes the &lsquo;type&rsquo; to &lsquo;Adobe&rsquo;. Second, the module attempts to crack the hashes
-by comparing the ciphertext&rsquo;s decoded cipher blocks to a local block lookup table (BLOCK_DB) of
-known cipher block values. Finally, the module updates the &lsquo;creds&rsquo; table with the results based on
-the level of success.</p></li>
-<li><p>PyBozoCrack Hash Lookup &ndash; Searches Google for the value of a hash and tests for a match by hashing every word in the resulting
-page using all hashing algorithms supported by the &lsquo;hashlib&rsquo; library. Updates the &lsquo;credentials&rsquo;
-table with the positive results.</p></li>
-<li><p>Hashes.org Hash Lookup &ndash; Uses the Hashes.org API to perform a reverse hash lookup. Updates the &lsquo;credentials&rsquo; table with the
-positive results.</p></li>
-<li><p>leakdb Hash Lookup &ndash; Uses the leakdb hash database to perform a reverse hash lookup. Updates the &lsquo;credentials&rsquo; table with
-the positive results.</p></li>
-<li><p>PGP Key Owner Lookup &ndash; Searches the MIT public PGP key server for email addresses of the given domain. Updates the
-&lsquo;contacts&rsquo; table with the results</p></li>
-</ul>
-
-
-<p>This module is similar to <a href="recon/domains-contacts/salesmaple">theHarvester</a></p>
-
-<ul>
-<li><p>SalesMaple Contact Harvester &ndash; Harvests contacts from the SalesMaple API using domains as input. Updates the &lsquo;contacts&rsquo; table with
-the results.</p></li>
-<li><p>Whois POC Harvester &ndash; Uses the ARIN Whois RWS to harvest POC data from whois queries for the given domain. Updates the
-&lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>PwnedList &ndash; Account Credentials Fetcher &ndash; Queries the PwnedList API for credentials associated with the given usernames. Updates the
-&lsquo;credentials&rsquo; table with the results.</p></li>
-<li><p>PwnedList &ndash; API Usage Statistics Fetcher &ndash; Queries the PwnedList API for account usage statistics</p></li>
-<li><p>PwnedList &ndash; Pwned Domain Credentials Fetcher &ndash; Queries the PwnedList API to fetch all credentials for a domain. Updates the &lsquo;credentials&rsquo; table
-with the results</p></li>
-<li><p>PwnedList &ndash; Pwned Domain Statistics Fetcher &ndash; Queries the PwnedList API for a domain to determine if any associated credentials have been
-compromised. This module does NOT return any credentials, only a total number of compromised
-credentials.</p></li>
-<li><p>PwnedList &ndash; Leak Details Fetcher (leak_lookup.py) &ndash; Queries the local database for information associated with a leak ID. The &lsquo;leaks_dump&rsquo; module must
-be used to populate the local database before this module will execute successfully.</p></li>
-<li><p>PwnedList &ndash; Leak Details Fetcher (leaks_dump.py) &ndash; Queries the PwnedList API for information associated with all known leaks. Updates the &lsquo;leaks&rsquo; table with the results.</p></li>
-<li><p>DNS Public Suffix Brute Forcer &ndash; Brute forces TLDs and SLDs using DNS. Updates the &lsquo;domains&rsquo; table with the results</p></li>
-<li><p>Baidu Hostname Enumerator &ndash; Harvests hosts from Baidu.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-<li><p>Bing API Hostname Enumerator &ndash; Leverages the Bing API and &ldquo;domain:&rdquo; advanced search operator to harvest hosts. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>Bing Hostname Enumerator &ndash; Harvests hosts from Bing.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>DNS Hostname Brute Forcer &ndash; Brute forces host names using DNS. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>BuiltWith Enumerator &ndash; Leverages the BuiltWith API to identify hosts, technologies, and contacts associated with a domain</p></li>
-<li><p>Google CSE Hostname Enumerator &ndash; Leverages the Google Custom Search Engine API to harvest hosts using the &lsquo;site&rsquo; search operator.
-Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Google Hostname Enumerator &ndash; Harvests hosts from Google.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-<li><p>Netcraft Hostname Enumerator &ndash; Harvests hosts from Netcraft.com. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>Shodan Hostname Enumerator &ndash; Harvests hosts from the Shodan API by using the &lsquo;hostname&rsquo; search operator. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>SSL SAN Lookup &ndash; Uses the ssltools.com site to obtain the Subject Alternative Names for a domain. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>VPNHunter Lookup &ndash; Checks vpnhunter.com for SSL VPNs, remote accesses, email portals and generic login sites. Updates
-the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Yahoo Hostname Enumerator &ndash; Harvests hosts from Yahoo.com by using the &lsquo;domain&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results.</p></li>
-<li><p>PunkSPIDER Vulnerabilty Finder &ndash; Leverages the PunkSPIDER API to search for previosuly discovered vulnerabltiies on hosts within a
-domain.</p></li>
-<li><p>XSSed Domain Lookup &ndash; Checks XSSed.com for XSS records associated with a domain and displays the first 20 results</p></li>
-</ul>
-
-
-<p>This is a very handy module for XSS lookup. Let&rsquo;s take a look at it:</p>
-
-<p>``` plain
-[recon-ng][default][xssed] > run</p>
-
-<hr />
-
-<h2>YAHOO.COM</h2>
-
-<p>[<em>] Category: XSS
-[</em>] Example: <a href="http://adz.kr.yahoo.com/CRZY/2006/hyundaicard_0913_150365_1a.swf?clickTAG=javascript:alert%20">http://adz.kr.yahoo.com/CRZY/2006/hyundaicard_0913_150365_1a.swf?clickTAG=javascript:alert%20</a>(docume<br>nt.cookie);document.location%20=%20%22<a href="http://1337hax0rz.com%22">http://1337hax0rz.com%22</a>
-[<em>] Host: adz.kr.yahoo.com
-[</em>] Publish_Date: 2015-03-10 00:00:00
-[*] Reference: <a href="http://xssed.com/mirror/60821/">http://xssed.com/mirror/60821/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<p>[<em>] Category: XSS
-[</em>] Example: <a href="http://us.yimg.vip.scd.yahoo.com/us.yimg.com/a/ya/yahoo_mail/ninja8b_nooffer.swf?clickTAG=javascript">http://us.yimg.vip.scd.yahoo.com/us.yimg.com/a/ya/yahoo_mail/ninja8b_nooffer.swf?clickTAG=javascript</a><br>:alert(/412/)
-[<em>] Host: us.yimg.vip.scd.yahoo.com
-[</em>] Publish_Date: 2012-02-16 00:00:00
-[*] Reference: <a href="http://xssed.com/mirror/57596/">http://xssed.com/mirror/57596/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<p>[<em>] Category: Script Insertion
-[</em>] Example: <a href="http://fr.groups.yahoo.com/search?query=%3Cscript%3Ealert">http://fr.groups.yahoo.com/search?query=%3Cscript%3Ealert</a>(String.fromCharCode(88%2C83%2C83))%3C%2Fsc<br>ript%3E&amp;sort=relevance
-[<em>] Host: fr.groups.yahoo.com
-[</em>] Publish_Date: 2011-12-22 00:00:00
-[*] Reference: <a href="http://xssed.com/mirror/61982/">http://xssed.com/mirror/61982/</a></p>
-
-<h2>[*] Status: unfixed</h2>
-
-<p>[<em>] Category: XSS
-[</em>] Example: <a href="http://basketball.fantasysports.yahoo.com/nba/playerranker?lid=">http://basketball.fantasysports.yahoo.com/nba/playerranker?lid=</a><script>alert(/XSS-by-[]0iZy5/)&lt;/scri<br>pt>
-[<em>] Host: basketball.fantasysports.yahoo.com
-[</em>] Publish_Date: 2011-12-21 00:00:00
-[*] Reference: <a href="http://xssed.com/mirror/71051/">http://xssed.com/mirror/71051/</a></p>
-
-<h2>[*] Status: unfixed</h2>
-
-<p>[<em>] Category: Redirect
-[</em>] Example: <a href="http://www.yahoo.com/SIG=15ohh3h62/M=722732.13975606.14062129.13194555/D=regst/S=150002347:R2/Y=YAHO">http://www.yahoo.com/SIG=15ohh3h62/M=722732.13975606.14062129.13194555/D=regst/S=150002347:R2/Y=YAHO</a><br>O/EXP=1275539597/L=hnNys0Kjqbp5Cok8Sr10cAJDTPYa3UwHFG0AANhn/B=VSDoPmKJiUs-/J=1275532397077354/K=rS6p<br>wy3MN2NPP7SBqBCOAQ/A=6097785/R=0/SIG=11o4aqdmv/<em><a href="http://xssed.com/newsearch/searchpad.html">http://xssed.com/newsearch/searchpad.html</a>
-[</em>] Host: www.yahoo.com
-[<em>] Publish_Date: 2011-12-21 00:00:00
-[</em>] Reference: <a href="http://xssed.com/mirror/67076/">http://xssed.com/mirror/67076/</a></p>
-
-<h2>[*] Status: unfixed</h2>
-
-<p>[snip]
-```</p>
-
-<ul>
-<li>XSSposed Domain Lookup &ndash; Checks XSSposed.com for XSS records associated with a domain</li>
-</ul>
-
-
-<p>Another good module for hunting down XSS</p>
-
-<p>``` plain
-[recon-ng][default][xssposed] > run</p>
-
-<hr />
-
-<h2>BITDEFENDER.COM</h2>
-
-<p>[<em>] Category: REDIRECT
-[</em>] Example: <a href="https://safeweb.norton.com/report/show?url=store.bitdefender.com">https://safeweb.norton.com/report/show?url=store.bitdefender.com</a>
-[<em>] Host: store.bitdefender.com
-[</em>] Publish_Date: 2016-06-20 21:09:16
-[*] Reference: <a href="https://www.openbugbounty.org/incidents/160213/">https://www.openbugbounty.org/incidents/160213/</a></p>
-
-<h2>[*] Status: unfixed</h2>
-
-<p>[<em>] Category: XSS
-[</em>] Example: <a href="https://labs.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert">https://labs.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert</a><code>OPENBUGBOUNTY</code>
-[<em>] Host: labs.bitdefender.com
-[</em>] Publish_Date: 2016-05-17 20:31:25
-[*] Reference: <a href="https://www.openbugbounty.org/incidents/154457/">https://www.openbugbounty.org/incidents/154457/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<p>[<em>] Category: XSS
-[</em>] Example: <a href="https://rdprojects.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert">https://rdprojects.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert</a><code>OPENBUGBOUNTY</code>
-[<em>] Host: rdprojects.bitdefender.com
-[</em>] Publish_Date: 2016-05-17 20:32:26
-[*] Reference: <a href="https://www.openbugbounty.org/incidents/154458/">https://www.openbugbounty.org/incidents/154458/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<p>[<em>] Category: REDIRECT
-[</em>] Example: <a href="http://www.bitdefender.com/site/Main/tdRedirect/?url=http://xssposed.org/">http://www.bitdefender.com/site/Main/tdRedirect/?url=http://xssposed.org/</a>
-[<em>] Host: bitdefender.com
-[</em>] Publish_Date: 2016-01-03 01:53:37
-[*] Reference: <a href="https://www.openbugbounty.org/incidents/121291/">https://www.openbugbounty.org/incidents/121291/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<p>[<em>] Category: REDIRECT
-[</em>] Example: <a href="https://store.bitdefender.com/redirect.php?url=http://xssposed.org/">https://store.bitdefender.com/redirect.php?url=http://xssposed.org/</a>
-[<em>] Host: store.bitdefender.com
-[</em>] Publish_Date: 2015-09-19 20:33:58
-[*] Reference: <a href="https://www.openbugbounty.org/incidents/87399/">https://www.openbugbounty.org/incidents/87399/</a></p>
-
-<h2>[*] Status: fixed</h2>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 5 total (5 new) vulnerabilities found.
-```</p>
-
-<ul>
-<li><p>Hosts to Domains Data Migrator &ndash; Adds a new domain for all the hostnames stored in the &lsquo;hosts&rsquo; table</p></li>
-<li><p>Bing API IP Neighbor Enumerator &ndash; Leverages the Bing API and &ldquo;ip:&rdquo; advanced search operator to enumerate other virtual hosts sharing
-the same IP address. Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>FreeGeoIP &ndash; Leverages the freegeoip.net API to geolocate a host by IP address. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-</ul>
-
-
-<p>I used this to check the location of www.google.com host (resolved the IP first):</p>
-
-<p><code>plain
-[recon-ng][default][freegeoip] &gt; run
-[*] 172.217.16.100 - 37.4192,-122.0574 - Mountain View, California, United States
-</code></p>
-
-<ul>
-<li><p>My-IP-Neighbors.com Lookup &ndash; Checks My-IP-Neighbors.com for virtual hosts on the same server. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>IPInfoDB GeoIP &ndash; Leverages the ipinfodb.com API to geolocate a host by IP address. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>Hostname Resolver &ndash; Resolves the IP address for a host. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>Reverse Resolver &ndash; Conducts a reverse lookup for each IP address to resolve the hostname. Updates the &lsquo;hosts&rsquo; table
-with the results.</p></li>
-<li><p>Address Geocoder &ndash; Queries the Google Maps API to obtain coordinates for an address. Updates the &lsquo;locations&rsquo; table with
-the results.</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see this module in action with one of our favorite tech giants' addresses xD (I leave it to you to see what&rsquo;s located there):</p>
-
-<p>``` plain
-[recon-ng][default][geocode] > run
-[<em>] Geocoding &lsquo;1600 Amphitheatre Parkway&rsquo;&hellip;
-[</em>] Latitude: 37.4224713, Longitude: -122.0843333</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 1 total (1 new) locations found.
-```</p>
-
-<ul>
-<li>Reverse Geocoder &ndash; Queries the Google Maps API to obtain an address from coordinates.</li>
-</ul>
-
-
-<p>So we have some coordinates. Let&rsquo;s see what&rsquo;s there:</p>
-
-<p>``` plain
-[recon-ng][default][reverse_geocode] > run
-[<em>] Reverse geocoding (35.670337, 139.702573)&hellip;
-[</em>] 1 Chome-18-20 Jingūmae, Shibuya-ku, Tōkyō-to 150-0001, Japan</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 1 total (1 new) locations found.
-```</p>
-
-<ul>
-<li><p>Flickr Geolocation Search &ndash; Searches Flickr for media in the specified proximity to a location.</p></li>
-<li><p>Instagram Geolocation Search &ndash; Searches Instagram for media in the specified proximity to a location.</p></li>
-<li><p>Picasa Geolocation Search &ndash; Searches Picasa for media in the specified proximity to a location.</p></li>
-<li><p>Shodan Geolocation Search &ndash; Searches Shodan for media in the specified proximity to a location.</p></li>
-<li><p>Twitter Geolocation Search &ndash; Searches Twitter for media in the specified proximity to a location.</p></li>
-<li><p>YouTube Geolocation Search &ndash; Searches YouTube for media in the specified proximity to a location.</p></li>
-<li><p>Whois Company Harvester &ndash; Uses the ARIN Whois RWS to harvest Companies data from whois queries for the given netblock. Updates
-the &lsquo;companies&rsquo; table with the results.</p></li>
-<li><p>Reverse Resolver &ndash; Conducts a reverse lookup for each of a netblock&rsquo;s IP addresses to resolve the hostname. Updates the
-&lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Shodan Network Enumerator &ndash; Harvests hosts from the Shodan API by using the &lsquo;net&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table
-with the results.</p></li>
-<li><p>Internet Census 2012 Lookup &ndash; Queries the Internet Census 2012 data through Exfiltrated.com to enumerate open ports for a
-netblock.</p></li>
-</ul>
-
-
-<p>This will come in handy to give you an idea about hosts without directly port scanning them:</p>
-
-<p>``` plain
-[recon-ng][default][census_2012] > run</p>
-
-<hr />
-
-<h2>8.3.34.0/23</h2>
-
-<p>[<em>] 8.3.34.0/23 (8.3.34.0 &ndash; 8.3.35.255)
-[</em>] 8.3.34.5 (rsw4-1-gci.smpenn.corp.yahoo.com) &ndash; 80
-[<em>] 8.3.34.28 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.34.46 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[<em>] 8.3.34.60 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.34.66 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[<em>] 8.3.34.79 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.34.222 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[<em>] 8.3.34.225 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.34.231 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 25
-[<em>] 8.3.34.231 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.34.246 (tstsqlclstr1d.smca.yahoo.com) &ndash; 80
-[<em>] 8.3.34.255 (UNKNOWN-8-3-34-X.yahoo.com) &ndash; 80
-[</em>] 8.3.35.71 (UNKNOWN-8-3-35-X.yahoo.com) &ndash; 80
-[<em>] 8.3.35.182 (UNKNOWN-8-3-35-X.yahoo.com) &ndash; 25
-[</em>] 8.3.35.182 (UNKNOWN-8-3-35-X.yahoo.com) &ndash; 80
-[<em>] 8.3.35.186 (UNKNOWN-8-3-35-X.yahoo.com) &ndash; 80
-[</em>] 8.3.35.220 (UNKNOWN-8-3-35-X.yahoo.com) &ndash; 80</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 17 total (17 new) ports found.
-````</p>
-
-<ul>
-<li><p>Ports to Hosts Data Migrator &ndash; Adds a new host for all the hostnames stored in the &lsquo;ports&rsquo; table.</p></li>
-<li><p>Dev Diver Repository Activity Examiner &ndash; Searches public code repositories for information about a given username.</p></li>
-</ul>
-
-
-<p>This is another useful module to search for a developer on different platforms (note to self: I have to get back into coding frenzy):</p>
-
-<p>``` plain
-[recon-ng][default][dev_diver] > run
-[<em>] Checking Github&hellip;
-[</em>] Github username found &ndash; (<a href="https://api.github.com/users/chousensha">https://api.github.com/users/chousensha</a>)</p>
-
-<p>  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-  |                               Github                              |
-  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
-  | Resource    | Github                                              |
-  | User Name   | chousensha                                          |
-  | Profile URL | <a href="https://github.com/chousensha">https://github.com/chousensha</a>                       |
-  | Avatar URL  | <a href="https://avatars.githubusercontent.com/u/5703557?v=3">https://avatars.githubusercontent.com/u/5703557?v=3</a> |
-  | Location    |                                                     |
-  | Company     |                                                     |
-  | Blog URL    | <a href="http://chousensha.github.io/">http://chousensha.github.io/</a>                        |
-  | Email       |                                                     |
-  | Bio         |                                                     |
-  | Followers   | 2                                                   |
-  | ID          | 5703557                                             |
-  | Joined      | 2013-10-16                                          |
-  | Updated     | 2016-04-29                                          |
-  +&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+</p>
-
-<p>[<em>] Checking Bitbucket&hellip;
-[</em>] Bitbucket username not found.
-[<em>] Checking SourceForge&hellip;
-[</em>] Sourceforge username not found.
-[<em>] Checking CodePlex&hellip;
-[</em>] CodePlex username not found.
-[<em>] Checking Gitorious&hellip;
-[</em>] Gitorious username not found.</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 1 total (1 new) contacts found.
-```</p>
-
-<ul>
-<li><p>Linkedin Contact Crawler &ndash; Harvests contact information from linkedin.com by parsing the link(s) given and adding the info to
-the &lsquo;contacts&rsquo; table.</p></li>
-<li><p>Linkedin Profile Crawler &ndash; Harvests profiles from linkedin.com by visting the given link(s), crawling the &ldquo;Viewers of this
-profile also viewed&rdquo;, parsing the pages, and adding new profiles to the &lsquo;profiles&rsquo; table</p></li>
-<li><p>NameChk.com Username Validator &ndash; Leverages NameChk.com to validate the existance of usernames on specific web sites and updates the
-&lsquo;profiles&rsquo; table with the results.</p></li>
-</ul>
-
-
-<p>Good for recon but also for checking if how unique is your l33t handle:</p>
-
-<p>``` plain
-[recon-ng][default][namechk] > run
-[*] Retrieving site data&hellip;</p>
-
-<hr />
-
-<h2>CHOUSENSHA</h2>
-
-<p>[<em>] Wordpress: Available.
-[</em>] Reddit: Available.
-[<em>] Blogger: Available.
-[</em>] GooglePlus: Available.
-[<em>] Ebay: Available.
-[</em>] Twitch: Available.
-[<em>] Instagram: Available.
-[</em>] Twitter: User exists!
-[<em>] Facebook: User exists!
-[</em>] Slack: Available.
-[<em>] PayPal: Available.
-[</em>] Pinterest: Available.
-[<em>] Vine: User exists!
-[</em>] Github: User exists!
-[<em>] Basecamp: Available.
-[</em>] Flickr: Available.
-[<em>] Pandora: Available.
-[</em>] Spotify: Available.
-[<em>] YouTube: User exists!
-[</em>] MySpace: Available.
-[<em>] Steam: Available.
-[</em>] Flipboard: Available.
-[<em>] OkCupid: Available.
-[</em>] UStream: Available.
-[<em>] Vimeo: Available.
-[</em>] Etsy: User exists!
-[<em>] BitBucket: Available.
-[</em>] SoundCloud: Available.
-[<em>] 500px: Available.
-[</em>] CashMe: Available.
-[<em>] Meetup: Available.
-[</em>] DailyMotion: Available.
-[<em>] About.me: User exists!
-[</em>] ProductHunt: Available.
-[<em>] Disqus: User exists!
-[</em>] Medium: User exists!
-[<em>] Behance: Available.
-[</em>] Imgur: Available.
-[<em>] Bit.ly: User exists!
-[</em>] Fanpop: Available.
-[<em>] Cafe Mom: Available.
-[</em>] Instructables: Available.
-[<em>] Photobucket: Available.
-[</em>] Good Reads: Available.
-[<em>] deviantART: Available.
-[</em>] Tumblr: Available.
-[<em>] Gravatar: Available.
-[</em>] Venmo: User exists!
-[<em>] Keybase: Available.
-[</em>] StumbleUpon: User exists!
-[<em>] Kongregate: User exists!
-[</em>] LiveJournal: Available.
-[<em>] Yelp: User exists!
-[</em>] Codecademy: Available.
-[<em>] Foursquare: Available.
-[</em>] Team Treehouse: Available.
-[<em>] AngelList: Available.
-[</em>] Viddler: Available.
-[<em>] tsu: Available.
-[</em>] last.fm: Available.
-[<em>] Technorati: Available.
-[</em>] Aviary: User exists!
-[<em>] Fotolog: User exists!
-[</em>] Slideshare: Available.
-[<em>] Blinklist: Available.
-[</em>] Tripit: User exists!
-[<em>] GogoBot: Available.
-[</em>] Flavors.me: Available.
-[<em>] BuzzFeed: Available.
-[</em>] TripAdvisor: Available.
-[<em>] blip.fm: Available.
-[</em>] Dribbble: Available.
-[<em>] Geeklist: User exists!
-[</em>] Papaly: Available.
-[<em>] wishlistr: Available.
-[</em>] Vk: Available.
-[<em>] Pastebin: Available.
-[</em>] Coinbase: Available.
-[<em>] iFunny: Available.
-[</em>] Roblox: User exists!
-[<em>] XFire: Available.
-[</em>] Witty: User exists!
-[<em>] Wikipedia: Available.
-[</em>] Hacker<a href="news:">news:</a> User exists!
-[<em>] StreamMe: Available.
-[</em>] Abouto: Available.
-[<em>] qmpeople: Available.
-[</em>] Fiverr: Available.
-[<em>] Plenty Of Fish: Available.
-[</em>] Voat: User exists!
-[<em>] Trakt: Available.
-[</em>] IFTTT: Available.
-[<em>] Crokes: User exists!
-[</em>] Tracky: Available.
-[<em>] GetSatisfaction: Available.
-[</em>] Ello: User exists!</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 24 total (24 new) profiles found.
-```</p>
-
-<p>Hmm, quite a few other &ldquo;challengers&rdquo;.</p>
-
-<ul>
-<li>OSINT HUMINT Profile Collector &ndash; Takes each username from the profiles table and searches a variety of web sites for those users.</li>
-</ul>
-
-
-<p>This one checks 191 sites for the username, here we go:</p>
-
-<p>``` plain
-[recon-ng][default][profiler] > run
-[*] Retrieving <a href="https://raw.githubusercontent.com/WebBreacher/WhatsMyName/master/web_accounts_list.json...">https://raw.githubusercontent.com/WebBreacher/WhatsMyName/master/web_accounts_list.json...</a></p>
-
-<p>  Looking Up Data For: Chousensha</p>
-
-<hr />
-
-<p>[<em>] Checking: about.me
-[</em>] Checking: AdultFriendFinder
-[<em>] Checking: Matchdoctor
-[</em>] Checking: AngelList
-[<em>] Checking: aNobil
-[</em>] Checking: ask.fm
-[<em>] Checking: Atlassian
-[</em>] Checking: Atlassian Self-Signup
-[<em>] Checking: AudioBoom
-[</em>] Checking: authorSTREAM
-[<em>] Checking: badoo
-[</em>] Checking: Bitbucket
-[<em>] Checking: BLIP.fm
-[</em>] Checking: Black Planet
-[<em>] Checking: Blogmarks
-[</em>] Checking: Blogspot
-[<em>] Checking: BodyBuilding.com
-[</em>] Checking: Break
-[<em>] Checking: Bugcrowd
-[</em>] Checking: cafemom
-[<em>] Checking: CarDomain
-[</em>] Checking: cHEEZburger
-[<em>] Checking: CodePlex
-[</em>] Checking: CoderStats
-[<em>] Checking: COLOURlovers
-[</em>] Checking: Conferize
-[<em>] Checking: copytaste
-[</em>] Checking: cruiseMates
-[<em>] Checking: Dailymotion
-[</em>] Checking: Delicious
-[<em>] Checking: DeviantArt
-[</em>] Checking: diigo
-[<em>] Checking: DIY
-[</em>] Checking: eBay
-[<em>] Checking: EightBit
-[</em>] [profile] chousensha &ndash; CoderStats (<a href="http://coderstats.net/github/chousensha/">http://coderstats.net/github/chousensha/</a>)
-[<em>] Checking: Engadget
-[</em>] Checking: EPORNER
-[<em>] Checking: Etsy
-[</em>] Checking: facebook.com
-[<em>] Checking: families.com
-[</em>] Checking: fanpop
-[<em>] Checking: FFFFOUND!
-[</em>] Checking: Fiverr
-[<em>] Checking: Flickr
-[</em>] Checking: Foodspotting
-[<em>] Checking: Fotolog
-[</em>] Checking: Foursquare
-[<em>] Checking: freesound
-[</em>] Checking: FriendFinder-X
-[<em>] Checking: FunnyOrDie
-[</em>] Checking: Garmin connect
-[<em>] Checking: GeekGrade
-[</em>] Checking: Geocaching
-[<em>] Checking: GETItON
-[</em>] Checking: GitHub
-[<em>] Checking: gogobot
-[</em>] Checking: goodreads
-[<em>] Checking: Gravatar
-[</em>] Checking: howaboutwe
-[<em>] Checking: HubPages
-[</em>] Checking: I-am-pregnant
-[<em>] Checking: IFTTT
-[</em>] [profile] chousensha &ndash; GitHub (<a href="https://api.github.com/users/chousensha">https://api.github.com/users/chousensha</a>)
-[<em>] Checking: ImageShack
-[</em>] Checking: imgur
-[<em>] Checking: InsaneJournal
-[</em>] Checking: Instagram
-[<em>] Checking: instructables
-[</em>] Checking: Internet Archive
-[<em>] Checking: interpals
-[</em>] Checking: Keybase
-[<em>] Checking: Klear
-[</em>] Checking: Klout
-[<em>] Checking: Kongregate
-[</em>] Checking: Lanyrd
-[<em>] Checking: Last.fm
-[</em>] Checking: LibraryThing
-[<em>] Checking: LinkedIn
-[</em>] Checking: LiveJasmin
-[<em>] Checking: Marketing Land
-[</em>] Checking: mate1
-[<em>] [profile] chousensha &ndash; Kongregate (<a href="http://www.kongregate.com/accounts/chousensha">http://www.kongregate.com/accounts/chousensha</a>)
-[</em>] Checking: Medium
-[<em>] Checking: Meetzur
-[</em>] Checking: Microsoft Technet Community
-[<em>] Checking: Mixcloud
-[</em>] Checking: Mixcrate
-[<em>] Checking: Mixlr
-[</em>] Checking: Mod DB
-[<em>] Checking: Muck Rack
-[</em>] [profile] chousensha &ndash; Internet Archive (<a href="http://archive.org/search.php?query=chousensha">http://archive.org/search.php?query=chousensha</a>)
-[<em>] Checking: MyBuilder.com
-[</em>] Checking: MyFitnessPal
-[<em>] Checking: MyLot
-[</em>] Checking: Myspace
-[<em>] Checking: netvibes
-[</em>] Checking: Newsvine
-[<em>] Checking: Overcast Network
-[</em>] Checking: Photoblog
-[<em>] Checking: PhotoBucket
-[</em>] Checking: PictureTrail
-[<em>] Checking: PinkBike
-[</em>] Checking: Pinterest
-[<em>] Checking: Playlists.net
-[</em>] Checking: Plurk
-[<em>] Checking: POF
-[</em>] Checking: Porn.com
-[<em>] Checking: Pornhub
-[</em>] Checking: PSNProfiles
-[<em>] Checking: raptr
-[</em>] Checking: Readability
-[<em>] Checking: Reunion.com
-[</em>] Checking: scratch
-[<em>] Checking: Security Street
-[</em>] Checking: SEOClerks
-[<em>] Checking: setlist.fm
-[</em>] Checking: Shopcade
-[<em>] Checking: singlemuslim
-[</em>] Checking: slideshare
-[<em>] Checking: SmugMug
-[</em>] Checking: smule
-[<em>] Checking: snooth
-[</em>] Checking: Soup
-[<em>] Checking: Speaker Deck
-[</em>] Checking: sporcle
-[<em>] Checking: Steam
-[</em>] Checking: stupidcancer
-[<em>] Checking: TF2 Backpack Examiner
-[</em>] Checking: theguardian
-[<em>] Checking: thesixtyone
-[</em>] Checking: tribe
-[<em>] Checking: tripadvisor
-[</em>] Checking: Tripit
-[<em>] Checking: tumblr
-[</em>] Checking: Twitter
-[<em>] Checking: untappd
-[</em>] Checking: uSTREAM
-[<em>] Checking: viddler
-[</em>] Checking: VideoLike
-[<em>] Checking: vidme
-[</em>] Checking: Vimeo
-[<em>] Checking: Vine
-[</em>] Checking: VisualizeUs
-[<em>] Checking: Voices.com
-[</em>] Checking: Wanelo
-[<em>] Checking: wattpad
-[</em>] Checking: WeeWorld
-[<em>] Checking: wishlistr
-[</em>] [profile] chousensha &ndash; VideoLike (<a href="http://videolike.org/video/chousensha">http://videolike.org/video/chousensha</a>)
-[<em>] Checking: Wikipedia
-[</em>] [profile] chousensha &ndash; Twitter (<a href="https://twitter.com/chousensha">https://twitter.com/chousensha</a>)
-[<em>] Checking: WordPress
-[</em>] Checking: WordPress Support
-[<em>] Checking: Xanga
-[</em>] Checking: Xbox Gamertag
-[<em>] Checking: xHamster
-[</em>] Checking: XVIDEOS
-[<em>] Checking: YouTube
-[</em>] Checking: Zooppa
-[*] [profile] chousensha &ndash; YouTube (<a href="https://www.youtube.com/user/chousensha/videos">https://www.youtube.com/user/chousensha/videos</a>)</p>
-
-<hr />
-
-<h2>SUMMARY</h2>
-
-<p>[*] 7 total (5 new) profiles found.
-```</p>
-
-<ul>
-<li><p>Twitter Handles &ndash; Searches Twitter for users that mentioned, or were mentioned by, the given handle.</p></li>
-<li><p>Github Code Enumerator &ndash; Uses the Github API to enumerate repositories and gists owned by a Github user. Updates the
-&lsquo;repositories&rsquo; table with the results.</p></li>
-<li><p>Github Commit Searcher &ndash; Uses the Github API to gather user profiles from repository commits. Updates the &lsquo;profiles&rsquo; table
-with the results.</p></li>
-<li><p>Github Gist Searcher &ndash; Uses the Github API to download and search Gists for possible information disclosures. Updates the
-&lsquo;vulnerabilities&rsquo; table with the results</p></li>
-<li><p>Github Dork Analyzer &ndash; Uses the Github API to search for possible vulnerabilites in source code by leveraging Github Dorks
-and the &lsquo;repo&rsquo; search operator. Updates the &lsquo;vulnerabilities&rsquo; table with the results.</p></li>
-<li><p>Indeed Resume Crawl &ndash; Crawls Indeed.com for contacts and resumes. Adds name, title, and location to the contacts table and
-a link to the resume in the profiles table. Can only harvest the first 1,000 results. Result set
-changes, so running the same crawl mutiple times can produce new contacts. If the PAST_EMPS option
-is set to true, the module will crawl both current and past employees. Given a keyword, the module
-will only harvest contacts whose resumes contain the keyword. (e.g. Linux Admin)</p></li>
-<li><p>Meta Data Extractor &ndash; Searches for files associated with the provided domain(s) and extracts any contact related metadata</p></li>
-<li><p>HackerTarget Lookup &ndash; Uses the HackerTarget.com API to find host names. Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>ThreatCrowd DNS lookup &ndash; Leverages the ThreatCrowd passive DNS API to discover hosts/subdomains.</p></li>
-<li><p>Google Hacking Database &ndash; Searches for possible vulnerabilites in a domain by leveraging the Google Hacking Database (GHDB)
-and the &lsquo;site&rsquo; search operator. Updates the &lsquo;vulnerabilities&rsquo; table with the results.</p></li>
-</ul>
-
-
-<p>This module is massive! Basically, you get Google dorks inside Recon-ng!</p>
-
-<p>``` plain
-[recon-ng][default][ghdb] > show info</p>
-
-<pre><code>  Name: Google Hacking Database
-  Path: modules/recon/domains-vulnerabilities/ghdb.py
-Author: Tim Tomes (@LaNMaSteR53)
-</code></pre>
-
-<p>Description:
-  Searches for possible vulnerabilites in a domain by leveraging the Google Hacking Database (GHDB)
-  and the &lsquo;site&rsquo; search operator. Updates the &lsquo;vulnerabilities&rsquo; table with the results.</p>
-
-<p>Options:
-  Name                                 Current Value  Required  Description</p>
-
-<hr />
-
-<p>  DORKS                                               no        file containing an alternate list of Google dorks
-  GHDB_ADVISORIES_AND_VULNERABILITIES  False          yes       enable/disable the 1996 dorks in this category
-  GHDB_ERROR_MESSAGES                  False          yes       enable/disable the 93 dorks in this category
-  GHDB_FILES_CONTAINING_JUICY_INFO     False          yes       enable/disable the 366 dorks in this category
-  GHDB_FILES_CONTAINING_PASSWORDS      False          yes       enable/disable the 199 dorks in this category
-  GHDB_FILES_CONTAINING_USERNAMES      False          yes       enable/disable the 17 dorks in this category
-  GHDB_FOOTHOLDS                       False          yes       enable/disable the 49 dorks in this category
-  GHDB_NETWORK_OR_VULNERABILITY_DATA   False          yes       enable/disable the 63 dorks in this category
-  GHDB_PAGES_CONTAINING_LOGIN_PORTALS  False          yes       enable/disable the 372 dorks in this category
-  GHDB_SENSITIVE_DIRECTORIES           False          yes       enable/disable the 119 dorks in this category
-  GHDB_SENSITIVE_ONLINE_SHOPPING_INFO  False          yes       enable/disable the 11 dorks in this category
-  GHDB_VARIOUS_ONLINE_DEVICES          False          yes       enable/disable the 307 dorks in this category
-  GHDB_VULNERABLE_FILES                False          yes       enable/disable the 62 dorks in this category
-  GHDB_VULNERABLE_SERVERS              False          yes       enable/disable the 83 dorks in this category
-  GHDB_WEB_SERVER_DETECTION            False          yes       enable/disable the 77 dorks in this category
-  SOURCE                               default        yes       source of input (see &lsquo;show info&rsquo; for details)</p>
-
-<p>Source Options:
-  default        SELECT DISTINCT domain FROM domains WHERE domain IS NOT NULL
-  <string>       string representing a single input
-  <path>         path to a file containing a list of inputs
-  query <sql>    database query returning one column of inputs</p>
-
-<p>Comments:
-  * Special thanks to the Offenvise Security crew for maintaining the GHDB and making it available to
-  open source projects like Recon-ng. Thanks Muts!
-```</p>
-
-<ul>
-<li><p>SSLTools.com Host Name Lookups &ndash; Uses the ssltools.com site to obtain host names from a site&rsquo;s SSL certificate metadata to update the
-&lsquo;hosts&rsquo; table.  Security issues with the certificate trust are pushed to the &lsquo;vulnerabilities&rsquo;
-table.</p></li>
-<li><p>censys.io port lookup by netblock &ndash; Queries censys.io to enumerate open ports for a netblock</p></li>
-</ul>
-
-
-<h2>Reporting</h2>
-
-<ul>
-<li><p>CSV File Creator &ndash; Creates a CSV file containing the specified harvested data</p></li>
-<li><p>HTML Report Generator &ndash; Creates a HTML report</p></li>
-</ul>
-
-
-<p>I really liked the HTML report format. It classifies data into:</p>
-
-<p><code>plain
-domains
-companies   
-netblocks   
-locations   
-vulnerabilities
-ports   
-hosts   
-contacts    
-credentials
-leaks   
-pushpins    
-profiles    
-repositories
-</code></p>
-
-<ul>
-<li><p>JSON Report Generator &ndash; Creates a JSON report.</p></li>
-<li><p>List Creator &ndash; Creates a file containing a list of records from the database</p></li>
-<li><p>PushPin Report Generator &ndash; Creates HTML media and map reports for all of the PushPins stored in the database.</p></li>
-<li><p>XLSX File Creator &ndash; Creates an Excel compatible XLSX file containing the entire data set</p></li>
-<li><p>XML Report Generator -Creates a XML report</p></li>
-</ul>
-
-
-<p>It took a while to list everything! As you could see, the Recon-ng framework is an information gathering tool on steroids! And if you can&rsquo;t find what you need among the current modules, you can write your own and contribute!</p>
-
-<p>Until next time, here&rsquo;s the cookie straight from the cow&rsquo;s mouth:</p>
-
-<p>``` plain</p>
-
-<hr />
-
-<p>/ Q: How did you get into artificial   \
-| intelligence? A: Seemed logical &mdash; I |
-\ didn&rsquo;t have any real intelligence.   /</p>
 
 <hr />
 
