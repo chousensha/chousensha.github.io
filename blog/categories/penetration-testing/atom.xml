@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-06T10:22:07-04:00</updated>
+  <updated>2017-06-07T07:28:54-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,165 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[lbd - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/07/lbd-kali-linux-tools/"/>
+    <updated>2017-06-07T05:46:27-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/07/lbd-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p>Load balancing is the practice of distributing traffic across multiple servers, in order to increase performance and reliability. With multiple servers offering the same resources, single points of failure are eliminated, and availability is increased. Load balancers may be set up in a way that users from certain geographic locations are sent to specific servers, in order to increase the speed of access.</p>
+
+<p>Load balancing introduces some issue in penetration tests, because it interferes with the accuracy of the testing. This is why it&rsquo;s important to establish whether load balancers are in place, and if there are, taking that into account when performing the tests and writing the reports.</p>
+
+<!-- more -->
+
+
+<p>lbd (load balancing detector) is a Kali tool that is useful for determining the presence of load balancing.</p>
+
+<p>Author: Stefan Behte</p>
+
+<h2>lbd description</h2>
+
+<blockquote><p>lbd (load balancing detector) detects if a given domain uses DNS and/or HTTP Load-Balancing (via Server: and Date:
+header and diffs between server answers).</p></blockquote>
+
+<h3>DNS load balancing</h3>
+
+<p>In DNS load balancing, a system has a list of IPs that can respond to requests. When you request a resource, you hit on one of these IPs, and you need to test further to identify the exact target. If your target is <em>example.com</em>, and 3 IPs are serving that, when you find a vulnerability, you still have to determine which of these addresses is the vulnerable one (or if all are).</p>
+
+<h3>HTTP load balancing</h3>
+
+<p>One of the ways HTTP load balancing can be achieved is through cookies. This comes in handy in online stores and other such web applications that need to identify a client and send it to the same specific resource</p>
+
+<h2>lbd options</h2>
+
+<p>```
+lbd &ndash; load balancing detector 0.4 &ndash; Checks if a given domain uses load-balancing.</p>
+
+<pre><code>                                Written by Stefan Behte (http://ge.mine.nu)
+                                Proof-of-concept! Might give false positives.
+</code></pre>
+
+<p>usage: /usr/bin/lbd domain [port] {https}
+```</p>
+
+<h2>lbd usage</h2>
+
+<p>Let&rsquo;s now check a bunch of domains and see what load balancers we can find, if at all</p>
+
+<ul>
+<li>DNS and HTTP load balancing</li>
+</ul>
+
+
+<p>```
+lbd hackerone.com</p>
+
+<p>lbd &ndash; load balancing detector 0.4 &ndash; Checks if a given domain uses load-balancing.</p>
+
+<pre><code>                                Written by Stefan Behte (http://ge.mine.nu)
+                                Proof-of-concept! Might give false positives.
+</code></pre>
+
+<p>Checking for DNS-Loadbalancing: FOUND
+hackerone.com has address 104.16.100.52
+hackerone.com has address 104.16.99.52</p>
+
+<p>Checking for HTTP-Loadbalancing [Server]:
+ cloudflare-nginx
+ NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Date]: 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:37, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:38, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:39, 11:11:40, 11:11:40, 11:11:40, 11:11:40, 11:11:40, 11:11:40, 11:11:40, 11:11:40, 11:11:40, NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Diff]: FOUND
+&lt; CF-RAY: 36b32c07c6bf2950-OTP</p>
+
+<blockquote><p>CF-RAY: 36b32c0835d7292c-OTP</p></blockquote>
+
+<p>hackerone.com does Load-balancing. Found via Methods: DNS HTTP[Diff]
+```</p>
+
+<ul>
+<li>HTTP load balancing</li>
+</ul>
+
+
+<p>```
+lbd cisco.com</p>
+
+<p>lbd &ndash; load balancing detector 0.4 &ndash; Checks if a given domain uses load-balancing.</p>
+
+<pre><code>                                Written by Stefan Behte (http://ge.mine.nu)
+                                Proof-of-concept! Might give false positives.
+</code></pre>
+
+<p>Checking for DNS-Loadbalancing: NOT FOUND
+Checking for HTTP-Loadbalancing [Server]:
+ Apache
+ NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Date]: 11:13:47, 11:13:47, 11:13:48, 11:13:49, 11:13:50, 11:13:51, 11:13:51, 11:13:52, 11:13:53, 11:13:54, 11:13:54, 11:13:55, 11:13:56, 11:13:57, 11:13:57, 11:13:58, 11:13:59, 11:14:00, 11:14:01, 11:14:01, 11:14:02, 11:14:03, 11:14:04, 11:14:04, 11:14:05, 11:14:06, 11:14:07, 11:14:07, 11:14:08, 11:14:09, 11:14:10, 11:14:11, 11:14:11, 11:14:12, 11:14:13, 11:14:14, 11:14:14, 11:14:15, 11:14:16, 11:14:17, 11:14:17, 11:14:18, 11:14:19, 11:14:20, 11:14:21, 11:14:21, 11:14:22, 11:14:23, 11:14:24, 11:14:24, NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Diff]: FOUND</p>
+
+<blockquote><p>Cache-Control: max-age=0
+Expires: Wed, 07 Jun 2017 11:14:27 GMT</p></blockquote>
+
+<p>cisco.com does Load-balancing. Found via Methods: HTTP[Diff]
+```</p>
+
+<ul>
+<li>no load balancing</li>
+</ul>
+
+
+<p>```
+lbd nmap.org</p>
+
+<p>lbd &ndash; load balancing detector 0.4 &ndash; Checks if a given domain uses load-balancing.</p>
+
+<pre><code>                                Written by Stefan Behte (http://ge.mine.nu)
+                                Proof-of-concept! Might give false positives.
+</code></pre>
+
+<p>Checking for DNS-Loadbalancing: NOT FOUND
+Checking for HTTP-Loadbalancing [Server]:
+ Apache/2.4.6 (CentOS)
+ NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Date]: 11:17:00, 11:17:00, 11:17:01, 11:17:01, 11:17:02, 11:17:02, 11:17:03, 11:17:03, 11:17:03, 11:17:04, 11:17:04, 11:17:05, 11:17:05, 11:17:06, 11:17:06, 11:17:07, 11:17:07, 11:17:07, 11:17:08, 11:17:08, 11:17:09, 11:17:09, 11:17:10, 11:17:10, 11:17:10, 11:17:11, 11:17:11, 11:17:12, 11:17:12, 11:17:13, 11:17:13, 11:17:14, 11:17:14, 11:17:14, 11:17:15, 11:17:15, 11:17:16, 11:17:16, 11:17:17, 11:17:17, 11:17:17, 11:17:18, 11:17:18, 11:17:19, 11:17:19, 11:17:20, 11:17:20, 11:17:20, 11:17:21, 11:17:21, NOT FOUND</p>
+
+<p>Checking for HTTP-Loadbalancing [Diff]: NOT FOUND</p>
+
+<p>nmap.org does NOT use Load-balancing.
+```</p>
+
+<h3>Key takeaways</h3>
+
+<ul>
+<li>when testing load balanced systems, you can try accessing them by IP instead of name (be advised that firewalls might pick up on this as suspicious activity)</li>
+</ul>
+
+
+<p>To learn more about load balancing and pentesting, check out this <a href="https://www.sans.org/reading-room/whitepapers/testing/identifying-load-balancers-penetration-testing-33313">SANS paper</a></p>
+
+<p>```
+/ Q: What is printed on the bottom of \
+| beer bottles in Minnesota? A: Open  |
+\ other end.                          /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Tr0ll 2 - There be trolls]]></title>
@@ -2376,8 +2535,8 @@ Database: seth
 <p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
 
 <p>``` plain
-ssh -p 777 <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#114;&#97;&#x6d;&#x73;&#101;&#115;&#x40;&#49;&#x39;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#55;&#x2e;&#x31;&#51;&#x35;">&#x72;&#97;&#109;&#x73;&#x65;&#115;&#64;&#49;&#x39;&#50;&#46;&#49;&#54;&#56;&#x2e;&#x32;&#x31;&#55;&#46;&#x31;&#51;&#53;</a>
-<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#97;&#109;&#x73;&#101;&#x73;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#46;&#x31;&#x33;&#x35;">&#x72;&#97;&#109;&#115;&#101;&#115;&#x40;&#x31;&#57;&#50;&#x2e;&#49;&#x36;&#x38;&#46;&#50;&#49;&#55;&#46;&#x31;&#51;&#x35;</a>&rsquo;s password:</p>
+ssh -p 777 <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x72;&#97;&#x6d;&#x73;&#101;&#115;&#x40;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#49;&#x33;&#x35;">&#x72;&#97;&#109;&#115;&#x65;&#x73;&#64;&#49;&#x39;&#x32;&#46;&#49;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#x33;&#53;</a>
+<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#114;&#x61;&#x6d;&#115;&#101;&#x73;&#x40;&#x31;&#x39;&#50;&#46;&#49;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#46;&#49;&#51;&#53;">&#x72;&#97;&#x6d;&#x73;&#101;&#115;&#64;&#49;&#57;&#50;&#46;&#x31;&#x36;&#56;&#46;&#50;&#x31;&#55;&#46;&#49;&#51;&#x35;</a>&rsquo;s password:</p>
 
 <p>The programs included with the Debian GNU/Linux system are free software;
 the exact distribution terms for each program are described in the
@@ -2433,8 +2592,8 @@ adf11c7a9e6523e630aaf3b9b7acb51d</p>
 
 <p>It seems that you have pwned the box, congrats.
 Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#120;&#x6c;&#x79;&#48;&#x6e;&#x40;&#115;&#105;&#103;&#x61;&#105;&#110;&#116;&#46;&#111;&#x72;&#103;">&#120;&#x6c;&#121;&#48;&#x6e;&#x40;&#x73;&#105;&#103;&#x61;&#x69;&#110;&#x74;&#x2e;&#111;&#x72;&#103;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#110;&#x62;&#x73;&#x6c;&#x79;&#x30;&#x6e;&#x40;&#103;&#109;&#x61;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#109;">&#x6e;&#x62;&#115;&#108;&#121;&#x30;&#110;&#64;&#x67;&#109;&#x61;&#105;&#x6c;&#46;&#99;&#111;&#109;</a></p>
+<a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x78;&#x6c;&#121;&#x30;&#110;&#x40;&#115;&#x69;&#x67;&#97;&#x69;&#110;&#116;&#46;&#x6f;&#114;&#103;">&#x78;&#108;&#121;&#48;&#110;&#x40;&#x73;&#105;&#103;&#x61;&#105;&#110;&#x74;&#x2e;&#x6f;&#114;&#103;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x6e;&#x62;&#115;&#x6c;&#121;&#48;&#x6e;&#x40;&#103;&#109;&#x61;&#105;&#x6c;&#46;&#x63;&#x6f;&#x6d;">&#x6e;&#x62;&#x73;&#108;&#x79;&#x30;&#110;&#64;&#103;&#109;&#x61;&#105;&#x6c;&#46;&#x63;&#111;&#109;</a></p>
 
 <p>USE THIS PGP PUBLIC KEY</p>
 
@@ -2552,174 +2711,6 @@ ramses@NullByte:/var/www/backup$ ./procwatch</p>
 / You&rsquo;ll wish that you had done some of \
 | the hard things when they were easier |
 \ to do.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Introduction to Burp Suite]]></title>
-    <link href="http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite/"/>
-    <updated>2016-11-19T17:01:23-05:00</updated>
-    <id>http://chousensha.github.io/blog/2016/11/19/introduction-to-burp-suite</id>
-    <content type="html"><![CDATA[<p>Yes, the time has come for a full post on Burp Suite! I have delayed it for too long!</p>
-
-<p>Before starting, here are some resources for learning about Burp:</p>
-
-<p><a href="https://portswigger.net/burp/help/contents.html">Burp Suite Documentation</a></p>
-
-<p><a href="http://aetherlab.teachable.com/p/burp-suite">Free introductory course on Burp Suite</a></p>
-
-<p><a href="https://vimeo.com/album/3510171">Burp Suite for Web Application Security</a></p>
-
-<!-- more -->
-
-
-<p>Burp Suite is the primary tool used for performing web application security assessments. It acts as a proxy between your browser and the target, and it comes packed with powerful features to assist in penetration testing: spidering fuctionality, web scanning for vulnerabilities (pro version only), tools that allow you to perform different actions with web requests (will be covered in detail below), and customization ability through plugins.</p>
-
-<h1>Introduction to Burp Suite</h1>
-
-<p>Burp is a Java application, so you need to have Java installed (version 1.6 or later) to run it. It comes pre-installed in Kali, where you can find it in the Web Application Analysis category.</p>
-
-<p>To use Burp, you need to configure your browser&rsquo;s proxy settings. Burp&rsquo;s proxy is listening on 127.0.0.1:8080. If you want to manually configure your browser to use it, refer to this <a href="https://portswigger.net/burp/help/suite_gettingstarted.html">getting started post</a>. I recommend using a browser add-on like <a href="https://addons.mozilla.org/en-US/firefox/addon/foxyproxy-standard/">FoxyProxy</a> to set up your proxies and toggle them with a click.</p>
-
-<p>For <strong>Burp to work with HTTPS</strong> requests, you need to add Burp&rsquo;s CA certificate to your browser. Go to <a href="http://burp/">http://burp/</a> and click on CA Certificate to download it to your computer. In this demo I&rsquo;m using Firefox, but the steps should be similar in the rest of the browsers. In the Firefox menu, select Options or Preferences, then go to Advanced &ndash;> Certificates &ndash;> View Certificates. Click on the Authorities tab and choose Import to select your CA certificate, and check the option &ldquo;Trust this CA to identify web sites&rdquo;. Then click Ok, and restart Firefox. Burp should work now with HTTPS traffic, without issuing any security warnings.</p>
-
-<h1>Burp Suite components</h1>
-
-<p>The power of Burp comes from the interaction between its components, which you can individually access from the application tabs. Let&rsquo;s see each of them in action!</p>
-
-<h2>Target</h2>
-
-<p>Here you can see information about your target. The site map constructs a hierarchical representation of your target. Items requested are shown in black, those that Burp inferred from links etc. are in gray. As you browse with the proxy on, Burp will keep building the site map.</p>
-
-<p><img class="center" src="/images/tools/burp/sitemap.png" title="&lsquo;sitemap&rsquo; &lsquo;target sitemap&rsquo;" ></p>
-
-<p>You can configure the scope of your targets from the Scope tab. Alternately, you can right-click on the sitemap entries to perform other actions:</p>
-
-<p><img class="center" src="/images/tools/burp/sitemap-menu.png" title="&lsquo;sitemap menu&rsquo; &lsquo;target sitemap menu&rsquo;" ></p>
-
-<p>Clicking on the Filter bar lets you customize filtering options. Before starting the demo, I added my target to the scope and selected to hide the out-of scope items for a clearer view.</p>
-
-<p><img class="center" src="/images/tools/burp/sitemap-filter.png" title="&lsquo;sitemap filter&rsquo; &lsquo;target sitemap filter&rsquo;" ></p>
-
-<h2>Proxy</h2>
-
-<p>This is the component that allows you to intercept and modify the requests between your browser and the target. You will get familiar with the Intercept tab, where you can inspect each request and response, modify it, or send it to other tools. The history tabs keep records for the HTTP and WebSockets messages. In the Options tab you have a plethora of configuration options for your Proxy. Take special note of the Response Modification options, which you can use to automatically modify the responses HTML to remove client-side logic and controls, or perform SSL stripping.</p>
-
-<p><img class="center" src="/images/tools/burp/proxy-options.png" title="&lsquo;proxy response options&rsquo; &lsquo;response modification options&rsquo;" ></p>
-
-<p>Right-clicking in the Raw tab will give you more options, among which there are some very useful ones such as copying the request as a Curl command, or constructing selected strings in Javascript and SQL (MySQL, Oracle, MS-SQL)</p>
-
-<h2>Spider</h2>
-
-<p>You can use Burp&rsquo;s spider to automatically crawl target applications. After you&rsquo;ve manually browsed the application, right-click the host or URL that you want to crawl in the site map, and choose &ldquo;Spider this host / branch&rdquo;. Then watch the number of requests being made in the Control tab. You can customize the spider in the Options tab. Passive spidering is enabled by default, allowing Burp to update the site map while you are manually browsing. Also, you can specify what the spider should do when encountering forms (ignoring them, automatically submitting with pre-determined values, prompting for guidance etc.) Be careful, as the spider may perform actions with repercussions on the target application, so an initial manual assessment followed by a strict configuration of the spidering scope would be preferred.</p>
-
-<h2>Scanner</h2>
-
-<p>Burp has an automatic vulnerability scanner <em>uncontrolled drooling</em> that seems excellent from the reviews, but it&rsquo;s only available for Pro users. If you look in the Issue definitions tab, you can see the <a href="https://portswigger.net/KnowledgeBase/Issues/">vulnerabilites that Burp can detect</a>, among with a description for each of them <em>drooling intensifies</em></p>
-
-<p><img class="center" src="/images/tools/burp/scanner.png" title="&lsquo;burp scanner&rsquo; &lsquo;burp web scanner&rsquo;" ></p>
-
-<h2>Intruder</h2>
-
-<p>With Burp Intruder you can perform highly-customized automated attacks against your targets, including brute forcing, fuzzing, enumeration etc. Usually, you select an interesting request and send it to Intruder. You can see the positions where payloads will be placed, marked in orange in this dummy request:</p>
-
-<p><img class="center" src="/images/tools/burp/intruder-position.png" title="&lsquo;intruder positions&rsquo; &lsquo;intruder payload positions&rsquo;" ></p>
-
-<h3>Attack types</h3>
-
-<p>In the Position tab, you can also choose the type of attack you want to perform:</p>
-
-<ul>
-<li><p><strong>Sniper</strong> &ndash; single set of payloads, places each payload into each position in turn, useful for individual parameter fuzzing</p></li>
-<li><p><strong>Battering ram</strong> &ndash; single set of payloads, places the the same payload into all positions at the same time</p></li>
-<li><p><strong>Pitchfork</strong> &ndash; multiple payload sets, different payload set for each position</p></li>
-<li><p><strong>Cluster bomb</strong> &ndash; multiple payload sets, tests all permutations of the payload combinations, so depending on your payloads, this attack might grow to gigantic proportions</p></li>
-</ul>
-
-
-<h3>Payload types</h3>
-
-<p>You have lots of payload types available for testing, so choose what is appropriate for your target:</p>
-
-<ul>
-<li><p><strong>Simple list</strong> &ndash; list of strings</p></li>
-<li><p><strong>Runtime file</strong> &ndash; read strings at runtime from a file (for very large lists)</p></li>
-<li><p><strong>Custom iterator</strong> &ndash; permutations of characters in multiple lists</p></li>
-<li><p><strong>Character substitution</strong> &ndash; substitute characters, for instance when you are testing for 53cur3 p455w0rd5</p></li>
-<li><p><strong>Case modification</strong> &ndash; change the characters' case according to the pre-defined rules</p></li>
-<li><p><strong>Recursive grep</strong> &ndash; recursively extract data from the responses of previous requests</p></li>
-<li><p><strong>Illegal Unicode</strong> &ndash; by using illegal Unicode representations, it might be possible to bypass filters etc.</p></li>
-<li><p><strong>Character blocks</strong> &ndash; creates blocks of characters of specified sizes, can aid in detecting buffer overflows</p></li>
-<li><p><strong>Numbers</strong> &ndash; numeric payloads</p></li>
-<li><p><strong>Dates</strong> &ndash; date values</p></li>
-<li><p><strong>Brute forcer</strong> &ndash; sets of permutations generated from specified characters</p></li>
-<li><p><strong>Null payloads</strong> &ndash; empty string payloads</p></li>
-<li><p><strong>Character frobber</strong> &ndash; changes the value of each character in turn, useful for determining what characters are being used for session tokens etc.</p></li>
-<li><p><strong>Bit flipper</strong> &ndash; flips individual bits in the payload</p></li>
-<li><p><strong>Username generator</strong> &ndash; generates usernames from the given input</p></li>
-<li><p><strong>ECB block shuffler</strong> &ndash; shuffles ECB-encrypted blocks</p></li>
-<li><p><strong>Extension generated</strong> &ndash; uses an extension to create the payloads</p></li>
-<li><p><strong>Copy other payload</strong> &ndash; copies the current payload value to a different position</p></li>
-</ul>
-
-
-<h2>Repeater</h2>
-
-<p>This tool is useful for sending requests over and over to the target application.</p>
-
-<p><img class="center" src="/images/tools/burp/repeater.png" title="&lsquo;repeater&rsquo; &lsquo;repeater&rsquo;" ></p>
-
-<h2>Sequencer</h2>
-
-<p>With the Sequencer tool you can test for the randomness of data tokens in an target application. The analysis is more accurate if the number of captured tokens is larger.</p>
-
-<p><img class="center" src="/images/tools/burp/sequencer.png" title="&lsquo;Burp sequencer&rsquo; &lsquo;Burp sequencer&rsquo;" ></p>
-
-<h2>Decoder</h2>
-
-<p>The Decoder tool performs encoding and decoding of different data formats, such as HTML, URL, Base64, ASCII hex, Hex, Octal, Binary, Gzip, and it also has hashing functionality for MD2, SHA-224, MD5, SHA1, SHA-384, SHA, SHA-512 and SHA-256.</p>
-
-<p><img class="center" src="/images/tools/burp/decoder.png" title="&lsquo;Burp decoder&rsquo; &lsquo;Burp decoder&rsquo;" ></p>
-
-<h2>Comparer</h2>
-
-<p>If you want to compare different responses, this tool gives you the options of words or bytes comparison</p>
-
-<p><img class="center" src="/images/tools/burp/comparer.png" title="&lsquo;Burp comparer&rsquo; &lsquo;Burp comparer&rsquo;" ></p>
-
-<h2>Extender</h2>
-
-<p>Here you can add extensions to Burp that add more functionality than what is available by default. Take a look at what extensions you can find in the BApp Store:</p>
-
-<p><img class="center" src="/images/tools/burp/extensions.png" title="&lsquo;burp extensions&rsquo; &lsquo;burp extensions&rsquo;" ></p>
-
-<p>In this screenshot I am sorting by rating. There are many extensions available and I suggest looking at each and determining if you will need it before choosing to install.</p>
-
-<h3>Burp Clickbandit</h3>
-
-<p>We&rsquo;re done with the main tools, but Burp has more. It even includes a cool tool for creating clickjacking attacks.</p>
-
-<p><img class="center" src="/images/tools/burp/clickbandit.png" title="&lsquo;burp clickbandit&rsquo; &lsquo;burp clickbandit&rsquo;" ></p>
-
-<p>In a future post I will do a lab featuring Burp&rsquo;s capabilities that I&rsquo;ve enumerated so far. Expect some Mutillidae! :&ndash;)</p>
-
-<p>``` plain</p>
-
-<hr />
-
-<p>/ Don&rsquo;t you wish you had more energy&hellip; \
-\ or less ambition?                     /</p>
 
 <hr />
 
