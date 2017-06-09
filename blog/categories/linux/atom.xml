@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-07T07:28:54-04:00</updated>
+  <updated>2017-06-09T06:24:50-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,433 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Quick shares with Samba on CentOS]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/"/>
+    <updated>2017-06-09T05:47:05-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos</id>
+    <content type="html"><![CDATA[<p>The interwebz is thundering with doomsday predictions about the <a href="https://blog.qualys.com/securitylabs/2017/05/26/samba-vulnerability-cve-2017-7494">Samba CVE-2017-7494 exploit</a>, and here I am, deciding that now is the best time to make a post on setting up Samba shares! xD</p>
+
+<p>On a related note, if for some reason you can&rsquo;t patch the vulnerability yet, there is a workaround (with some drawbacks). Edit the global section in smb.conf and add the line <code>nt pipe support = no</code>.</p>
+
+<!-- more -->
+
+
+<p>Back to the matter at hand. First, let&rsquo;s verify if Samba is installed on the CentOS system:</p>
+
+<p><code>
+rpm -q samba
+package samba is not installed
+</code></p>
+
+<p>Since it&rsquo;s not installed on my machine, I installed it with <code>yum install samba</code>, and then ran the previous command again, to check the version:</p>
+
+<p><code>
+rpm -q samba
+samba-4.4.4-14.el7_3.x86_64
+</code></p>
+
+<p>Now, let&rsquo;s start Samba and see it running:</p>
+
+<p>```
+service smb start
+Redirecting to /bin/systemctl start  smb.service
+service smb status
+Redirecting to /bin/systemctl status  smb.service
+● smb.service &ndash; Samba SMB Daemon
+   Loaded: loaded (/usr/lib/systemd/system/smb.service; disabled; vendor preset: disabled)
+   Active: active (running) since Thu 2017-06-08 10:56:54 EEST; 5s ago
+ Main PID: 61874 (smbd)
+   Status: &ldquo;smbd: ready to serve connections&hellip;&rdquo;
+   CGroup: /system.slice/smb.service</p>
+
+<pre><code>       ├─61874 /usr/sbin/smbd
+       ├─61875 /usr/sbin/smbd
+       ├─61876 /usr/sbin/smbd
+       └─61879 /usr/sbin/smbd
+</code></pre>
+
+<p>Jun 08 10:56:52 localhost.localdomain systemd[1]: Starting Samba SMB Daemon&hellip;
+Jun 08 10:56:54 localhost.localdomain smbd[61874]: [2017/06/08 10:56:54.513901,  0] ../lib/util/become_daemon.c:124(daemon_ready)
+Jun 08 10:56:54 localhost.localdomain smbd[61874]:   STATUS=daemon &lsquo;smbd&rsquo; finished starting up and ready to serve connections
+Jun 08 10:56:54 localhost.localdomain systemd[1]: Started Samba SMB Daemon.
+```</p>
+
+<h2>Samba daemons</h2>
+
+<p>The Samba functionality is contained within 3 daemons:</p>
+
+<ul>
+<li><p><strong>smbd</strong> &ndash; file sharing, printing services, authentication. Default ports are 139 and 445</p></li>
+<li><p><strong>nmbd</strong> &ndash; NetBIOS name service requests and browsing protocols</p></li>
+<li><p><strong>winbindd</strong> &ndash; used for Windows domains membership</p></li>
+</ul>
+
+
+<h2>Samba configuration</h2>
+
+<p>The Samba configuration file is <code>/etc/samba/smb.conf</code>. Here is how a fresh config file looks after installation:</p>
+
+<p>```</p>
+
+<h1>See smb.conf.example for a more detailed config file or</h1>
+
+<h1>read the smb.conf manpage.</h1>
+
+<h1>Run &lsquo;testparm&rsquo; to verify the config is correct after</h1>
+
+<h1>you modified it.</h1>
+
+<p>[global]</p>
+
+<pre><code>workgroup = SAMBA
+security = user
+
+passdb backend = tdbsam
+
+printing = cups
+printcap name = cups
+load printers = yes
+cups options = raw
+</code></pre>
+
+<p>[homes]</p>
+
+<pre><code>comment = Home Directories
+valid users = %S, %D%w%S
+browseable = No
+read only = No
+inherit acls = Yes
+</code></pre>
+
+<p>[printers]</p>
+
+<pre><code>comment = All Printers
+path = /var/tmp
+printable = Yes
+create mask = 0600
+browseable = No
+</code></pre>
+
+<p>[print$]</p>
+
+<pre><code>comment = Printer Drivers
+path = /var/lib/samba/drivers
+write list = root
+create mask = 0664
+directory mask = 0775
+</code></pre>
+
+<p>```</p>
+
+<p>For much more detailed information and examples, see the <a href="/downloads/code/smb.conf.example">smb.conf.example file</a></p>
+
+<h2>Create Samba share</h2>
+
+<p>In this example, let&rsquo;s create a share that users can also write to. First, create the directory that you will share: <code>mkdir -p /srv/samba/myshare</code>. I placed a text file with some random stuff inside. Then I gave full access to the path and its subfolders with <code>chmod -R 777 /srv/samba</code></p>
+
+<p>Next, we need to create a Samba user, but this account is not the same as a user account on the system. We have to make a user account on the system before assigning it to Samba:</p>
+
+<p><code>
+adduser smbuser -s /sbin/nologin
+</code></p>
+
+<p>Here I created a user just for Samba, with no login shell. Attempting to login will give the user a message that they are not allowed to login. If you prefer that the user is disconnected with no message, you can specify <code>/bin/false</code> instead.</p>
+
+<p>Then, I gave the user account a description, which you can find inside <em>/etc/passwd</em>:</p>
+
+<p><code>
+usermod -c 'Samba access is allowed for this user' smbuser
+[root@localhost ~]# cat /etc/passwd | grep smbuser
+smbuser:x:1001:1001:Samba access is allowed for this user:/home/smbuser:/sbin/nologin
+</code></p>
+
+<p>Have to give the user account a password:</p>
+
+<p><code>
+[root@localhost ~]# passwd smbuser
+Changing password for user smbuser.
+New password:
+Retype new password:
+passwd: all authentication tokens updated successfully.
+</code></p>
+
+<p>Next, we create a Samba user, by using the previously created account:</p>
+
+<p><code>
+[root@localhost ~]# smbpasswd -a smbuser
+New SMB password:
+Retype new SMB password:
+Added user smbuser.
+</code></p>
+
+<p>To be safe, check that the Samba user was created:</p>
+
+<p><code>
+[root@localhost ~]# pdbedit -L
+smbuser:1001:Samba access is allowed for this user
+</code></p>
+
+<p>We have the share location and the user, now we need to edit the smb.conf file with the relevant information:</p>
+
+<p>```
+[global]</p>
+
+<pre><code># workgroup name or Windows NT domain name
+workgroup = SAMBA
+# default: user and password authentication
+security = user
+# optional comment for Windows
+server string = Samba File Server
+# default backend for user information
+passdb backend = tdbsam
+</code></pre>
+
+<p>[sharename]</p>
+
+<pre><code>path = /srv/samba/myshare
+comment = Only authorized users
+# allow these users
+valid users = smbuser
+# same can be achieved with writable = yes
+read only = no  
+# allow subnet range
+allow hosts = 192.168.217.
+# deny access
+invalid users = root  
+</code></pre>
+
+<p>```</p>
+
+<p>I used comments for easier understanding, but for performance reasons, you might want to keep your file to minimum size, by removing all those comment lines. You can do that by keeping a configuration file with all the additional remarks, while using a smb.conf with only the required configuration. All the comments will be stripped from the config file:</p>
+
+<p><code>
+[root@localhost samba]# testparm -s smb.conf.old &gt; smb.conf
+Load smb config files from smb.conf.old
+rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
+Processing section "[sharename]"
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+</code></p>
+
+<p>We checked that our config file is valid, so now it&rsquo;s time to test it. Restart Samba for the configurations to take effect with <code>service smb restart</code>. And now let&rsquo;s access the share! From another machine, I used <strong>smbclient</strong> to list the available services on the Samba server:</p>
+
+<p>```
+smbclient -L 192.168.217.131 -U smbuser
+WARNING: The &ldquo;syslog&rdquo; option is deprecated
+Enter smbuser&rsquo;s password:
+Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]</p>
+
+<pre><code>Sharename       Type      Comment
+---------       ----      -------
+sharename       Disk      Only authorized users
+IPC$            IPC       IPC Service (Samba File Server)
+</code></pre>
+
+<p>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]</p>
+
+<pre><code>Server               Comment
+---------            -------
+
+Workgroup            Master
+---------            -------
+</code></pre>
+
+<p>```</p>
+
+<p>There is one last step that you need to accomplish if you have SELinux enabled. You have to label the directory you&rsquo;re sharing with the <strong>samba_share_t</strong> label:</p>
+
+<p><code>
+chcon -R -t samba_share_t /srv/samba
+</code></p>
+
+<p>Now the /srv/samba directory and everything it contains is labeled correctly, and SELinux won&rsquo;t interfere. View the security context of the path with:</p>
+
+<p><code>
+ls -ldZ /srv/samba/
+drwxr-xr-x. root root unconfined_u:object_r:samba_share_t:s0 /srv/samba/
+</code></p>
+
+<p>Changes made with chcon are temporary. To survive a relabel or running <em>restorerecon</em>, make the changes permanent with:</p>
+
+<p><code>
+semanage fcontext -a -t samba_share_t "path(/.*)?"
+</code></p>
+
+<p>Then apply them with <code>restorecon -R -v /path</code>.</p>
+
+<p>Finally, to connect to a share, use the syntax: <code>smbclient  //host/sharename -U username</code> (in the below examle, the name of my share is sharename, because laziness):</p>
+
+<p>```
+smbclient  //192.168.217.131/sharename -U smbuser
+WARNING: The &ldquo;syslog&rdquo; option is deprecated
+Enter smbuser&rsquo;s password:
+Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+smb: > ls</p>
+
+<pre><code>  .                                   D        0  Thu Jun  8 09:39:42 2017
+  ..                                  D        0  Thu Jun  8 09:26:38 2017
+  read.txt                            N       11  Thu Jun  8 09:39:42 2017
+
+        18307072 blocks of size 1024. 13091600 blocks available
+</code></pre>
+
+<p>```</p>
+
+<p>List available commands:</p>
+
+<p>```</p>
+
+<pre><code>smb: \&gt; ?
+?              allinfo        altname        archive        backup         
+blocksize      cancel         case_sensitive cd             chmod          
+chown          close          del            dir            du             
+echo           exit           get            getfacl        geteas         
+hardlink       help           history        iosize         lcd            
+link           lock           lowercase      ls             l              
+mask           md             mget           mkdir          more           
+mput           newer          notify         open           posix          
+posix_encrypt  posix_open     posix_mkdir    posix_rmdir    posix_unlink   
+posix_whoami   print          prompt         put            pwd            
+q              queue          quit           readlink       rd             
+recurse        reget          rename         reput          rm             
+rmdir          showacls       setea          setmode        scopy          
+stat           symlink        tar            tarmode        timeout        
+translate      unlock         volume         vuid           wdel           
+logon          listconnect    showconnect    tcon           tdis           
+tid            logoff         ..             !              
+</code></pre>
+
+<p>```</p>
+
+<p>Download file:</p>
+
+<p><code>
+smb: \&gt; get read.txt
+getting file \read.txt of size 11 as read.txt (3.6 KiloBytes/sec) (average 3.6 KiloBytes/sec)
+</code></p>
+
+<p>Delete file:</p>
+
+<p><code>
+smb: \&gt; del read.txt
+</code></p>
+
+<p>Upload file:</p>
+
+<p>```
+smb: > put test.png
+putting file test.png as \test.png (0.2 kb/s) (average 0.2 kb/s)
+smb: > ls
+  .                                   D        0  Thu Jun  8 13:24:14 2017
+  ..                                  D        0  Thu Jun  8 09:26:38 2017
+  test.png                            A       35  Thu Jun  8 13:22:09 2017</p>
+
+<pre><code>    18307072 blocks of size 1024. 13091480 blocks available
+</code></pre>
+
+<p>```</p>
+
+<p>From a Windows system, you can run <code>\192.168.217.131\sharename</code> to connect to the share, or use the <em>net use</em> command.</p>
+
+<p>View shares:</p>
+
+<p>```
+C:\Documents and Settings\admin>net use
+New connections will be remembered.</p>
+
+<p>Status       Local     Remote                    Network</p>
+
+<hr />
+
+<p>OK                     \192.168.217.131\sharename</p>
+
+<pre><code>                                             Microsoft Windows Network
+</code></pre>
+
+<p>The command completed successfully.
+```</p>
+
+<p>Connect to shares:</p>
+
+<p>```
+C:\Documents and Settings\admin>net use S: \192.168.217.131\sharename
+The command completed successfully.</p>
+
+<p>C:\Documents and Settings\admin>s:</p>
+
+<p>S:>dir
+ Volume in drive S is sharename
+ Volume Serial Number is DCCC-194F</p>
+
+<p> Directory of S:\</p>
+
+<p>06/09/2017  02:24 AM    <DIR>          .
+06/08/2017  10:26 PM    <DIR>          ..
+06/09/2017  02:22 AM                35 test.png</p>
+
+<pre><code>           1 File(s)             35 bytes
+           2 Dir(s)  13,405,708,288 bytes free
+</code></pre>
+
+<p>```</p>
+
+<h3>Other useful options</h3>
+
+<p>You can drill down into the smb.conf file and customize it to your liking. Here are a few options:</p>
+
+<ul>
+<li><p>read list = user1, user2 &ndash; set read only users on a writable share</p></li>
+<li><p>write list = user1, user2 &ndash; set write access for users on a read only share</p></li>
+<li><p>deny hosts  = ip &ndash; deny access to the specified IPs</p></li>
+<li><p>hide unreadable = yes &ndash; don&rsquo;t let users see files they don&rsquo;t have access to</p></li>
+<li><p>browseable = no &ndash; hide shares from Windows network</p></li>
+</ul>
+
+
+<p>Key takeaways:</p>
+
+<ul>
+<li><p>server and share security levels are deprecated, so best to avoid them</p></li>
+<li><p>specifying a share in the smb.conf file is not enough. Ensure that you have created the path and gave it sufficient permissins</p></li>
+<li><p>Samba users need to already exist on the system</p></li>
+<li><p>you can have both a well documented config file and a minimal size one for performance, by using <code>testparm -s</code></p></li>
+<li><p>if you use SELinux, don&rsquo;t forget to label your share with <code>samba_share_t</code></p></li>
+</ul>
+
+
+<p>Learn more:</p>
+
+<ul>
+<li><p><a href="http://linux-training.be/linuxsrv.pdf">Samba section in Paul Cobbaut&rsquo;s Linux Servers course</a></p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smb.conf.5.html">smb.conf manpage</a> &ndash; The configuration file for the Samba suite</p></li>
+<li><p><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/ch-samba.html">CentOS Samba guide</a></p></li>
+<li><p><a href="smbpasswd%20-%20The%20Samba%20encrypted%20password%20file">smbpasswd man page</a> &ndash; The Samba encrypted password file</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages/pdbedit.8.html">pdbedit manpage</a> &ndash; manage the SAM database (Database of Samba Users)</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/testparm.1.html">testparm manpage</a> &ndash; check an smb.conf configuration file for internal correctness</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smbclient.1.html">smbclient manpage</a> &ndash; ftp-like client to access SMB/CIFS resources on servers</p></li>
+</ul>
+
+
+<p>```
+/ Nothing so needs reforming as other \
+| people&rsquo;s habits.                    |
+|                                     |
+\ &mdash; Mark Twain                       /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iptables firewall]]></title>
@@ -1354,7 +1781,7 @@ Group apache</p>
 
 <h1>e-mailed.  This address appears on some server-generated pages, such</h1>
 
-<h1>as error documents.  e.g. <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#97;&#100;&#x6d;&#x69;&#110;&#x40;&#121;&#x6f;&#x75;&#114;&#x2d;&#100;&#111;&#x6d;&#97;&#x69;&#110;&#46;&#99;&#111;&#109;">&#97;&#100;&#109;&#105;&#110;&#64;&#x79;&#111;&#x75;&#114;&#45;&#100;&#111;&#x6d;&#97;&#x69;&#110;&#x2e;&#99;&#111;&#109;</a></h1>
+<h1>as error documents.  e.g. <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#97;&#100;&#109;&#x69;&#x6e;&#x40;&#x79;&#111;&#x75;&#114;&#45;&#x64;&#x6f;&#x6d;&#97;&#x69;&#110;&#x2e;&#x63;&#111;&#109;">&#x61;&#x64;&#109;&#x69;&#110;&#x40;&#121;&#111;&#117;&#x72;&#x2d;&#100;&#x6f;&#109;&#97;&#105;&#x6e;&#46;&#99;&#x6f;&#x6d;</a></h1>
 
 <p>#
 ServerAdmin root@localhost</p>
@@ -1967,235 +2394,6 @@ HTTPD(8)                   httpd                  HTTPD(8)</p>
 
 <p>Apache HTTP Server          2012-02-10                HTTPD(8)
 ```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Slackware install guide]]></title>
-    <link href="http://chousensha.github.io/blog/2016/04/28/slackware-install-guide/"/>
-    <updated>2016-04-28T13:23:59-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/04/28/slackware-install-guide</id>
-    <content type="html"><![CDATA[<p>Ever since I got into Linux and wanting to learn more and get better at it, I always held an interest towards Slackware. Being one of the oldest distributions around, with a hardcore community and an old-school reputation, it always came in the top answers when it comes to learning Linux without fancy hand holding and the like (along with Arch). But I always liked Slackware, its name is awesome, and well, slackwarez for a slacker! So I&rsquo;ve finally set up some time to install it in a VM, and will get to work on it to deepen my Linux knowledge.</p>
-
-<p>So in this post I will list the steps I went through to install Slackware 14.1 in VMware.</p>
-
-<!-- more -->
-
-
-<p>The cool thing about this installation was that I had to do some things manually without a GUI where all you do is press next. After selecting your installation media, which was the DVD ISO for me, power up the machine and you will get some command line action!</p>
-
-<p>The first screen is for selecting which kernel to boot to</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/bootkernel.png" title="&lsquo;boot to kernel&rsquo; &lsquo;kernel booting&rsquo;" ></p>
-
-<p>Select keyboard map</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/keyboard.png" title="&lsquo;keyboard map&rsquo; &lsquo;select key map&rsquo;" ></p>
-
-<p>Log in as root</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/root.png" title="&lsquo;root login&rsquo; &lsquo;root login&rsquo;" ></p>
-
-<h3>Partitioning</h3>
-
-<p>You have to set up partitions before beginning the installation process</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/partition.png" title="&lsquo;partition&rsquo; &lsquo;partitioning&rsquo;" ></p>
-
-<p>I will use cfdisk for this. As you can see, my disk is /dev/sda and is yet yet unpartitioned, so just a big lump of free space.</p>
-
-<blockquote><p>cfdisk &ndash; display or manipulate a disk partition table</p></blockquote>
-
-<p><img class="center" src="/images/sysadmin/slackware/cfdisk.png" title="&lsquo;cfdisk&rsquo; &lsquo;cfdisk&rsquo;" ></p>
-
-<p>I will make 3 partitions, for swap, root and home. Select [New] to create a new partition. The MBR partitioning scheme supports up to 4 primary partitions, and if you need more than that you can make one of them an extended partition and create  logical partitions inside it. Choose [Primary] to continue</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/primary.png" title="&lsquo;primary partition&rsquo; &lsquo;primary partition&rsquo;" ></p>
-
-<p>Since this will be the swap partition, I will make it a size of 512 MB.</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/size.png" title="&lsquo;partition size&rsquo; &lsquo;swap size&rsquo;" ></p>
-
-<p>Next I selected to place it at the beginning of the drive, for simplicity. I&rsquo;ve also read that doing so might make it faster.</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/beginning.png" title="&lsquo;partition beginning&rsquo; &lsquo;beginning partition&rsquo;" ></p>
-
-<p>Note how the first partition labeled sda1 was created. Next you have to choose the partition&rsquo;s type</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/type.png" title="&lsquo;partition type&rsquo; &lsquo;partition type&rsquo;" ></p>
-
-<p>See how many different file systems can be created. Choose 82 for swap.</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/swap.png" title="&lsquo;type swap&rsquo; &lsquo;swap partition&rsquo;" ></p>
-
-<p>Next make the root and home partitions, as described above. Only difference will be that you need to make the root partition bootable</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/bootable.png" title="&lsquo;bootable partition&rsquo; &lsquo;root bootable&rsquo;" ></p>
-
-<p>Now write the changes to disk. You will be asked to confirm that you want to write the data</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/write.png" title="&lsquo;write partitions&rsquo; &lsquo;write data&rsquo;" ></p>
-
-<p>After it&rsquo;s done you will see a message at the bottom: &ldquo;Wrote partition table to disk&rdquo;. You can quit cfdisk now</p>
-
-<h3>Setup</h3>
-
-<p>Type setup to begin the installation setup process</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/slacksetup.png" title="&lsquo;slackware setup&rsquo; &lsquo;install setup&rsquo;" ></p>
-
-<p>Choose ADDSWAP to format the swap partition that was created earlier. It will be automatically detected by the setup wizard</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/swapsetup.png" title="&lsquo;add swap&rsquo; &lsquo;swap setup&rsquo;" ></p>
-
-<p>You can choose to check for bad blocks if you want, but I skipped it</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/badblocks.png" title="&lsquo;check bad blocks&rsquo; &lsquo;bad blocks&rsquo;" ></p>
-
-<p>You will get a message when the swap space is configured</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/swapdone.png" title="&lsquo;swap conf&rsquo; &lsquo;swap conf&rsquo;" ></p>
-
-<p>Next you have to choose the root partition, which in my case is sda2</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/sda2root.png" title="&lsquo;root partition&rsquo; &lsquo;root sda2&rsquo;" ></p>
-
-<p>I selected the quick format option</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/formatroot.png" title="&lsquo;root format&rsquo; &lsquo;quick format&rsquo;" ></p>
-
-<p>For the filesystem I chose ext4</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/ext4.png" title="&lsquo;ext4&rsquo; &lsquo;ext4&rsquo;" ></p>
-
-<p>The last partition is the home one</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/sda3home.png" title="&lsquo;sda3 home&rsquo; &lsquo;home&rsquo;" ></p>
-
-<p>After formatting and choosing its filesystem, you have to specify where you want it mounted. Type /home</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/home.png" title="&lsquo;mount home&rsquo; &lsquo;home&rsquo;" ></p>
-
-<p>The setup of the partitions is now complete</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/partitionsdone.png" title="&lsquo;partitions complete&rsquo; &lsquo;finished partitioning&rsquo;" ></p>
-
-<p>Next you have to choose the source media for the installation. In my case, it is the DVD</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/sourcemedia.png" title="&lsquo;source media&rsquo; &lsquo;source dvd&rsquo;" ></p>
-
-<p>Let the wizard auto scan for the DVD</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/autoscan.png" title="&lsquo;autoscan&rsquo; &lsquo;dvd scan&rsquo;" ></p>
-
-<p>Select the general packages that you want, I kept all except for the KDE ones, since I will be using XFCE for my GUI</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/packages.png" title="&lsquo;package selection&rsquo; &lsquo;install packages&rsquo;" ></p>
-
-<p>I chose the full option for simplicity</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/full.png" title="&lsquo;full install&rsquo; &lsquo;full&rsquo;" ></p>
-
-<p>After the installation process, you can create a boot stick if you want, but I skipped it</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/bootdisk.png" title="&lsquo;boot stick&rsquo; &lsquo;boot disk&rsquo;" ></p>
-
-<p>The bootloader used by Slackware is LILO. I selected the simple install and the standard console</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/lilo.png" title="&lsquo;lilo&rsquo; &lsquo;lilo&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/slackware/lilosplash.png" title="&lsquo;lilo splash screen&rsquo; &lsquo;lilo console&rsquo;" ></p>
-
-<p>Skip the extra parameters unless you know what you&rsquo;re doing</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/kernelparams.png" title="&lsquo;lilo extra parameters&rsquo; &lsquo;lilo parameters&rsquo;" ></p>
-
-<p>You will next be prompted where to install they bootloader. I chose the MBR, since this is a VM dedicated to Slackware. But if this was on a dual booting system with Windows, you would want to install it on root</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/lilombr.png" title="&lsquo;lilo mbr&rsquo; &lsquo;lilo install&rsquo;" ></p>
-
-<p>Choose your mouse type</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/mouse.png" title="&lsquo;mouse type&rsquo; &lsquo;mouse&rsquo;" ></p>
-
-<p>The General Purpose Mouse software provides support for mouse devices in Linux virtual consoles.</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/gpm.png" title="&lsquo;general purpose mouse&rsquo; &lsquo;gpm&rsquo;" ></p>
-
-<p>Next is the network configuration</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/net.png" title="&lsquo;network&rsquo; &lsquo;net config&rsquo;" ></p>
-
-<p>Enter your hostname and domain</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/hostname.png" title="&lsquo;hostname&rsquo; &lsquo;host&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/slackware/domain.png" title="&lsquo;domain name&rsquo; &lsquo;domain&rsquo;" ></p>
-
-<p>For simplicity, I chose the Network Manager configuration</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/netconf.png" title="&lsquo;network configuration&rsquo; &lsquo;network config&rsquo;" ></p>
-
-<p>Confirm your choices before continuing</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/netdone.png" title="&lsquo;network setup&rsquo; &lsquo;net setup&rsquo;" ></p>
-
-<p>I went with the default startup services. Will add more on a need-to-use basis</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/startup.png" title="&lsquo;startup services&rsquo; &lsquo;startup&rsquo;" ></p>
-
-<p>You can try custom screen fonts if you want</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/fonts.png" title="&lsquo;custom fonts&rsquo; &lsquo;screen fonts&rsquo;" ></p>
-
-<p>Next is the hardware clock and timezone</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/hwclock.png" title="&lsquo;hardware clock&rsquo; &lsquo;clock&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/slackware/timezone.png" title="&lsquo;timezone&rsquo; &lsquo;timezone&rsquo;" ></p>
-
-<p>For the GUI, I went with XFCE</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/gui.png" title="&lsquo;gui&rsquo; &lsquo;xfce&rsquo;" ></p>
-
-<p>You will be asked to choose a root password next</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/pass.png" title="&lsquo;root password&rsquo; &lsquo;password&rsquo;" ></p>
-
-<p>With this, the installation setup is complete</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/complete.png" title="&lsquo;setup complete&rsquo; &lsquo;setup finished&rsquo;" ></p>
-
-<p>Exit the wizard and reboot your brand new Slackware machine. Hit Enter when you see the splash screen, or it will boot automatically in a couple of minutes</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/slacksplash.png" title="&lsquo;lilo splash screen&rsquo; &lsquo;lilo boot&rsquo;" ></p>
-
-<h3>Booting into your system</h3>
-
-<p>Slackware doesn&rsquo;t run the GUI automatically. You can change this by modifying the default runlevel</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/textlogin.png" title="&lsquo;text login&rsquo; &lsquo;no gui&rsquo;" ></p>
-
-<p>I chose to manually start the GUI so I can read the random quotes that are given at login. You can load the GUI with the <strong>startx</strong> command</p>
-
-<p><img class="center" src="/images/sysadmin/slackware/finished.png" title="&lsquo;slackware&rsquo; &lsquo;slackware install&rsquo;" ></p>
-
-<p>All done! From here you can proceed to use your new distro, or customize it to your liking</p>
-
-<p>``` plain
-/ You will experience a strong urge to do \
-\ good; but it will pass.                 /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
 ]]></content>
   </entry>
   
