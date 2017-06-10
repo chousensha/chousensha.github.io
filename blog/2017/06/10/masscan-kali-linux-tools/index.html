@@ -1,0 +1,801 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Masscan - Kali Linux tools - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Tutorial for the Masscan port scanner">
+  <meta name="keywords" content="masscan, masscan tutorial, masscan port scanner, masscan kali, masscan kali linux">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Masscan - Kali Linux tools</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-10T04:17:42-04:00" pubdate data-updated="true">Jun 10<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Nmap is our favorite port scanner, but if you want to scan billions of hosts, and still be relatively young when you get the results, there is a solid alternative focused entirely on speed: Masscan &ndash; the Mass IP port scanner</p>
+
+<!-- more -->
+
+
+<p>Homepage: <a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a></p>
+
+<h2>masscan description</h2>
+
+<blockquote><p>This is the fastest Internet port scanner. It can scan the entire Internet in under 6 minutes, transmitting 10
+million packets per second.</p>
+
+<p>It produces results similar to nmap, the most famous port scanner. Internally, it operates more like scanrand,
+unicornscan, and ZMap, using asynchronous transmission. The major difference is that it&rsquo;s faster than these other
+scanners. In addition, it&rsquo;s more flexible, allowing arbitrary address ranges and port ranges.</p>
+
+<p>NOTE: masscan uses a custom TCP/IP stack. Anything other than simple port scans will cause conflict with the local
+TCP/IP stack. This means you need to either use the -S option to use a separate IP address, or configure your
+operating system to firewall the ports that masscan uses.</p>
+
+<p>This program spews out packets very fast. On Windows, or from VMs, it can do 300,000 packets/second. On Linux (no
+virtualization) it&rsquo;ll do 1.6 million packets-per-second. That&rsquo;s fast enough to melt most networks.</p>
+
+<p>Note that it&rsquo;ll only melt your own network. It randomizes the target IP addresses so that it shouldn&rsquo;t overwhelm any
+distant network.</p>
+
+<p>By default, the rate is set to 100 packets/second.</p></blockquote>
+
+<h2>masscan options</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan                                                         
+</span><span class='line'>usage:
+</span><span class='line'>masscan -p80,8000-8100 10.0.0.0/8 --rate=10000
+</span><span class='line'> scan some web ports on 10.x.x.x at 10kpps
+</span><span class='line'>masscan --nmap
+</span><span class='line'> list those options that are compatible with nmap
+</span><span class='line'>masscan -p80 10.0.0.0/8 --banners -oB &lt;filename&gt;
+</span><span class='line'> save results of scan in binary format to &lt;filename&gt;
+</span><span class='line'>masscan --open --banners --readscan &lt;filename&gt; -oX &lt;savefile&gt;
+</span><span class='line'> read binary scan results in &lt;filename&gt; and save them as xml in &lt;savefile&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>More information:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan --help
+</span><span class='line'>MASSCAN is a fast port scanner. The primary input parameters are the
+</span><span class='line'>IP addresses/ranges you want to scan, and the port numbers. An example
+</span><span class='line'>is the following, which scans the 10.x.x.x network for web servers:
+</span><span class='line'> masscan 10.0.0.0/8 -p80
+</span><span class='line'>The program auto-detects network interface/adapter settings. If this
+</span><span class='line'>fails, you'll have to set these manually. The following is an
+</span><span class='line'>example of all the parameters that are needed:
+</span><span class='line'> --adapter-ip 192.168.10.123
+</span><span class='line'> --adapter-mac 00-11-22-33-44-55
+</span><span class='line'> --router-mac 66-55-44-33-22-11
+</span><span class='line'>Parameters can be set either via the command-line or config-file. The
+</span><span class='line'>names are the same for both. Thus, the above adapter settings would
+</span><span class='line'>appear as follows in a configuration file:
+</span><span class='line'> adapter-ip = 192.168.10.123
+</span><span class='line'> adapter-mac = 00-11-22-33-44-55
+</span><span class='line'> router-mac = 66-55-44-33-22-11
+</span><span class='line'>All single-dash parameters have a spelled out double-dash equivalent,
+</span><span class='line'>so '-p80' is the same as '--ports 80' (or 'ports = 80' in config file).
+</span><span class='line'>To use the config file, type:
+</span><span class='line'> masscan -c &lt;filename&gt;
+</span><span class='line'>To generate a config-file from the current settings, use the --echo
+</span><span class='line'>option. This stops the program from actually running, and just echoes
+</span><span class='line'>the current configuration instead. This is a useful way to generate
+</span><span class='line'>your first config file, or see a list of parameters you didn't know
+</span><span class='line'>about. I suggest you try it now:
+</span><span class='line'> masscan -p1234 --echo</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Config file:</p>
+
+<blockquote><p>By default, the program will read default configuration from  the  file
+/etc/masscan/masscan.conf. This is useful for system-specific settings,
+such as the &mdash;adapter-xxx options. This is also useful for excluded  IP
+addresses,  so  that  you  can scan the entire Internet, while skipping
+dangerous addresses, like those owned by the DoD, and not make an accidental mistake.</p></blockquote>
+
+<p>Nmap compatible options:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan --nmap                                                  
+</span><span class='line'>Masscan (https://github.com/robertdavidgraham/masscan)
+</span><span class='line'>Usage: masscan [Options] -p{Target-Ports} {Target-IP-Ranges}
+</span><span class='line'>TARGET SPECIFICATION:
+</span><span class='line'>  Can pass only IPv4 address, CIDR networks, or ranges (non-nmap style)
+</span><span class='line'>  Ex: 10.0.0.0/8, 192.168.0.1, 10.0.0.1-10.0.0.254
+</span><span class='line'>  -iL &lt;inputfilename&gt;: Input from list of hosts/networks
+</span><span class='line'>  --exclude &lt;host1[,host2][,host3],...&gt;: Exclude hosts/networks
+</span><span class='line'>  --excludefile &lt;exclude_file&gt;: Exclude list from file
+</span><span class='line'>  --randomize-hosts: Randomize order of hosts (default)
+</span><span class='line'>HOST DISCOVERY:
+</span><span class='line'>  -Pn: Treat all hosts as online (default)
+</span><span class='line'>  -n: Never do DNS resolution (default)
+</span><span class='line'>SCAN TECHNIQUES:
+</span><span class='line'>  -sS: TCP SYN (always on, default)
+</span><span class='line'>SERVICE/VERSION DETECTION:
+</span><span class='line'>  --banners: get the banners of the listening service if available. The
+</span><span class='line'>    default timeout for waiting to recieve data is 30 seconds.
+</span><span class='line'>PORT SPECIFICATION AND SCAN ORDER:
+</span><span class='line'>  -p &lt;port ranges&gt;: Only scan specified ports
+</span><span class='line'>    Ex: -p22; -p1-65535; -p 111,137,80,139,8080
+</span><span class='line'>TIMING AND PERFORMANCE:
+</span><span class='line'>  --max-rate &lt;number&gt;: Send packets no faster than &lt;number&gt; per second
+</span><span class='line'>  --connection-timeout &lt;number&gt;: time in seconds a TCP connection will
+</span><span class='line'>    timeout while waiting for banner data from a port.
+</span><span class='line'>FIREWALL/IDS EVASION AND SPOOFING:
+</span><span class='line'>  -S/--source-ip &lt;IP_Address&gt;: Spoof source address
+</span><span class='line'>  -e &lt;iface&gt;: Use specified interface
+</span><span class='line'>  -g/--source-port &lt;portnum&gt;: Use given port number
+</span><span class='line'>  --ttl &lt;val&gt;: Set IP time-to-live field
+</span><span class='line'>  --spoof-mac &lt;mac address/prefix/vendor name&gt;: Spoof your MAC address
+</span><span class='line'>OUTPUT:
+</span><span class='line'>  --output-format &lt;format&gt;: Sets output to binary/list/unicornscan/json/grepable/xml
+</span><span class='line'>  --output-file &lt;file&gt;: Write scan results to file. If --output-format is
+</span><span class='line'>     not given default is xml
+</span><span class='line'>  -oL/-oJ/-oG/-oB/-oX/-oU &lt;file&gt;: Output scan in List/JSON/Grepable/Binary/XML/Unicornscan format,
+</span><span class='line'>     respectively, to the given filename. Shortcut for
+</span><span class='line'>     --output-format &lt;format&gt; --output-file &lt;file&gt;
+</span><span class='line'>  -v: Increase verbosity level (use -vv or more for greater effect)
+</span><span class='line'>  -d: Increase debugging level (use -dd or more for greater effect)
+</span><span class='line'>  --open: Only show open (or possibly open) ports
+</span><span class='line'>  --packet-trace: Show all packets sent and received
+</span><span class='line'>  --iflist: Print host interfaces and routes (for debugging)
+</span><span class='line'>  --append-output: Append to rather than clobber specified output files
+</span><span class='line'>  --resume &lt;filename&gt;: Resume an aborted scan
+</span><span class='line'>MISC:
+</span><span class='line'>  --send-eth: Send using raw ethernet frames (default)
+</span><span class='line'>  -V: Print version number
+</span><span class='line'>  -h: Print this help summary page.
+</span><span class='line'>EXAMPLES:
+</span><span class='line'>  masscan -v -sS 192.168.0.0/16 10.0.0.0/8 -p 80
+</span><span class='line'>  masscan 23.0.0.0/0 -p80 --banners -output-format binary --output-filename internet.scan
+</span><span class='line'>  masscan --open --banners --readscan internet.scan -oG internet_scan.grepable
+</span><span class='line'>SEE (https://github.com/robertdavidgraham/masscan) FOR MORE HELP</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Manpage: <a href="http://manpages.org/masscan/8">http://manpages.org/masscan/8</a></p>
+
+<h2>masscan usage</h2>
+
+<ul>
+<li>look at the current configuration</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan --echo
+</span><span class='line'>rate =     100.00
+</span><span class='line'>randomize-hosts = true
+</span><span class='line'>seed = 9262294816069822464
+</span><span class='line'>shard = 1/1
+</span><span class='line'># ADAPTER SETTINGS
+</span><span class='line'>adapter = 
+</span><span class='line'>adapter-ip = 0.0.0.0
+</span><span class='line'>adapter-mac = 00:00:00:00:00:00
+</span><span class='line'>router-mac = 00:00:00:00:00:00
+</span><span class='line'># OUTPUT/REPORTING SETTINGS
+</span><span class='line'>output-format = unknown(0)
+</span><span class='line'>show = open,,
+</span><span class='line'>output-filename = 
+</span><span class='line'>rotate = 0
+</span><span class='line'>rotate-dir = .
+</span><span class='line'>rotate-offset = 0
+</span><span class='line'>rotate-filesize = 0
+</span><span class='line'>pcap = 
+</span><span class='line'># TARGET SELECTION (IP, PORTS, EXCLUDES)
+</span><span class='line'>retries = 0
+</span><span class='line'>ports = 
+</span><span class='line'>
+</span><span class='line'>capture = cert
+</span><span class='line'>nocapture = html
+</span><span class='line'>nocapture = heartbleed
+</span><span class='line'>
+</span><span class='line'>min-packet = 60</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>check installation</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>masscan --regress
+</span><span class='line'>regression test: success!</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>full port scan on local subnet</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan -p0-65535 192.168.217.0/24 --rate 100000
+</span><span class='line'>
+</span><span class='line'>Starting masscan 1.0.3 (http://bit.ly/14GZzcT) at 2017-06-10 09:02:34 GMT
+</span><span class='line'> -- forced options: -sS -Pn -n --randomize-hosts -v --send-eth
+</span><span class='line'>Initiating SYN Stealth Scan
+</span><span class='line'>Scanning 256 hosts [65536 ports/host]
+</span><span class='line'>Discovered open port 443/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.133                                
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.134                                
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 111/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 23/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 21/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.131                                 
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.135                                 
+</span><span class='line'>Discovered open port 5432/tcp on 192.168.217.133                               
+</span><span class='line'>Discovered open port 135/tcp on 192.168.217.134                                
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 25/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 53/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 3632/tcp on 192.168.217.133                               
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.135                                 
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.131                                 
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.133                                
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.134                                
+</span><span class='line'>Discovered open port 8180/tcp on 192.168.217.133                               
+</span><span class='line'>Discovered open port 8009/tcp on 192.168.217.133                               
+</span><span class='line'>Discovered open port 3306/tcp on 192.168.217.133   </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The scan was done in a couple of minutes. You might be wondering, how does this tool scan the entire internet in 3 minutes if it took the same length of time for a puny subnet? Well, there are some limitations. To get the most of its speed, you need the proper adapter and driver. Also notice that I rate-limited it to 100k packets per second, because I didn&rsquo;t want my local network to blow up! If you want to benchmark masscan&rsquo;s performance, look on its homepage, under the Performance testing section.</p>
+
+<ul>
+<li>grab banners of open ports</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# masscan 192.168.217.0/24 -p22,80,139,445,3306 --banners --source-ip 192.168.217.150 --rate 100000
+</span><span class='line'>
+</span><span class='line'>Starting masscan 1.0.3 (http://bit.ly/14GZzcT) at 2017-06-10 09:18:27 GMT
+</span><span class='line'> -- forced options: -sS -Pn -n --randomize-hosts -v --send-eth
+</span><span class='line'>Initiating SYN Stealth Scan
+</span><span class='line'>Scanning 256 hosts [5 ports/host]
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.134                                
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.133                                 
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.133                                
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.131                                 
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.131                                 
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 139/tcp on 192.168.217.131                                
+</span><span class='line'>Discovered open port 22/tcp on 192.168.217.135                                 
+</span><span class='line'>Discovered open port 80/tcp on 192.168.217.135                                 
+</span><span class='line'>Banner on port 22/tcp on 192.168.217.135: [ssh] SSH-2.0-OpenSSH_5.5p1 Debian-6+squeeze2
+</span><span class='line'>Banner on port 22/tcp on 192.168.217.133: [ssh] SSH-2.0-OpenSSH_4.7p1 Debian-8ubuntu1
+</span><span class='line'>Banner on port 22/tcp on 192.168.217.131: [ssh] SSH-2.0-OpenSSH_6.6.1          
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.134                                
+</span><span class='line'>Discovered open port 445/tcp on 192.168.217.133                                
+</span><span class='line'>Discovered open port 3306/tcp on 192.168.217.133                               
+</span><span class='line'>Banner on port 3306/tcp on 192.168.217.133: [unknown] \x3e\x00\x00\x00\x0a5.0.51a-3ubuntu5\x00\x07\x00\x00\x00M`yb]-d3\x00,\xaa\x08\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00q^e`0o`r\x3crLb\x00
+</span><span class='line'>Banner on port 80/tcp on 192.168.217.131: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:35 GMT\x0d\x0aServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.1e-fips\x0d\x0aLast-Modified: Tue, 02 Aug 2016 13:07:09 GMT\x0d\x0aETag: \x2211-5391664f1e697\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 17\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html; charset=UTF-8\x0d\x0a\x0d
+</span><span class='line'>Banner on port 80/tcp on 192.168.217.133: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:36 GMT\x0d\x0aServer: Apache/2.2.8 (Ubuntu) PHP/5.2.4-2ubuntu5.10 with Suhosin-Patch\x0d\x0aLast-Modified: Wed, 17 Mar 2010 14:08:25 GMT\x0d\x0aETag: \x22107f7-2d-481ffa5ca8840\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 45\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html\x0d\x0a\x0d</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For this option to work, you have to give masscan its own IP address on the local subnet, something unused by another device. In fact, the recommendation from its homepage is to use it with its separate IP address whenever possible.</p>
+
+<p>And here is how the XML output of the previous scan would look in a spreadsheet:</p>
+
+<p><img class="center" src="/images/tools/masscan-xml.png" title="masscan xml" alt="masscan xml output"></p>
+
+<p>Some other features are:</p>
+
+<ul>
+<li><p>output formats in xml, binary, grepable, list, or JSON</p></li>
+<li><p>resume scans</p></li>
+<li><p>exclude targets</p></li>
+<li><p>runs in Linux, Windows, and Mac OS X</p></li>
+</ul>
+
+
+<h3>More resources</h3>
+
+<ul>
+<li><p><a href="http://blog.erratasec.com/2013/09/masscan-entire-internet-in-3-minutes.html">Robert Graham post on masscan</a></p></li>
+<li><p><a href="https://josephpierini.blogspot.com/2016/06/using-masscan-with-top-ports.html">select common ports with Nmap and feed them to Masscan</a></p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ Your own qualities will help prevent \
+</span><span class='line'>\ your advancement in the world.       /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-10T04:17:42-04:00" pubdate data-updated="true">Jun 10<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/tools/'>tools</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/06/09/quick-shares-with-samba-on-centos/" title="Previous Post: Quick shares with Samba on CentOS">&laquo; Quick shares with Samba on CentOS</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/masscan-kali-linux-tools/">Masscan - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/06/09/quick-shares-with-samba-on-centos/">Quick shares with Samba on CentOS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/06/07/lbd-kali-linux-tools/">lbd - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/06/06/tr0ll-2-there-be-trolls/">Tr0ll 2 - There be trolls</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/05/29/dnsenum-kali-linux-tools/">dnsenum - Kali Linux tools</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
