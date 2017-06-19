@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-16T13:55:25-04:00</updated>
+  <updated>2017-06-19T12:53:58-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,764 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[enum4linux - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/19/enum4linux-kali-linux-tools/"/>
+    <updated>2017-06-19T10:08:57-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/19/enum4linux-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p><strong>Objective</strong>: enumerate shares on a target and gather as much information as possible. enum4linux is a Perl script that can get the job done.</p>
+
+<p>Homepage: <a href="https://labs.portcullis.co.uk/tools/enum4linux/">https://labs.portcullis.co.uk/tools/enum4linux/</a></p>
+
+<!-- more -->
+
+
+<h2>enum4linux description</h2>
+
+<blockquote><p>A Linux alternative to enum.exe for enumerating data from Windows and Samba hosts.</p>
+
+<p>Enum4linux is a tool for enumerating information from Windows and Samba systems. It attempts to offer similar
+functionality to enum.exe formerly available from www.bindview.com.</p>
+
+<p>It is written in Perl and is basically a wrapper around the Samba tools smbclient, rpclient, net and nmblookup.</p>
+
+<p>Key features:</p>
+
+<ul>
+<li><p>RID cycling (When RestrictAnonymous is set to 1 on Windows 2000)</p></li>
+<li><p>User listing (When RestrictAnonymous is set to 0 on Windows 2000)</p></li>
+<li><p>Listing of group membership information</p></li>
+<li><p>Share enumeration</p></li>
+<li><p>Detecting if host is in a workgroup or a domain</p></li>
+<li><p>Identifying the remote operating system</p></li>
+<li><p>Password policy retrieval (using polenum)</p></li>
+</ul>
+</blockquote>
+
+<h2>enum4linux options</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>num4linux
+</span><span class='line'>enum4linux v0.8.9 (http://labs.portcullis.co.uk/application/enum4linux/)
+</span><span class='line'>Copyright (C) 2011 Mark Lowe (mrl@portcullis-security.com)
+</span><span class='line'>
+</span><span class='line'>Simple wrapper around the tools in the samba package to provide similar 
+</span><span class='line'>functionality to enum.exe (formerly from www.bindview.com).  Some additional 
+</span><span class='line'>features such as RID cycling have also been added for convenience.
+</span><span class='line'>
+</span><span class='line'>Usage: ./enum4linux.pl [options] ip
+</span><span class='line'>
+</span><span class='line'>Options are (like "enum"):
+</span><span class='line'>    -U        get userlist
+</span><span class='line'>    -M        get machine list*
+</span><span class='line'>    -S        get sharelist
+</span><span class='line'>    -P        get password policy information
+</span><span class='line'>    -G        get group and member list
+</span><span class='line'>    -d        be detailed, applies to -U and -S
+</span><span class='line'>    -u user   specify username to use (default "")  
+</span><span class='line'>    -p pass   specify password to use (default "")   
+</span><span class='line'>
+</span><span class='line'>The following options from enum.exe aren't implemented: -L, -N, -D, -f
+</span><span class='line'>
+</span><span class='line'>Additional options:
+</span><span class='line'>    -a        Do all simple enumeration (-U -S -G -P -r -o -n -i).
+</span><span class='line'>              This opion is enabled if you don't provide any other options.
+</span><span class='line'>    -h        Display this help message and exit
+</span><span class='line'>    -r        enumerate users via RID cycling
+</span><span class='line'>    -R range  RID ranges to enumerate (default: 500-550,1000-1050, implies -r)
+</span><span class='line'>    -K n      Keep searching RIDs until n consective RIDs don't correspond to
+</span><span class='line'>              a username.  Impies RID range ends at 999999. Useful 
+</span><span class='line'>        against DCs.
+</span><span class='line'>    -l        Get some (limited) info via LDAP 389/TCP (for DCs only)
+</span><span class='line'>    -s file   brute force guessing for share names
+</span><span class='line'>    -k user   User(s) that exists on remote system (default: administrator,guest,krbtgt,domain admins,root,bin,none)
+</span><span class='line'>              Used to get sid with "lookupsid known_username"
+</span><span class='line'>            Use commas to try several users: "-k admin,user1,user2"
+</span><span class='line'>    -o        Get OS information
+</span><span class='line'>    -i        Get printer information
+</span><span class='line'>    -w wrkg   Specify workgroup manually (usually found automatically)
+</span><span class='line'>    -n        Do an nmblookup (similar to nbtstat)
+</span><span class='line'>    -v        Verbose.  Shows full commands being run (net, rpcclient, etc.)
+</span><span class='line'>
+</span><span class='line'>RID cycling should extract a list of users from Windows (or Samba) hosts 
+</span><span class='line'>which have RestrictAnonymous set to 1 (Windows NT and 2000), or "Network 
+</span><span class='line'>access: Allow anonymous SID/Name translation" enabled (XP, 2003).
+</span><span class='line'>
+</span><span class='line'>NB: Samba servers often seem to have RIDs in the range 3000-3050.
+</span><span class='line'>
+</span><span class='line'>Dependancy info: You will need to have the samba package installed as this 
+</span><span class='line'>script is basically just a wrapper around rpcclient, net, nmblookup and 
+</span><span class='line'>smbclient.  Polenum from http://labs.portcullis.co.uk/application/polenum/ 
+</span><span class='line'>is required to get Password Policy info.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>enum4linux usage</h2>
+
+<ul>
+<li>get everything you can from a host without any credentials</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>enum4linux 192.168.217.131
+</span><span class='line'>Starting enum4linux v0.8.9 ( http://labs.portcullis.co.uk/application/enum4linux/ ) on Mon Jun 19 10:06:33 2017
+</span><span class='line'>
+</span><span class='line'> ========================== 
+</span><span class='line'>|    Target Information    |
+</span><span class='line'> ========================== 
+</span><span class='line'>Target ........... 192.168.217.131
+</span><span class='line'>RID Range ........ 500-550,1000-1050
+</span><span class='line'>Username ......... ''
+</span><span class='line'>Password ......... ''
+</span><span class='line'>Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ======================================================= 
+</span><span class='line'>|    Enumerating Workgroup/Domain on 192.168.217.131    |
+</span><span class='line'> ======================================================= 
+</span><span class='line'>[E] Can't find workgroup/domain
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> =============================================== 
+</span><span class='line'>|    Nbtstat Information for 192.168.217.131    |
+</span><span class='line'> =============================================== 
+</span><span class='line'>Looking up status of 192.168.217.131
+</span><span class='line'>No reply from 192.168.217.131
+</span><span class='line'>
+</span><span class='line'> ======================================== 
+</span><span class='line'>|    Session Check on 192.168.217.131    |
+</span><span class='line'> ======================================== 
+</span><span class='line'>Use of uninitialized value $global_workgroup in concatenation (.) or string at ./enum4linux.pl line 437.
+</span><span class='line'>[+] Server 192.168.217.131 allows sessions using username '', password ''
+</span><span class='line'>[+] Got domain/workgroup name: SAMBA
+</span><span class='line'>
+</span><span class='line'> ============================================== 
+</span><span class='line'>|    Getting domain SID for 192.168.217.131    |
+</span><span class='line'> ============================================== 
+</span><span class='line'>Domain Name: SAMBA
+</span><span class='line'>Domain Sid: (NULL SID)
+</span><span class='line'>[+] Can't determine if host is part of domain or part of a workgroup
+</span><span class='line'>
+</span><span class='line'> ========================================= 
+</span><span class='line'>|    OS information on 192.168.217.131    |
+</span><span class='line'> ========================================= 
+</span><span class='line'>[+] Got OS info for 192.168.217.131 from smbclient: Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>[+] Got OS info for 192.168.217.131 from srvinfo:
+</span><span class='line'>  LOCALHOST      Wk Sv PrQ Unx NT SNT Samba File Server
+</span><span class='line'>  platform_id     :   500
+</span><span class='line'>  os version      :   6.1
+</span><span class='line'>  server type     :   0x809a03
+</span><span class='line'>
+</span><span class='line'> ================================ 
+</span><span class='line'>|    Users on 192.168.217.131    |
+</span><span class='line'> ================================ 
+</span><span class='line'>index: 0x1 RID: 0x3e8 acb: 0x00000010 Account: smbuser    Name: Samba access is allowed for this user Desc: 
+</span><span class='line'>
+</span><span class='line'>user:[smbuser] rid:[0x3e8]
+</span><span class='line'>
+</span><span class='line'> ============================================ 
+</span><span class='line'>|    Share Enumeration on 192.168.217.131    |
+</span><span class='line'> ============================================ 
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>
+</span><span class='line'>  Sharename       Type      Comment
+</span><span class='line'>  ---------       ----      -------
+</span><span class='line'>  sharename       Disk      Only authorized users
+</span><span class='line'>  IPC$            IPC       IPC Service (Samba File Server)
+</span><span class='line'>
+</span><span class='line'>  Server               Comment
+</span><span class='line'>  ---------            -------
+</span><span class='line'>
+</span><span class='line'>  Workgroup            Master
+</span><span class='line'>  ---------            -------
+</span><span class='line'>
+</span><span class='line'>[+] Attempting to map shares on 192.168.217.131
+</span><span class='line'>//192.168.217.131/sharename   Mapping: DENIED, Listing: N/A
+</span><span class='line'>//192.168.217.131/IPC$    Mapping: OK Listing: DENIED
+</span><span class='line'>
+</span><span class='line'> ======================================================= 
+</span><span class='line'>|    Password Policy Information for 192.168.217.131    |
+</span><span class='line'> ======================================================= 
+</span><span class='line'>[E] Unexpected error from polenum:
+</span><span class='line'>Traceback (most recent call last):
+</span><span class='line'>  File "/usr/bin/polenum", line 33, in &lt;module&gt;
+</span><span class='line'>    from impacket.dcerpc import dcerpc_v4, dcerpc, transport, samr
+</span><span class='line'>ImportError: cannot import name dcerpc_v4
+</span><span class='line'>[+] Retieved partial password policy with rpcclient:
+</span><span class='line'>
+</span><span class='line'>Password Complexity: Disabled
+</span><span class='line'>Minimum Password Length: 5
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ================================= 
+</span><span class='line'>|    Groups on 192.168.217.131    |
+</span><span class='line'> ================================= 
+</span><span class='line'>
+</span><span class='line'>[+] Getting builtin groups:
+</span><span class='line'>
+</span><span class='line'>[+] Getting builtin group memberships:
+</span><span class='line'>
+</span><span class='line'>[+] Getting local groups:
+</span><span class='line'>
+</span><span class='line'>[+] Getting local group memberships:
+</span><span class='line'>
+</span><span class='line'>[+] Getting domain groups:
+</span><span class='line'>
+</span><span class='line'>[+] Getting domain group memberships:
+</span><span class='line'>
+</span><span class='line'> ========================================================================== 
+</span><span class='line'>|    Users on 192.168.217.131 via RID cycling (RIDS: 500-550,1000-1050)    |
+</span><span class='line'> ========================================================================== 
+</span><span class='line'>[I] Found new SID: S-1-22-1
+</span><span class='line'>[I] Found new SID: S-1-5-21-3832469351-2479326917-463392201
+</span><span class='line'>[I] Found new SID: S-1-5-32
+</span><span class='line'>[+] Enumerating users using SID S-1-5-21-3832469351-2479326917-463392201 and logon username '', password ''
+</span><span class='line'>S-1-5-21-3832469351-2479326917-463392201-500 *unknown*\*unknown* (8)
+</span><span class='line'>S-1-5-21-3832469351-2479326917-463392201-501 LOCALHOST\nobody (Local User)
+</span><span class='line'>[...]
+</span><span class='line'>S-1-5-21-3832469351-2479326917-463392201-513 LOCALHOST\None (Domain Group)
+</span><span class='line'>S-1-5-21-3832469351-2479326917-463392201-1000 LOCALHOST\smbuser (Local User)
+</span><span class='line'>[+] Enumerating users using SID S-1-22-1 and logon username '', password ''
+</span><span class='line'>S-1-22-1-1000 Unix User\nixhat (Local User)
+</span><span class='line'>S-1-22-1-1001 Unix User\smbuser (Local User)
+</span><span class='line'>[+] Enumerating users using SID S-1-5-32 and logon username '', password ''
+</span><span class='line'>S-1-5-32-500 *unknown*\*unknown* (8)
+</span><span class='line'>[...]
+</span><span class='line'>S-1-5-32-544 BUILTIN\Administrators (Local Group)
+</span><span class='line'>S-1-5-32-545 BUILTIN\Users (Local Group)
+</span><span class='line'>S-1-5-32-546 BUILTIN\Guests (Local Group)
+</span><span class='line'>S-1-5-32-547 BUILTIN\Power Users (Local Group)
+</span><span class='line'>S-1-5-32-548 BUILTIN\Account Operators (Local Group)
+</span><span class='line'>S-1-5-32-549 BUILTIN\Server Operators (Local Group)
+</span><span class='line'>S-1-5-32-550 BUILTIN\Print Operators (Local Group)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ================================================ 
+</span><span class='line'>|    Getting printer info for 192.168.217.131    |
+</span><span class='line'> ================================================ 
+</span><span class='line'>No printers returned.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>enum4linux complete on Mon Jun 19 10:07:15 2017</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I edited some not found output for sanity, but you can see that even without any previous information, we were able to gather quite a few pieces, like the workgroup name, the server version, and the existing shares and users</p>
+
+<ul>
+<li>perform some enumeration while also showing the commands being run</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>enum4linux -n -v 192.168.217.140
+</span><span class='line'>[V] Dependent program "nmblookup" found in /usr/bin/nmblookup
+</span><span class='line'>[V] Dependent program "net" found in /usr/bin/net
+</span><span class='line'>[V] Dependent program "rpcclient" found in /usr/bin/rpcclient
+</span><span class='line'>[V] Dependent program "smbclient" found in /usr/bin/smbclient
+</span><span class='line'>[V] Dependent program "polenum" found in /usr/bin/polenum
+</span><span class='line'>[V] Dependent program "ldapsearch" found in /usr/bin/ldapsearch
+</span><span class='line'>Starting enum4linux v0.8.9 ( http://labs.portcullis.co.uk/application/enum4linux/ ) on Mon Jun 19 10:50:48 2017
+</span><span class='line'>
+</span><span class='line'> ========================== 
+</span><span class='line'>|    Target Information    |
+</span><span class='line'> ========================== 
+</span><span class='line'>Target ........... 192.168.217.140
+</span><span class='line'>RID Range ........ 500-550,1000-1050
+</span><span class='line'>Username ......... ''
+</span><span class='line'>Password ......... ''
+</span><span class='line'>Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ======================================================= 
+</span><span class='line'>|    Enumerating Workgroup/Domain on 192.168.217.140    |
+</span><span class='line'> ======================================================= 
+</span><span class='line'>[V] Attempting to get domain name with command: nmblookup -A '192.168.217.140'
+</span><span class='line'>[+] Got domain/workgroup name: WORKGROUP
+</span><span class='line'>
+</span><span class='line'> =============================================== 
+</span><span class='line'>|    Nbtstat Information for 192.168.217.140    |
+</span><span class='line'> =============================================== 
+</span><span class='line'>Looking up status of 192.168.217.140
+</span><span class='line'>  WIN-D7GA2J1M0TU &lt;00&gt; -         M &lt;ACTIVE&gt;  Workstation Service
+</span><span class='line'>  WORKGROUP       &lt;00&gt; - &lt;GROUP&gt; M &lt;ACTIVE&gt;  Domain/Workgroup Name
+</span><span class='line'>  WIN-D7GA2J1M0TU &lt;20&gt; -         M &lt;ACTIVE&gt;  File Server Service
+</span><span class='line'>  WORKGROUP       &lt;1e&gt; - &lt;GROUP&gt; M &lt;ACTIVE&gt;  Browser Service Elections
+</span><span class='line'>  WORKGROUP       &lt;1d&gt; -         M &lt;ACTIVE&gt;  Master Browser
+</span><span class='line'>  ..__MSBROWSE__. &lt;01&gt; - &lt;GROUP&gt; M &lt;ACTIVE&gt;  Master Browser
+</span><span class='line'>
+</span><span class='line'>  MAC Address = 00-0C-29-5C-13-CA
+</span><span class='line'>
+</span><span class='line'> ======================================== 
+</span><span class='line'>|    Session Check on 192.168.217.140    |
+</span><span class='line'> ======================================== 
+</span><span class='line'>[V] Attempting to make null session using command: smbclient -W 'WORKGROUP' //'192.168.217.140'/ipc$ -U''%'' -c 'help' 2&gt;&1
+</span><span class='line'>[+] Server 192.168.217.140 allows sessions using username '', password ''
+</span><span class='line'>
+</span><span class='line'> ============================================== 
+</span><span class='line'>|    Getting domain SID for 192.168.217.140    |
+</span><span class='line'> ============================================== 
+</span><span class='line'>[V] Attempting to get domain SID with command: rpcclient -W 'WORKGROUP' -U''%'' 192.168.217.140 -c 'lsaquery' 2&gt;&1
+</span><span class='line'>could not initialise lsa pipe. Error was NT_STATUS_ACCESS_DENIED
+</span><span class='line'>could not obtain sid from server
+</span><span class='line'>error: NT_STATUS_ACCESS_DENIED
+</span><span class='line'>[+] Can't determine if host is part of domain or part of a workgroup
+</span><span class='line'>enum4linux complete on Mon Jun 19 10:50:48 2017</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>get OS information</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>enum4linux -o 192.168.217.140
+</span><span class='line'>[...]
+</span><span class='line'> ========================================= 
+</span><span class='line'>|    OS information on 192.168.217.140    |
+</span><span class='line'> ========================================= 
+</span><span class='line'>[+] Got OS info for 192.168.217.140 from smbclient: Domain=[WIN-D7GA2J1M0TU] OS=[Windows 7 Ultimate 7601 Service Pack 1] Server=[Windows 7 Ultimate 6.1]
+</span><span class='line'>[E] Can't get OS info with srvinfo: NT_STATUS_ACCESS_DENIED</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>list shares on a server with credentials</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>enum4linux -u Administrator -p Password123! -S 192.168.217.141
+</span><span class='line'>Starting enum4linux v0.8.9 ( http://labs.portcullis.co.uk/application/enum4linux/ ) on Mon Jun 19 12:40:55 2017
+</span><span class='line'>
+</span><span class='line'> ========================== 
+</span><span class='line'>|    Target Information    |
+</span><span class='line'> ========================== 
+</span><span class='line'>Target ........... 192.168.217.141
+</span><span class='line'>RID Range ........ 500-550,1000-1050
+</span><span class='line'>Username ......... 'Administrator'
+</span><span class='line'>Password ......... 'Password123!'
+</span><span class='line'>Known Usernames .. administrator, guest, krbtgt, domain admins, root, bin, none
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> ======================================================= 
+</span><span class='line'>|    Enumerating Workgroup/Domain on 192.168.217.141    |
+</span><span class='line'> ======================================================= 
+</span><span class='line'>[+] Got domain/workgroup name: SANGHELIOS0
+</span><span class='line'>
+</span><span class='line'> ======================================== 
+</span><span class='line'>|    Session Check on 192.168.217.141    |
+</span><span class='line'> ======================================== 
+</span><span class='line'>[+] Server 192.168.217.141 allows sessions using username 'Administrator', password 'Password123!'
+</span><span class='line'>
+</span><span class='line'> ============================================== 
+</span><span class='line'>|    Getting domain SID for 192.168.217.141    |
+</span><span class='line'> ============================================== 
+</span><span class='line'>Domain Name: SANGHELIOS0
+</span><span class='line'>Domain Sid: S-1-5-21-1024350911-1337957381-1412282408
+</span><span class='line'>[+] Host is part of a domain (not a workgroup)
+</span><span class='line'>
+</span><span class='line'> ============================================ 
+</span><span class='line'>|    Share Enumeration on 192.168.217.141    |
+</span><span class='line'> ============================================ 
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Domain=[SANGHELIOS0] OS=[Windows Server 2012 Datacenter 9200] Server=[Windows Server 2012 Datacenter 6.2]
+</span><span class='line'>
+</span><span class='line'>  Sharename       Type      Comment
+</span><span class='line'>  ---------       ----      -------
+</span><span class='line'>  ADMIN$          Disk      Remote Admin
+</span><span class='line'>  C$              Disk      Default share
+</span><span class='line'>  IPC$            IPC       Remote IPC
+</span><span class='line'>  NETLOGON        Disk      Logon server share 
+</span><span class='line'>  ops             Disk      
+</span><span class='line'>  SYSVOL          Disk      Logon server share 
+</span><span class='line'>  testshare       Disk      A share on Windows Server
+</span><span class='line'>Connection to 192.168.217.141 failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
+</span><span class='line'>NetBIOS over TCP disabled -- no workgroup available
+</span><span class='line'>
+</span><span class='line'>[+] Attempting to map shares on 192.168.217.141
+</span><span class='line'>//192.168.217.141/ADMIN$  Mapping: OK, Listing: OK
+</span><span class='line'>//192.168.217.141/C$  [E] Can't understand response:
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Domain=[SANGHELIOS0] OS=[Windows Server 2012 Datacenter 9200] Server=[Windows Server 2012 Datacenter 6.2]
+</span><span class='line'>  $Recycle.Bin                      DHS        0  Thu Jul 26 03:38:59 2012
+</span><span class='line'>  Boot                              DHS        0  Sun Oct 16 18:44:49 2016
+</span><span class='line'>  bootmgr                          AHSR   398156  Wed Jul 25 23:44:30 2012
+</span><span class='line'>  BOOTNXT                           AHS        1  Sat Jun  2 10:30:55 2012
+</span><span class='line'>  BOOTSECT.BAK                     AHSR     8192  Sun Oct 16 18:44:50 2016
+</span><span class='line'>  Documents and Settings            DHS        0  Thu Jul 26 03:14:09 2012
+</span><span class='line'>  pagefile.sys                      AHS 402653184  Mon Jun 19 12:08:41 2017
+</span><span class='line'>  PerfLogs                            D        0  Thu Jul 26 03:44:15 2012
+</span><span class='line'>  Program Files                      DR        0  Sun Oct 16 07:53:13 2016
+</span><span class='line'>  Program Files (x86)                 D        0  Thu Jul 26 04:04:58 2012
+</span><span class='line'>  ProgramData                        DH        0  Sun Oct 23 08:55:39 2016
+</span><span class='line'>  Recovery                          DHS        0  Sun Oct 16 07:48:22 2016
+</span><span class='line'>  StorageReports                      D        0  Sat Oct 22 17:17:58 2016
+</span><span class='line'>  System Volume Information         DHS        0  Sat Oct 22 17:17:27 2016
+</span><span class='line'>  testshare                           D        0  Mon Jun 19 12:25:50 2017
+</span><span class='line'>  Users                              DR        0  Sat Oct 22 16:06:28 2016
+</span><span class='line'>  Windows                             D        0  Sat Oct 22 16:49:16 2016
+</span><span class='line'>
+</span><span class='line'>      7863807 blocks of size 4096. 5348507 blocks available
+</span><span class='line'>//192.168.217.141/IPC$    Mapping: OK Listing: DENIED
+</span><span class='line'>//192.168.217.141/NETLOGON    Mapping: OK, Listing: OK
+</span><span class='line'>//192.168.217.141/ops Mapping: OK, Listing: OK
+</span><span class='line'>//192.168.217.141/SYSVOL  Mapping: OK, Listing: OK
+</span><span class='line'>//192.168.217.141/testshare   Mapping: OK, Listing: OK</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Once you&rsquo;re on the same network as your target, enum4linux is a great resource to help in gathering information about the target, that you can later use for an attack.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Your lucky number is 3552664958674928. \
+</span><span class='line'>\ Watch for it everywhere.               /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Netdiscover - Kali Linux tools]]></title>
@@ -11200,96 +11958,6 @@ table.</p></li>
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Book review - Nmap Network Scanning]]></title>
-    <link href="http://chousensha.github.io/blog/2016/08/24/book-review-nmap-network-scanning/"/>
-    <updated>2016-08-24T06:02:00-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/08/24/book-review-nmap-network-scanning</id>
-    <content type="html"><![CDATA[<p>Recently I have read the so-called Nmap bible, the Nmap Network Scanning book written by the creator of Nmap himself. I&rsquo;ve decided to make
-a new section on the blog with the books I&rsquo;m reading and that I find most useful. Needless to say, this was a great book, that has upped my
-Nmap game considerably. Right from the start, I highly recommend this as a book that should be in the arsenal of every pentester, system admin,
-network engineer or plain old computer guy. The amount of information you get out of it is not constrained to a specific field.</p>
-
-<p><a href="https://www.amazon.com/Nmap-Network-Scanning-Official-Discovery/dp/0979958717/ref=as_li_ss_il?ie=UTF8&linkCode=li2&tag=sensha10-20&linkId=791bdedacea7ac3bd1caea9852082708" target="_blank"><img src="https://images-na.ssl-images-amazon.com/images/I/51BIsSMZqML._SX382_BO1,204,203,200_.jpg"/></a></p>
-
-<!-- more -->
-
-
-<h1>Contents</h1>
-
-<p><strong>Ch. 1. Getting Started with Nmap</strong> &ndash; begins with some usage stories, and some legal information</p>
-
-<p><strong>Ch. 2. Obtaining, Compiling, Installing, and Removing Nmap</strong> &ndash; continues with how to install Nmap on different operating systems</p>
-
-<p><strong>Ch. 3. Host Discovery (Ping Scanning)</strong> &ndash; covers various host discovery techniques</p>
-
-<p><strong>Ch. 4. Port Scanning Overview</strong> &ndash; all you want to know about port scanning</p>
-
-<p><strong>Ch. 5. Port Scanning Techniques and Algorithms</strong> &ndash; port scanning techniques explained in more detail, along with their under-the-hood
-implementations</p>
-
-<p><strong>Ch. 6. Optimizing Nmap Performance</strong> &ndash; fine-tuning your scans for more speed</p>
-
-<p><strong>Ch. 7. Service and Application Version Detection</strong> &ndash; all about the service detection capabilities of Nmap</p>
-
-<p><strong>Ch. 8. Remote OS Detection</strong> &ndash; how Nmap performs OS detection</p>
-
-<p><strong>Ch. 9. Nmap Scripting Engine</strong> &ndash; script creation and API information</p>
-
-<p><strong>Ch. 10. Detecting and Subverting Firewalls and Intrusion Detection Systems</strong> &ndash; firewall evasion techniques</p>
-
-<p><strong>Ch. 11. Defenses Against Nmap</strong> &ndash; defenses against Nmap scans</p>
-
-<p><strong>Ch. 12. Zenmap GUI Users&#8217; Guide</strong> &ndash; presents the Nmap GUI interface</p>
-
-<p><strong>Ch. 13. Nmap Output Formats</strong> &ndash; directing Nmap output to different file formats</p>
-
-<p><strong>Ch. 14. Understanding and Customizing Nmap Data Files</strong> &ndash; working with some of the main internal Nmap files</p>
-
-<p><strong>Ch. 15. Nmap Reference Guide</strong> &ndash; reference guide to Nmap commands</p>
-
-<p>If you have enjoyed the Stealing the Network series, you will love this one! The style is similar, after all, Fyodor is also a
-co-author of that amazing series. The book is sprinkled with fictional stories that illustrate the use of Nmap, along with backstories
-of engagements the author has participated in, and case studies of users improving Nmap for certain tasks. All these stories contain great
-advice not just on the technical side, but also on best practices. For example, Fyodor stresses the fact of always confirming that the IP range
-you received for an engagement actually belongs to the target organization &ndash; or else you might end up  scanning the wrong target..like the army :&ndash;)</p>
-
-<p>There are also plenty of funny comments and geeky stuff, from the friendly tip that &ldquo;using Nmap from your work or school computer to attack
-banks and military targets is a bad idea&rdquo; and the technique and Nmap command that Trinity used to scan the Matrix, to life-changing
-advice that says &ldquo;In life&rsquo;s bleakest moments when all hope seems to be lost, what should you turn to? Nmap, of course !&rdquo;. By the way, if you are curious,
-the above mentioned scan against the Matrix was performed with <code>nmap -v -sS -0 10.2.2.2</code>. Fyodor also made a list on his site of other
-movies that showcased the use of Nmap, which you can find at <a href="https://nmap.org/movies/">https://nmap.org/movies/</a></p>
-
-<p>But I&rsquo;m sure that you want to hear about the actual content that will help turn you into a network scanning wizard. There are tons
-of resources presented, not just related to Nmap, that can facilitate the information gathering process, such as DNS tools. Every Nmap command
-is described in detail, with actual examples of using it, what happens under the hood when you run it, and  the situation where it will come
-most in handy. All the command line switches are covered individually, but also in combinations, for comprehensive coverage of different scenarios.</p>
-
-<p>The book also contains a good amount of TCP information and low-level details of both Nmap and network operations in general, along with
-beautiful and detailed diagrams. There is information on scrips and how to create your own to enhance Nmap, and also description of the code itself.
-At the end, there is a reference guide for all commands. While some of the content is a bit dated, you can get the whole up-to-date information
-on the <a href="https://nmap.org/">https://nmap.org/</a> site, for free!</p>
-
-<p>Finally, this awesome book was created with open source tools. Hats off to Fyodor&rsquo;s support to the open source community.</p>
-
-<h3>Flash review</h3>
-
-<ul>
-<li><p>in-depth coverage of all Nmap commands, their internals and use cases</p></li>
-<li><p>low-level networking internals, comprehensive overview of how Nmap operates in the network environment itself</p></li>
-<li><p>introduction to Nmap code and scripting</p></li>
-<li><p>the use of the GUI is not neglected</p></li>
-<li><p>some dated content, but the updated information is available on the site</p></li>
-</ul>
-
-
-<p>Overall, an excellent book that opened my eyes to the extent one can use Nmap for penetration testing..in fact, with all the scripts that are
-available, you can even conduct web app security checks just with Nmap!</p>
-
-<p><a href="https://www.amazon.com/Nmap-Network-Scanning-Official-Discovery/dp/0979958717/ref=as_li_ss_il?ie=UTF8&linkCode=li2&tag=sensha10-20&linkId=791bdedacea7ac3bd1caea9852082708" target="_blank"><img src="https://images-na.ssl-images-amazon.com/images/I/51BIsSMZqML._SX382_BO1,204,203,200_.jpg"/></a></p>
 ]]></content>
   </entry>
   
