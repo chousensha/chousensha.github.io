@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-07-07T06:11:04-04:00</updated>
+  <updated>2017-07-15T09:09:32-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,654 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[dnsrecon - Kali Linux tools]]></title>
+    <link href="http://chousensha.github.io/blog/2017/07/12/dnsrecon-kali-linux-tools/"/>
+    <updated>2017-07-12T14:41:27-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/07/12/dnsrecon-kali-linux-tools</id>
+    <content type="html"><![CDATA[<p><strong>Objective</strong>: perform thorough DNS enumeration and subdomain bruteforcing on a target. dnsrecon is true to its name, it&rsquo;s written in Python, and judging from the number of stars on its Github repository, it&rsquo;s a much more popular choice than the other candidates in Kali&rsquo;s DNS section.</p>
+
+<p>Homepage: <a href="https://github.com/darkoperator/dnsrecon">https://github.com/darkoperator/dnsrecon</a></p>
+
+<!-- more -->
+
+
+<h2>dnsrecon description</h2>
+
+<blockquote><p>This script provides the ability to perform:</p>
+
+<p>Check all NS Records for Zone Transfers.</p>
+
+<p>Enumerate General DNS Records for a given Domain (MX, SOA, NS, A, AAAA, SPF and TXT).</p>
+
+<p>Perform common SRV Record Enumeration.</p>
+
+<p>Top Level Domain (TLD) Expansion.</p>
+
+<p>Check for Wildcard Resolution.</p>
+
+<p>Brute Force subdomain and host A and AAAA records given a domain and a wordlist.</p>
+
+<p>Perform a PTR Record lookup for a given IP Range or CIDR.</p>
+
+<p>Check a DNS Server Cached records for A, AAAA and CNAME Records provided a list of host records in a text file to
+check.</p>
+
+<p>Enumerate Common mDNS records in the Local Network</p>
+
+<p>Enumerate Hosts and Subdomains using Google</p></blockquote>
+
+<p>Manpage: <a href="http://manpages.ubuntu.com/manpages/zesty/man1/dnsrecon.1.html">http://manpages.ubuntu.com/manpages/zesty/man1/dnsrecon.1.html</a></p>
+
+<h2>dnsrecon options</h2>
+
+<p>```
+Version: 0.8.10
+Usage: dnsrecon.py <options></p>
+
+<p>Options:
+   -h, &mdash;help                   Show this help message and exit.
+   -d, &mdash;domain      <domain>   Target domain.
+   -r, &mdash;range       <range>    IP range for reverse lookup brute force in formats (first-last) or in (range/bitmask).
+   -n, &mdash;name_server <name>     Domain server to use. If none is given, the SOA of the target will be used.
+   -D, &mdash;dictionary  <file>     Dictionary file of subdomain and hostnames to use for brute force.
+   -f                           Filter out of brute force domain lookup, records that resolve to the wildcard defined</p>
+
+<pre><code>                            IP address when saving records.
+</code></pre>
+
+<p>   -t, &mdash;type        <types>    Type of enumeration to perform:</p>
+
+<pre><code>                            std       SOA, NS, A, AAAA, MX and SRV if AXRF on the NS servers fail.
+                            rvl       Reverse lookup of a given CIDR or IP range.
+                            brt       Brute force domains and hosts using a given dictionary.
+                            srv       SRV records.
+                            axfr      Test all NS servers for a zone transfer.
+                            goo       Perform Google search for subdomains and hosts.
+                            snoop     Perform cache snooping against all NS servers for a given domain, testing
+                                      all with file containing the domains, file given with -D option.
+                            tld       Remove the TLD of given domain and test against all TLDs registered in IANA.
+                            zonewalk  Perform a DNSSEC zone walk using NSEC records.
+</code></pre>
+
+<p>   -a                           Perform AXFR with standard enumeration.
+   -s                           Perform a reverse lookup of IPv4 ranges in the SPF record with standard enumeration.
+   -g                           Perform Google enumeration with standard enumeration.
+   -w                           Perform deep whois record analysis and reverse lookup of IP ranges found through</p>
+
+<pre><code>                            Whois when doing a standard enumeration.
+</code></pre>
+
+<p>   -z                           Performs a DNSSEC zone walk with standard enumeration.
+   &mdash;threads         <number>   Number of threads to use in reverse lookups, forward lookups, brute force and SRV</p>
+
+<pre><code>                            record enumeration.
+</code></pre>
+
+<p>   &mdash;lifetime        <number>   Time to wait for a server to response to a query.
+   &mdash;db              <file>     SQLite 3 file to save found records.
+   &mdash;xml             <file>     XML file to save found records.
+   &mdash;iw                         Continue brute forcing a domain even if a wildcard records are discovered.
+   -c, &mdash;csv         <file>     Comma separated value file.
+   -j, &mdash;json        <file>     JSON file.
+   -v                           Show attempts in the brute force modes.
+```</p>
+
+<h2>dnsrecon usage</h2>
+
+<ul>
+<li>general enumeration</li>
+</ul>
+
+
+<p><code>
+dnsrecon -d asterisk.org
+[*] Performing General Enumeration of Domain: asterisk.org
+[-] DNSSEC is not configured for asterisk.org
+[*]      SOA ns.digium.com 216.207.245.18
+[*]      NS nsx3.digium.com 166.78.177.30
+[*]      Bind Version for 166.78.177.30 9.8.4-rpz2+rl005.12-P1
+[*]      NS nsx2.digium.com 216.207.245.19
+[*]      Bind Version for 216.207.245.19 9.8.1-P1
+[*]      NS nsx1.digium.com 216.207.245.18
+[*]      Bind Version for 216.207.245.18 9.8.1-P1
+[*]      MX mail.digium.com 216.207.245.2
+[*]      A asterisk.org 216.207.245.25
+[*] Enumerating SRV Records
+[*]      SRV _sip._udp.asterisk.org sip.asterisk.org 204.91.156.60 5060 0
+[*] 1 Records Found
+</code></p>
+
+<p>For this example I selected a site that would also have SRV records. These records help with identifying certain services, in this case SIP for VoIP. Here you can see SIP being used on port 5060 on the host with the address 204.91.156.60.</p>
+
+<ul>
+<li>perform Google search enumeration</li>
+</ul>
+
+
+<p><code>
+dnsrecon -d uber.com -g
+[*] Performing General Enumeration of Domain: uber.com
+[-] DNSSEC is not configured for uber.com
+[*]      SOA pdns80.ultradns.com 156.154.64.80
+[*]      NS pdns80.ultradns.net 156.154.65.80
+[*]      Bind Version for 156.154.65.80 UltraDNS Resolver
+[*]      NS pdns80.ultradns.net 2610:a1:1014::74
+[*]      NS pdns80.ultradns.biz 156.154.66.80
+[*]      Bind Version for 156.154.66.80 UltraDNS Resolver
+[*]      NS pdns80.ultradns.biz 2610:a1:1015::74
+[*]      NS pdns80.ultradns.org 156.154.67.80
+[*]      Bind Version for 156.154.67.80 UltraDNS Resolver
+[*]      NS pdns80.ultradns.org 2001:502:4612::74
+[*]      NS pdns80.ultradns.com 156.154.64.80
+[*]      Bind Version for 156.154.64.80 UltraDNS Resolver
+[*]      NS pdns80.ultradns.com 2001:502:f3ff::74
+[*]      MX alt4.aspmx.l.google.com 74.125.28.27
+[*]      MX alt2.aspmx.l.google.com 74.125.200.26
+[*]      MX alt3.aspmx.l.google.com 74.125.23.26
+[*]      MX alt1.aspmx.l.google.com 64.233.161.27
+[*]      MX aspmx.l.google.com 64.233.167.26
+[*]      MX alt4.aspmx.l.google.com 2607:f8b0:400e:c04::1a
+[*]      MX alt2.aspmx.l.google.com 2404:6800:4003:c00::1b
+[*]      MX alt3.aspmx.l.google.com 2404:6800:4008:c02::1a
+[*]      MX alt1.aspmx.l.google.com 2a00:1450:4010:c01::1b
+[*]      MX aspmx.l.google.com 2a00:1450:400c:c0c::1b
+[*]      A uber.com 104.36.192.133
+[*]      A uber.com 104.36.192.221
+[*]      A uber.com 104.36.192.183
+[*]      A uber.com 104.36.192.132
+[*]      A uber.com 104.36.192.135
+[*]      A uber.com 104.36.192.220
+[*]      A uber.com 104.36.192.182
+[*]      TXT uber.com v=spf1 include:uber.com._nspf.vali.email include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all
+[*]      TXT uber.com google-site-verification=pO8Bhyhw0N0939yKp6cQICCpvY--sebhQKWGviAkuLM
+[*]      TXT uber.com docusign=635f0402-4f58-42de-8e07-e1da6d8a971a
+[*] Enumerating SRV Records
+[*]      SRV _kerberos._udp.uber.com kerberos.uber.com 10.6.0.74 88 0
+[*]      SRV _kpasswd._udp.uber.com kerberos.uber.com 10.6.0.74 464 0
+[*] 2 Records Found
+[*] Performing Google Search Enumeration
+[*]      CNAME www.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      CNAME help.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      CNAME ride.uber.com d3b8kpte4epqc9.cloudfront.net
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.6
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.61
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.99
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.205
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.188
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.243
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.77
+[*]      A d3b8kpte4epqc9.cloudfront.net 13.32.22.181
+[*]      CNAME bonjour.uber.com frontends-geo.uber.com
+[*]      CNAME frontends-geo.uber.com geo-frontends-dca1.uber.com
+[*]      CNAME geo-frontends-dca1.uber.com frontends-dca1.uber.com
+[*]      A frontends-dca1.uber.com 104.36.194.234
+[*]      A frontends-dca1.uber.com 104.36.194.160
+[*]      A frontends-dca1.uber.com 104.36.194.133
+[*]      A frontends-dca1.uber.com 104.36.194.131
+[*]      CNAME accessibility.uber.com uberpolicy.wpengine.com
+[*]      A uberpolicy.wpengine.com 35.184.61.224
+[*]      CNAME drive.uber.com uberdrive.wpengine.com
+[*]      A uberdrive.wpengine.com 35.184.61.224
+[*]      CNAME central.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      CNAME dial.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      CNAME developer.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      CNAME t.uber.com ghs.google.com
+[*]      CNAME ghs.google.com ghs.l.google.com
+[*]      A ghs.l.google.com 172.217.16.179
+[*]      CNAME t.uber.com ghs.google.com
+[*]      CNAME ghs.google.com ghs.l.google.com
+[*]      AAAA ghs.l.google.com 2a00:1450:4001:817::2013
+[*]      CNAME newsroom.uber.com ubernewblog.wpengine.com
+[*]      A ubernewblog.wpengine.com 35.184.61.224
+[*]      CNAME rush.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      CNAME join.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A pages.et.uber.com 198.245.92.62
+[*]      CNAME get.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      CNAME freight.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      CNAME eng.uber.com ubereng.wpengine.com
+[*]      A ubereng.wpengine.com 35.184.61.224
+[*]      CNAME movement.uber.com frontends-geo.uber.com
+[*]      CNAME frontends-geo.uber.com geo-frontends-dca1.uber.com
+[*]      CNAME geo-frontends-dca1.uber.com frontends-dca1.uber.com
+[*]      A frontends-dca1.uber.com 104.36.194.234
+[*]      A frontends-dca1.uber.com 104.36.194.160
+[*]      A frontends-dca1.uber.com 104.36.194.131
+[*]      A frontends-dca1.uber.com 104.36.194.133
+[*]      CNAME m.uber.com frontends.uber.com
+[*]      CNAME frontends.uber.com frontends-sjc1.uber.com
+[*]      A frontends-sjc1.uber.com 104.36.192.183
+[*]      A frontends-sjc1.uber.com 104.36.192.221
+[*]      A frontends-sjc1.uber.com 104.36.192.202
+[*]      A frontends-sjc1.uber.com 104.36.192.135
+[*] 98 Records Found
+</code></p>
+
+<ul>
+<li>pull SRV records of domain</li>
+</ul>
+
+
+<p><code>
+dnsrecon -d cisco.com -t srv
+[*] Enumerating Common SRV Records against cisco.com
+[*]      SRV _sip._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 5060 10
+[*]      SRV _sips._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 5061 10
+[*]      SRV _h323ls._udp.cisco.com vcsgw.cisco.com 173.36.224.91 1719 10
+[*]      SRV _sip._udp.cisco.com vcsgw.cisco.com 173.36.224.91 5060 10
+[*]      SRV _h323cs._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 1720 10
+[*]      SRV _xmpp-client._tcp.cisco.com isj3cmx.webexconnect.com 66.163.36.181 5222 1
+[*]      SRV _xmpp-server._tcp.cisco.com isj3jxf.webexconnect.com 66.163.36.186 5269 1
+[*] 7 Records Found
+</code></p>
+
+<ul>
+<li>domain bruteforcing</li>
+</ul>
+
+
+<p><code>
+dnsrecon -D /usr/share/wordlists/dnsmap.txt -t brt -d line.me
+[*] Performing host and subdomain brute force against line.me
+[*]      A ads.line.me 203.104.153.62
+[*]      A agp.line.me 203.104.153.74
+[*]      CNAME api.line.me api.line.me.akadns.net
+[*]      CNAME api.line.me.akadns.net im.api.line.me.edgekey.net
+[*]      CNAME im.api.line.me.edgekey.net e1102.a1.akamaiedge.net
+[*]      A e1102.a1.akamaiedge.net 2.17.116.42
+[*]      A biz.line.me 125.6.149.168
+[...]
+</code></p>
+
+<ul>
+<li>reverse lookup</li>
+</ul>
+
+
+<p><code>
+dnsrecon -d nmap.org -w
+[...]
+[*] Performing Whois lookup against records found.
+[*] The following IP Ranges where found:
+[*]      0) 162.158.0.0-162.159.255.255 Cloudflare, Inc.
+[*]      1) 74.125.0.0-74.125.255.255 Google Inc.
+[*]      2) 64.233.160.0-64.233.191.255 Google Inc.
+[*]      3) 45.33.0.0-45.33.127.255 Linode
+[*] What Range do you wish to do a Revers Lookup for?
+[*] number, comma separated list, a for all or n for none
+3
+[*] Linode
+[*] Performing Reverse Lookup of range 45.33.0.0-45.33.127.255
+[*] Performing Reverse Lookup from 45.33.0.0 to 45.33.127.255
+[*]      PTR li954-9.members.linode.com 45.33.0.9
+[*]      PTR li954-4.members.linode.com 45.33.0.4
+[*]      PTR gw-li954.linode.com 45.33.0.1
+[*]      PTR li954-7.members.linode.com 45.33.0.7
+[*]      PTR cloud521.configrapp.com 45.33.0.8
+[*]      PTR mr2.linode.rbkmoney.net 45.33.0.10
+[*]      PTR li954-5.members.linode.com 45.33.0.5
+[*]      PTR rqdq.net 45.33.0.6
+[*]      PTR li954-12.members.linode.com 45.33.0.12
+[...]
+</code></p>
+
+<ul>
+<li>working zone transfer</li>
+</ul>
+
+
+<p><a href="https://digi.ninja/projects/zonetransferme.php">Robin Wood</a> has been nice enough to register a domain that allows zone transfers for testing purposes. It&rsquo;s called zonetransfer.me, and here we&rsquo;ll look at partial output from one of the name servers:</p>
+
+<p><code>
+dnsrecon -d zonetransfer.me -a
+[*] Performing General Enumeration of Domain: zonetransfer.me
+[*] Checking for Zone Transfer for zonetransfer.me name servers
+[*] Resolving SOA Record
+[*]      SOA nsztm1.digi.ninja 81.4.108.41
+[*] Resolving NS Records
+[*] NS Servers found:
+[*]     NS nsztm1.digi.ninja 81.4.108.41
+[*]     NS nsztm2.digi.ninja 167.88.42.94
+[*] Removing any duplicate NS server IP Addresses...
+[*]  
+[*] Trying NS server 167.88.42.94
+[-] Zone Transfer Failed for 167.88.42.94!
+[-] Port 53 TCP is being filtered
+[*]  
+[*] Trying NS server 81.4.108.41
+[*] 81.4.108.41 Has port 53 TCP Open
+[*] Zone Transfer was successful!!
+[*]      SOA nsztm1.digi.ninja 81.4.108.41
+[*]      NS nsztm1.digi.ninja 81.4.108.41
+[*]      NS nsztm2.digi.ninja 167.88.42.94
+[*]      NS intns1.zonetransfer.me 167.88.42.94
+[*]      NS intns2.zonetransfer.me 167.88.42.94
+[*]      TXT google-site-verification=tyP28J7JAUHA9fw2sHXMgcCC0I6XBmmoVi04VlMewxA
+[*]      TXT Remember to call or email Pippa on +44 123 4567890 or pippa@zonetransfer.me when making DNS changes
+[*]      TXT '&gt;&lt;script&gt;alert('Boo')&lt;/script&gt;
+[*]      TXT AbCdEfG
+[*]      TXT ZoneTransfer.me service provided by Robin Wood - robin@digi.ninja. See http://digi.ninja/projects/zonetransferme.php for more information.
+[*]      TXT ; ls
+[*]      TXT () { :]}; echo ShellShocked
+[*]      TXT ' or 1=1 --
+[*]      TXT Robin Wood
+[*]      PTR www.zonetransfer.me 217.147.177.157
+[*]      MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 64.233.166.26
+[*]      MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 2a00:1450:400c:c07::1a
+[*]      MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 173.194.221.27
+[*]      MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 2a00:1450:4010:c0a::1b
+[*]      MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 74.125.130.27
+[*]      MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 2404:6800:4003:c01::1b
+[*]      MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 173.194.221.26
+[*]      MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 2a00:1450:4010:c0b::1b
+[*]      MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 74.125.130.26
+[*]      MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 2404:6800:4003:c01::1b
+[*]      MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 108.177.97.27
+[*]      MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 2404:6800:4008:c00::1b
+[*]      MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 74.125.28.27
+[*]      MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 2607:f8b0:400e:c04::1b
+[*]      AAAA deadbeef.zonetransfer.me dead:beaf::
+[*]      AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
+[*]      A @.zonetransfer.me 217.147.177.157
+[*]      A dc-office.zonetransfer.me 143.228.181.132
+[*]      A owa.zonetransfer.me 207.46.197.32
+[*]      A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
+[*]      A vpn.zonetransfer.me 174.36.59.154
+[*]      A email.zonetransfer.me 74.125.206.26
+[*]      A asfdbbox.zonetransfer.me 127.0.0.1
+[*]      A www.zonetransfer.me 217.147.177.157
+[*]      A canberra-office.zonetransfer.me 202.14.81.230
+[*]      A intns1.zonetransfer.me 167.88.42.94
+[*]      A intns2.zonetransfer.me 167.88.42.94
+[*]      A office.zonetransfer.me 4.23.39.254
+[*]      CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 52.64.62.190
+[*]      CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 13.54.224.164
+[*]      SRV _sip._tcp.zonetransfer.me www 5060 0 no_ip
+[*]      HINFO Casio fx-700G Windows XP
+[*]      RP robin robinwood
+[*]      AFSDB 1 asfdbbox
+[*]      AFSDB 1 asfdbbox
+[*]      LOC 53 20 56.558 N 1 38 33.526 W 0.00m
+[*]      NAPTR P 2 3 !^.*$!sip:customer-service@zonetransfer.me! . E2U+sip
+[*]      NAPTR P 1 1  email.zonetransfer.me E2U+email
+[*]      DNSKEY RSASHA256 256 03010001d5deaa18c99ca1dccd489f0b df0dcf6c60db133a0d77b424413774d7 a718dca807252bc46da6428672efc976 3ec86373f80ac1c4e36b01ca788f3f68 ed7ac4ff671b8a602b2c9b2cf24df57b c9455e6d5c5a24e3c8360cf6debb4fd3 3cda156002eb31eaeeab1146bff6bf46 28f32b1add13712a95ed7dd3ace09d77 f8de190b 3
+[*]      DNSKEY RSASHA256 256 03010001d779d1f1daf7054a21ff7f82 93a1171dcd06adf6586abf4b2911354c 123273d4dce3a44735132842fecb1768 011bcbfe96d1fb9a4add600e573b0b29 dcb7fb178ba9f20b7606353f49ac8d55 d734dda898157e1ecd8b8a9eea4b8464 6091e0f8eabc4568b1a5e092009d7f0e 448b136d076188aadbb6b4ee9344a1cf 8e7cd79f 3
+[*]      DNSKEY RSASHA256 257 03010001e14b3915ec8b1107d9fb66e6 8a3855023ae83eb3301ade8a7cac4ddc 798ce560740b4e6b723a2f7c9eee55d9 1496dd9cf670d30d1d7f636f59b2070f 32024316c98d74d4916b8dd30b979bd7 fa0453fc55c35af273e6d78176fbab9e f9c331c8c397656ff8bedd8357986c1f e94d590c4655e4c574289f52562db0f9 68c6ca581134f9be1aae2a3fd535aae2 45e717d334f3c8cebb17e82b091f9c52 8ef90a765a45b5591bb808050efcded5 4ee6d150094263ab0df33b57fa790a7f c64e2b368ac22bb043aa2b6051ba5d3e e1610aa99c29562c16b11588d6da23f3 64f652471fe9d0698052671f9c5ab4cb 3d9b64369dda86a63780bc00d115207d 86425a75 3
+[*]      NSEC _sip._tcp
+[*]      NSEC sqli
+[*]      NSEC vpn
+[*]      NSEC asfdbbox
+[*]      NSEC deadbeef
+[*]      NSEC intns1
+[*]      NSEC 157.177.147.217.IN-ADDR.ARPA
+[*]      NSEC asfdbauthdns
+[*]      NSEC dc-office
+[*]      NSEC alltcpportsopen.firewall.test
+[*]      NSEC canberra-office
+[*]      NSEC robinwood
+[*]      NSEC testing
+[*]      NSEC www
+[*]      NSEC Info
+[*]      NSEC dr
+[*]      NSEC @
+[*]      NSEC asfdbvolume
+[*]      NSEC xss
+[*]      NSEC email
+[*]      NSEC internal
+[*]      NSEC cmdexec
+[*]      NSEC intns2
+[*]      NSEC office
+[*]      NSEC contact
+[*]      NSEC owa
+[*]      NSEC staging
+[*]      NSEC sshock
+[*]      NSEC sip
+[*]      NSEC rp
+[*]      NSEC DZC
+[*]      NSEC ipv6actnow.org
+[*] Checking for Zone Transfer for zonetransfer.me name servers
+[*] Resolving SOA Record
+[*]      SOA nsztm1.digi.ninja 81.4.108.41
+[*] Resolving NS Records
+[*] NS Servers found:
+[*]     NS nsztm2.digi.ninja 167.88.42.94
+[*]     NS nsztm1.digi.ninja 81.4.108.41
+[*] Removing any duplicate NS server IP Addresses...
+[*]  
+[*] Trying NS server 167.88.42.94
+[-] Zone Transfer Failed for 167.88.42.94!
+[-] Port 53 TCP is being filtered
+[*]  
+[*] Trying NS server 81.4.108.41
+[*] 81.4.108.41 Has port 53 TCP Open
+[*] Zone Transfer was successful!!
+[*]      SOA nsztm1.digi.ninja 81.4.108.41
+[*]      NS nsztm1.digi.ninja 81.4.108.41
+[*]      NS nsztm2.digi.ninja 167.88.42.94
+[*]      NS intns1.zonetransfer.me 167.88.42.94
+[*]      NS intns2.zonetransfer.me 167.88.42.94
+[*]      TXT google-site-verification=tyP28J7JAUHA9fw2sHXMgcCC0I6XBmmoVi04VlMewxA
+[*]      TXT Remember to call or email Pippa on +44 123 4567890 or pippa@zonetransfer.me when making DNS changes
+[*]      TXT '&gt;&lt;script&gt;alert('Boo')&lt;/script&gt;
+[*]      TXT AbCdEfG
+[*]      TXT ZoneTransfer.me service provided by Robin Wood - robin@digi.ninja. See http://digi.ninja/projects/zonetransferme.php for more information.
+[*]      TXT ; ls
+[*]      TXT () { :]}; echo ShellShocked
+[*]      TXT ' or 1=1 --
+[*]      TXT Robin Wood
+[*]      PTR www.zonetransfer.me 217.147.177.157
+[*]      MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 64.233.166.26
+[*]      MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 2a00:1450:400c:c07::1a
+[*]      MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 173.194.221.27
+[*]      MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 2a00:1450:4010:c0a::1b
+[*]      MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 74.125.130.27
+[*]      MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 2404:6800:4003:c01::1b
+[*]      MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 173.194.221.26
+[*]      MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 2a00:1450:4010:c0b::1b
+[*]      MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 74.125.130.26
+[*]      MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 2404:6800:4003:c01::1b
+[*]      MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 108.177.97.27
+[*]      MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 2404:6800:4008:c00::1b
+[*]      MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 74.125.28.27
+[*]      MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 2607:f8b0:400e:c04::1b
+[*]      AAAA deadbeef.zonetransfer.me dead:beaf::
+[*]      AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
+[*]      A @.zonetransfer.me 217.147.177.157
+[*]      A dc-office.zonetransfer.me 143.228.181.132
+[*]      A owa.zonetransfer.me 207.46.197.32
+[*]      A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
+[*]      A vpn.zonetransfer.me 174.36.59.154
+[*]      A email.zonetransfer.me 74.125.206.26
+[*]      A asfdbbox.zonetransfer.me 127.0.0.1
+[*]      A www.zonetransfer.me 217.147.177.157
+[*]      A canberra-office.zonetransfer.me 202.14.81.230
+[*]      A intns1.zonetransfer.me 167.88.42.94
+[*]      A intns2.zonetransfer.me 167.88.42.94
+[*]      A office.zonetransfer.me 4.23.39.254
+[*]      CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 52.64.62.190
+[*]      CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 13.54.224.164
+[*]      SRV _sip._tcp.zonetransfer.me www 5060 0 no_ip
+[*]      HINFO Casio fx-700G Windows XP
+[*]      RP robin robinwood
+[*]      AFSDB 1 asfdbbox
+[*]      AFSDB 1 asfdbbox
+[*]      LOC 53 20 56.558 N 1 38 33.526 W 0.00m
+[*]      NAPTR P 2 3 !^.*$!sip:customer-service@zonetransfer.me! . E2U+sip
+[*]      NAPTR P 1 1  email.zonetransfer.me E2U+email
+[*]      DNSKEY RSASHA256 256 03010001d5deaa18c99ca1dccd489f0b df0dcf6c60db133a0d77b424413774d7 a718dca807252bc46da6428672efc976 3ec86373f80ac1c4e36b01ca788f3f68 ed7ac4ff671b8a602b2c9b2cf24df57b c9455e6d5c5a24e3c8360cf6debb4fd3 3cda156002eb31eaeeab1146bff6bf46 28f32b1add13712a95ed7dd3ace09d77 f8de190b 3
+[*]      DNSKEY RSASHA256 256 03010001d779d1f1daf7054a21ff7f82 93a1171dcd06adf6586abf4b2911354c 123273d4dce3a44735132842fecb1768 011bcbfe96d1fb9a4add600e573b0b29 dcb7fb178ba9f20b7606353f49ac8d55 d734dda898157e1ecd8b8a9eea4b8464 6091e0f8eabc4568b1a5e092009d7f0e 448b136d076188aadbb6b4ee9344a1cf 8e7cd79f 3
+[*]      DNSKEY RSASHA256 257 03010001e14b3915ec8b1107d9fb66e6 8a3855023ae83eb3301ade8a7cac4ddc 798ce560740b4e6b723a2f7c9eee55d9 1496dd9cf670d30d1d7f636f59b2070f 32024316c98d74d4916b8dd30b979bd7 fa0453fc55c35af273e6d78176fbab9e f9c331c8c397656ff8bedd8357986c1f e94d590c4655e4c574289f52562db0f9 68c6ca581134f9be1aae2a3fd535aae2 45e717d334f3c8cebb17e82b091f9c52 8ef90a765a45b5591bb808050efcded5 4ee6d150094263ab0df33b57fa790a7f c64e2b368ac22bb043aa2b6051ba5d3e e1610aa99c29562c16b11588d6da23f3 64f652471fe9d0698052671f9c5ab4cb 3d9b64369dda86a63780bc00d115207d 86425a75 3
+[*]      NSEC _sip._tcp
+[*]      NSEC sqli
+[*]      NSEC vpn
+[*]      NSEC asfdbbox
+[*]      NSEC deadbeef
+[*]      NSEC intns1
+[*]      NSEC 157.177.147.217.IN-ADDR.ARPA
+[*]      NSEC asfdbauthdns
+[*]      NSEC dc-office
+[*]      NSEC alltcpportsopen.firewall.test
+[*]      NSEC canberra-office
+[*]      NSEC robinwood
+[*]      NSEC testing
+[*]      NSEC www
+[*]      NSEC Info
+[*]      NSEC dr
+[*]      NSEC @
+[*]      NSEC asfdbvolume
+[*]      NSEC xss
+[*]      NSEC email
+[*]      NSEC internal
+[*]      NSEC cmdexec
+[*]      NSEC intns2
+[*]      NSEC office
+[*]      NSEC contact
+[*]      NSEC owa
+[*]      NSEC staging
+[*]      NSEC sshock
+[*]      NSEC sip
+[*]      NSEC rp
+[*]      NSEC DZC
+[*]      NSEC ipv6actnow.org
+[-] A timeout error occurred please make sure you can reach the target DNS Servers
+[-] directly and requests are not being filtered. Increase the timeout from 3.0 second
+[-] to a higher number with --lifetime &lt;time&gt; option.
+</code></p>
+
+<p>Here we see some interesting records that might warrant an additional explanation:</p>
+
+<p><strong>SOA</strong> &ndash; the State of Authority record indicates which DNS server is the best source of information for the specified domain</p>
+
+<p><strong>HINFO</strong> specifies the host / server&rsquo;s type of CPU and operating system. We can see a Casio here, which is highly unlikely xD</p>
+
+<p><strong>LOC</strong> &ndash; geolocation information, here in latitude / longitude values</p>
+
+<p><strong>TXT</strong> &ndash; text records, with plenty of information like mail addresses, phone numbers, XSS and shellshock attempts</p>
+
+<ul>
+<li>map internal network with DNSSEC zone walk</li>
+</ul>
+
+
+<p><code>
+dnsrecon -d zonetransfer.me -z
+[...]
+[*] Performing NSEC Zone Walk for zonetransfer.me
+[*] Getting SOA record for zonetransfer.me
+[*] Name Server 81.4.108.41 will be used
+[*]      A zonetransfer.me 217.147.177.157
+[*]      SRV _sip._tcp.zonetransfer.me www.zonetransfer.me 217.147.177.157 5060 0
+[*]      A 157.177.147.217.IN-ADDR.ARPA.zonetransfer.me no_ip
+[*]      A asfdbauthdns.zonetransfer.me no_ip
+[*]      A asfdbbox.zonetransfer.me 127.0.0.1
+[*]      A asfdbvolume.zonetransfer.me no_ip
+[*]      A canberra-office.zonetransfer.me 202.14.81.230
+[*]      A cmdexec.zonetransfer.me no_ip
+[*]      A contact.zonetransfer.me no_ip
+[*]      A dc-office.zonetransfer.me 143.228.181.132
+[*]      AAAA deadbeef.zonetransfer.me dead:beaf::
+[*]      A dr.zonetransfer.me no_ip
+[*]      A DZC.zonetransfer.me no_ip
+[*]      A email.zonetransfer.me 74.125.206.26
+[*]      A Info.zonetransfer.me no_ip
+[*]      A internal.zonetransfer.me no_ip
+[*]      A intns1.zonetransfer.me 167.88.42.94
+[*]      A intns2.zonetransfer.me 167.88.42.94
+[*]      A office.zonetransfer.me 4.23.39.254
+[*]      AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
+[*]      A owa.zonetransfer.me 207.46.197.32
+[*]      A robinwood.zonetransfer.me no_ip
+[*]      A rp.zonetransfer.me no_ip
+[*]      A sip.zonetransfer.me no_ip
+[*]      A sqli.zonetransfer.me no_ip
+[*]      A sshock.zonetransfer.me no_ip
+[*]      A staging.zonetransfer.me 52.64.62.190
+[*]      A staging.zonetransfer.me 13.54.224.164
+[*]      A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
+[*]      CNAME testing.zonetransfer.me www.zonetransfer.me
+[*]      A www.zonetransfer.me 217.147.177.157
+[*]      A vpn.zonetransfer.me 174.36.59.154
+[*]      A www.zonetransfer.me 217.147.177.157
+[*]      A xss.zonetransfer.me no_ip
+[*] 34 records found
+</code></p>
+
+<ul>
+<li>sample CSV</li>
+</ul>
+
+
+<p><img class="center" src="/images/tools/dnsrecon.png" title="&lsquo;dnsrecon&rsquo; &lsquo;dnsrecon CSV report&rsquo;" ></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ The only way to keep your health is to  \
+| eat what you don&rsquo;t want, drink what you |
+| don&rsquo;t like, and do what you&rsquo;d rather    |
+| not.                                    |
+|                                         |
+\ &mdash; Mark Twain                           /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[netmask - Kali Linux tools]]></title>
@@ -982,336 +1630,6 @@ WoW! If you are viewing this, You have &ldquo;Sucessfully!!&rdquo; completed Sic
 
 <p>/ Tomorrow will be cancelled due to lack \
 \ of interest.                           /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[TheHarvester - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/02/theharvester-kali-linux-tools/"/>
-    <updated>2017-07-02T08:32:26-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/02/theharvester-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you want to perform OSINT recon on a target and aggregate information from different sources. TheHarvester is an e-mail, subdomain and people names harvester written in Python.</p>
-
-<p>Homepage: <a href="https://github.com/laramies/theHarvester">https://github.com/laramies/theHarvester</a></p>
-
-<!-- more -->
-
-
-<h2>theharvester description</h2>
-
-<blockquote><p>theHarvester is a tool for gathering e-mail accounts, subdomain names, virtual
-hosts, open ports/ banners, and employee names from different public sources
-(search engines, pgp key servers).</p>
-
-<p>Is a really simple tool, but very effective for the early stages of a penetration
-test or just to know the visibility of your company in the Internet.</p>
-
-<p>The sources are:</p>
-
-<p>Passive:</p>
-
-<p>-google: google search engine  &ndash; www.google.com</p>
-
-<p>-googleCSE: google custom search engine</p>
-
-<p>-google-profiles: google search engine, specific search for Google profiles</p>
-
-<p>-bing: microsoft search engine  &ndash; www.bing.com</p>
-
-<p>-bingapi: microsoft search engine, through the API (you need to add your Key in the discovery/bingsearch.py file)</p>
-
-<p>-dogpile: Dogpile search engine &ndash; www.dogpile.com</p>
-
-<p>-pgp: pgp key server &ndash; mit.edu</p>
-
-<p>-linkedin: google search engine, specific search for Linkedin users</p>
-
-<p>-vhost: Bing virtual hosts search</p>
-
-<p>-twitter: twitter accounts related to an specific domain (uses google search)</p>
-
-<p>-googleplus: users that works in target company (uses google search)</p>
-
-<p>-yahoo: Yahoo search engine</p>
-
-<p>-baidu: Baidu search engine</p>
-
-<p>-shodan: Shodan Computer search engine, will search for ports and banner of the
-discovered hosts  (<a href="http://www.shodanhq.com/">http://www.shodanhq.com/</a>)</p>
-
-<p>Active:</p>
-
-<p>-DNS brute force: this plugin will run a dictionary brute force enumeration</p>
-
-<p>-DNS reverse lookup: reverse lookup of ip´s discovered in order to find hostnames</p>
-
-<p>-DNS TDL expansion: TLD dictionary brute force enumeration</p>
-
-<p>Modules that need API keys to work:</p>
-
-<p>-googleCSE: You need to create a Google Custom Search engine(CSE), and add your
-Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
-
-<p>-shodan: You need to provide your API key in discovery/shodansearch.py</p></blockquote>
-
-<h2>theharvester options</h2>
-
-<p>```</p>
-
-<hr />
-
-<ul>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>| |<em>| |<strong>   </strong></em>    /\  /_<em> _ _ </em><strong><em>   </em></strong><strong>  </strong><em>| |</em> <strong>_ _ </strong>  *</li>
-<li>| <strong>| &lsquo;<em> \ / _ \  / /</em>/ / _` | &rsquo;</strong>\ \ / / _ \/ <strong>| </strong>/ _ \ &lsquo;__| *</li>
-<li>| |<em>| | | |  <strong>/ / </strong>  / (</em>| | |   \ V /  <strong>/__ \ ||  </strong>/ |    *</li>
-<li>_<em>|</em>| |<em>|___| \/ /</em>/ _<em>,</em>|<em>|    _/ _<strong>||</strong></em>/_<em>___|</em>|    *</li>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>TheHarvester Ver. 2.7                                           *</li>
-<li>Coded by Christian Martorella                                   *</li>
-<li>Edge-Security Research                                          *</li>
-<li><a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#99;&#x6d;&#x61;&#x72;&#116;&#x6f;&#114;&#x65;&#108;&#x6c;&#x61;&#64;&#x65;&#x64;&#x67;&#x65;&#x2d;&#115;&#101;&#99;&#x75;&#x72;&#x69;&#x74;&#x79;&#x2e;&#99;&#x6f;&#109;">&#99;&#x6d;&#x61;&#x72;&#116;&#111;&#x72;&#x65;&#108;&#108;&#97;&#x40;&#x65;&#100;&#103;&#101;&#x2d;&#x73;&#x65;&#x63;&#x75;&#x72;&#105;&#x74;&#x79;&#46;&#99;&#111;&#109;</a>                                   *</li>
-</ul>
-
-
-<hr />
-
-<p>Usage: theharvester options</p>
-
-<pre><code>   -d: Domain to search or company name
-   -b: data source: google, googleCSE, bing, bingapi, pgp, linkedin,
-                    google-profiles, jigsaw, twitter, googleplus, all
-
-   -s: Start in result number X (default: 0)
-   -v: Verify host name via dns resolution and search for virtual hosts
-   -f: Save the results into an HTML and XML file (both)
-   -n: Perform a DNS reverse query on all ranges discovered
-   -c: Perform a DNS brute force for the domain name
-   -t: Perform a DNS TLD expansion discovery
-   -e: Use this DNS server
-   -l: Limit the number of results to work with(bing goes from 50 to 50 results,
-        google 100 to 100, and pgp doesn't use this option)
-   -h: use SHODAN database to query discovered hosts
-</code></pre>
-
-<p>Examples:</p>
-
-<pre><code>    theharvester -d microsoft.com -l 500 -b google -h myresults.html
-    theharvester -d microsoft.com -b pgp
-    theharvester -d microsoft -l 200 -b linkedin
-    theharvester -d apple.com -b googleCSE -l 500 -s 300
-</code></pre>
-
-<p>```</p>
-
-<h2>theharvester usage</h2>
-
-<ul>
-<li>search with all options for a given domain</li>
-</ul>
-
-
-<p>```
-theharvester -d hackerone.com -l 200 -b all -f harvested</p>
-
-<hr />
-
-<ul>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>| |<em>| |<strong>   </strong></em>    /\  /_<em> _ _ </em><strong><em>   </em></strong><strong>  </strong><em>| |</em> <strong>_ _ </strong>  *</li>
-<li>| <strong>| &lsquo;<em> \ / _ \  / /</em>/ / _` | &rsquo;</strong>\ \ / / _ \/ <strong>| </strong>/ _ \ &lsquo;__| *</li>
-<li>| |<em>| | | |  <strong>/ / </strong>  / (</em>| | |   \ V /  <strong>/__ \ ||  </strong>/ |    *</li>
-<li>_<em>|</em>| |<em>|___| \/ /</em>/ _<em>,</em>|<em>|    _/ _<strong>||</strong></em>/_<em>___|</em>|    *</li>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>TheHarvester Ver. 2.7                                           *</li>
-<li>Coded by Christian Martorella                                   *</li>
-<li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#99;&#109;&#97;&#114;&#x74;&#111;&#x72;&#101;&#108;&#x6c;&#x61;&#x40;&#101;&#100;&#103;&#x65;&#45;&#x73;&#101;&#x63;&#x75;&#x72;&#x69;&#x74;&#121;&#46;&#x63;&#x6f;&#109;">&#99;&#x6d;&#97;&#114;&#x74;&#111;&#x72;&#x65;&#x6c;&#108;&#x61;&#64;&#x65;&#100;&#103;&#x65;&#x2d;&#115;&#x65;&#99;&#117;&#114;&#x69;&#x74;&#121;&#46;&#99;&#111;&#x6d;</a>                                   *</li>
-</ul>
-
-
-<hr />
-
-<p>Full harvest..
-[&ndash;] Searching in Google..</p>
-
-<pre><code>Searching 0 results...
-Searching 100 results...
-Searching 200 results...
-</code></pre>
-
-<p>[&ndash;] Searching in PGP Key server..
-[&ndash;] Searching in Bing..</p>
-
-<pre><code>Searching 50 results...
-Searching 100 results...
-Searching 150 results...
-Searching 200 results...
-</code></pre>
-
-<p>[&ndash;] Searching in Exalead..</p>
-
-<pre><code>Searching 50 results...
-Searching 100 results...
-Searching 150 results...
-Searching 200 results...
-Searching 250 results...
-</code></pre>
-
-<h2>[+] Emails found:</h2>
-
-<p><a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#102;&#x65;&#x65;&#x64;&#x62;&#x61;&#99;&#107;&#x40;&#104;&#x61;&#99;&#107;&#x65;&#114;&#x6f;&#x6e;&#x65;&#46;&#x63;&#x6f;&#109;">&#102;&#101;&#x65;&#x64;&#x62;&#97;&#99;&#x6b;&#64;&#104;&#97;&#x63;&#107;&#x65;&#114;&#111;&#x6e;&#101;&#46;&#99;&#111;&#x6d;</a>
-<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#115;&#x75;&#112;&#112;&#111;&#x72;&#116;&#64;&#104;&#x61;&#99;&#107;&#x65;&#114;&#111;&#110;&#101;&#46;&#x63;&#111;&#x6d;">&#x73;&#x75;&#112;&#x70;&#111;&#114;&#116;&#64;&#104;&#97;&#99;&#x6b;&#x65;&#x72;&#111;&#110;&#x65;&#46;&#99;&#111;&#x6d;</a>
-[REDACTED}</p>
-
-<h2>[+] Hosts found in search engines:</h2>
-
-<p>[&ndash;] Resolving hostnames IPs&hellip;
-162.159.0.31:a.ns.hackerone.com
-104.16.13.26:support.hackerone.com
-104.16.99.52:www.hackerone.com</p>
-
-<h1>[+] Virtual hosts:</h1>
-
-<p>104.16.13.26    support.hackerone
-104.16.13.26    support.hackerone.com
-104.16.99.52    hackerone
-[+] Saving files&hellip;
-Files saved!
-```</p>
-
-<p>Keep in mind that I&rsquo;m editing some results from the output for privacy reasons. I&rsquo;m also saving all results in HTML</p>
-
-<ul>
-<li>Linkedin enumeration</li>
-</ul>
-
-
-<p>```
-theharvester -d cisco.com -b linkedin -l 100 -f cisco</p>
-
-<hr />
-
-<ul>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>| |<em>| |<strong>   </strong></em>    /\  /_<em> _ _ </em><strong><em>   </em></strong><strong>  </strong><em>| |</em> <strong>_ _ </strong>  *</li>
-<li>| <strong>| &lsquo;<em> \ / _ \  / /</em>/ / _` | &rsquo;</strong>\ \ / / _ \/ <strong>| </strong>/ _ \ &lsquo;__| *</li>
-<li>| |<em>| | | |  <strong>/ / </strong>  / (</em>| | |   \ V /  <strong>/__ \ ||  </strong>/ |    *</li>
-<li>_<em>|</em>| |<em>|___| \/ /</em>/ _<em>,</em>|<em>|    _/ _<strong>||</strong></em>/_<em>___|</em>|    *</li>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>TheHarvester Ver. 2.7                                           *</li>
-<li>Coded by Christian Martorella                                   *</li>
-<li>Edge-Security Research                                          *</li>
-<li><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#99;&#109;&#x61;&#x72;&#x74;&#x6f;&#114;&#x65;&#x6c;&#108;&#x61;&#x40;&#x65;&#100;&#x67;&#101;&#x2d;&#x73;&#101;&#99;&#x75;&#x72;&#105;&#116;&#121;&#x2e;&#x63;&#x6f;&#109;">&#x63;&#x6d;&#97;&#x72;&#116;&#x6f;&#114;&#x65;&#108;&#x6c;&#97;&#64;&#101;&#100;&#x67;&#101;&#x2d;&#x73;&#x65;&#99;&#117;&#x72;&#x69;&#x74;&#x79;&#46;&#x63;&#111;&#x6d;</a>                                   *</li>
-</ul>
-
-
-<hr />
-
-<p>[&ndash;] Searching in Linkedin..</p>
-
-<pre><code>Searching 100 results..
-</code></pre>
-
-<h1>Users from Linkedin:</h1>
-
-<p>Name
-Another name
-Names
-Names everywhere
-```</p>
-
-<ul>
-<li>Twitter enumeration</li>
-</ul>
-
-
-<p>```
-theharvester -d chousensha.github.io -l 10 -b twitter</p>
-
-<hr />
-
-<ul>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>| |<em>| |<strong>   </strong></em>    /\  /_<em> _ _ </em><strong><em>   </em></strong><strong>  </strong><em>| |</em> <strong>_ _ </strong>  *</li>
-<li>| <strong>| &lsquo;<em> \ / _ \  / /</em>/ / _` | &rsquo;</strong>\ \ / / _ \/ <strong>| </strong>/ _ \ &lsquo;__| *</li>
-<li>| |<em>| | | |  <strong>/ / </strong>  / (</em>| | |   \ V /  <strong>/__ \ ||  </strong>/ |    *</li>
-<li>_<em>|</em>| |<em>|___| \/ /</em>/ _<em>,</em>|<em>|    _/ _<strong>||</strong></em>/_<em>___|</em>|    *</li>
-<li><pre><code>                                                          *
-</code></pre></li>
-<li>TheHarvester Ver. 2.7                                           *</li>
-<li>Coded by Christian Martorella                                   *</li>
-<li>Edge-Security Research                                          *</li>
-<li><a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#99;&#x6d;&#97;&#114;&#116;&#111;&#114;&#x65;&#108;&#108;&#x61;&#x40;&#x65;&#x64;&#x67;&#x65;&#45;&#x73;&#101;&#99;&#x75;&#x72;&#105;&#116;&#121;&#x2e;&#x63;&#111;&#x6d;">&#99;&#109;&#x61;&#114;&#116;&#x6f;&#114;&#x65;&#108;&#x6c;&#x61;&#64;&#x65;&#x64;&#x67;&#101;&#45;&#x73;&#101;&#x63;&#x75;&#114;&#105;&#x74;&#x79;&#x2e;&#x63;&#111;&#109;</a>                                   *</li>
-</ul>
-
-
-<hr />
-
-<p>[&ndash;] Searching in Twitter ..</p>
-
-<pre><code>Searching 100 results..
-</code></pre>
-
-<h1>Users from Twitter:</h1>
-
-<p>@-moz-keyframes gb<strong>a
-@keyframes gb</strong>a
-@-moz-keyframes gb<strong>nb
-@keyframes gb</strong>nb
-@media
-@keyframes qli-container-rotate
-@keyframes qli-fill-unfill-rotate
-@keyframes qli-blue-fade-in-out
-@keyframes qli-red-fade-in-out
-@keyframes qli-yellow-fade-in-out
-@keyframes qli-green-fade-in-out
-@keyframes qli-left-spin
-@keyframes qli-right-spin
-@kalilinux load balancer detector &hellip;
-@chous3nsha
-@
-```</p>
-
-<ul>
-<li>sample HTML output</li>
-</ul>
-
-
-<p><img class="center" src="/images/tools/harvester.png" title="&lsquo;theharvester&rsquo; &lsquo;theharvester HTML report&rsquo;" ></p>
-
-<p>Also note that doing a reverse query on the discovered ranges takes long and the output might be overwhelming.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ In India, &ldquo;cold weather&rdquo; is merely a    \
-| conventional phrase and has come into   |
-| use through the necessity of having     |
-| some way to distinguish between weather |
-| which will melt a brass door-knob and   |
-| weather which will only make it mushy.  |
-|                                         |
-\ &mdash; Mark Twain                           /</p>
 
 <hr />
 
