@@ -12,6 +12,8 @@ description: sslyze tutorial
 
 Homepage: https://github.com/nabla-c0d3/sslyze
 
+<!-- more -->
+
 ## sslyze description
 
 > SSLyze is a Python library and a CLI tool that can analyze the SSL configuration of a server by connecting to it. It
