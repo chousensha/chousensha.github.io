@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-07-29T15:25:03-04:00</updated>
+  <updated>2017-09-10T07:53:37-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,167 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[NFS shares on CentOS 7]]></title>
+    <link href="http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7/"/>
+    <updated>2017-09-10T07:45:30-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7</id>
+    <content type="html"><![CDATA[<p>Today we will go over an alternate way of setting up shares on CentOS 7. In an <a href="https://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/">earlier post</a> we saw how we can share stuff with Samba, which is the preferred way, especially if you have mixed environments. But today I also wanted to go through the process using the veteran: NFS! For this example, we&rsquo;ll be looking at the newest version, NFS4, which adds performance and security features, but also operates a little bit differently than its predecessors.</p>
+
+<!-- more -->
+
+
+<p>The Network File System allows clients to mount remote filesystems as if they were present locally. By default, the NFS server is listening on port 2049. In version 4, NFS requires the use of TCP.</p>
+
+<h3>Server configuration</h3>
+
+<p>If you don&rsquo;t have it already, install the <code>nfs-utils</code> package. Next, start NFS with the command: <code>systemctl start nfs</code>. For the share, I created some directory and put a file in it:</p>
+
+<p><code>
+mkdir /var/nfs-share
+chmod 777 /var/nfs-share/
+</code></p>
+
+<p>Now we have to edit the <code>/etc/exports</code> file, which contains the configuration for the shares. The format is as follows:</p>
+
+<p><code>
+/sharepath client(options)
+</code></p>
+
+<p>You can specify the client by hostname, domain name, IP address or network range. In this example, I will allow all hosts on my local subnet to have read write access to the share, and permit root users to retain their privileges:</p>
+
+<p><code>
+/var/nfs-share 192.168.217.0/24(rw,no_root_squash)
+</code></p>
+
+<p>Now restart the server for the configuration to take effect: <code>systemctl restart nfs</code>. You can see NFS statistics with <strong>nfstat</strong>:</p>
+
+<p>```
+nfsstat
+Server rpc stats:
+calls      badcalls   badclnt    badauth    xdrcall
+91         0          0          0          0</p>
+
+<p>Server nfs v4:
+null         compound   <br/>
+2         2% 89       97%</p>
+
+<p>Server nfs v4 operations:
+op0-unused   op1-unused   op2-future   access       close        commit     <br/>
+0         0% 0         0% 0         0% 7         2% 1         0% 0         0%
+create       delegpurge   delegreturn  getattr      getfh        link       <br/>
+0         0% 0         0% 1         0% 52       20% 8         3% 0         0%
+lock         lockt        locku        lookup       lookup_root  nverify    <br/>
+0         0% 0         0% 0         0% 16        6% 0         0% 0         0%
+open         openattr     open_conf    open_dgrd    putfh        putpubfh   <br/>
+1         0% 0         0% 0         0% 0         0% 63       25% 0         0%
+putrootfh    read         readdir      readlink     remove       rename     <br/>
+4         1% 1         0% 2         0% 0         0% 0         0% 0         0%
+renew        restorefh    savefh       secinfo      setattr      setcltid   <br/>
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0%
+setcltidconf verify       write        rellockowner bc_ctl       bind_conn  <br/>
+0         0% 0         0% 0         0% 0         0% 0         0% 0         0%
+exchange_id  create_ses   destroy_ses  free_stateid getdirdeleg  getdevinfo <br/>
+2         0% 2         0% 1         0% 0         0% 0         0% 0         0%
+getdevlist   layoutcommit layoutget    layoutreturn secinfononam sequence   <br/>
+0         0% 0         0% 0         0% 0         0% 2         0% 83       33%
+set_ssv      test_stateid want_deleg   destroy_clid reclaim_comp
+0         0% 0         0% 0         0% 1         0% 2         0%
+```</p>
+
+<p>To see the available exports and their options, use <strong>exportfs</strong>:</p>
+
+<p><code>
+exportfs -v
+/var/nfs-share  192.168.217.0/24(rw,wdelay,no_root_squash,no_subtree_check,sec=sys,rw,secure,no_root_squash,no_all_squash)
+</code></p>
+
+<h3>Client configuration</h3>
+
+<p>On the client, I first made a directory for the shares:</p>
+
+<p><code>
+mkdir /mnt/nfs
+</code></p>
+
+<p>To mount the share, the command looks like this:</p>
+
+<p><code>
+mount -t nfs -o options server:/export /mount/directory
+</code></p>
+
+<p>In my case, I mounted the exported share with:</p>
+
+<p><code>
+mount -t nfs 192.168.217.131:/var/nfs-share /mnt/nfs/
+</code></p>
+
+<p>Then I went to the directory and read the file:</p>
+
+<p><code>
+root@kali:/mnt/nfs# ls
+file.txt
+root@kali:/mnt/nfs# cat file.txt
+something here
+</code></p>
+
+<p>When done, unmount the filesystem:</p>
+
+<p><code>
+umount /mnt/nfs
+</code></p>
+
+<p>If instead of manually mounting the share, we would want it automatically mounted at boot, we&rsquo;d have to edit <code>/etc/fstab</code>:</p>
+
+<p>```</p>
+
+<h1>/etc/fstab: static file system information.</h1>
+
+<p>#</p>
+
+<h1>Use &lsquo;blkid&rsquo; to print the universally unique identifier for a</h1>
+
+<h1>device; this may be used with UUID= as a more robust way to name devices</h1>
+
+<h1>that works even if disks are added and removed. See fstab(5).</h1>
+
+<p>#</p>
+
+<h1><file system> <mount point>   <type>  <options>       <dump>  <pass></h1>
+
+<p>192.168.217.131:/var/nfs-share /mnt/nfs nfs rw 0 0
+```</p>
+
+<p>Now reboot the client and check that the share was mounted:</p>
+
+<p><code>
+mount | grep nfs
+192.168.217.131:/var/nfs-share on /mnt/nfs type nfs4 (rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=0.0.0.0,local_lock=none,addr=192.168.217.131)
+</code></p>
+
+<p>So, it&rsquo;s pretty easy and fast to set up NFS shares, but keep in mind this tutorial only scratched the surface of the available configuration options.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: What&rsquo;s tiny and yellow and very,   \
+| very, dangerous? A: A canary with the |
+\ super-user password.                  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Quick shares with Samba on CentOS]]></title>
@@ -1224,1176 +1385,6 @@ yum install phpmyadmin
 </code></pre>
 
 <p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Getting started with Apache]]></title>
-    <link href="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/"/>
-    <updated>2016-08-05T07:26:16-04:00</updated>
-    <id>http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache</id>
-    <content type="html"><![CDATA[<p>In this post I will go over the installation and configuration of an Apache web server on CentOS.</p>
-
-<!-- more -->
-
-
-<h1>Installation</h1>
-
-<p>First, let&rsquo;s verify whether Apache is already installed. Note that on CentOS, the package (and process name) for Apache is called <strong>httpd</strong>.</p>
-
-<p><code>plain
-rpm -q httpd
-package httpd is not installed
-ls -l /var/www
-ls: cannot access /var/www: No such file or directory
-</code></p>
-
-<p>Apache is not installed, so let&rsquo;s install it with <code>yum install httpd</code>. Now verify that it has been installed:</p>
-
-<p><code>plain
-rpm -q httpd
-httpd-2.4.6-40.el7.centos.4.x86_64
-ls -l /var/www
-total 0
-drwxr-xr-x. 2 root root 6 Jul 18 18:30 cgi-bin
-drwxr-xr-x. 2 root root 6 Jul 18 18:30 html
-</code></p>
-
-<p>Remember that the directory for Apache configuration is <code>/etc/httpd</code>:</p>
-
-<p><code>plain
-[root@localhost ~]# ls /etc/httpd
-conf  conf.d  conf.modules.d  logs  modules  run
-</code></p>
-
-<p>And the Apache configuration file is <code>/etc/httpd/conf/httpd.conf</code>. I included a snapshot of a fresh config file at the end of this post.</p>
-
-<h1>Configuration</h1>
-
-<p>Now we can start Apache and check that it is running with the <strong>apachectl</strong> command, that provides a front-end control interface for the httpd daemon. For reference, the man page for this utility is at the end of the post.</p>
-
-<p>To start the web server, type <code>apachectl start</code> (alternatively, you can do it with <code>service httpd start</code>, and can use the httpd daemon directly to pass arguments, etc. At the end I&rsquo;ve also included the httpd man page.</p>
-
-<p>If you&rsquo;re getting a message like &ldquo;Could not reliably determine the server&rsquo;s fully qualified domain name&rdquo;, you can modify the ServerName in the configuration file and then restart the server. After making changes to the config file, it&rsquo;s also a good idea to check if there are any errors in it:</p>
-
-<p><code>plain
-[root@freehat ~]# apachectl configtest
-Syntax OK
-</code></p>
-
-<p>Now, let&rsquo;s check the status of the server:</p>
-
-<p>``` plain
-[root@localhost ~]# apachectl status
-* httpd.service &ndash; The Apache HTTP Server
-   Loaded: loaded (/usr/lib/systemd/system/httpd.service; disabled; vendor preset: disabled)
-   Active: active (running) since Tue 2016-08-02 15:53:53 EEST; 1min 42s ago</p>
-
-<pre><code> Docs: man:httpd(8)
-       man:apachectl(8)
-</code></pre>
-
-<p> Main PID: 5941 (httpd)
-   Status: &ldquo;Total requests: 0; Current requests/sec: 0; Current traffic:   0 B/sec&rdquo;
-[snip]
-```</p>
-
-<p>Also, if you want Apache to start on boot, you need to specify it:</p>
-
-<p><code>plain
-chkconfig httpd on
-Note: Forwarding request to 'systemctl enable httpd.service'.
-Created symlink from /etc/systemd/system/multi-user.target.wants/httpd.service to /usr/lib/systemd/system/httpd.service.
-</code></p>
-
-<p>If you need to troubleshoot your Apache, you can consult the error log at <code>/var/log/httpd/error_log</code>.</p>
-
-<h2>Site setup</h2>
-
-<p>To add an index for your site, create an <em>index.html</em> file inside <code>/var/www/html/</code>. This is what you&rsquo;ll see when visiting your site.</p>
-
-<p><code>plain
-[root@localhost ~]# echo 'Hello interwebz!' &gt; /var/www/html/index.html
-</code></p>
-
-<p>When you navigate to your website, this page will be what you&rsquo;ll see. On other distributions, a default index.html may be present in the website root (identified by the DocumentRoot directive).</p>
-
-<h3>Virtual hosts</h3>
-
-<p>Virtual hosts allow you to run multiple websites on a single server. Let&rsquo;s see some examples of how we can do that.</p>
-
-<h4>Port-based vhosts</h4>
-
-<p>One option is to <strong>put each website on a different port</strong>. In addition to our main website on port 80, let&rsquo;s serve a different one on port 8080.</p>
-
-<p>First, add a new Listen directive in <code>/etc/httpd/conf/httpd.conf</code>, to tell Apache to also listen on port 8080:</p>
-
-<p><code>plain
-Listen 80
-Listen 8080
-</code></p>
-
-<p>We could add virtual hosts in the main configuration file, but if you plan to serve many websites, better to create separate configuration files for each virtual host. Check that the line telling Apache to load other config files is uncommented:</p>
-
-<p>``` plain</p>
-
-<h1>Load config files in the &ldquo;/etc/httpd/conf.d&rdquo; directory, if any.</h1>
-
-<p>IncludeOptional conf.d/*.conf
-```</p>
-
-<p>Now, create a config file for a specific virtual host (it must end in .conf):</p>
-
-<p>``` plain
-[root@freehat ~]# nano /etc/httpd/conf.d/skynet.conf
-[root@freehat ~]# cat /etc/httpd/conf.d/skynet.conf
-<VirtualHost *:8080></p>
-
-<pre><code>DocumentRoot "/var/www/html/skynet"
-ServerName skynet.local
-</code></pre>
-
-<p></VirtualHost>
-```</p>
-
-<p>Next, create the necessary document root directory:</p>
-
-<p><code>plain
-[root@freehat ~]# mkdir /var/www/html/skynet
-</code></p>
-
-<p>Put some resource that you want to be server in the folder:</p>
-
-<p><code>plain
-[root@freehat ~]# echo 'You are marked for extermination' &gt;  /var/www/html/skynet/index.html
-</code></p>
-
-<p>The last step is to tell Apache to reload its configuration files with <code>service httpd reload</code>. However, now I ran into some SELinux alert. I looked in <code>/var/log/messages</code>:</p>
-
-<p><code>plain
-Aug  3 16:16:16 localhost setroubleshoot: SELinux is preventing /usr/sbin/httpd from name_connect access on the tcp_socket port 8080. For complete SELinux messages. run sealert -l bc571bd3-344f-4a4e-830a-ce744154d527
-</code></p>
-
-<p>I ran the mentioned command but was confused by my first brush with SELinux, so I did some google-fu which led me to <a href="https://www.certdepot.net/rhel7-use-selinux-port-labelling/">this post</a>. You can verify what ports are allowed by SELinux for HTTP traffic with the below command:</p>
-
-<p><code>plain
-[root@freehat ~]# semanage port -l | grep http
-http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
-http_cache_port_t              udp      3130
-http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
-pegasus_http_port_t            tcp      5988
-pegasus_https_port_t           tcp      5989
-</code></p>
-
-<p>To add port 8080 to http_port_t, I ran <code>semanage port -m -t http_port_t -p tcp 8080</code>, and then I checked it was added. Should be all good now. If you go visit your server on port 8080, you should get a friendly message. To differentiate it from the website on port 80, create another virtual host configuration for that respective server.</p>
-
-<p>You can now access your sites from your own machine, but if you try navigating to them from another computer, it will be just like the websites don&rsquo;t exist! It turns out, iptables is blocking access, and you have to tell it to open the ports:</p>
-
-<p><code>plain
-[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 80 -j ACCEPT
-[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 8080 -j ACCEPT
-</code></p>
-
-<p>And if you want these changes to survive a reboot, you should save them. I had to do some additional work for that. It turns out, <a href="https://stackoverflow.com/questions/24756240/how-can-i-use-iptables-on-centos-7">RHEL 7 and CentOS 7 use <em>firewalld</em></a> to manage iptables. So first I followed the instructions on StackOverflow to stop and mask the firewalld service:</p>
-
-<p><code>plain
-systemctl stop firewalld
-[root@freehat ~]# systemctl mask firewalld
-Created symlink from /etc/systemd/system/firewalld.service to /dev/null.
-</code></p>
-
-<p>Then I had to install <em>iptables-services</em>: <code>yum install iptables-services</code>. Next I enabled it at boot:</p>
-
-<p><code>plain
-systemctl enable iptables
-Created symlink from /etc/systemd/system/basic.target.wants/iptables.service to /usr/lib/systemd/system/iptables.service.
-</code></p>
-
-<p>I also modified the &ldquo;no&rdquo; defaults in <code>/etc/sysconfig/iptables-config</code> to &ldquo;yes&rdquo;:</p>
-
-<p>``` plain</p>
-
-<h1>Save current firewall rules on stop.</h1>
-
-<h1>Value: yes|no,  default: no</h1>
-
-<h1>Saves all firewall rules to /etc/sysconfig/iptables if firewall gets stopped</h1>
-
-<h1>(e.g. on system shutdown).</h1>
-
-<p>IPTABLES_SAVE_ON_STOP=&ldquo;yes&rdquo;</p>
-
-<h1>Save current firewall rules on restart.</h1>
-
-<h1>Value: yes|no,  default: no</h1>
-
-<h1>Saves all firewall rules to /etc/sysconfig/iptables if firewall gets</h1>
-
-<h1>restarted.</h1>
-
-<p>IPTABLES_SAVE_ON_RESTART=&ldquo;yes&rdquo;
-```</p>
-
-<p>Finally, I was able to save the changes and checked that they persisted after reboot:</p>
-
-<p><code>plain
-service iptables save
-iptables: Saving firewall rules to /etc/sysconfig/iptables:[  OK  ]
-</code></p>
-
-<h4>Name-based vhosts</h4>
-
-<p>We&rsquo;ve seen the virtual hosts running on different ports, now let&rsquo;s see how we can <strong>serve them on the same port, but with different names</strong>. I modified one of the config files so that both sites will run on port 80.Let&rsquo;s see the current virtual host settings:</p>
-
-<p>``` plain
-httpd -S
-VirtualHost configuration:
-*:80                   is a NameVirtualHost</p>
-
-<pre><code>     default server myweb.local (/etc/httpd/conf.d/myweb.conf:1)
-     port 80 namevhost myweb.local (/etc/httpd/conf.d/myweb.conf:1)
-     port 80 namevhost skynet.local (/etc/httpd/conf.d/skynet.conf:1)
-</code></pre>
-
-<p>ServerRoot: &ldquo;/etc/httpd&rdquo;
-Main DocumentRoot: &ldquo;/var/www/html&rdquo;
-Main ErrorLog: &ldquo;/etc/httpd/logs/error_log&rdquo;
-[snip]
-```</p>
-
-<p>We will use the server names to navigate to those sites. Because I am testing locally with no DNS, I modified <code>/etc/hosts</code> and added these entries:</p>
-
-<p><code>plain
-192.168.80.153 myweb.local
-192.168.80.153 skynet.local
-</code></p>
-
-<p>Now I was able to use the names of the sites in the web browser.</p>
-
-<h3>Password protection</h3>
-
-<p>It&rsquo;s time to restrict access to the skynet website! There are a number of ways that Apache can protect a resource with a password and ensure that is accessible only to certain users. In this example, I will want the skynet website to allow only a user called tx. First, I used the <em>htpasswd</em> utility to create a <em>.htpasswd</em> file (you can call it whatever you want), and placed it in <code>/etc/httpd</code>.</p>
-
-<p><code>plain
-htpasswd -c /etc/httpd/.htpasswd tx
-New password:
-Re-type new password:
-Adding password for user tx
-</code></p>
-
-<p>This file holds the allowed user/password combination:</p>
-
-<p><code>plain
-cat /etc/httpd/.htpasswd
-tx:$apr1$2FI77JZQ$IrMFnxvHzvtRhWGiQfvxL0
-</code></p>
-
-<p>The next step is to tell Apache to restrict access to a resource based on this file. If you have access to the main configuration file or the virtual host config file, the preferred way is to add a Directory directive there:</p>
-
-<p>``` plain
-nano /etc/httpd/conf.d/skynet.conf
-<VirtualHost *:80></p>
-
-<pre><code>DocumentRoot "/var/www/html/skynet"
-ServerName skynet.local
-&lt;Directory "/var/www/html/skynet"&gt;
-    AuthType Basic
-    AuthName "Authorized Only"
-    AuthUserFile /etc/httpd/.htpasswd
-    Require valid-user
-&lt;/Directory&gt;
-</code></pre>
-
-<p></VirtualHost></p>
-
-<p>```</p>
-
-<p>The Directory specified is the one that will be password-protected. Next, we specify the type of authentication (basic in this case, so no super sensitive files should be stored there), the name which will be displayed on the prompt, the location where Apache can find the password file, and the allowed user(s). Maybe we&rsquo;ll want to add some terminators later, so instead of just specifying one user, I allowed any valid user/password combination from the password file.</p>
-
-<p>Now if you try to go to the skynet website, you will see the window prompting for username and password.</p>
-
-<p>Another way you can restrict directory access is via a <strong>.htaccess</strong> file. Due to performance and security reasons, you should avoid this, if possible.</p>
-
-<p>First, create a .htaccess file in the directory you want to protect:</p>
-
-<p><code>plain
-nano /var/www/html/skynet/.htaccess
-AuthType Basic
-AuthName "Authorized Only"
-AuthUserFile /etc/httpd/.htpasswd
-Require valid-user
-</code></p>
-
-<p>For the .htaccess file to work, you need to edit the <code>/etc/httpd/conf/httpd.conf</code> file, and change the <a href="https://httpd.apache.org/docs/current/mod/core.html#allowoverride">AllowOverride directive</a> inside Directory. When set to None, as it is by default, .htaccess files are ignored. Change it to AuthConfig (I had to do it both under /var/www and /var/www/html).</p>
-
-<h3>HTTPS with self-signed certificate</h3>
-
-<p>In the next demo, I will encrypt the skynet website with SSL (removed all the authorization bits for demo purposes).</p>
-
-<p>First, I installed <a href="https://httpd.apache.org/docs/current/mod/mod_ssl.html">mod_ssl</a> with <code>yum install mod_ssl</code>. Next, I created a directory for Apache to store its server key and certificate: <code>mkdir /etc/httpd/myssl</code></p>
-
-<p>Inside this directory, I created a RSA private key of length 2048:</p>
-
-<p><code>plain
-[root@freehat myssl]# openssl genrsa -out https.key 2048
-Generating RSA private key, 2048 bit long modulus
-....................+++
-..............+++
-e is 65537 (0x10001)
-</code></p>
-
-<p>Then I created a Certificate Signing Request (CSR):</p>
-
-<p>``` plain
-[root@freehat myssl]# openssl req -new -key https.key -out server.csr
-You are about to be asked to enter information that will be incorporated
-into your certificate request.
-What you are about to enter is what is called a Distinguished Name or a DN.
-There are quite a few fields but you can leave some blank
-For some fields there will be a default value,</p>
-
-<h2>If you enter &lsquo;.&rsquo;, the field will be left blank.</h2>
-
-<p>Country Name (2 letter code) [XX]:
-State or Province Name (full name) []:
-Locality Name (eg, city) [Default City]:
-Organization Name (eg, company) [Default Company Ltd]:
-Organizational Unit Name (eg, section) []:
-Common Name (eg, your name or your server&rsquo;s hostname) []:
-Email Address []:</p>
-
-<p>Please enter the following &lsquo;extra&rsquo; attributes
-to be sent with your certificate request
-A challenge password []:
-An optional company name []:
-```</p>
-
-<p>Lastly, I generated an x509 certificate with a duration of an year:</p>
-
-<p><code>plain
-[root@freehat myssl]# openssl x509 -req -days 365 -in server.csr -signkey https.key -out mycert.crt
-Signature ok
-subject=/C=XX/L=Default City/O=Default Company Ltd
-Getting Private key
-</code></p>
-
-<p>We&rsquo;re not done yet. Edit the file <code>/etc/httpd/conf.d/ssl.conf</code>, and comment the lines with the location of the server key and certificate, replacing them with new ones pointing at our previously created files:</p>
-
-<p>``` plain</p>
-
-<h1>SSLCertificateFile /etc/pki/tls/certs/localhost.crt</h1>
-
-<p>SSLCertificateFile /etc/httpd/myssl/mycert.crt</p>
-
-<h1>SSLCertificateKeyFile /etc/pki/tls/private/localhost.key</h1>
-
-<p>SSLCertificateKeyFile /etc/httpd/myssl/https.key
-```</p>
-
-<p>Now restart the server and go to website (mine is at <a href="https://192.168.80.153/">https://192.168.80.153/</a> ). Your browser will warn you about the untrusted connection, add it to exceptions and now you have https on your site.</p>
-
-<h3>Logging</h3>
-
-<p>Lastly, let&rsquo;s go over Apache&rsquo;s logging system. There are 2 types of logs kept, error logs for when some error happens, and access logs, that provide information about incoming requests. By default, these logs are located at <code>/var/log/httpd/error_log</code> and <code>/var/log/httpd/access_log</code> on CentOS</p>
-
-<p>For your sites, you can configure the logs and choose where to store them. I decided to separate the logs for my skynet website. I made a folder for them in /var/log/httpd/skynet-logs, and modified the skynet virtual host config file and added the path and format for the logs:</p>
-
-<p><code>plain
-CustomLog /var/log/httpd/skynet-logs/skynet-access.log combined
-ErrorLog /var/log/httpd/skynet-logs/skynet-error.log
-</code></p>
-
-<p>I wanted the combined format instead of the common one, because it provides a bit more information, including also the User-agent and the Referer</p>
-
-<p>Hopefully, this post has helped others in setting up an Apache web server. Since I&rsquo;ve installed it on CentOS 7, I also had to account for SELinux and some other differences from a Debian distro, so it&rsquo;s been a good learning experience.</p>
-
-<p>If you want to become an Apache wizard, the <a href="https://httpd.apache.org/docs/2.4/">Apache 2.4 documentation</a> should be a good starting point.</p>
-
-<p>``` plain</p>
-
-<hr />
-
-<p>/ Give thought to your reputation.       \
-| Consider changing name and moving to a |
-\ new town.                              /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-
-<p><strong>Freshly installed httpd.conf file</strong></p>
-
-<p>``` plain
-#</p>
-
-<h1>This is the main Apache HTTP server configuration file.  It contains the</h1>
-
-<h1>configuration directives that give the server its instructions.</h1>
-
-<h1>See &lt;URL:<a href="http://httpd.apache.org/docs/2.4/">http://httpd.apache.org/docs/2.4/</a>> for detailed information.</h1>
-
-<h1>In particular, see</h1>
-
-<h1>&lt;URL:<a href="http://httpd.apache.org/docs/2.4/mod/directives.html">http://httpd.apache.org/docs/2.4/mod/directives.html</a>></h1>
-
-<h1>for a discussion of each configuration directive.</h1>
-
-<p>#</p>
-
-<h1>Do NOT simply read the instructions in here without understanding</h1>
-
-<h1>what they do.  They&rsquo;re here only as hints or reminders.  If you are unsure</h1>
-
-<h1>consult the online docs. You have been warned.</h1>
-
-<p>#</p>
-
-<h1>Configuration and logfile names: If the filenames you specify for many</h1>
-
-<h1>of the server&rsquo;s control files begin with &ldquo;/&rdquo; (or &ldquo;drive:/&rdquo; for Win32), the</h1>
-
-<h1>server will use that explicit path.  If the filenames do <em>not</em> begin</h1>
-
-<h1>with &ldquo;/&rdquo;, the value of ServerRoot is prepended &mdash; so &lsquo;log/access_log&rsquo;</h1>
-
-<h1>with ServerRoot set to &lsquo;/www&rsquo; will be interpreted by the</h1>
-
-<h1>server as &lsquo;/www/log/access_log&rsquo;, where as &lsquo;/log/access_log&rsquo; will be</h1>
-
-<h1>interpreted as &lsquo;/log/access_log&rsquo;.</h1>
-
-<p>#</p>
-
-<h1>ServerRoot: The top of the directory tree under which the server&rsquo;s</h1>
-
-<h1>configuration, error, and log files are kept.</h1>
-
-<p>#</p>
-
-<h1>Do not add a slash at the end of the directory path.  If you point</h1>
-
-<h1>ServerRoot at a non-local disk, be sure to specify a local disk on the</h1>
-
-<h1>Mutex directive, if file-based mutexes are used.  If you wish to share the</h1>
-
-<h1>same ServerRoot for multiple httpd daemons, you will need to change at</h1>
-
-<h1>least PidFile.</h1>
-
-<p>#
-ServerRoot &ldquo;/etc/httpd&rdquo;</p>
-
-<p>#</p>
-
-<h1>Listen: Allows you to bind Apache to specific IP addresses and/or</h1>
-
-<h1>ports, instead of the default. See also the <VirtualHost></h1>
-
-<h1>directive.</h1>
-
-<p>#</p>
-
-<h1>Change this to Listen on specific IP addresses as shown below to</h1>
-
-<h1>prevent Apache from glomming onto all bound IP addresses.</h1>
-
-<p>#</p>
-
-<h1>Listen 12.34.56.78:80</h1>
-
-<p>Listen 80</p>
-
-<p>#</p>
-
-<h1>Dynamic Shared Object (DSO) Support</h1>
-
-<p>#</p>
-
-<h1>To be able to use the functionality of a module which was built as a DSO you</h1>
-
-<h1>have to place corresponding `LoadModule' lines at this location so the</h1>
-
-<h1>directives contained in it are actually available <em>before</em> they are used.</h1>
-
-<h1>Statically compiled modules (those listed by `httpd -l') do not need</h1>
-
-<h1>to be loaded here.</h1>
-
-<p>#</p>
-
-<h1>Example:</h1>
-
-<h1>LoadModule foo_module modules/mod_foo.so</h1>
-
-<p>#
-Include conf.modules.d/*.conf</p>
-
-<p>#</p>
-
-<h1>If you wish httpd to run as a different user or group, you must run</h1>
-
-<h1>httpd as root initially and it will switch.</h1>
-
-<p>#</p>
-
-<h1>User/Group: The name (or #number) of the user/group to run httpd as.</h1>
-
-<h1>It is usually good practice to create a dedicated user and group for</h1>
-
-<h1>running httpd, as with most system services.</h1>
-
-<p>#
-User apache
-Group apache</p>
-
-<h1>&lsquo;Main&rsquo; server configuration</h1>
-
-<p>#</p>
-
-<h1>The directives in this section set up the values used by the &lsquo;main&rsquo;</h1>
-
-<h1>server, which responds to any requests that aren&rsquo;t handled by a</h1>
-
-<h1><VirtualHost> definition.  These values also provide defaults for</h1>
-
-<h1>any <VirtualHost> containers you may define later in the file.</h1>
-
-<p>#</p>
-
-<h1>All of these directives may appear inside <VirtualHost> containers,</h1>
-
-<h1>in which case these default settings will be overridden for the</h1>
-
-<h1>virtual host being defined.</h1>
-
-<p>#</p>
-
-<p>#</p>
-
-<h1>ServerAdmin: Your address, where problems with the server should be</h1>
-
-<h1>e-mailed.  This address appears on some server-generated pages, such</h1>
-
-<h1>as error documents.  e.g. <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#97;&#x64;&#x6d;&#105;&#x6e;&#64;&#x79;&#111;&#x75;&#114;&#x2d;&#100;&#111;&#x6d;&#x61;&#105;&#x6e;&#46;&#x63;&#111;&#109;">&#97;&#100;&#109;&#x69;&#x6e;&#64;&#x79;&#x6f;&#x75;&#114;&#x2d;&#100;&#x6f;&#109;&#x61;&#105;&#x6e;&#x2e;&#x63;&#x6f;&#109;</a></h1>
-
-<p>#
-ServerAdmin root@localhost</p>
-
-<p>#</p>
-
-<h1>ServerName gives the name and port that the server uses to identify itself.</h1>
-
-<h1>This can often be determined automatically, but we recommend you specify</h1>
-
-<h1>it explicitly to prevent problems during startup.</h1>
-
-<p>#</p>
-
-<h1>If your host doesn&rsquo;t have a registered DNS name, enter its IP address here.</h1>
-
-<p>#</p>
-
-<h1>ServerName www.example.com:80</h1>
-
-<p>#</p>
-
-<h1>Deny access to the entirety of your server&rsquo;s filesystem. You must</h1>
-
-<h1>explicitly permit access to web content directories in other</h1>
-
-<h1><Directory> blocks below.</h1>
-
-<p>#
-<Directory /></p>
-
-<pre><code>AllowOverride none
-Require all denied
-</code></pre>
-
-<p></Directory></p>
-
-<p>#</p>
-
-<h1>Note that from this point forward you must specifically allow</h1>
-
-<h1>particular features to be enabled &ndash; so if something&rsquo;s not working as</h1>
-
-<h1>you might expect, make sure that you have specifically enabled it</h1>
-
-<h1>below.</h1>
-
-<p>#</p>
-
-<p>#</p>
-
-<h1>DocumentRoot: The directory out of which you will serve your</h1>
-
-<h1>documents. By default, all requests are taken from this directory, but</h1>
-
-<h1>symbolic links and aliases may be used to point to other locations.</h1>
-
-<p>#
-DocumentRoot &ldquo;/var/www/html&rdquo;</p>
-
-<p>#</p>
-
-<h1>Relax access to content within /var/www.</h1>
-
-<p>#
-<Directory "/var/www"></p>
-
-<pre><code>AllowOverride None
-# Allow open access:
-Require all granted
-</code></pre>
-
-<p></Directory></p>
-
-<h1>Further relax access to the default document root:</h1>
-
-<p><Directory "/var/www/html"></p>
-
-<pre><code>#
-# Possible values for the Options directive are "None", "All",
-# or any combination of:
-#   Indexes Includes FollowSymLinks SymLinksifOwnerMatch ExecCGI MultiViews
-#
-# Note that "MultiViews" must be named *explicitly* --- "Options All"
-# doesn't give it to you.
-#
-# The Options directive is both complicated and important.  Please see
-# http://httpd.apache.org/docs/2.4/mod/core.html#options
-# for more information.
-#
-Options Indexes FollowSymLinks
-
-#
-# AllowOverride controls what directives may be placed in .htaccess files.
-# It can be "All", "None", or any combination of the keywords:
-#   Options FileInfo AuthConfig Limit
-#
-AllowOverride None
-
-#
-# Controls who can get stuff from this server.
-#
-Require all granted
-</code></pre>
-
-<p></Directory></p>
-
-<p>#</p>
-
-<h1>DirectoryIndex: sets the file that Apache will serve if a directory</h1>
-
-<h1>is requested.</h1>
-
-<p>#
-<IfModule dir_module></p>
-
-<pre><code>DirectoryIndex index.html
-</code></pre>
-
-<p></IfModule></p>
-
-<p>#</p>
-
-<h1>The following lines prevent .htaccess and .htpasswd files from being</h1>
-
-<h1>viewed by Web clients.</h1>
-
-<p>#
-<Files ".ht*"></p>
-
-<pre><code>Require all denied
-</code></pre>
-
-<p></Files></p>
-
-<p>#</p>
-
-<h1>ErrorLog: The location of the error log file.</h1>
-
-<h1>If you do not specify an ErrorLog directive within a <VirtualHost></h1>
-
-<h1>container, error messages relating to that virtual host will be</h1>
-
-<h1>logged here.  If you <em>do</em> define an error logfile for a <VirtualHost></h1>
-
-<h1>container, that host&rsquo;s errors will be logged there and not here.</h1>
-
-<p>#
-ErrorLog &ldquo;logs/error_log&rdquo;</p>
-
-<p>#</p>
-
-<h1>LogLevel: Control the number of messages logged to the error_log.</h1>
-
-<h1>Possible values include: debug, info, notice, warn, error, crit,</h1>
-
-<h1>alert, emerg.</h1>
-
-<p>#
-LogLevel warn</p>
-
-<p><IfModule log_config_module></p>
-
-<pre><code>#
-# The following directives define some format nicknames for use with
-# a CustomLog directive (see below).
-#
-LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
-LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
-
-&lt;IfModule logio_module&gt;
-  # You need to enable mod_logio.c to use %I and %O
-  LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
-&lt;/IfModule&gt;
-
-#
-# The location and format of the access logfile (Common Logfile Format).
-# If you do not define any access logfiles within a &lt;VirtualHost&gt;
-# container, they will be logged here.  Contrariwise, if you *do*
-# define per-&lt;VirtualHost&gt; access logfiles, transactions will be
-# logged therein and *not* in this file.
-#
-#CustomLog "logs/access_log" common
-
-#
-# If you prefer a logfile with access, agent, and referer information
-# (Combined Logfile Format) you can use the following directive.
-#
-CustomLog "logs/access_log" combined
-</code></pre>
-
-<p></IfModule></p>
-
-<p><IfModule alias_module></p>
-
-<pre><code>#
-# Redirect: Allows you to tell clients about documents that used to 
-# exist in your server's namespace, but do not anymore. The client 
-# will make a new request for the document at its new location.
-# Example:
-# Redirect permanent /foo http://www.example.com/bar
-
-#
-# Alias: Maps web paths into filesystem paths and is used to
-# access content that does not live under the DocumentRoot.
-# Example:
-# Alias /webpath /full/filesystem/path
-#
-# If you include a trailing / on /webpath then the server will
-# require it to be present in the URL.  You will also likely
-# need to provide a &lt;Directory&gt; section to allow access to
-# the filesystem path.
-
-#
-# ScriptAlias: This controls which directories contain server scripts. 
-# ScriptAliases are essentially the same as Aliases, except that
-# documents in the target directory are treated as applications and
-# run by the server when requested rather than as documents sent to the
-# client.  The same rules about trailing "/" apply to ScriptAlias
-# directives as to Alias.
-#
-ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
-</code></pre>
-
-<p></IfModule></p>
-
-<p>#</p>
-
-<h1>&ldquo;/var/www/cgi-bin&rdquo; should be changed to whatever your ScriptAliased</h1>
-
-<h1>CGI directory exists, if you have that configured.</h1>
-
-<p>#
-<Directory "/var/www/cgi-bin"></p>
-
-<pre><code>AllowOverride None
-Options None
-Require all granted
-</code></pre>
-
-<p></Directory></p>
-
-<p><IfModule mime_module></p>
-
-<pre><code>#
-# TypesConfig points to the file containing the list of mappings from
-# filename extension to MIME-type.
-#
-TypesConfig /etc/mime.types
-
-#
-# AddType allows you to add to or override the MIME configuration
-# file specified in TypesConfig for specific file types.
-#
-#AddType application/x-gzip .tgz
-#
-# AddEncoding allows you to have certain browsers uncompress
-# information on the fly. Note: Not all browsers support this.
-#
-#AddEncoding x-compress .Z
-#AddEncoding x-gzip .gz .tgz
-#
-# If the AddEncoding directives above are commented-out, then you
-# probably should define those extensions to indicate media types:
-#
-AddType application/x-compress .Z
-AddType application/x-gzip .gz .tgz
-
-#
-# AddHandler allows you to map certain file extensions to "handlers":
-# actions unrelated to filetype. These can be either built into the server
-# or added with the Action directive (see below)
-#
-# To use CGI scripts outside of ScriptAliased directories:
-# (You will also need to add "ExecCGI" to the "Options" directive.)
-#
-#AddHandler cgi-script .cgi
-
-# For type maps (negotiated resources):
-#AddHandler type-map var
-
-#
-# Filters allow you to process content before it is sent to the client.
-#
-# To parse .shtml files for server-side includes (SSI):
-# (You will also need to add "Includes" to the "Options" directive.)
-#
-AddType text/html .shtml
-AddOutputFilter INCLUDES .shtml
-</code></pre>
-
-<p></IfModule></p>
-
-<p>#</p>
-
-<h1>Specify a default charset for all content served; this enables</h1>
-
-<h1>interpretation of all content as UTF-8 by default.  To use the</h1>
-
-<h1>default browser choice (ISO-8859-1), or to allow the META tags</h1>
-
-<h1>in HTML content to override this choice, comment out this</h1>
-
-<h1>directive:</h1>
-
-<p>#
-AddDefaultCharset UTF-8</p>
-
-<p><IfModule mime_magic_module></p>
-
-<pre><code>#
-# The mod_mime_magic module allows the server to use various hints from the
-# contents of the file itself to determine its type.  The MIMEMagicFile
-# directive tells the module where the hint definitions are located.
-#
-MIMEMagicFile conf/magic
-</code></pre>
-
-<p></IfModule></p>
-
-<p>#</p>
-
-<h1>Customizable error responses come in three flavors:</h1>
-
-<h1>1) plain text 2) local redirects 3) external redirects</h1>
-
-<p>#</p>
-
-<h1>Some examples:</h1>
-
-<h1>ErrorDocument 500 &ldquo;The server made a boo boo.&rdquo;</h1>
-
-<h1>ErrorDocument 404 /missing.html</h1>
-
-<h1>ErrorDocument 404 &ldquo;/cgi-bin/missing_handler.pl&rdquo;</h1>
-
-<h1>ErrorDocument 402 <a href="http://www.example.com/subscription_info.html">http://www.example.com/subscription_info.html</a></h1>
-
-<p>#</p>
-
-<p>#</p>
-
-<h1>EnableMMAP and EnableSendfile: On systems that support it,</h1>
-
-<h1>memory-mapping or the sendfile syscall may be used to deliver</h1>
-
-<h1>files.  This usually improves server performance, but must</h1>
-
-<h1>be turned off when serving from networked-mounted</h1>
-
-<h1>filesystems or if support for these functions is otherwise</h1>
-
-<h1>broken on your system.</h1>
-
-<h1>Defaults if commented: EnableMMAP On, EnableSendfile Off</h1>
-
-<p>#</p>
-
-<h1>EnableMMAP off</h1>
-
-<p>EnableSendfile on</p>
-
-<h1>Supplemental configuration</h1>
-
-<p>#</p>
-
-<h1>Load config files in the &ldquo;/etc/httpd/conf.d&rdquo; directory, if any.</h1>
-
-<p>IncludeOptional conf.d/*.conf
-```</p>
-
-<p><strong>apachectl utility</strong></p>
-
-<p>``` plain
-APACHECTL(8)                 apachectl                APACHECTL(8)</p>
-
-<p>NAME</p>
-
-<pre><code>   apachectl - Apache HTTP Server Control Interface
-</code></pre>
-
-<p>SYNOPSIS</p>
-
-<pre><code>   When  acting  in  pass-through  mode,  apachectl can take all the arguments
-   available for the httpd binary.
-
-
-   apachectl [ httpd-argument ]
-
-
-   When acting in SysV init mode, apachectl takes simple,  one-word  commands,
-   defined below.
-
-
-   apachectl command
-</code></pre>
-
-<p>SUMMARY</p>
-
-<pre><code>   apachectl  is  a front end to the Apache HyperText Transfer Protocol (HTTP)
-   server. It is designed to help the administrator control the functioning of
-   the Apache httpd daemon.
-
-
-   The  apachectl script can operate in two modes. First, it can act as a sim‐
-   ple front-end to the httpd command that simply sets any necessary  environ‐
-   ment  variables  and  then  invokes httpd, passing through any command line
-   arguments. Second, apachectl can act as a SysV init script,  taking  simple
-   one-word arguments like start, restart, and stop, and translating them into
-   appropriate signals to httpd.
-
-
-   If your Apache installation uses non-standard paths, you will need to  edit
-   the  apachectl script to set the appropriate paths to the httpd binary. You
-   can also specify any necessary httpd command line arguments. See  the  com‐
-   ments in the script for details.
-
-
-   The  apachectl script returns a 0 exit value on success, and &gt;0 if an error
-   occurs. For more details, view the comments in the script.
-</code></pre>
-
-<p>OPTIONS</p>
-
-<pre><code>   Only the SysV init-style options are  defined  here.  Other  arguments  are
-   defined on the httpd manual page.
-
-
-
-   start  Start  the Apache httpd daemon. Gives an error if it is already run‐
-      ning. This is equivalent to apachectl -k start.
-
-   stop   Stops the Apache httpd daemon. This is equivalent  to  apachectl  -k
-      stop.
-
-   restart
-      Restarts  the  Apache httpd daemon. If the daemon is not running, it
-      is started. This  command  automatically  checks  the  configuration
-      files  as  in  configtest before initiating the restart to make sure
-      the daemon doesn't die. This is equivalent to apachectl -k restart.
-
-   fullstatus
-      Displays a full status report from mod_status. For this to work, you
-      need  to  have  mod_status  enabled  on your server and a text-based
-      browser such as lynx available on  your  system.  The  URL  used  to
-      access  the  status report can be set by editing the STATUSURL vari‐
-      able in the script.
-
-   status Displays a brief status report using systemd.
-
-   graceful
-      Gracefully restarts the Apache httpd daemon. If the  daemon  is  not
-      running,  it  is  not started. This differs from a normal restart in
-      that currently open connections are not aborted. A  side  effect  is
-      that  old  log files will not be closed immediately. This means that
-      if used in a log rotation script, a substantial delay may be  neces‐
-      sary  to  ensure that the old log files are closed before processing
-      them. This command automatically checks the configuration  files  as
-      in  configtest  before  initiating  the  restart to make sure Apache
-      doesn't die. This is equivalent to apachectl -k graceful.
-
-   graceful-stop
-      Gracefully stops the Apache httpd daemon. This differs from a normal
-      stop  in  that  currently  open  connections are not aborted. A side
-      effect is that old log files will not be closed immediately. This is
-      equivalent to apachectl -k graceful-stop.
-
-   configtest
-      Run  a  configuration  file syntax test. It parses the configuration
-      files and either reports Syntax Ok or detailed information about the
-      particular syntax error. This is equivalent to apachectl -t.
-
-
-   The  following  option  was  available  in  earlier  versions  but has been
-   removed.
-
-
-
-   startssl
-      To start httpd with SSL support, you should edit your  configuration
-      file  to  include  the  relevant  directives and then use the normal
-      apachectl start.
-</code></pre>
-
-<p>Apache HTTP Server          2005-08-26                APACHECTL(8)
-```</p>
-
-<p><strong>httpd reference</strong></p>
-
-<p>``` plain
-HTTPD(8)                   httpd                  HTTPD(8)</p>
-
-<p>NAME</p>
-
-<pre><code>   httpd - Apache Hypertext Transfer Protocol Server
-</code></pre>
-
-<p>SYNOPSIS</p>
-
-<pre><code>   httpd  [  -d serverroot ] [ -f config ] [ -C directive ] [ -c directive ] [
-   -D parameter ] [  -e  level  ]  [  -E  file  ]  [  -k  start|restart|grace‐
-   ful|stop|graceful-stop  ] [ -R directory ] [ -h ] [ -l ] [ -L ] [ -S ] [ -t
-   ] [ -v ] [ -V ] [ -X ] [ -M ] [ -T ]
-
-
-   On Windows systems, the following additional arguments are available:
-
-
-   httpd [ -k install|config|uninstall ] [ -n name ] [ -w ]
-</code></pre>
-
-<p>SUMMARY</p>
-
-<pre><code>   httpd is the Apache HyperText Transfer Protocol (HTTP) server  program.  It
-   is  designed  to be run as a standalone daemon process. When used like this
-   it will create a pool of child processes or threads to handle requests.
-
-
-   In general, httpd should not be invoked  directly,  but  rather  should  be
-   invoked  via apachectl on Unix-based systems or as a service on Windows NT,
-   2000 and XP and as a console application on Windows 9x and ME.
-</code></pre>
-
-<p>OPTIONS</p>
-
-<pre><code>   -d serverroot
-      Set the initial value for the ServerRoot  directive  to  serverroot.
-      This can be overridden by the ServerRoot directive in the configura‐
-      tion file. The default is /etc/httpd.
-
-   -f config
-      Uses the directives in the file config on startup.  If  config  does
-      not  begin  with  a /, then it is taken to be a path relative to the
-      ServerRoot. The default is conf/httpd.conf.
-
-   -k start|restart|graceful|stop|graceful-stop
-      Signals httpd to start, restart, or stop. See Stopping Apache  httpd
-      for more information.
-
-   -C directive
-      Process the configuration directive before reading config files.
-
-   -c directive
-      Process the configuration directive after reading config files.
-
-   -D parameter
-      Sets  a  configuration  parameter  which can be used with &lt;IfDefine&gt;
-      sections in the configuration files to conditionally skip or process
-      commands at server startup and restart. Also can be used to set cer‐
-      tain less-common startup parameters including  -DNO_DETACH  (prevent
-      the  parent  from forking) and -DFOREGROUND (prevent the parent from
-      calling setsid() et al).
-
-   -e level
-      Sets the LogLevel to level during server startup. This is useful for
-      temporarily  increasing  the verbosity of the error messages to find
-      problems during startup.
-
-   -E file
-      Send error messages during server startup to file.
-
-   -h     Output a short summary of available command line options.
-
-   -l     Output a list of modules compiled into the  server.  This  will  not
-      list dynamically loaded modules included using the LoadModule direc‐
-      tive.
-
-   -L     Output a list of directives provided  by  static  modules,  together
-      with  expected  arguments  and  places where the directive is valid.
-      Directives provided by shared modules are not listed.
-
-   -M     Dump a list of loaded Static and Shared Modules.
-
-   -S     Show the settings as parsed from the  config  file  (currently  only
-      shows the virtualhost settings).
-
-   -T (Available in 2.3.8 and later)
-      Skip document root check at startup/restart.
-
-   -t     Run  syntax  tests for configuration files only. The program immedi‐
-      ately exits after these syntax parsing tests with  either  a  return
-      code  of 0 (Syntax OK) or return code not equal to 0 (Syntax Error).
-      If -D DUMP_VHOSTS is also set, details of the virtual host  configu‐
-      ration  will be printed. If -D DUMP_MODULES  is set, all loaded mod‐
-      ules will be printed.
-
-   -v     Print the version of httpd, and then exit.
-
-   -V     Print the version and build parameters of httpd, and then exit.
-
-   -X     Run httpd in debug mode. Only one worker will  be  started  and  the
-      server will not detach from the console.
-
-
-   The following arguments are available only on the Windows platform:
-
-
-
-   -k install|config|uninstall
-      Install Apache httpd as a Windows NT service; change startup options
-      for the Apache httpd service; and uninstall the  Apache  httpd  ser‐
-      vice.
-
-   -n name
-      The name of the Apache httpd service to signal.
-
-   -w     Keep  the console window open on error so that the error message can
-      be read.
-</code></pre>
-
-<p>Apache HTTP Server          2012-02-10                HTTPD(8)
-```</p>
 ]]></content>
   </entry>
   
