@@ -4,7 +4,7 @@
   <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-09-10T07:53:37-04:00</updated>
+  <updated>2017-09-24T11:38:09-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,535 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[KVM virtualization on Linux hosts]]></title>
+    <link href="http://chousensha.github.io/blog/2017/09/24/kvm-virtualization-on-linux-hosts/"/>
+    <updated>2017-09-24T11:34:34-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/09/24/kvm-virtualization-on-linux-hosts</id>
+    <content type="html"><![CDATA[<p>By now you probably noticed that the last topics were centered more around Linux than the usual. That&rsquo;s because I am studying for my LFCS certification, and creating posts as I go through the material. This time, we&rsquo;re going to look at using virtualization on a Linux physical host. Since my only physical Linux at the moment is Kali, this is what I&rsquo;m going to use for today&rsquo;s post.</p>
+
+<!-- more -->
+
+
+<p>The first step before starting anything else, is to check if virtualization is enabled on your machine. For this, you can query your <code>/proc/cpuinfo</code> file and look for the following flags:</p>
+
+<ul>
+<li><p><strong>vmx</strong> for Intel CPUs</p></li>
+<li><p><strong>svm</strong> for AMD CPUs</p></li>
+</ul>
+
+
+<p>I already knew the result in my case, but I checked anyway with <code>grep &mdash;color vmx /proc/cpuinfo</code>:</p>
+
+<p><img class="center" src="/images/sysadmin/kvm/vmx.png" title="&lsquo;vmx&rsquo; &lsquo;vmx enabled&rsquo;" ></p>
+
+<p>Ok, the next step is to install the virtualization utilities:</p>
+
+<p><code>
+apt-get install qemu-kvm virt-manager libvirt0 qemu-system virt-viewer virt-top
+</code></p>
+
+<p>KVM (Kernel Virtual Machine) is a full virtualization solution for Linux on x86 and x64 hardware containing virtualization extensions (Intel VT or AMD-V). It consists of a loadable kernel module, kvm.ko, that provides the core virtualization infrastructure and a processor specific module, kvm-intel.ko or kvm-amd.ko.</p>
+
+<p>libvirt is an API toolkit for managing virtualization hosts</p>
+
+<p>The virt-manager application is a graphical tool for managing virtual machines through libvirt. It primarily targets KVM VMs, but also manages Xen and LXC (linux containers).</p>
+
+<p>virt-viewer allows access to the virtual machine console</p>
+
+<p>virt-top is for monitoring VMs performance</p>
+
+<p>After installing everything, you can go to <code>/etc/libvirt/qemu/networks</code> and look inside the <strong>default.xml</strong> file to see how the default virtual network will be configured:</p>
+
+<p>```</p>
+
+<!--
+WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
+OVERWRITTEN AND LOST. Changes to this xml configuration should be made using:
+  virsh net-edit default
+or other application using the libvirt API.
+-->
+
+
+<p><network>
+  <name>default</name>
+  <uuid>d67cdb82-233e-44f1-a6ac-9293faa2258d</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:b2:a7:6e'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'></p>
+
+<pre><code>&lt;dhcp&gt;
+  &lt;range start='192.168.122.2' end='192.168.122.254'/&gt;
+&lt;/dhcp&gt;
+</code></pre>
+
+<p>  </ip>
+</network>
+```</p>
+
+<p>Let&rsquo;s see if the default network has been created. Don&rsquo;t forget to start the <strong>libvirtd</strong> daemon first, with <code>systemctl start libvirtd</code> and then use virsh to list the defined networks. <strong>virsh</strong> is a powerful command line interface tool for managing guests and the hypervisor. It can also be used as an interactive prompt.</p>
+
+<p>```
+virsh
+Welcome to virsh, the virtualization interactive terminal.</p>
+
+<p>Type:  &lsquo;help&rsquo; for help with commands</p>
+
+<pre><code>   'quit' to quit
+</code></pre>
+
+<p>virsh # help
+Grouped commands:</p>
+
+<p> Domain Management (help keyword &lsquo;domain&rsquo;):</p>
+
+<pre><code>attach-device                  attach device from an XML file
+attach-disk                    attach disk device
+attach-interface               attach network interface
+autostart                      autostart a domain
+blkdeviotune                   Set or query a block device I/O tuning parameters.
+blkiotune                      Get or set blkio parameters
+blockcommit                    Start a block commit operation.
+blockcopy                      Start a block copy operation.
+blockjob                       Manage active block operations
+blockpull                      Populate a disk from its backing image.
+blockresize                    Resize block device of domain.
+change-media                   Change media of CD or floppy drive
+console                        connect to the guest console
+cpu-baseline                   compute baseline CPU
+cpu-compare                    compare host CPU with a CPU described by an XML file
+cpu-stats                      show domain cpu statistics
+create                         create a domain from an XML file
+define                         define (but don't start) a domain from an XML file
+desc                           show or set domain's description or title
+destroy                        destroy (stop) a domain
+detach-device                  detach device from an XML file
+detach-disk                    detach disk device
+detach-interface               detach network interface
+domdisplay                     domain display connection URI
+domfsfreeze                    Freeze domain's mounted filesystems.
+domfsthaw                      Thaw domain's mounted filesystems.
+domfsinfo                      Get information of domain's mounted filesystems.
+domfstrim                      Invoke fstrim on domain's mounted filesystems.
+domhostname                    print the domain's hostname
+domid                          convert a domain name or UUID to domain id
+domif-setlink                  set link state of a virtual interface
+domiftune                      get/set parameters of a virtual interface
+domjobabort                    abort active domain job
+domjobinfo                     domain job information
+domname                        convert a domain id or UUID to domain name
+domrename                      rename a domain
+dompmsuspend                   suspend a domain gracefully using power management functions
+dompmwakeup                    wakeup a domain from pmsuspended state
+domuuid                        convert a domain name or id to domain UUID
+domxml-from-native             Convert native config to domain XML
+domxml-to-native               Convert domain XML to native config
+dump                           dump the core of a domain to a file for analysis
+dumpxml                        domain information in XML
+edit                           edit XML configuration for a domain
+event                          Domain Events
+inject-nmi                     Inject NMI to the guest
+iothreadinfo                   view domain IOThreads
+iothreadpin                    control domain IOThread affinity
+iothreadadd                    add an IOThread to the guest domain
+iothreaddel                    delete an IOThread from the guest domain
+send-key                       Send keycodes to the guest
+send-process-signal            Send signals to processes
+lxc-enter-namespace            LXC Guest Enter Namespace
+managedsave                    managed save of a domain state
+managedsave-remove             Remove managed save of a domain
+memtune                        Get or set memory parameters
+perf                           Get or set perf event
+metadata                       show or set domain's custom XML metadata
+migrate                        migrate domain to another host
+migrate-setmaxdowntime         set maximum tolerable downtime
+migrate-compcache              get/set compression cache size
+migrate-setspeed               Set the maximum migration bandwidth
+migrate-getspeed               Get the maximum migration bandwidth
+migrate-postcopy               Switch running migration from pre-copy to post-copy
+numatune                       Get or set numa parameters
+qemu-attach                    QEMU Attach
+qemu-monitor-command           QEMU Monitor Command
+qemu-monitor-event             QEMU Monitor Events
+qemu-agent-command             QEMU Guest Agent Command
+reboot                         reboot a domain
+reset                          reset a domain
+restore                        restore a domain from a saved state in a file
+resume                         resume a domain
+save                           save a domain state to a file
+save-image-define              redefine the XML for a domain's saved state file
+save-image-dumpxml             saved state domain information in XML
+save-image-edit                edit XML for a domain's saved state file
+schedinfo                      show/set scheduler parameters
+screenshot                     take a screenshot of a current domain console and store it into a file
+set-user-password              set the user password inside the domain
+setmaxmem                      change maximum memory limit
+setmem                         change memory allocation
+setvcpus                       change number of virtual CPUs
+shutdown                       gracefully shutdown a domain
+start                          start a (previously defined) inactive domain
+suspend                        suspend a domain
+ttyconsole                     tty console
+undefine                       undefine a domain
+update-device                  update device from an XML file
+vcpucount                      domain vcpu counts
+vcpuinfo                       detailed domain vcpu information
+vcpupin                        control or query domain vcpu affinity
+emulatorpin                    control or query domain emulator affinity
+vncdisplay                     vnc display
+guestvcpus                     query or modify state of vcpu in the guest (via agent)
+setvcpu                        attach/detach vcpu or groups of threads
+domblkthreshold                set the threshold for block-threshold event for a given block device or it's backing chain element
+</code></pre>
+
+<p> Domain Monitoring (help keyword &lsquo;monitor&rsquo;):</p>
+
+<pre><code>domblkerror                    Show errors on block devices
+domblkinfo                     domain block device size information
+domblklist                     list all domain blocks
+domblkstat                     get device block stats for a domain
+domcontrol                     domain control interface state
+domif-getlink                  get link state of a virtual interface
+domifaddr                      Get network interfaces' addresses for a running domain
+domiflist                      list all domain virtual interfaces
+domifstat                      get network interface stats for a domain
+dominfo                        domain information
+dommemstat                     get memory statistics for a domain
+domstate                       domain state
+domstats                       get statistics about one or multiple domains
+domtime                        domain time
+list                           list domains
+</code></pre>
+
+<p> Host and Hypervisor (help keyword &lsquo;host&rsquo;):</p>
+
+<pre><code>allocpages                     Manipulate pages pool size
+capabilities                   capabilities
+cpu-models                     CPU models
+domcapabilities                domain capabilities
+freecell                       NUMA free memory
+freepages                      NUMA free pages
+hostname                       print the hypervisor hostname
+maxvcpus                       connection vcpu maximum
+node-memory-tune               Get or set node memory parameters
+nodecpumap                     node cpu map
+nodecpustats                   Prints cpu stats of the node.
+nodeinfo                       node information
+nodememstats                   Prints memory stats of the node.
+nodesuspend                    suspend the host node for a given time duration
+sysinfo                        print the hypervisor sysinfo
+uri                            print the hypervisor canonical URI
+version                        show version
+</code></pre>
+
+<p> Interface (help keyword &lsquo;interface&rsquo;):</p>
+
+<pre><code>iface-begin                    create a snapshot of current interfaces settings, which can be later committed (iface-commit) or restored (iface-rollback)
+iface-bridge                   create a bridge device and attach an existing network device to it
+iface-commit                   commit changes made since iface-begin and free restore point
+iface-define                   define an inactive persistent physical host interface or modify an existing persistent one from an XML file
+iface-destroy                  destroy a physical host interface (disable it / "if-down")
+iface-dumpxml                  interface information in XML
+iface-edit                     edit XML configuration for a physical host interface
+iface-list                     list physical host interfaces
+iface-mac                      convert an interface name to interface MAC address
+iface-name                     convert an interface MAC address to interface name
+iface-rollback                 rollback to previous saved configuration created via iface-begin
+iface-start                    start a physical host interface (enable it / "if-up")
+iface-unbridge                 undefine a bridge device after detaching its slave device
+iface-undefine                 undefine a physical host interface (remove it from configuration)
+</code></pre>
+
+<p> Network Filter (help keyword &lsquo;filter&rsquo;):</p>
+
+<pre><code>nwfilter-define                define or update a network filter from an XML file
+nwfilter-dumpxml               network filter information in XML
+nwfilter-edit                  edit XML configuration for a network filter
+nwfilter-list                  list network filters
+nwfilter-undefine              undefine a network filter
+</code></pre>
+
+<p> Networking (help keyword &lsquo;network&rsquo;):</p>
+
+<pre><code>net-autostart                  autostart a network
+net-create                     create a network from an XML file
+net-define                     define an inactive persistent virtual network or modify an existing persistent one from an XML file
+net-destroy                    destroy (stop) a network
+net-dhcp-leases                print lease info for a given network
+net-dumpxml                    network information in XML
+net-edit                       edit XML configuration for a network
+net-event                      Network Events
+net-info                       network information
+net-list                       list networks
+net-name                       convert a network UUID to network name
+net-start                      start a (previously defined) inactive network
+net-undefine                   undefine a persistent network
+net-update                     update parts of an existing network's configuration
+net-uuid                       convert a network name to network UUID
+</code></pre>
+
+<p> Node Device (help keyword &lsquo;nodedev&rsquo;):</p>
+
+<pre><code>nodedev-create                 create a device defined by an XML file on the node
+nodedev-destroy                destroy (stop) a device on the node
+nodedev-detach                 detach node device from its device driver
+nodedev-dumpxml                node device details in XML
+nodedev-list                   enumerate devices on this host
+nodedev-reattach               reattach node device to its device driver
+nodedev-reset                  reset node device
+nodedev-event                  Node Device Events
+</code></pre>
+
+<p> Secret (help keyword &lsquo;secret&rsquo;):</p>
+
+<pre><code>secret-define                  define or modify a secret from an XML file
+secret-dumpxml                 secret attributes in XML
+secret-event                   Secret Events
+secret-get-value               Output a secret value
+secret-list                    list secrets
+secret-set-value               set a secret value
+secret-undefine                undefine a secret
+</code></pre>
+
+<p> Snapshot (help keyword &lsquo;snapshot&rsquo;):</p>
+
+<pre><code>snapshot-create                Create a snapshot from XML
+snapshot-create-as             Create a snapshot from a set of args
+snapshot-current               Get or set the current snapshot
+snapshot-delete                Delete a domain snapshot
+snapshot-dumpxml               Dump XML for a domain snapshot
+snapshot-edit                  edit XML for a snapshot
+snapshot-info                  snapshot information
+snapshot-list                  List snapshots for a domain
+snapshot-parent                Get the name of the parent of a snapshot
+snapshot-revert                Revert a domain to a snapshot
+</code></pre>
+
+<p> Storage Pool (help keyword &lsquo;pool&rsquo;):</p>
+
+<pre><code>find-storage-pool-sources-as   find potential storage pool sources
+find-storage-pool-sources      discover potential storage pool sources
+pool-autostart                 autostart a pool
+pool-build                     build a pool
+pool-create-as                 create a pool from a set of args
+pool-create                    create a pool from an XML file
+pool-define-as                 define a pool from a set of args
+pool-define                    define an inactive persistent storage pool or modify an existing persistent one from an XML file
+pool-delete                    delete a pool
+pool-destroy                   destroy (stop) a pool
+pool-dumpxml                   pool information in XML
+pool-edit                      edit XML configuration for a storage pool
+pool-info                      storage pool information
+pool-list                      list pools
+pool-name                      convert a pool UUID to pool name
+pool-refresh                   refresh a pool
+pool-start                     start a (previously defined) inactive pool
+pool-undefine                  undefine an inactive pool
+pool-uuid                      convert a pool name to pool UUID
+pool-event                     Storage Pool Events
+</code></pre>
+
+<p> Storage Volume (help keyword &lsquo;volume&rsquo;):</p>
+
+<pre><code>vol-clone                      clone a volume.
+vol-create-as                  create a volume from a set of args
+vol-create                     create a vol from an XML file
+vol-create-from                create a vol, using another volume as input
+vol-delete                     delete a vol
+vol-download                   download volume contents to a file
+vol-dumpxml                    vol information in XML
+vol-info                       storage vol information
+vol-key                        returns the volume key for a given volume name or path
+vol-list                       list vols
+vol-name                       returns the volume name for a given volume key or path
+vol-path                       returns the volume path for a given volume name or key
+vol-pool                       returns the storage pool for a given volume key or path
+vol-resize                     resize a vol
+vol-upload                     upload file contents to a volume
+vol-wipe                       wipe a vol
+</code></pre>
+
+<p> Virsh itself (help keyword &lsquo;virsh&rsquo;):</p>
+
+<pre><code>cd                             change the current directory
+echo                           echo arguments
+exit                           quit this interactive terminal
+help                           print help
+pwd                            print the current directory
+quit                           quit this interactive terminal
+connect                        (re)connect to hypervisor
+</code></pre>
+
+<p>```</p>
+
+<p>Ok, default network check now:</p>
+
+<p>```
+virsh net-list &mdash;all</p>
+
+<h2> Name                 State      Autostart     Persistent</h2>
+
+<p> default              inactive   no            yes
+```</p>
+
+<p>The default network is inactive, so we have to enable it:</p>
+
+<p><code>
+virsh net-start default
+Network default started
+</code></p>
+
+<p>Now, if you do an <em>ifconfig</em>, you should see the new bridge interface:</p>
+
+<p>```
+virbr0: flags=4099&lt;UP,BROADCAST,MULTICAST>  mtu 1500</p>
+
+<pre><code>    inet 192.168.122.1  netmask 255.255.255.0  broadcast 192.168.122.255
+    ether 52:54:00:b2:a7:6e  txqueuelen 1000  (Ethernet)
+    RX packets 0  bytes 0 (0.0 B)
+    RX errors 0  dropped 0  overruns 0  frame 0
+    TX packets 0  bytes 0 (0.0 B)
+    TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+</code></pre>
+
+<p>```</p>
+
+<p>To get more info about your bridge, you can use the <strong>brctl</strong> command:</p>
+
+<p>```
+brctl
+Usage: brctl [commands]
+commands:</p>
+
+<pre><code>addbr       &lt;bridge&gt;        add bridge
+delbr       &lt;bridge&gt;        delete bridge
+addif       &lt;bridge&gt; &lt;device&gt;   add interface to bridge
+delif       &lt;bridge&gt; &lt;device&gt;   delete interface from bridge
+hairpin     &lt;bridge&gt; &lt;port&gt; {on|off}    turn hairpin on/off
+setageing   &lt;bridge&gt; &lt;time&gt;     set ageing time
+setbridgeprio   &lt;bridge&gt; &lt;prio&gt;     set bridge priority
+setfd       &lt;bridge&gt; &lt;time&gt;     set bridge forward delay
+sethello    &lt;bridge&gt; &lt;time&gt;     set hello time
+setmaxage   &lt;bridge&gt; &lt;time&gt;     set max message age
+setpathcost &lt;bridge&gt; &lt;port&gt; &lt;cost&gt;  set path cost
+setportprio &lt;bridge&gt; &lt;port&gt; &lt;prio&gt;  set port priority
+show        [ &lt;bridge&gt; ]        show a list of bridges
+showmacs    &lt;bridge&gt;        show a list of mac addrs
+showstp     &lt;bridge&gt;        show bridge stp info
+stp         &lt;bridge&gt; {on|off}   turn stp on/off
+</code></pre>
+
+<p>```</p>
+
+<blockquote><p>brctl is used to set up, maintain, and inspect the ethernet bridge configuration in the linux kernel.</p>
+
+<p>An ethernet bridge is a device commonly used to connect different  networks of ethernets together, so that these
+ethernets will appear as one ethernet to the participants.</p>
+
+<p>Each of the ethernets  being  connected  corresponds  to  one  physical interface  in  the  bridge. These individual
+ethernets are bundled into one bigger (&lsquo;logical&rsquo;) ethernet, this bigger  ethernet  corresponds  to the bridge
+network interface.</p></blockquote>
+
+<p><code>
+brctl show
+bridge name bridge id       STP enabled interfaces
+virbr0      8000.525400b2a76e   yes     virbr0-nic
+</code></p>
+
+<p>Ok, now we have the default network set. It&rsquo;s time to actually start some VMs. In KVM, VMs can be managed both from the command line with virsh, and from the GUI, with Virtual Network Manager, which you can find under System Tools.</p>
+
+<p><img class="center" src="/images/sysadmin/kvm/virtmanager.png" title="&lsquo;virtmanager&rsquo; &lsquo;virtmanager&rsquo;" ></p>
+
+<p><strong>Before starting to create VMs, please reboot your host to save you time and headaches</strong>.</p>
+
+<p>I grabbed a Debian iso to showcase its live CD, and I created a VM from it:</p>
+
+<p><img class="center" src="/images/sysadmin/kvm/1-new.png" title="&lsquo;new vm&rsquo; &lsquo;new vm&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/2-os.png" title="&lsquo;os&rsquo; &lsquo;os&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/3-hw.png" title="&lsquo;hardware&rsquo; &lsquo;hardware specs&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/4-space.png" title="&lsquo;disk&rsquo; &lsquo;disk&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/5-final.png" title="&lsquo;create vm&rsquo; &lsquo;create vm&rsquo;" ></p>
+
+<p>I had to do one more step before getting rid of errors every time I finished with the VM creation. libvirt was pointing to the qemu-kvm binary, but I had no such file, so I created a symlink as specified in this <a href="https://bbs.archlinux.org/viewtopic.php?pid=1240205#p1240205">Arch Linux forum</a>:</p>
+
+<p><code>
+ln -s /usr/bin/qemu-{system-x86_64,kvm}
+ls -la /usr/bin/qemu-kvm
+lrwxrwxrwx 1 root root 27 Sep 17 13:19 /usr/bin/qemu-kvm -&gt; /usr/bin/qemu-system-x86_64
+</code></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/vm.png" title="&lsquo;vm&rsquo; &lsquo;working vm&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/kvm/details.png" title="&lsquo;vm details&rsquo; &lsquo;vm details&rsquo;" ></p>
+
+<p>KVM graphical interface is nice, but we are not limited to a GUI. We can create and interact with VMs from the command line!</p>
+
+<p>First, let&rsquo;s see if what VMs we&rsquo;ve got:</p>
+
+<p>```
+virsh list &mdash;all</p>
+
+<h2> Id    Name                           State</h2>
+
+<ul>
+<li>   generic                        shut off
+```</li>
+</ul>
+
+
+<p>If we only wanted to list the running VMs, we could do it with <code>virsh list</code></p>
+
+<p>Now, I&rsquo;m going to start a VM, which in virsh talk is called a domain, and look at some info about it:</p>
+
+<p>```
+virsh # start generic
+Domain generic started</p>
+
+<p>virsh # dominfo generic
+Id:             1
+Name:           generic
+UUID:           c4982e35-ec8d-4b5f-9ad3-c8491bcd9181
+OS Type:        hvm
+State:          running
+CPU(s):         1
+CPU time:       0.4s
+Max memory:     1048576 KiB
+Used memory:    1048576 KiB
+Persistent:     yes
+Autostart:      disable
+Managed save:   no
+Security model: none
+Security DOI:   0
+```</p>
+
+<p>Now we have a better grasp on Linux-based hypervisors, and we don&rsquo;t have to rely on VMware and Virtualbox only. In a future post I will show how to install a VM from the command line.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: How did you get into artificial   \
+| intelligence? A: Seemed logical &mdash; I |
+\ didn&rsquo;t have any real intelligence.   /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[NFS shares on CentOS 7]]></title>
@@ -1057,604 +1586,6 @@ fixed-address 192.168.217.12;
 | us.&rdquo; Hemingway:                      |
 |                                      |
 \ &ldquo;Yes. They have more money.&rdquo;         /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Remote task automation with Fabric]]></title>
-    <link href="http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/"/>
-    <updated>2017-04-03T03:01:29-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric</id>
-    <content type="html"><![CDATA[<p>Today I will go over the use of <a href="http://docs.fabfile.org/en/1.13/">Fabric</a>, a Python library and CLI tool for executing local / remote tasks via SSH.</p>
-
-<p><strong>Requirements</strong>:</p>
-
-<ul>
-<li>Python 2.5 or 2.7</li>
-<li>Paramiko</li>
-<li>SSH</li>
-</ul>
-
-
-<p><strong>Features at a glance</strong>:</p>
-
-<ul>
-<li>run local or remote shell commands (also with the sudo option)</li>
-<li>upload / download files</li>
-<li>prompt for input</li>
-<li>run Python functions</li>
-<li>abort execution when encountering errors by default, but also allow for error handling</li>
-</ul>
-
-
-<p>Install Fabric with <code>pip install fabric</code></p>
-
-<!-- more -->
-
-
-<h2>Usage</h2>
-
-<p>The way Fabric works is by creating a file named <code>fabfile.py</code>, containing some functions, and then using the <strong>fab</strong> CLI tool to run them.</p>
-
-<p>Let&rsquo;s look at the options available with the <strong>fab</strong> tool:</p>
-
-<p>``` plain
-fab &mdash;help
-Usage: fab [options] <command>[:arg1,arg2=val2,host=foo,hosts=&lsquo;h1;h2&rsquo;,&hellip;] &hellip;</p>
-
-<p>Options:
-  -h, &mdash;help            show this help message and exit
-  -d NAME, &mdash;display=NAME</p>
-
-<pre><code>                    print detailed info about command NAME
-</code></pre>
-
-<p>  -F FORMAT, &mdash;list-format=FORMAT</p>
-
-<pre><code>                    formats --list, choices: short, normal, nested
-</code></pre>
-
-<p>  -I, &mdash;initial-password-prompt</p>
-
-<pre><code>                    Force password prompt up-front
-</code></pre>
-
-<p>  &mdash;initial-sudo-password-prompt</p>
-
-<pre><code>                    Force sudo password prompt up-front
-</code></pre>
-
-<p>  -l, &mdash;list            print list of possible commands and exit
-  &mdash;set=KEY=VALUE,&hellip;   comma separated KEY=VALUE pairs to set Fab env vars
-  &mdash;shortlist           alias for -F short &mdash;list
-  -V, &mdash;version         show program&rsquo;s version number and exit
-  -a, &mdash;no_agent        don&rsquo;t use the running SSH agent
-  -A, &mdash;forward-agent   forward local agent to remote end
-  &mdash;abort-on-prompts    abort instead of prompting (for password, host, etc)
-  -c PATH, &mdash;config=PATH</p>
-
-<pre><code>                    specify location of config file to use
-</code></pre>
-
-<p>  &mdash;colorize-errors     Color error output
-  -D, &mdash;disable-known-hosts</p>
-
-<pre><code>                    do not load user known_hosts file
-</code></pre>
-
-<p>  -e, &mdash;eagerly-disconnect</p>
-
-<pre><code>                    disconnect from hosts as soon as possible
-</code></pre>
-
-<p>  -f PATH, &mdash;fabfile=PATH</p>
-
-<pre><code>                    python module file to import, e.g. '../other.py'
-</code></pre>
-
-<p>  -g HOST, &mdash;gateway=HOST</p>
-
-<pre><code>                    gateway host to connect through
-</code></pre>
-
-<p>  &mdash;gss-auth            Use GSS-API authentication
-  &mdash;gss-deleg           Delegate GSS-API client credentials or not
-  &mdash;gss-kex             Perform GSS-API Key Exchange and user authentication
-  &mdash;hide=LEVELS         comma-separated list of output levels to hide
-  -H HOSTS, &mdash;hosts=HOSTS</p>
-
-<pre><code>                    comma-separated list of hosts to operate on
-</code></pre>
-
-<p>  -i PATH               path to SSH private key file. May be repeated.
-  -k, &mdash;no-keys         don&rsquo;t load private key files from ~/.ssh/
-  &mdash;keepalive=N         enables a keepalive every N seconds
-  &mdash;linewise            print line-by-line instead of byte-by-byte
-  -n M, &mdash;connection-attempts=M</p>
-
-<pre><code>                    make M attempts to connect before giving up
-</code></pre>
-
-<p>  &mdash;no-pty              do not use pseudo-terminal in run/sudo
-  -p PASSWORD, &mdash;password=PASSWORD</p>
-
-<pre><code>                    password for use with authentication and/or sudo
-</code></pre>
-
-<p>  -P, &mdash;parallel        default to parallel execution method
-  &mdash;port=PORT           SSH connection port
-  -r, &mdash;reject-unknown-hosts</p>
-
-<pre><code>                    reject unknown hosts
-</code></pre>
-
-<p>  &mdash;sudo-password=SUDO_PASSWORD</p>
-
-<pre><code>                    password for use with sudo only
-</code></pre>
-
-<p>  &mdash;system-known-hosts=SYSTEM_KNOWN_HOSTS</p>
-
-<pre><code>                    load system known_hosts file before reading user
-                    known_hosts
-</code></pre>
-
-<p>  -R ROLES, &mdash;roles=ROLES</p>
-
-<pre><code>                    comma-separated list of roles to operate on
-</code></pre>
-
-<p>  -s SHELL, &mdash;shell=SHELL</p>
-
-<pre><code>                    specify a new shell, defaults to '/bin/bash -l -c'
-</code></pre>
-
-<p>  &mdash;show=LEVELS         comma-separated list of output levels to show
-  &mdash;skip-bad-hosts      skip over hosts that can&rsquo;t be reached
-  &mdash;skip-unknown-tasks  skip over unknown tasks
-  &mdash;ssh-config-path=PATH</p>
-
-<pre><code>                    Path to SSH config file
-</code></pre>
-
-<p>  -t N, &mdash;timeout=N     set connection timeout to N seconds
-  -T N, &mdash;command-timeout=N</p>
-
-<pre><code>                    set remote command timeout to N seconds
-</code></pre>
-
-<p>  -u USER, &mdash;user=USER  username to use when connecting to remote hosts
-  -w, &mdash;warn-only       warn, instead of abort, when commands fail
-  -x HOSTS, &mdash;exclude-hosts=HOSTS</p>
-
-<pre><code>                    comma-separated list of hosts to exclude
-</code></pre>
-
-<p>  -z INT, &mdash;pool-size=INT</p>
-
-<pre><code>                    number of concurrent processes to use in parallel mode
-</code></pre>
-
-<p>```</p>
-
-<p>The <strong>fab</strong> tool can execute functions from a fabfile.py by passing the function name, like so: <code>fab func-name</code></p>
-
-<h2>Examples</h2>
-
-<p>Let&rsquo;s take a look at a couple of simple fabfiles, before making a more contrived one:</p>
-
-<h3>Run commands on the local host</h3>
-
-<p>``` python
-from fabric.api import *</p>
-
-<p>@task
-def local_info():</p>
-
-<pre><code>    local('whoami')
-</code></pre>
-
-<p>```</p>
-
-<p>Run it:</p>
-
-<p>``` plain
-fab local_info          <br/>
-[localhost] local: whoami
-root</p>
-
-<p>Done.
-```</p>
-
-<h3>Run commands on remote host &ndash; password authentication</h3>
-
-<p>Next, let&rsquo;s use SSH with a password to log in to a remote host and do something on it:</p>
-
-<p>``` python
-from fabric.api import *</p>
-
-<p>env.hosts = [&lsquo;192.168.216.128&rsquo;]
-env.user = &lsquo;root&rsquo; # default is the local user
-env.password = &lsquo;password&rsquo; # can be used both for SSH authentication and sudo</p>
-
-<p>@task
-def remote_info():</p>
-
-<pre><code>    run('uname -a')
-</code></pre>
-
-<p>```</p>
-
-<p>And the output:</p>
-
-<p>``` plain
-fab remote_info
-[192.168.216.128] Executing task &lsquo;remote_info&rsquo;
-[192.168.216.128] run: uname -a
-[192.168.216.128] out: Linux localhost.localdomain 3.10.0-514.2.2.el7.x86_64 #1 SMP Tue Dec 6 23:06:41 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
-[192.168.216.128] out:</p>
-
-<p>Done.
-Disconnecting from 192.168.216.128&hellip; done.
-```</p>
-
-<h3>Run commands on remote host &ndash; key authentication</h3>
-
-<p>SSH with a password might be ok for demonstration purposes, but we will most likely want to use public key authentication. First, generate the key that we&rsquo;ll use later:</p>
-
-<p><code>plain
-ssh-keygen -t rsa -b 2048 -v
-Generating public/private rsa key pair.
-Enter file in which to save the key (/root/.ssh/id_rsa): mykey.pem
-Enter passphrase (empty for no passphrase):
-Enter same passphrase again:
-Your identification has been saved in mykey.pem.
-Your public key has been saved in mykey.pem.pub.
-</code></p>
-
-<p>Next, copy the key to the remote host&rsquo;s <code>~/.ssh/authorized_keys</code> location:</p>
-
-<p>``` plain
-ssh-copy-id -i ~/mykey.pem.pub <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#x72;&#x6f;&#x6f;&#116;&#x40;&#x31;&#x39;&#x32;&#46;&#49;&#x36;&#x38;&#x2e;&#50;&#49;&#x36;&#46;&#49;&#50;&#x38;">&#x72;&#111;&#x6f;&#x74;&#64;&#x31;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#x2e;&#x32;&#49;&#54;&#46;&#x31;&#x32;&#x38;</a>
-/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: &ldquo;/root/mykey.pem.pub&rdquo;
-/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
-/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
-<a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#x72;&#111;&#111;&#x74;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#x2e;&#50;&#49;&#x36;&#x2e;&#x31;&#x32;&#x38;">&#114;&#111;&#111;&#x74;&#x40;&#x31;&#x39;&#50;&#46;&#x31;&#54;&#56;&#x2e;&#x32;&#x31;&#x36;&#x2e;&#x31;&#x32;&#56;</a>&rsquo;s password:</p>
-
-<p>Number of key(s) added: 1</p>
-
-<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#114;&#x6f;&#111;&#x74;&#x40;&#49;&#57;&#50;&#46;&#x31;&#x36;&#56;&#46;&#50;&#x31;&#54;&#46;&#49;&#x32;&#x38;">&#x72;&#111;&#111;&#116;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#x2e;&#50;&#x31;&#x36;&#x2e;&#x31;&#x32;&#x38;</a>&rsquo;&rdquo;
-and check to make sure that only the key(s) you wanted were added.
-```</p>
-
-<p>Make the .pem key read-only and then try logging in by passing it to the ssh -i option:</p>
-
-<p><code>plain
-chmod 400 mykey.pem
-ssh -i mykey.pem root@192.168.216.128
-Last failed login: Tue Mar 28 12:28:43 EEST 2017 from 192.168.216.1 on ssh:notty
-There were 2 failed login attempts since the last successful login.
-Last login: Tue Mar 28 11:30:19 2017 from 192.168.216.1
-[root@localhost ~]#
-</code></p>
-
-<p>Now add the key file in Fabric:</p>
-
-<p>``` python
-from fabric.api import *</p>
-
-<p>env.hosts = [&lsquo;192.168.217.131&rsquo;]
-env.user = &lsquo;root&rsquo;
-env.key_filename = &lsquo;~/.ssh/mykey.pem&rsquo;</p>
-
-<p>@task
-def remote_info():</p>
-
-<pre><code>    run('uptime')
-</code></pre>
-
-<p>```</p>
-
-<h3>Run commands on multiple hosts</h3>
-
-<p>If you want to run a command on a host, and a different command on another host, you can do so by specifying which host you want to run a command on:</p>
-
-<p>``` python
-from fabric.api import *</p>
-
-<p>env.user = &lsquo;root&rsquo;
-env.key_filename = &lsquo;~/mykey.pem&rsquo;</p>
-
-<p>@task
-def local_info():</p>
-
-<pre><code>print('This runs only on the localhost')
-</code></pre>
-
-<p>@hosts(&lsquo;192.168.216.128&rsquo;)
-@task
-def remote_info():</p>
-
-<pre><code>    print('This runs only on the remote host')
-</code></pre>
-
-<p>```</p>
-
-<p>Here is how it would look like:</p>
-
-<p>``` plain
-fab local_info remote_info
-This runs only on the localhost
-[192.168.216.128] Executing task &lsquo;remote_info&rsquo;
-This runs only on the remote host</p>
-
-<p>Done.
-```</p>
-
-<h3>Download / upload files</h3>
-
-<p>Fabric also has built-in functionality for downloading and uploading files:</p>
-
-<p>``` python
-@task
-def download():</p>
-
-<pre><code>    get('~/Desktop/ssh.sh')
-</code></pre>
-
-<p>```</p>
-
-<p>Result:</p>
-
-<p>``` plain
-fab download
-[192.168.23.128] Executing task &lsquo;download&rsquo;
-[192.168.23.128] download: path/192.168.23.128/ssh.sh &lt;&ndash; /root/Desktop/ssh.sh</p>
-
-<p>Done.
-Disconnecting from 192.168.23.128&hellip; done.
-```</p>
-
-<p>And the upload:</p>
-
-<p>``` python
-@task
-def upload():</p>
-
-<pre><code>    put('file.txt', '~/Desktop')
-</code></pre>
-
-<p>```</p>
-
-<p>Output:</p>
-
-<p>``` plain
-fab upload
-[192.168.23.128] Executing task &lsquo;upload&rsquo;
-[192.168.23.128] put: file.txt &ndash;> /root/Desktop/file.txt</p>
-
-<p>Done.
-Disconnecting from 192.168.23.128&hellip; done.
-```</p>
-
-<h3>Run sudo commands</h3>
-
-<p>We saw some examples of using the root user, but Fabric allows running sudo commands from users with lower privileges:</p>
-
-<p>``` python
-from fabric.api import *</p>
-
-<p>env.hosts = [&lsquo;192.168.217.131&rsquo;]
-env.user = &lsquo;nixhat&rsquo;</p>
-
-<p>@task
-def cfg_test():</p>
-
-<pre><code>    sudo('apachectl configtest')
-</code></pre>
-
-<p>```</p>
-
-<p>And here it is in action:</p>
-
-<p>``` plain
-fab cfg_test
-[192.168.217.131] Executing task &lsquo;cfg_test&rsquo;
-[192.168.217.131] sudo: apachectl configtest
-[192.168.217.131] Login password for &lsquo;nixhat&rsquo;:
-[192.168.217.131] out: sudo password:
-[192.168.217.131] out: AH00558: httpd: Could not reliably determine the server&rsquo;s
- fully qualified domain name, using localhost.localdomain. Set the &lsquo;ServerName&rsquo;
-directive globally to suppress this message
-[192.168.217.131] out: Syntax OK
-[192.168.217.131] out:</p>
-
-<p>Done.
-Disconnecting from 192.168.217.131&hellip; done.
-```</p>
-
-<h3>Specifying multiple hosts with different users and passwords</h3>
-
-<p>In case you have many hosts that you would like to run commands on as different users, you can do so:</p>
-
-<p><code>python
-env.hosts = ['root@192.168.217.130', 'nixhat@192.168.216.128'] # hosts to run cmds on
-env.passwords = {'root@192.168.217.130':'password1', 'nixhat@192.168.216.128':'password2'}
-</code></p>
-
-<h3>Running tasks on predefined hosts</h3>
-
-<p>If you have tasks that you want to run on certain hosts only, you can specify that:</p>
-
-<p>``` python
-@hosts(&lsquo;host1&rsquo;, &lsquo;host2&rsquo;)
-def mytask():</p>
-
-<pre><code>run('cmd')
-</code></pre>
-
-<p>```</p>
-
-<h3>Classifying hosts into roles</h3>
-
-<p>In a large environment, you are most likely to have many hosts that fulfill some roles, such as development machines and production servers. You can organize them in the Fabric code:</p>
-
-<p>``` python
-env.roledefs = {</p>
-
-<pre><code>'production': ['prod1', 'prod2'],
-'development': ['dev1', 'dev2']
-</code></pre>
-
-<p>}
-```</p>
-
-<h3>Automating code deployment</h3>
-
-<p>In a <a href="https://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment/">previous post</a>, we used Git for updating the code on a live server from a development machine. This time, we&rsquo;ll use Fabric to automate the process!</p>
-
-<p>Besides the development and production servers we had before, we&rsquo;ll use a third computer to run the Fabric commands from. Let&rsquo;s assume this is your sysadmin machine, from which magic happens on the network. The developers made some changes to the code on the dev server, and you want to push them to production:</p>
-
-<p>``` python
-from fabric.api import *</p>
-
-<h1>script must be called fabfile.py</h1>
-
-<h1>fab -l &ndash; list available cmds</h1>
-
-<h1>fab CMDNAME &ndash; run cmd</h1>
-
-<h1>the env dictionary allows for setting different variables for customizing the configuration</h1>
-
-<p>env.colorize_errors = &lsquo;true&rsquo; # color errors in red and warnings in magenta</p>
-
-<p>env.roledefs = {</p>
-
-<pre><code>'dev': ['root@192.168.217.130:22 '],
-'prod': ['root@192.168.217.131:22'],
-}
-</code></pre>
-
-<p>env.passwords = {&lsquo;root@192.168.217.130:22&rsquo;:&lsquo;5t0rm80rn&rsquo;, &lsquo;root@192.168.217.131:22&rsquo;:&lsquo;hakubo10&rsquo;}</p>
-
-<p>@roles(&lsquo;dev&rsquo;)
-@task
-def prep():</p>
-
-<pre><code>'''
-Stage and commit new and modified files
-:return:
-'''
-with settings(warn_only=True): # continue executing even if errors were encountered
-    with cd('/root/Testing/Dev'):
-        run('git add . &amp;&amp; git commit -m "Add changes"')
-</code></pre>
-
-<p>@roles(&lsquo;dev&rsquo;)
-@task
-def push():</p>
-
-<pre><code>with cd('/root/Testing/Dev'):
-    run('git push production')
-</code></pre>
-
-<p>@roles(&lsquo;prod&rsquo;)
-@task
-def chk():</p>
-
-<pre><code>'''
-Confirm that files have been updated on the web server
-:return:
-'''
-run('ls /var/www/html/myweb/site')
-</code></pre>
-
-<p>```</p>
-
-<p>Now list the available commands:</p>
-
-<p>``` plain
-fab -l
-Available commands:</p>
-
-<pre><code>chk   Confirm that files have been updated on the web server
-prep  Stage and commit new and modified files
-push
-</code></pre>
-
-<p>```</p>
-
-<p>And run them:</p>
-
-<p>``` plain
-fab prep push chk
-[root@192.168.217.130:22] Executing task &lsquo;prep&rsquo;
-[root@192.168.217.130:22] run: git add . &amp;&amp; git commit -m &ldquo;Add changes&rdquo;
-[root@192.168.217.130:22] out: [master 5719a02] Add changes
-[root@192.168.217.130:22] out:  1 file changed, 1 insertion(+), 1 deletion(&ndash;)
-[root@192.168.217.130:22] out:</p>
-
-<p>[root@192.168.217.130:22] Executing task &lsquo;push&rsquo;
-[root@192.168.217.130:22] run: git push production
-[root@192.168.217.130:22] out: <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#x38;&#x2e;&#50;&#x31;&#x37;&#x2e;&#x31;&#51;&#49;">&#114;&#111;&#111;&#x74;&#x40;&#x31;&#x39;&#50;&#46;&#x31;&#x36;&#56;&#46;&#x32;&#x31;&#55;&#x2e;&#49;&#51;&#49;</a>&rsquo;s password:
-[root@192.168.217.130:22] out: Counting objects: 3, done.
-[root@192.168.217.130:22] out: Compressing objects:  33% (1/3)
-[root@192.168.217.130:22] out: Compressing objects:  66% (2/3)
-[root@192.168.217.130:22] out: Compressing objects: 100% (3/3)
-[root@192.168.217.130:22] out: Compressing objects: 100% (3/3), done.
-[root@192.168.217.130:22] out: Writing objects:  33% (1/3)
-[root@192.168.217.130:22] out: Writing objects:  66% (2/3)
-[root@192.168.217.130:22] out: Writing objects: 100% (3/3)
-[root@192.168.217.130:22] out: Writing objects: 100% (3/3), 294 bytes | 0 bytes/
-s, done.
-[root@192.168.217.130:22] out: Total 3 (delta 2), reused 0 (delta 0)
-[root@192.168.217.130:22] out: To 192.168.217.131:Prod
-[root@192.168.217.130:22] out:    39e598d..5719a02  master &ndash;> master
-[root@192.168.217.130:22] out:</p>
-
-<p>[root@192.168.217.131:22] Executing task &lsquo;chk&rsquo;
-[root@192.168.217.131:22] run: ls /var/www/html/myweb/site
-[root@192.168.217.131:22] out: index.html  new.html  updates.html
-[root@192.168.217.131:22] out:</p>
-
-<p>Done.
-Disconnecting from <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#51;&#48;&#x2e;&#x2e;&#46;">&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#x2e;&#x32;&#x31;&#x37;&#46;&#49;&#x33;&#48;&#46;&#x2e;&#46;</a> done.
-Disconnecting from <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#49;&#x39;&#50;&#46;&#x31;&#x36;&#56;&#46;&#x32;&#x31;&#55;&#46;&#49;&#51;&#x31;&#46;&#46;&#x2e;">&#114;&#111;&#111;&#116;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#x32;&#49;&#x37;&#x2e;&#x31;&#x33;&#x31;&#46;&#46;&#x2e;</a> done.
-```</p>
-
-<p>In a file with many tasks, it will get tiresome to always specify them on the command line. You can organize your code to have a function that calls other tasks, respecting the roles and settings for each. Add this to the previous code:</p>
-
-<p>``` python
-@task
-def deploy():</p>
-
-<pre><code>'''
-Execute previous tasks by taking into account the defined roles 
-:return:
-'''
-execute(prep) # on dev
-execute (push) # on dev
-execute(chk) # on prod
-</code></pre>
-
-<p>```</p>
-
-<p>Now you can run only <code>fab deploy</code> to get the same results!</p>
-
-<p>``` plain
-/ In the stairway of life, you&rsquo;d best \
-\ take the elevator.                  /</p>
 
 <hr />
 
