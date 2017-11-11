@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-10-28T16:36:45-04:00</updated>
+  <updated>2017-11-11T17:41:52-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,86 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Resetting root password on CentOS 7]]></title>
+    <link href="http://chousensha.github.io/blog/2017/11/11/lfcs-prep-resetting-root-password-on-centos-7/"/>
+    <updated>2017-11-11T16:53:18-05:00</updated>
+    <id>http://chousensha.github.io/blog/2017/11/11/lfcs-prep-resetting-root-password-on-centos-7</id>
+    <content type="html"><![CDATA[<p>So, you got physical access to a machine, but you don&rsquo;t remember (or never knew) the root password. This post will walk you through how to reset the root password on a CentOS 7 system.</p>
+
+<!-- more -->
+
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/rootreset/boot.png" title="boot" alt="edit grub boot entry"></p>
+
+<p>At the boot menu, press <strong>e</strong> to edit the desired boot entry</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/rootreset/initram.png" title="initram" alt="initram"></p>
+
+<p>Now go to the end of the line that starts with <strong>linux16</strong> (you can quickly do it with <strong>Ctrl-e</strong> or <strong>End</strong> key, <strong>Ctrl-a</strong> or <strong>Home</strong> for the beginning of a line) and add <code>rd.break enforcing=0</code> to it. The first paramenter will interrupt the boot process to drop into a shell, and the second one sets SELinux to permissive mode, needed for a quicker way of resetting the password that doesn&rsquo;t require file relabeling at the end.</p>
+
+<p>Also remove the <strong>rhgb</strong> and <strong>quiet</strong> parameters to see more debugging information. These are described in <a href="https://www.redhat.com/archives/rhl-list/2004-May/msg07775.html">https://www.redhat.com/archives/rhl-list/2004-May/msg07775.html</a></p>
+
+<blockquote><p>rhgb = redhat graphical boot &ndash; This is a GUI mode booting screen with most of the information hidden while the user
+sees a rotating activity icon spining and brief information as to what the computer is doing.</p>
+
+<p>quiet = hides the majority of boot messages before rhgb starts. These are supposed to make the common user more
+comfortable. They get alarmed about seeing the kernel and initializing messages, so they hide them for their comfort.</p></blockquote>
+
+<p>Next, press <strong>Ctrl-x</strong> to boot with the new options. You will be dropped into an initramfs switch_root shell.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/rootreset/initramfs.png" title="initramfs switch_root" alt="initramfs switch_root shell"></p>
+
+<p>This could be confusing to someone new. Basically, initramfs is a temporary filesystem loaded into memory, that the kernel can access really early, in order to offload some startup tasks. It is also called early user space, and it takes care of steps that would be too cumbersome to include in the kernel, such as loading kernel modules and drivers needed for boot. This allows the kernel to remain relatively lean and not do by itself all the possible configurations. This initramfs image is a CPIO archive that gets unpacked into a tmpfs (a temporary filesystem stored in memory) and becomes the initial root filesystem.</p>
+
+<p>Now, the filesystem is already mounted read-only inside <code>/sysroot</code>. To makey any changes, you have to mount it as read-write: <code>mount -o remount,rw /sysroot</code></p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/rootreset/sysroot.png" title="sysroot" alt="sysroot mount"></p>
+
+<p>Finally, change the root directory to /sysroot in order to run a shell from it: <code>chroot /sysroot</code>. Now your prompt will change to <code>sh-4.2#</code> and from here you can change the password normally, by using <em>passwd</em>. You should get the message that all authentication tokens updated successfully. Since you updated the password, you changed <em>/etc/shadow</em> and now it won&rsquo;t be labeled correctly with a SELinux security context. You have to force a relabel of all the files at next boot, by creating an <em>.autorelabel</em> file: <code>touch /.autorelabel</code>.</p>
+
+<p>Now type exit twice to exit the chroot environment first and then to exit the initramfs shell which will cause a reboot. The relabeling will take a while, and then you can use the system.</p>
+
+<p>To skip the relabeling process, if you used <em>enforce=0</em>, you can restore the context of the shadow file with <code>restorecon /etc/shadow</code>. Then you have to remember to set SELinux back to enforcing, by running <code>setenforce 1</code></p>
+
+<p>Apparently, when you have an RHCSA exam, you start from getting a machine that you have to reset the root password for, which is really cool. Don&rsquo;t get caught unprepared!</p>
+
+<h3>Learn more</h3>
+
+<p><a href="https://www.certdepot.net/rhel7-interrupt-boot-gain-access-system/">https://www.certdepot.net/rhel7-interrupt-boot-gain-access-system/</a></p>
+
+<p><a href="http://man7.org/linux/man-pages/man7/dracut.cmdline.7.html">Kernel command line parameters</a></p>
+
+<p><a href="https://unix.stackexchange.com/questions/126217/when-would-you-use-pivot-root-over-switch-root">switch_root and initramfs</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Be careful of reading health books, you \
+</span><span class='line'>| might die of a misprint.                |
+</span><span class='line'>|                                         |
+</span><span class='line'>\ -- Mark Twain                           /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Gibson 0.2 walkthrough]]></title>
@@ -8009,7 +8089,7 @@ work against other vulnerable SMTP daemons, but this hasn’t been done as of v1
 </span><span class='line'>ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali</span></code></pre></td></tr></table></div></figure>
 
 
-<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#58;&#118;&#117;&#108;&#110;&#x69;&#120;&#x40;&#49;&#x39;&#50;&#46;&#49;&#54;&#x38;&#46;&#x32;&#49;&#55;&#46;&#x31;&#52;&#50;">&#118;&#117;&#x6c;&#110;&#x69;&#120;&#64;&#x31;&#x39;&#x32;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#50;&#x31;&#x37;&#x2e;&#49;&#x34;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#x76;&#x75;&#x6c;&#110;&#x69;&#x78;&#x40;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#49;&#55;&#46;&#49;&#x34;&#50;">&#x76;&#x75;&#108;&#x6e;&#105;&#120;&#64;&#x31;&#x39;&#x32;&#46;&#x31;&#x36;&#x38;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#52;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -10266,637 +10346,6 @@ searching for ranges being used. After you found such range you can make a speci
 <p>Will leave you with this:</p>
 
 <p><img class="center" src="http://chousensha.github.io/images/pentest/lordoftheroot/legolas.jpg" title="legolas" alt="legolas"></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Automater - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/11/automater-kali-linux-tools/"/>
-    <updated>2017-06-11T03:57:26-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/11/automater-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you want to check suspicious IPs, domains and hashes for maliciousness. Maybe you&rsquo;ve heard that your favorite news site has been hacked and is serving malware to its users. You&rsquo;d like to confirm if something is dangerous or not, without navigating to it and risking to get compromised in the process. There is a Python tool on Kali that can help you with just that! Enter Automater!</p>
-
-<!-- more -->
-
-
-<p>Homepage: <a href="http://www.tekdefense.com/automater/">http://www.tekdefense.com/automater/</a></p>
-
-<p>If you want to get it on your distro, you can grab it from its <a href="https://github.com/1aN0rmus/TekDefense-Automater">Github repository</a></p>
-
-<h1>Automater description</h1>
-
-<blockquote><p>Automater is a URL/Domain, IP Address, and Md5 Hash OSINT tool aimed at making the analysis process easier for
-intrusion Analysts. Given a target (URL, IP, or HASH) or a file full of targets Automater will return relevant
-results from sources like the following: IPvoid.com, Robtex.com, Fortiguard.com, unshorten.me, Urlvoid.com,
-Labs.alienvault.com, ThreatExpert, VxVault, and VirusTotal.</p></blockquote>
-
-<h1>Automater options</h1>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>automater -h
-</span><span class='line'>usage: Automater.py [-h] [-o OUTPUT] [-b] [-f CEF] [-w WEB] [-c CSV]
-</span><span class='line'>                    [-d DELAY] [-s SOURCE] [--proxy PROXY] [-a USERAGENT] [-V]
-</span><span class='line'>                    [-r] [-v]
-</span><span class='line'>                    target
-</span><span class='line'>
-</span><span class='line'>IP, URL, and Hash Passive Analysis tool
-</span><span class='line'>
-</span><span class='line'>positional arguments:
-</span><span class='line'>  target                List one IP Address (CIDR or dash notation accepted),
-</span><span class='line'>                        URL or Hash to query or pass the filename of a file
-</span><span class='line'>                        containing IP Address info, URL or Hash to query each
-</span><span class='line'>                        separated by a newline.
-</span><span class='line'>
-</span><span class='line'>optional arguments:
-</span><span class='line'>  -h, --help            show this help message and exit
-</span><span class='line'>  -o OUTPUT, --output OUTPUT
-</span><span class='line'>                        This option will output the results to a file.
-</span><span class='line'>  -b, --bot             This option will output minimized results for a bot.
-</span><span class='line'>  -f CEF, --cef CEF     This option will output the results to a CEF formatted
-</span><span class='line'>                        file.
-</span><span class='line'>  -w WEB, --web WEB     This option will output the results to an HTML file.
-</span><span class='line'>  -c CSV, --csv CSV     This option will output the results to a CSV file.
-</span><span class='line'>  -d DELAY, --delay DELAY
-</span><span class='line'>                        This will change the delay to the inputted seconds.
-</span><span class='line'>                        Default is 2.
-</span><span class='line'>  -s SOURCE, --source SOURCE
-</span><span class='line'>                        This option will only run the target against a
-</span><span class='line'>                        specific source engine to pull associated domains.
-</span><span class='line'>                        Options are defined in the name attribute of the site
-</span><span class='line'>                        element in the XML configuration file. This can be a
-</span><span class='line'>                        list of names separated by a semicolon.
-</span><span class='line'>  --proxy PROXY         This option will set a proxy to use (eg.
-</span><span class='line'>                        proxy.example.com:8080)
-</span><span class='line'>  -a USERAGENT, --useragent USERAGENT
-</span><span class='line'>                        This option allows the user to set the user-agent seen
-</span><span class='line'>                        by web servers being utilized. By default, the user-
-</span><span class='line'>                        agent is set to Automater/version
-</span><span class='line'>  -V, --vercheck        This option checks and reports versioning for
-</span><span class='line'>                        Automater. Checks each python module in the Automater
-</span><span class='line'>                        scope. Default, (no -V) is False
-</span><span class='line'>  -r, --refreshxml      This option refreshes the tekdefense.xml file from the
-</span><span class='line'>                        remote GitHub site. Default (no -r) is False.
-</span><span class='line'>  -v, --verbose         This option prints messages to the screen. Default (no
-</span><span class='line'>                        -v) is False.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can see there are multiple output options for further processing, like CEF formatted file, CSV and HTML. Also, it&rsquo;s important to remember that tools usually come with their default user agents, and it might be beneficial to change this when you run it, and make it look like a real browser.</p>
-
-<h1>Automater usage</h1>
-
-<ul>
-<li>check IP for malware</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>automater 185.62.190.110
-</span><span class='line'>/usr/lib/python2.7/dist-packages/urllib3/connectionpool.py:845: InsecureRequestWarning: Unverified HTTPS request is being made. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
-</span><span class='line'>  InsecureRequestWarning)
-</span><span class='line'>
-</span><span class='line'>____________________     Results found for: 185.62.190.110     ____________________
-</span><span class='line'>No results found in the RTex DNS
-</span><span class='line'>No results found in the FNet URL
-</span><span class='line'>[+] VT ASN: No results found
-</span><span class='line'>[+] VT Country: ZZ
-</span><span class='line'>[+] VT AS Owner: No results found
-</span><span class='line'>[+] VT pDNS: ('2016-08-24 00:00:00', 'cl0.f-aws.com')
-</span><span class='line'>[+] VT pDNS: ('2017-05-19 00:00:00', 'mail.attw.io')
-</span><span class='line'>[+] VT pDNS: ('2016-06-05 00:00:00', 'weinne.net')
-</span><span class='line'>[+] VT pDNS: ('2017-02-08 00:00:00', 'www[.]woodmann.com')
-</span><span class='line'>[+] VT Malware: ('2017-06-02 10:46:35', 'ceeca0c7dc341fa57532470f2d7caaa427bf77e1e533b7ff3d9d8e245d6ea5fd')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_Corso_2009-2-4_20.20_Corso_7.02.34.rar', '2017-06-07 17:23:57')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Vbdec34.zip', '2017-06-04 23:44:26')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/tools/', '2017-06-02 11:41:58')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/tools/dongles/vdog104.zip', '2017-06-02 10:46:33')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/archives/bartpak7.rar', '2017-06-01 19:35:43')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/bin_de_decompiler_2009-7-18_22.55_de_decompiler_lite.zip|&gt;de_decompiler_lite.exe', '2017-06-01 14:57:19')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/Category:RCE_Tools', '2017-05-31 09:16:42')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/Category:SoftICE_Extensions', '2017-05-27 18:28:27')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/forum/attachment.php?s=d1dedc683453c119989330b5967a2dea&attachmentid=2311&d=1278836882', '2017-05-26 20:45:35')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/fravia/exe/cryptpad.exe', '2017-05-26 18:00:12')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_LordPE_2010-6-29_3.9_LordPE_1.41_Deluxe_b.zip', '2017-05-26 13:50:29')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/LordPE', '2017-05-26 13:42:00')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/tools/dongles/admon25.rar', '2017-05-25 05:51:39')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/bin_wintruder_2008-10-24_22.21_wintruder.zip', '2017-05-24 12:33:31')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_Echo_Mirage_2014-1-11_17.28_EchoMirage-3.1.rar', '2017-05-24 10:42:52')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Archives/Kgensrcs.zip', '2017-05-19 18:39:05')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/bin_zeroadd_2014-5-9_1.29_zeroadd.zip', '2017-05-16 08:33:15')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Unpackers/Arm201b1.zip', '2017-05-11 22:16:38')
-</span><span class='line'>[+] VT Mal URLs: ("hxxp://www[.]woodmann.com/collaborative/knowledge/images/bin_stuxnet's_rootkit_(mrxnet)_into_c++_2011-2-6_13.54_mrxnet.rar", '2017-05-11 06:28:02')
-</span><span class='line'>[+] VT Mal URLs: ("hxxp://www[.]woodmann.com/collaborative/knowledge/images/Bin_Stuxnet's_Rootkit_(MRxNet)_into_C++_2011-2-6_13.54_MRxNet.rar", '2017-05-10 11:56:48')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/', '2017-05-09 13:25:03')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Dongles/Edgehasp.zip', '2017-05-09 06:50:13')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/Kernel_Detective', '2017-05-07 23:49:45')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/BobSoft/Pages/Plugins/ImmDbg', '2017-05-02 19:47:49')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/AdmiralDebilitate', '2017-04-29 23:08:33')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tutorials/Nolflex3.htm', '2017-04-21 23:28:28')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_ImpREC_2011-7-16_8.11_ImpREC_1.7e.rar', '2017-04-20 17:33:51')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/Detect_It_Easy', '2017-04-19 22:55:52')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/forum/attachment.php', '2017-04-19 21:13:35')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_IIDKing_2007-10-19_23.37_tf23.zip', '2017-04-18 10:44:44')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_RTA_2011-9-6_20.52_rta2b2.zip', '2017-04-13 08:16:56')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Dongles/Haspdll.zip', '2017-04-11 17:42:56')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools', '2017-04-10 16:46:49')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Unpackers/ArmStripper01b6.rar', '2017-04-10 04:09:19')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php/Echo_Mirage', '2017-04-08 16:34:47')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://185.62.190.110/accessroot/arteam/site/download.php?view.331', '2017-04-05 05:34:20')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_Unpacker_PECompact_2014-1-15_15.34_Unpacker_PECompact.rar', '2017-04-02 21:39:34')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/forum/forum.php', '2017-03-24 13:36:54')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/Bin_Superkill_2009-6-4_22.16_Superkill-V1.0.zip', '2017-03-16 01:02:57')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Wm.zip', '2017-03-16 01:02:57')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Cdtools.zip', '2017-03-16 01:02:57')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/FLEXlm/Lmv8gen.zip', '2017-03-15 18:06:40')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/krobar/collections/tkc/06.zip', '2017-03-14 19:32:26')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Archives/Crackmes.zip', '2017-03-14 19:32:26')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/knowledge/images/bin_virut.a_malware_analysis_paper_2010-9-3_15.53_virut.a.rar', '2017-03-14 14:34:44')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/index.php', '2017-03-14 09:22:56')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/krobar/collections/stones.zip', '2017-03-11 00:34:59')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/fravia/sources/WINUSER.H', '2017-03-08 11:57:20')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/bin_chimprec_2008-6-24_13.59_chimprec.zip|&gt;chimprec.exe', '2017-03-08 11:15:11')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/tools/images/', '2017-03-03 07:12:55')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/krobar/collections/id-site.zip', '2017-02-24 01:16:48')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/collaborative/knowledge/images/Bin_Stuxnet&', '2017-02-15 15:19:26')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/BobSoft/Files/Other/PEiD-0.95-20081103.zip', '2017-02-15 00:46:58')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://www[.]woodmann.com/crackz/Tools/Miscarc.zip', '2017-02-09 14:37:08')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/pack/icepack.mp3.lz', '2016-10-09 15:24:40')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/pack/efect.txt.lz', '2016-10-09 15:24:40')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/lib/__future__.pyc.lz', '2016-10-09 15:24:39')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/miles/mssa3d.m3d.lz', '2016-10-09 15:24:39')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/app/normalize.css', '2016-10-09 15:24:37')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/bgm/xmas.mp3.lz', '2016-10-09 15:24:38')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2sometimes/client/devil.dll.lz', '2016-10-09 15:24:37')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2asgard/client/mark/10.tga.lz', '2016-09-27 17:36:49')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://cl0.f-aws.com/metin2asgard/client/mark/10_1.tga.lz', '2016-09-27 17:34:08')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://185.62.190.110/Deutsche-Bank/db/erfolg.html', '2016-03-07 08:56:47')
-</span><span class='line'>[+] VT Mal URLs: ('hxxp://185.62.190.110/Deutsche-Bank/db/db.php', '2016-02-29 13:36:45')
-</span><span class='line'>[+] Blacklist from IPVoid: No results found
-</span><span class='line'>[+] ISP from IPvoid: No results found
-</span><span class='line'>[+] Country from IPVoid: No results found
-</span><span class='line'>[+] Malc0de Date: No results found
-</span><span class='line'>[+] Malc0de IP: No results found
-</span><span class='line'>[+] Malc0de Country: No results found
-</span><span class='line'>[+] Malc0de ASN: No results found
-</span><span class='line'>[+] Malc0de ASN Name: No results found
-</span><span class='line'>[+] Malc0de MD5: No results found
-</span><span class='line'>[+] Reputation Authority Score: 50/100
-</span><span class='line'>[+] FreeGeoIP Country Name: Netherlands
-</span><span class='line'>[+] FreeGeoIP Region Name: No results found
-</span><span class='line'>[+] FreeGeoIP City: No results found
-</span><span class='line'>[+] FreeGeoIP Zipcode: No results found
-</span><span class='line'>[+] FreeGeoIP Latitude: 52.3824
-</span><span class='line'>[+] FreeGeoIP Longitude: 4.8995
-</span><span class='line'>[+] SANS total target IPs seen: No results found
-</span><span class='line'>[+] SANS total packets blocked: No results found
-</span><span class='line'>[+] SANS last seen on: No results found
-</span><span class='line'>[+] SANS first seen on: No results found
-</span><span class='line'>No results found in the THIP
-</span><span class='line'>No results found in the TekHP
-</span><span class='line'>[+] ProjectHoneypot activity type: No results found
-</span><span class='line'>[+] ProjectHoneypot first mail received: No results found
-</span><span class='line'>[+] ProjectHoneypot last mail received: No results found
-</span><span class='line'>[+] ProjectHoneypot total mails received: No results found
-</span><span class='line'>[+] ProjectHoneypot spider first seen: No results found
-</span><span class='line'>[+] ProjectHoneypot spider last seen: No results found
-</span><span class='line'>[+] ProjectHoneypot spider sightings: No results found
-</span><span class='line'>[+] ProjectHoneypot user-agent sightings: No results found
-</span><span class='line'>[+] ProjectHoneypot first post on: No results found
-</span><span class='line'>[+] ProjectHoneypot last post on: No results found
-</span><span class='line'>[+] ProjectHoneypot form posts: No results found
-</span><span class='line'>[+] ProjectHoneypot first rule break on: No results found
-</span><span class='line'>[+] ProjectHoneypot last rule break on: No results found
-</span><span class='line'>[+] ProjectHoneypot rule break sightings: No results found
-</span><span class='line'>[+] ProjectHoneypot first dictionary attack on: No results found
-</span><span class='line'>[+] ProjectHoneypot last dictionary attack on: No results found
-</span><span class='line'>[+] ProjectHoneypot dictionary attack sightings: No results found
-</span><span class='line'>[+] ProjectHoneypot harvester first seen: No results found
-</span><span class='line'>[+] ProjectHoneypot harvester last seen: No results found
-</span><span class='line'>[+] ProjectHoneypot harvester sightings: No results found
-</span><span class='line'>[+] ProjectHoneypot harvester results: No results found</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I&rsquo;ve used the IP of the Woodmann reverse engineering community. From the output, you can see that it&rsquo;s clean, excepting some files flagged by VirusTotal, as would be expected from a place where executable samples are shared for RE :)</p>
-
-<ul>
-<li>check domain for malware</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>automater corefitness.info
-</span><span class='line'>/usr/lib/python2.7/dist-packages/urllib3/connectionpool.py:845: InsecureRequestWarning: Unverified HTTPS request is being made. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
-</span><span class='line'>  InsecureRequestWarning)
-</span><span class='line'>
-</span><span class='line'>____________________     Results found for: corefitness.info     ____________________
-</span><span class='line'>No results found in the FNet URL
-</span><span class='line'>No results found in the Un Redirect
-</span><span class='line'>[+] IP from URLVoid: 76.74.155.21
-</span><span class='line'>[+] Blacklist from URLVoid: No results found
-</span><span class='line'>[+] Domain Age from URLVoid: 2009-12-08 (8 years ago)
-</span><span class='line'>[+] Geo Coordinates from URLVoid: 40.6888 / -74.0203
-</span><span class='line'>[+] Country from URLVoid:  (US) United States
-</span><span class='line'>[+] pDNS data from VirusTotal: ('2017-04-02', '107.180.51.40')
-</span><span class='line'>[+] pDNS data from VirusTotal: ('2016-12-14', '76.74.155.21')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-06-10', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-06-09', 'hxxp://corefitness.info/b/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-06-07', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-04-04', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-03-16', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-03-08', 'hxxp://corefitness.info/workouts/men/arms/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-03-07', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-02-25', 'hxxp://corefitness.info/workouts/women/arms/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2017-02-05', 'hxxp://corefitness.info/workouts/men/arms/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2016-12-23', 'hxxp://corefitness.info/b/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2016-12-22', 'hxxp://corefitness.info/')
-</span><span class='line'>[+] pDNS malicious URLs from VirusTotal: ('2016-12-21', 'hxxp://corefitness.info/1.exe/')
-</span><span class='line'>[+] Malc0de Date: No results found
-</span><span class='line'>[+] Malc0de IP: No results found
-</span><span class='line'>[+] Malc0de Country: No results found
-</span><span class='line'>[+] Malc0de ASN: No results found
-</span><span class='line'>[+] Malc0de ASN Name: No results found
-</span><span class='line'>[+] Malc0de MD5: No results found
-</span><span class='line'>No results found in the THIP
-</span><span class='line'>[+] McAfee Web Risk: No results found
-</span><span class='line'>[+] McAfee Web Category: No results found
-</span><span class='line'>[+] McAfee Last Seen: No results found</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here I picked a random URL from the <a href="https://isc.sans.edu/feeds/suspiciousdomains_High.txt">SANS suspicious domains list</a>. It seems that if your search for fitness leads you there, your computer won&rsquo;t be very fit D:</p>
-
-<ul>
-<li>chech hash for maliciousness</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>automater b9318a66fa7f50f2f3ecaca02a96268ad2c63db7554ea3acbde43bf517328d06
-</span><span class='line'>/usr/lib/python2.7/dist-packages/urllib3/connectionpool.py:845: InsecureRequestWarning: Unverified HTTPS request is being made. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
-</span><span class='line'>  InsecureRequestWarning)
-</span><span class='line'>
-</span><span class='line'>____________________     Results found for: b9318a66fa7f50f2f3ecaca02a96268ad2c63db7554ea3acbde43bf517328d06     ____________________
-</span><span class='line'>[+] MD5 found on VT: 1
-</span><span class='line'>[+] Scan date submitted: 2017-06-09 04:35:58
-</span><span class='line'>[+] Detected Engines: 54
-</span><span class='line'>[+] Total Engines: 61
-</span><span class='line'>[+] Vendor | Classification: ('MicroWorld-eScan', 'Trojan.Ransom.WannaCryptor.H')
-</span><span class='line'>[+] Vendor | Classification: ('nProtect', 'Ransom/W32.WannaCry.Zen')
-</span><span class='line'>[+] Vendor | Classification: ('CAT-QuickHeal', 'Ransom.WannaCrypt.A4')
-</span><span class='line'>[+] Vendor | Classification: ('McAfee', 'Ransom-WannaCry!4287E15AF619')
-</span><span class='line'>[+] Vendor | Classification: ('Malwarebytes', 'Ransom.WannaCrypt')
-</span><span class='line'>[+] Vendor | Classification: ('Zillya', 'Trojan.WannaCryptGen.Win32.2')
-</span><span class='line'>[+] Vendor | Classification: ('SUPERAntiSpyware', 'Ransom.WannaCrypt/Variant')
-</span><span class='line'>[+] Vendor | Classification: ('K7GW', 'Exploit ( 0050d7a31 )')
-</span><span class='line'>[+] Vendor | Classification: ('K7AntiVirus', 'Exploit ( 0050d7a31 )')
-</span><span class='line'>[+] Vendor | Classification: ('Arcabit', 'Trojan.Ransom.WannaCryptor.H')
-</span><span class='line'>[+] Vendor | Classification: ('Baidu', 'Win32.Worm.Rbot.a')
-</span><span class='line'>[+] Vendor | Classification: ('Cyren', 'W32/Trojan.ZTSA-8671')
-</span><span class='line'>[+] Vendor | Classification: ('Symantec', 'Ransom.Wannacry')
-</span><span class='line'>[+] Vendor | Classification: ('TrendMicro-HouseCall', 'Ransom_WCRY.SMB')
-</span><span class='line'>[+] Vendor | Classification: ('Avast', 'Win32:WanaCry-A [Trj]')
-</span><span class='line'>[+] Vendor | Classification: ('Kaspersky', 'Trojan-Ransom.Win32.Wanna.m')
-</span><span class='line'>[+] Vendor | Classification: ('BitDefender', 'Trojan.Ransom.WannaCryptor.H')
-</span><span class='line'>[+] Vendor | Classification: ('NANO-Antivirus', 'Trojan.Win32.Wanna.eovgam')
-</span><span class='line'>[+] Vendor | Classification: ('AegisLab', 'Troj.Ransom.W32.Wanna.toNz')
-</span><span class='line'>[+] Vendor | Classification: ('Ad-Aware', 'Trojan.Ransom.WannaCryptor.H')
-</span><span class='line'>[+] Vendor | Classification: ('Emsisoft', 'Trojan-Ransom.WanaCrypt0r (A)')
-</span><span class='line'>[+] Vendor | Classification: ('Comodo', 'UnclassifiedMalware')
-</span><span class='line'>[+] Vendor | Classification: ('F-Secure', 'Trojan.Ransom.WannaCryptor.H')
-</span><span class='line'>[+] Vendor | Classification: ('DrWeb', 'Trojan.Encoder.11432')
-</span><span class='line'>[+] Vendor | Classification: ('VIPRE', 'Trojan.Win32.Generic!BT')
-</span><span class='line'>[+] Vendor | Classification: ('TrendMicro', 'Ransom_WCRY.SMB')
-</span><span class='line'>[+] Vendor | Classification: ('McAfee-GW-Edition', 'Ransom-WannaCry!4287E15AF619')
-</span><span class='line'>[+] Vendor | Classification: ('Sophos', 'Troj/Ransom-EMG')
-</span><span class='line'>[+] Vendor | Classification: ('SentinelOne', 'static engine - malicious')
-</span><span class='line'>[+] Vendor | Classification: ('F-Prot', 'W32/WannaCrypt.D')
-</span><span class='line'>[+] Vendor | Classification: ('Jiangmin', 'Trojan.WanaCry.i')
-</span><span class='line'>[+] Vendor | Classification: ('Webroot', 'W32.Ransom.Wannacry')
-</span><span class='line'>[+] Vendor | Classification: ('Avira', 'BDS/Agent.ilyda')
-</span><span class='line'>[+] Vendor | Classification: ('Endgame', 'malicious (high confidence)')
-</span><span class='line'>[+] Vendor | Classification: ('Microsoft', 'Ransom:Win32/WannaCrypt.A!rsm')
-</span><span class='line'>[+] Vendor | Classification: ('ZoneAlarm', 'Trojan-Ransom.Win32.Wanna.m')
-</span><span class='line'>[+] Vendor | Classification: ('ALYac', 'Trojan.Ransom.WannaCryptor')
-</span><span class='line'>[+] Vendor | Classification: ('AVware', 'Trojan.Win32.Generic!BT')
-</span><span class='line'>[+] Vendor | Classification: ('VBA32', 'Trojan.Filecoder')
-</span><span class='line'>[+] Vendor | Classification: ('ESET-NOD32', 'Win32/Exploit.CVE-2017-0147.A')
-</span><span class='line'>[+] Vendor | Classification: ('Tencent', 'Win32.Trojan.Raas.Auto')
-</span><span class='line'>[+] Vendor | Classification: ('Yandex', 'Exploit.CVE-2017-0147!')
-</span><span class='line'>[+] Vendor | Classification: ('Ikarus', 'Trojan-Ransom.WannaCry')
-</span><span class='line'>[+] Vendor | Classification: ('Fortinet', 'W32/WannaCryptor.H!tr')
-</span><span class='line'>[+] Vendor | Classification: ('AVG', 'Win32:WanaCry-A [Trj]')
-</span><span class='line'>[+] Vendor | Classification: ('Panda', 'Trj/RansomCrypt.I')
-</span><span class='line'>[+] Vendor | Classification: ('CrowdStrike', 'malicious_confidence_100% (W)')
-</span><span class='line'>[+] Vendor | Classification: ('Qihoo-360', 'HEUR/QVM41.2.2698.Malware.Gen')
-</span><span class='line'>[+] Hash found at ThreatExpert: No results found
-</span><span class='line'>[+] Malicious Indicators from ThreatExpert: No results found
-</span><span class='line'>[+] Date found at VXVault: No results found
-</span><span class='line'>[+] URL found at VXVault: No results found
-</span><span class='line'>[+] Malc0de Date: No results found
-</span><span class='line'>[+] Malc0de IP: No results found
-</span><span class='line'>[+] Malc0de Country: No results found
-</span><span class='line'>[+] Malc0de ASN: No results found
-</span><span class='line'>[+] Malc0de ASN Name: No results found
-</span><span class='line'>[+] Malc0de MD5: No results found
-</span><span class='line'>No results found in the THMD5</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I&rsquo;ve grabbed a WannaCry hash and threw it at Automater, you can see it picked it up right away.</p>
-
-<ul>
-<li>HTML report of a scan</li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/tools/automater.png" title="automater" alt="automater HTML report"></p>
-
-<p><strong>Learn more:</strong></p>
-
-<p>One of the cool features of Automater is its extensibility. You can add sites to the XML configuration file, and customize it to meet your needs. For further instructions about how to do that, check out the <a href="http://www.tekdefense.com/news/2013/12/10/the-extensibility-of-automater.html">author&rsquo;s post</a></p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>__________________________
-</span><span class='line'>&lt; Condense soup, not books! &gt;
-</span><span class='line'> ---------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
 ]]></content>
   </entry>
   
