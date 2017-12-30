@@ -4,7 +4,7 @@ title: "LFCS prep - Resetting root password on CentOS 7"
 date: 2017-11-11 16:53:18 -0500
 comments: true
 categories: [linux, sysadmin]
-keywords: reset root password, centos root, centos reset, centos reset root password
+keywords: reset root password, centos root, centos reset, centos reset root password, lfcs, rhcsa, red hat reset root password, lfcsa
 description: How to reset root password on CentOS 7
 ---
 
