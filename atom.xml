@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2017-12-30T06:11:29-05:00</updated>
+  <updated>2018-01-05T16:36:58-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,182 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Securing SSH]]></title>
+    <link href="http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/"/>
+    <updated>2018-01-05T16:30:55-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh</id>
+    <content type="html"><![CDATA[<p>SSH-ing between various systems is something you will definitely be doing a lot in infosec. So today I&rsquo;ll quickly go over an exam objective of configuring SSH for key based authentication and disabling root logins for extra security.</p>
+
+<!-- more -->
+
+
+<p>First of all, let&rsquo;s confirm that I can SSH to my machine as root and login with root&rsquo;s password:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
+</span><span class='line'>The authenticity of host '192.168.217.129 (192.168.217.129)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added '192.168.217.129' (ECDSA) to the list of known hosts.
+</span><span class='line'>root@192.168.217.129's password: 
+</span><span class='line'>Last login: Fri Jan  5 14:04:25 2018
+</span><span class='line'>[root@CentOS7 ~]# </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The CentOS server&rsquo;s public key has been added to <code>~/.ssh/known_hosts</code> on my client machine, and I was able to login as root with no problem. Now it&rsquo;s time to change these dangerous defaults. On the client, generate a new pair of keys:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-keygen
+</span><span class='line'>Generating public/private rsa key pair.
+</span><span class='line'>Enter file in which to save the key (/root/.ssh/id_rsa): 
+</span><span class='line'>Enter passphrase (empty for no passphrase): 
+</span><span class='line'>Enter same passphrase again: 
+</span><span class='line'>Your identification has been saved in /root/.ssh/id_rsa.
+</span><span class='line'>Your public key has been saved in /root/.ssh/id_rsa.pub.
+</span><span class='line'>The key fingerprint is:
+</span><span class='line'>SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali
+</span><span class='line'>The key's randomart image is:
+</span><span class='line'>+---[RSA 2048]----+
+</span><span class='line'>|                 |
+</span><span class='line'>|   .             |
+</span><span class='line'>|  . . .          |
+</span><span class='line'>|   + o +         |
+</span><span class='line'>|  E.=++ S        |
+</span><span class='line'>|.*oOo +o .       |
+</span><span class='line'>|=*=o+ ... =      |
+</span><span class='line'>|==Bo =.. . =     |
+</span><span class='line'>|.=+++++ . .      |
+</span><span class='line'>+----[SHA256]-----+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now you have a private and public key inside the .ssh directory. Take a look at their permissions:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rw-------  1 root root 1675 Jan  5 16:10 id_rsa
+</span><span class='line'>-rw-r--r--  1 root root  391 Jan  5 16:10 id_rsa.pub</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The private key has read and write permissions only for the owner (600), while the public key has read/write permissions for the owner, and read also for group and others (644).</p>
+
+<p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-copy-id root@192.168.217.129
+</span><span class='line'>The authenticity of host '192.168.217.129 (192.168.217.129)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+</span><span class='line'>/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+</span><span class='line'>root@192.168.217.129's password: 
+</span><span class='line'>
+</span><span class='line'>Number of key(s) added: 1
+</span><span class='line'>
+</span><span class='line'>Now try logging into the machine, with:   "ssh 'root@192.168.217.129'"
+</span><span class='line'>and check to make sure that only the key(s) you wanted were added.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you get the error <strong>sign_and_send_pubkey: signing failed: agent refused operation</strong> when trying to SSH to the server, run <em>*ssh-add</em> to add the private key identities to the authentication agent. You can then verify they were added:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-add -l
+</span><span class='line'>2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI /root/.ssh/id_rsa (RSA)
+</span><span class='line'>2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali (RSA)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now you should be able to login with the public key:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
+</span><span class='line'>Last login: Fri Jan  5 15:06:34 2018 from 192.168.217.132
+</span><span class='line'>[root@CentOS7 ~]# </span></code></pre></td></tr></table></div></figure>
+
+
+<p>That worked, but we don&rsquo;t want root to be able to directly SSH into our host. So edit the <code>/etc/ssh/sshd_config</code> file on the server. The default settings are commented, and you can add your own changes and leave them uncommented to override the defaults. I added the following to disable root login and password authentication:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PermitRootLogin no
+</span><span class='line'>PasswordAuthentication no</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Restart ssh and try to login again:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
+</span><span class='line'>root@192.168.217.129: Permission denied (publickey,gssapi-keyex,gssapi-with-mic).</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In practice, you would generate your keys for an account that you will use on that system and if needed, give it sudo privileges to do the work you need.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
+</span><span class='line'>/ You learn to write as if to someone \
+</span><span class='line'>| else because NEXT YEAR YOU WILL BE  |
+</span><span class='line'>\ "SOMEONE ELSE."                     /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pwning Kevgir]]></title>
@@ -9617,7 +9793,7 @@ work against other vulnerable SMTP daemons, but this hasn’t been done as of v1
 </span><span class='line'>ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCuO5LOA1EIJeaFJHHic7NRNIUvOhBApq7CSu7PAM/THU4hngoZ4kglgFC9QdbsfQsRWLHsDmNcAAGLzIKwkLYXWYanBK/7xdmRmtGf0Sr32zZ4NaXP9B228fjUu5LSi42X/9HcfL9QdfXuB336OvXo43sDzLifrzoiBzlviZV55+uVd+/hI0GCRE3Yi9JrLs1A6NhuHq8xtRLJURhuGwoouA2tGZ+6fSr7t23bC1emBnyUiy2hu/4oS9tLvvptPv1Md9E+Ire6XMjZzCJufcSqiMVrVefnWv5j460TjHhKP7aq23nbzlxMqkZ8r9ovm5KW0UWWWyVPkOFSxPgFEaRr vulnix@kali</span></code></pre></td></tr></table></div></figure>
 
 
-<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#118;&#x75;&#x6c;&#x6e;&#105;&#x78;&#x40;&#x31;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#46;&#50;&#49;&#x37;&#46;&#x31;&#52;&#50;">&#118;&#x75;&#x6c;&#110;&#x69;&#x78;&#x40;&#x31;&#57;&#x32;&#46;&#49;&#54;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#x34;&#x32;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
+<p>And I was able to login with the key: <code>ssh -i /tmp/vulnix <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#x76;&#117;&#108;&#110;&#x69;&#120;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#55;&#46;&#49;&#52;&#x32;">&#118;&#117;&#108;&#110;&#x69;&#120;&#64;&#x31;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#x31;&#55;&#46;&#49;&#x34;&#50;</a></code>. After some enumeration, I discovered that the vulnix user can edit <code>/etc/exports</code> with sudo privileges:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -10453,205 +10629,6 @@ functionality to enum.exe formerly available from www.bindview.com.</p>
 </span><span class='line'>/ Your lucky number is 3552664958674928. \
 </span><span class='line'>\ Watch for it everywhere.               /
 </span><span class='line'> ----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Netdiscover - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/16/netdiscover-kali-linux-tools/"/>
-    <updated>2017-06-16T13:05:44-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/16/netdiscover-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: a tool that can be used to perform ARP reconaissance and discover hosts on the local network. You could do that with Nmap too, but here netdiscover shines!</p>
-
-<!-- more -->
-
-
-<p>Homepage: <a href="https://github.com/alexxy/netdiscover">https://github.com/alexxy/netdiscover</a></p>
-
-<h2>Netdiscover description</h2>
-
-<blockquote><p>netdiscover is an  active/passive  arp  reconnaissance  tool,  initialy
-developed  to  gain  information  about  wireless networks without dhcp
-servers in wardriving scenarios.  It  can  also  be  used  on  switched
-networks.  Built  on top of libnet and libpcap, it can passively detect
-online hosts or search for them by sending arp requests.</p>
-
-<p>Furthermore, it can be used to inspect your network&rsquo;s arp  traffic,  or
-find network addresses using auto scan mode, which will scan for common
-local networks.</p></blockquote>
-
-<p>Manpage: <a href="http://manpages.ubuntu.com/manpages/precise/man8/netdiscover.8.html">http://manpages.ubuntu.com/manpages/precise/man8/netdiscover.8.html</a></p>
-
-<h2>Netdiscover options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Netdiscover 0.3-pre-beta7 [Active/passive arp reconnaissance tool]
-</span><span class='line'>Written by: Jaime Penalba &lt;jpenalbae@gmail.com&gt;
-</span><span class='line'>
-</span><span class='line'>Usage: netdiscover [-i device] [-r range | -l file | -p] [-m file] [-s time] [-n node] [-c count] [-f] [-d] [-S] [-P] [-c]
-</span><span class='line'>  -i device: your network device
-</span><span class='line'>  -r range: scan a given range instead of auto scan. 192.168.6.0/24,/16,/8
-</span><span class='line'>  -l file: scan the list of ranges contained into the given file
-</span><span class='line'>  -p passive mode: do not send anything, only sniff
-</span><span class='line'>  -m file: scan the list of known MACs and host names
-</span><span class='line'>  -F filter: Customize pcap filter expression (default: "arp")
-</span><span class='line'>  -s time: time to sleep between each arp request (milliseconds)
-</span><span class='line'>  -n node: last ip octet used for scanning (from 2 to 253)
-</span><span class='line'>  -c count: number of times to send each arp reques (for nets with packet loss)
-</span><span class='line'>  -f enable fastmode scan, saves a lot of time, recommended for auto
-</span><span class='line'>  -d ignore home config files for autoscan and fast mode
-</span><span class='line'>  -S enable sleep time supression between each request (hardcore mode)
-</span><span class='line'>  -P print results in a format suitable for parsing by another program
-</span><span class='line'>  -N Do not print header. Only valid when -P is enabled.
-</span><span class='line'>  -L in parsable output mode (-P), continue listening after the active scan is completed
-</span><span class='line'>
-</span><span class='line'>If -r, -l or -p are not enabled, netdiscover will scan for common lan addresses.</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Netdiscover usage</h2>
-
-<p>Simply typing netdiscover at the terminal will launch its autoscan. The screen is interactive, and you can see new hosts as they appear.</p>
-
-<ul>
-<li>scan range</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>netdiscover -r 192.168.217.0/24
-</span><span class='line'>Currently scanning: Finished!   |   Screen View: Unique Hosts                                                                                      
-</span><span class='line'>                                                                                                                                                    
-</span><span class='line'> 3 Captured ARP Req/Rep packets, from 3 hosts.   Total size: 180                                                                                    
-</span><span class='line'> _____________________________________________________________________________
-</span><span class='line'>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname      
-</span><span class='line'> -----------------------------------------------------------------------------
-</span><span class='line'> 192.168.217.1   00:50:56:c0:00:08      1      60  Unknown vendor                                                                                   
-</span><span class='line'> 192.168.217.2   00:50:56:fc:f6:8b      1      60  Unknown vendor                                                                                   
-</span><span class='line'> 192.168.217.254 00:50:56:f2:e2:e6      1      60  Unknown vendor     </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>passive scan (don&rsquo;t send anything, just sniff)</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>netdiscover -p
-</span><span class='line'> Currently scanning: (passive)   |   Screen View: Unique Hosts                                                                                      
-</span><span class='line'>                                                                                                                                                    
-</span><span class='line'> 2 Captured ARP Req/Rep packets, from 2 hosts.   Total size: 120                                                                                    
-</span><span class='line'> _____________________________________________________________________________
-</span><span class='line'>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname      
-</span><span class='line'> -----------------------------------------------------------------------------
-</span><span class='line'> 192.168.217.2   00:50:56:fc:f6:8b      1      60  Unknown vendor                                                                                   
-</span><span class='line'> 192.168.217.138 00:0c:29:43:d4:3e      1      60  Unknown vendor      </span></code></pre></td></tr></table></div></figure>
-
-
-<p>This takes longer, because netdiscover is waiting to see the ARP requests and replies between other hosts</p>
-
-<ul>
-<li>fast scan</li>
-</ul>
-
-
-<blockquote><p>-f     Enable  fast  mode  scan. This will only scan for .1, .100 and .254 on each network. This mode is useful while
-searching for ranges being used. After you found such range you can make a specific range scan to find online boxes.</p></blockquote>
-
-<ul>
-<li>produce parseable output and stop after scanning</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# netdiscover -r 192.168.217.0/24 -P
-</span><span class='line'> _____________________________________________________________________________
-</span><span class='line'>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname      
-</span><span class='line'> -----------------------------------------------------------------------------
-</span><span class='line'> 192.168.217.1   00:50:56:c0:00:08      1      60  Unknown vendor
-</span><span class='line'> 192.168.217.2   00:50:56:fc:f6:8b      1      60  Unknown vendor
-</span><span class='line'> 192.168.217.138 00:0c:29:43:d4:3e      1      60  Unknown vendor
-</span><span class='line'> 192.168.217.254 00:50:56:f2:e2:e6      1      60  Unknown vendor
-</span><span class='line'>
-</span><span class='line'>-- Active scan completed, 4 Hosts found.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Cookie:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>_____________________________________
-</span><span class='line'>/ F.S. Fitzgerald to Hemingway:        \
-</span><span class='line'>|                                      |
-</span><span class='line'>| "Ernest, the rich are different from |
-</span><span class='line'>| us." Hemingway:                      |
-</span><span class='line'>|                                      |
-</span><span class='line'>\ "Yes. They have more money."         /
-</span><span class='line'> --------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
