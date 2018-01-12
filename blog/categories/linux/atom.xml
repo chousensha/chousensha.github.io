@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-01-05T16:36:58-05:00</updated>
+  <updated>2018-01-12T15:03:16-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,611 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - NetworkManager configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration/"/>
+    <updated>2018-01-11T13:31:50-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look over configuring various network settings with <strong>nmcli</strong>, the command line tool for NetworkManager.</p>
+
+<!-- more -->
+
+
+<p>The first step is to understand how network configuration settings look. Inside the <code>/etc/sysconfig/network-scripts/</code> directory, you can find config files for your network interfaces, under the format of <strong>ifcfg-name</strong>. On my system, it looks like this:</p>
+
+<p><code>
+cat ifcfg-Wired_connection_1
+HWADDR=00:0C:29:47:D7:A8
+TYPE=Ethernet
+BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME="Wired connection 1"
+UUID=8d922966-5be4-4633-a99d-71e836e2b31a
+ONBOOT=yes
+DNS1=8.8.8.8
+PEERDNS=yes
+PEERROUTES=yes
+IPV6_PEERDNS=yes
+IPV6_PEERROUTES=yes
+</code></p>
+
+<p>You can find a more complete overview of the options at <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html">https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html</a> , but from a glance at this file, we see the interface is an Ethernet device, it uses DHCP, it&rsquo;s set as the default route for both IPv4 and IPv6 traffic, it&rsquo;s activated at boot time, and also some other details like its MAC address and name.</p>
+
+<p>nmcli is a very powerful tool, and you can press Tab to see options for its use at every stage.</p>
+
+<p>```
+nmcli help
+Usage: nmcli [OPTIONS] OBJECT { COMMAND | help }</p>
+
+<p>OPTIONS
+  -t[erse]                                   terse output
+  -p[retty]                                  pretty output
+  -m[ode] tabular|multiline                  output mode
+  -c[olors] auto|yes|no                      whether to use colors in output
+  -f[ields] &lt;field1,field2,&hellip;>|all|common   specify fields to output
+  -e[scape] yes|no                           escape columns separators in values
+  -a[sk]                                     ask for missing parameters
+  -s[how-secrets]                            allow displaying passwords
+  -w[ait] <seconds>                          set timeout waiting for finishing operations
+  -v[ersion]                                 show program version
+  -h[elp]                                    print this help</p>
+
+<p>OBJECT
+  g[eneral]       NetworkManager&rsquo;s general status and operations
+  n[etworking]    overall networking control
+  r[adio]         NetworkManager radio switches
+  c[onnection]    NetworkManager&rsquo;s connections
+  d[evice]        devices managed by NetworkManager
+  a[gent]         NetworkManager secret agent or polkit agent
+  m[onitor]       monitor NetworkManager changes
+```</p>
+
+<p>Here we will go over a few examples:</p>
+
+<h2>Device options</h2>
+
+<p>```
+nmcli device help
+Usage: nmcli device { COMMAND | help }</p>
+
+<p>COMMAND := { status | show | set | connect | reapply | modify | disconnect | delete | monitor | wifi | lldp }</p>
+
+<p>  status</p>
+
+<p>  show [<ifname>]</p>
+
+<p>  set [ifname] <ifname> [autoconnect yes|no] [managed yes|no]</p>
+
+<p>  connect <ifname></p>
+
+<p>  reapply <ifname></p>
+
+<p>  modify <ifname> ([+|&ndash;]<setting>.<property> <value>)+</p>
+
+<p>  disconnect <ifname> &hellip;</p>
+
+<p>  delete <ifname> &hellip;</p>
+
+<p>  monitor <ifname> &hellip;</p>
+
+<p>  wifi [list [ifname <ifname>] [bssid <BSSID>]]</p>
+
+<p>  wifi connect &lt;(B)SSID> [password <password>] [wep-key-type key|phrase] [ifname <ifname>]</p>
+
+<pre><code>                     [bssid &lt;BSSID&gt;] [name &lt;name&gt;] [private yes|no] [hidden yes|no]
+</code></pre>
+
+<p>  wifi hotspot [ifname <ifname>] [con-name <name>] [ssid <SSID>] [band a|bg] [channel <channel>] [password <password>]</p>
+
+<p>  wifi rescan [ifname <ifname>] [[ssid <SSID to scan>] &hellip;]</p>
+
+<p>  lldp [list [ifname <ifname>]]
+```</p>
+
+<ul>
+<li>show device status</li>
+</ul>
+
+
+<p><code>
+nmcli dev status
+DEVICE      TYPE      STATE      CONNECTION         
+virbr0      bridge    connected  virbr0             
+enp0s3      ethernet  connected  Wired connection 1
+lo          loopback  unmanaged  --                 
+virbr0-nic  tun       unmanaged  --          
+</code></p>
+
+<ul>
+<li>list device details</li>
+</ul>
+
+
+<p><code>
+nmcli dev show enp0s3
+GENERAL.DEVICE:                         enp0s3
+GENERAL.TYPE:                           ethernet
+GENERAL.HWADDR:                         00:0C:29:47:D7:A8
+GENERAL.MTU:                            1500
+GENERAL.STATE:                          100 (connected)
+GENERAL.CONNECTION:                     Wired connection 1
+GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/0
+WIRED-PROPERTIES.CARRIER:               on
+IP4.ADDRESS[1]:                         192.168.241.130/24
+IP4.GATEWAY:                            192.168.241.2
+IP4.DNS[1]:                             192.168.241.2
+IP4.DNS[2]:                             8.8.8.8
+IP4.DOMAIN[1]:                          localdomain
+IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
+IP6.GATEWAY:                            
+</code></p>
+
+<h2>Connection options</h2>
+
+<p>```
+nmcli con help
+Usage: nmcli connection { COMMAND | help }</p>
+
+<p>COMMAND := { show | up | down | add | modify | clone | edit | delete | monitor | reload | load | import | export }</p>
+
+<p>  show [&mdash;active] [&mdash;order <order spec>]
+  show [&mdash;active] [id | uuid | path | apath] <ID> &hellip;</p>
+
+<p>  up [[id | uuid | path] <ID>] [ifname <ifname>] [ap <BSSID>] [passwd-file <file with passwords>]</p>
+
+<p>  down [id | uuid | path | apath] <ID> &hellip;</p>
+
+<p>  add COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [&mdash; ([+|&ndash;]<setting>.<property> <value>)+]</p>
+
+<p>  modify [&mdash;temporary] [id | uuid | path] <ID> ([+|&ndash;]<setting>.<property> <value>)+</p>
+
+<p>  clone [&mdash;temporary] [id | uuid | path ] <ID> <new name></p>
+
+<p>  edit [id | uuid | path] <ID>
+  edit [type &lt;new_con_type>] [con-name &lt;new_con_name>]</p>
+
+<p>  delete [id | uuid | path] <ID></p>
+
+<p>  monitor [id | uuid | path] <ID> &hellip;</p>
+
+<p>  reload</p>
+
+<p>  load <filename> [ <filename>&hellip; ]</p>
+
+<p>  import [&mdash;temporary] type <type> file <file to import></p>
+
+<p>  export [id | uuid | path] <ID> [<output file>]
+```</p>
+
+<ul>
+<li>look at the available connections and list only the active ones</li>
+</ul>
+
+
+<p><code>
+nmcli con show
+NAME                UUID                                  TYPE            DEVICE
+Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3
+virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
+enp0s3              b4c32cc7-c5ff-451c-8af2-9b9124050f99  802-3-ethernet  --  
+nmcli con show --active
+NAME                UUID                                  TYPE            DEVICE
+Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3
+virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
+</code></p>
+
+<ul>
+<li>list the settings of a particular connection (the double quotes aren&rsquo;t mandatory)</li>
+</ul>
+
+
+<p><code>
+nmcli con show "Wired connection 1"
+connection.id:                          Wired connection 1
+connection.uuid:                        8d922966-5be4-4633-a99d-71e836e2b31a
+connection.stable-id:                   --
+connection.interface-name:              --
+connection.type:                        802-3-ethernet
+connection.autoconnect:                 yes
+connection.autoconnect-priority:        0
+connection.timestamp:                   1515583502
+connection.read-only:                   no
+connection.permissions:                 
+connection.zone:                        --
+connection.master:                      --
+connection.slave-type:                  --
+connection.autoconnect-slaves:          -1 (default)
+connection.secondaries:                 
+connection.gateway-ping-timeout:        0
+connection.metered:                     unknown
+connection.lldp:                        -1 (default)
+802-3-ethernet.port:                    --
+802-3-ethernet.speed:                   0
+802-3-ethernet.duplex:                  --
+802-3-ethernet.auto-negotiate:          yes
+802-3-ethernet.mac-address:             00:0C:29:47:D7:A8
+802-3-ethernet.cloned-mac-address:      --
+802-3-ethernet.generate-mac-address-mask:--
+802-3-ethernet.mac-address-blacklist:   
+802-3-ethernet.mtu:                     auto
+802-3-ethernet.s390-subchannels:        
+802-3-ethernet.s390-nettype:            --
+802-3-ethernet.s390-options:            
+802-3-ethernet.wake-on-lan:             1 (default)
+802-3-ethernet.wake-on-lan-password:    --
+ipv4.method:                            auto
+ipv4.dns:                               8.8.8.8
+ipv4.dns-search:                        
+ipv4.dns-options:                       (default)
+ipv4.dns-priority:                      0
+ipv4.addresses:                         
+ipv4.gateway:                           --
+ipv4.routes:                            
+ipv4.route-metric:                      -1
+ipv4.ignore-auto-routes:                no
+ipv4.ignore-auto-dns:                   no
+ipv4.dhcp-client-id:                    --
+ipv4.dhcp-timeout:                      0
+ipv4.dhcp-send-hostname:                yes
+ipv4.dhcp-hostname:                     --
+ipv4.dhcp-fqdn:                         --
+ipv4.never-default:                     no
+ipv4.may-fail:                          yes
+ipv4.dad-timeout:                       -1 (default)
+ipv6.method:                            auto
+ipv6.dns:                               
+ipv6.dns-search:                        
+ipv6.dns-options:                       (default)
+ipv6.dns-priority:                      0
+ipv6.addresses:                         
+ipv6.gateway:                           --
+ipv6.routes:                            
+ipv6.route-metric:                      -1
+ipv6.ignore-auto-routes:                no
+ipv6.ignore-auto-dns:                   no
+ipv6.never-default:                     no
+ipv6.may-fail:                          yes
+ipv6.ip6-privacy:                       -1 (unknown)
+ipv6.addr-gen-mode:                     stable-privacy
+ipv6.dhcp-send-hostname:                yes
+ipv6.dhcp-hostname:                     --
+ipv6.token:                             --
+GENERAL.NAME:                           Wired connection 1
+GENERAL.UUID:                           8d922966-5be4-4633-a99d-71e836e2b31a
+GENERAL.DEVICES:                        enp0s3
+GENERAL.STATE:                          activated
+GENERAL.DEFAULT:                        yes
+GENERAL.DEFAULT6:                       no
+GENERAL.VPN:                            no
+GENERAL.ZONE:                           --
+GENERAL.DBUS-PATH:                      /org/freedesktop/NetworkManager/ActiveConnection/0
+GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/Settings/0
+GENERAL.SPEC-OBJECT:                    /
+GENERAL.MASTER-PATH:                    --
+IP4.ADDRESS[1]:                         192.168.241.130/24
+IP4.GATEWAY:                            192.168.241.2
+IP4.DNS[1]:                             192.168.241.2
+IP4.DNS[2]:                             8.8.8.8
+IP4.DOMAIN[1]:                          localdomain
+DHCP4.OPTION[1]:                        requested_routers = 1
+DHCP4.OPTION[2]:                        requested_domain_search = 1
+DHCP4.OPTION[3]:                        requested_time_offset = 1
+DHCP4.OPTION[4]:                        requested_domain_name = 1
+DHCP4.OPTION[5]:                        requested_rfc3442_classless_static_routes = 1
+DHCP4.OPTION[6]:                        requested_classless_static_routes = 1
+DHCP4.OPTION[7]:                        requested_wpad = 1
+DHCP4.OPTION[8]:                        requested_broadcast_address = 1
+DHCP4.OPTION[9]:                        next_server = 192.168.241.254
+DHCP4.OPTION[10]:                       expiry = 1515584826
+DHCP4.OPTION[11]:                       requested_interface_mtu = 1
+DHCP4.OPTION[12]:                       requested_subnet_mask = 1
+DHCP4.OPTION[13]:                       domain_name = localdomain
+DHCP4.OPTION[14]:                       dhcp_message_type = 5
+DHCP4.OPTION[15]:                       ip_address = 192.168.241.130
+DHCP4.OPTION[16]:                       routers = 192.168.241.2
+DHCP4.OPTION[17]:                       requested_static_routes = 1
+DHCP4.OPTION[18]:                       subnet_mask = 255.255.255.0
+DHCP4.OPTION[19]:                       requested_domain_name_servers = 1
+DHCP4.OPTION[20]:                       requested_nis_servers = 1
+DHCP4.OPTION[21]:                       requested_ntp_servers = 1
+DHCP4.OPTION[22]:                       domain_name_servers = 192.168.241.2
+DHCP4.OPTION[23]:                       dhcp_lease_time = 1800
+DHCP4.OPTION[24]:                       requested_ms_classless_static_routes = 1
+DHCP4.OPTION[25]:                       broadcast_address = 192.168.241.255
+DHCP4.OPTION[26]:                       requested_nis_domain = 1
+DHCP4.OPTION[27]:                       network_number = 192.168.241.0
+DHCP4.OPTION[28]:                       requested_host_name = 1
+DHCP4.OPTION[29]:                       dhcp_server_identifier = 192.168.241.254
+IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
+IP6.GATEWAY:                            
+</code></p>
+
+<ul>
+<li>adding connections</li>
+</ul>
+
+
+<p>```
+nmcli con add help
+Usage: nmcli connection add { ARGUMENTS | help }</p>
+
+<p>ARGUMENTS := COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [&mdash; ([+|&ndash;]<setting>.<property> <value>)+]</p>
+
+<p>  COMMON_OPTIONS:</p>
+
+<pre><code>              type &lt;type&gt;
+              ifname &lt;interface name&gt; | "*"
+              [con-name &lt;connection name&gt;]
+              [autoconnect yes|no]
+              [save yes|no]
+              [master &lt;master (ifname, or connection UUID or name)&gt;]
+              [slave-type &lt;master connection type&gt;]
+</code></pre>
+
+<p>  TYPE_SPECIFIC_OPTIONS:</p>
+
+<pre><code>ethernet:     [mac &lt;MAC address&gt;]
+              [cloned-mac &lt;cloned MAC address&gt;]
+              [mtu &lt;MTU&gt;]
+
+wifi:         ssid &lt;SSID&gt;
+              [mac &lt;MAC address&gt;]
+              [cloned-mac &lt;cloned MAC address&gt;]
+              [mtu &lt;MTU&gt;]
+              [mode infrastructure|ap|adhoc]
+
+wimax:        [mac &lt;MAC address&gt;]
+              [nsp &lt;NSP&gt;]
+
+pppoe:        username &lt;PPPoE username&gt;
+              [password &lt;PPPoE password&gt;]
+              [service &lt;PPPoE service name&gt;]
+              [mtu &lt;MTU&gt;]
+              [mac &lt;MAC address&gt;]
+
+gsm:          apn &lt;APN&gt;
+              [user &lt;username&gt;]
+              [password &lt;password&gt;]
+
+cdma:         [user &lt;username&gt;]
+              [password &lt;password&gt;]
+
+infiniband:   [mac &lt;MAC address&gt;]
+              [mtu &lt;MTU&gt;]
+              [transport-mode datagram | connected]
+              [parent &lt;ifname&gt;]
+              [p-key &lt;IPoIB P_Key&gt;]
+
+bluetooth:    [addr &lt;bluetooth address&gt;]
+              [bt-type panu|dun-gsm|dun-cdma]
+
+vlan:         dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
+              id &lt;VLAN ID&gt;
+              [flags &lt;VLAN flags&gt;]
+              [ingress &lt;ingress priority mapping&gt;]
+              [egress &lt;egress priority mapping&gt;]
+              [mtu &lt;MTU&gt;]
+
+bond:         [mode balance-rr (0) | active-backup (1) | balance-xor (2) | broadcast (3) |
+                    802.3ad    (4) | balance-tlb   (5) | balance-alb (6)]
+              [primary &lt;ifname&gt;]
+              [miimon &lt;num&gt;]
+              [downdelay &lt;num&gt;]
+              [updelay &lt;num&gt;]
+              [arp-interval &lt;num&gt;]
+              [arp-ip-target &lt;num&gt;]
+              [lacp-rate slow (0) | fast (1)]
+
+bond-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
+
+team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
+
+team-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
+              [config &lt;file&gt;|&lt;raw JSON data&gt;]
+
+bridge:       [stp yes|no]
+              [priority &lt;num&gt;]
+              [forward-delay &lt;2-30&gt;]
+              [hello-time &lt;1-10&gt;]
+              [max-age &lt;6-40&gt;]
+              [ageing-time &lt;0-1000000&gt;]
+              [multicast-snooping yes|no]
+              [mac &lt;MAC address&gt;]
+
+bridge-slave: master &lt;master (ifname, or connection UUID or name)&gt;
+              [priority &lt;0-63&gt;]
+              [path-cost &lt;1-65535&gt;]
+              [hairpin yes|no]
+
+vpn:          vpn-type vpnc|openvpn|pptp|openconnect|openswan|libreswan|ssh|l2tp|iodine|...
+              [user &lt;username&gt;]
+
+olpc-mesh:    ssid &lt;SSID&gt;
+              [channel &lt;1-13&gt;]
+              [dhcp-anycast &lt;MAC address&gt;]
+
+adsl:         username &lt;username&gt;
+              protocol pppoa|pppoe|ipoatm
+              [password &lt;password&gt;]
+              [encapsulation vcmux|llc]
+
+tun:          mode tun|tap
+              [owner &lt;UID&gt;]
+              [group &lt;GID&gt;]
+              [pi yes|no]
+              [vnet-hdr yes|no]
+              [multi-queue yes|no]
+
+ip-tunnel:    mode ipip|gre|sit|isatap|vti|ip6ip6|ipip6|ip6gre|vti6
+              remote &lt;remote endpoint IP&gt;
+              [local &lt;local endpoint IP&gt;]
+              [dev &lt;parent device (ifname or connection UUID)&gt;]
+
+macvlan:      dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
+              mode vepa|bridge|private|passthru|source
+              [tap yes|no]
+
+vxlan:        id &lt;VXLAN ID&gt;
+              remote &lt;IP of multicast group or remote address&gt;
+              [local &lt;source IP&gt;]
+              [dev &lt;parent device (ifname or connection UUID)&gt;]
+              [source-port-min &lt;0-65535&gt;]
+              [source-port-max &lt;0-65535&gt;]
+              [destination-port &lt;0-65535&gt;]
+</code></pre>
+
+<p>  SLAVE_OPTIONS:</p>
+
+<pre><code>bridge:       [priority &lt;0-63&gt;]
+              [path-cost &lt;1-65535&gt;]
+              [hairpin yes|no]
+
+team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
+</code></pre>
+
+<p>  IP_OPTIONS:</p>
+
+<pre><code>              [ip4 &lt;IPv4 address&gt;] [gw4 &lt;IPv4 gateway&gt;]
+              [ip6 &lt;IPv6 address&gt;] [gw6 &lt;IPv6 gateway&gt;]
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>add a new DHCP connection that will start on boot</li>
+</ul>
+
+
+<p><code>
+nmcli con add con-name newdhcp type ethernet ifname enp0s3
+Connection 'newdhcp' (8c90fcd7-5e40-43c6-819b-47cab3051b5e) successfully added.
+nmcli con up newdhcp
+Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/3)
+nmcli con show --active
+NAME     UUID                                  TYPE            DEVICE
+newdhcp  8c90fcd7-5e40-43c6-819b-47cab3051b5e  802-3-ethernet  enp0s3
+virbr0   321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
+</code></p>
+
+<ul>
+<li>add a static connection</li>
+</ul>
+
+
+<p><code>
+nmcli con add con-name static-con ifname enp0s3 autoconnect no type ethernet ip4 192.168.241.120/24 gw4 192.168.241.2
+Connection 'static-con' (258c2964-ac43-4ed8-bffa-7ad09967b748) successfully added.
+</code></p>
+
+<p>Let&rsquo;s see the IP we started with:</p>
+
+<p>```
+ifconfig | grep inet</p>
+
+<pre><code>    inet 192.168.241.130  netmask 255.255.255.0  broadcast 192.168.241.255
+</code></pre>
+
+<p>```</p>
+
+<p>And after switching to the static connection:</p>
+
+<p>```
+nmcli con up static-con
+Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/4)
+nmcli con show &mdash;active
+NAME        UUID                                  TYPE            DEVICE
+static-con  258c2964-ac43-4ed8-bffa-7ad09967b748  802-3-ethernet  enp0s3
+virbr0      321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
+ifconfig | grep inet</p>
+
+<pre><code>    inet 192.168.241.120  netmask 255.255.255.0  broadcast 192.168.241.255
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>modifying connections</li>
+</ul>
+
+
+<p>```
+nmcli con mod help
+Usage: nmcli connection modify { ARGUMENTS | help }</p>
+
+<p>ARGUMENTS := [id | uuid | path] <ID> ([+|&ndash;]<setting>.<property> <value>)+</p>
+
+<p>Modify one or more properties of the connection profile.
+The profile is identified by its name, UUID or D-Bus path. For multi-valued
+properties you can use optional &lsquo;+&rsquo; or &lsquo;&ndash;&rsquo; prefix to the property name.
+The &lsquo;+&rsquo; sign allows appending items instead of overwriting the whole value.
+The &lsquo;&ndash;&rsquo; sign allows removing selected items instead of the whole value.</p>
+
+<p>Examples:
+nmcli con mod home-wifi wifi.ssid rakosnicek
+nmcli con mod em1-1 ipv4.method manual ipv4.addr &ldquo;192.168.1.2/24, 10.10.1.5/8&rdquo;
+nmcli con mod em1-1 +ipv4.dns 8.8.4.4
+nmcli con mod em1-1 -ipv4.dns 1
+nmcli con mod em1-1 -ipv6.addr &ldquo;abbe::cafe/56&rdquo;
+nmcli con mod bond0 +bond.options mii=500
+nmcli con mod bond0 -bond.options downdelay
+```</p>
+
+<ul>
+<li>add a DNS server to an existing connection</li>
+</ul>
+
+
+<p><code>
+nmcli con show static-con | grep ipv4.dns
+ipv4.dns:                               
+ipv4.dns-search:                        
+ipv4.dns-options:                       (default)
+ipv4.dns-priority:                      0
+nmcli con mod static-con ipv4.dns 8.8.8.8
+nmcli con up static-con
+nmcli con show static-con | grep ipv4.dns
+ipv4.dns:                               8.8.8.8
+ipv4.dns-search:                        
+ipv4.dns-options:                       (default)
+ipv4.dns-priority:                      0
+</code></p>
+
+<h3>Learn more</h3>
+
+<ul>
+<li><a href="https://developer.gnome.org/NetworkManager/">NetworkManager documentation</a></li>
+<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/">RHEL7 networking guide</a></li>
+<li><a href="https://www.certdepot.net/rhel7-get-started-nmcli/">CertDepot NetworkManager guide</a></li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ You&rsquo;re currently going through a   \
+| difficult transition period called |
+\ &ldquo;Life.&rdquo;                            /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Securing SSH]]></title>
@@ -74,17 +679,17 @@ The key's randomart image is:
 <p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
 
 <p>```
-ssh-copy-id <a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#114;&#x6f;&#111;&#x74;&#x40;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#50;&#x39;">&#x72;&#111;&#x6f;&#x74;&#x40;&#x31;&#x39;&#50;&#46;&#x31;&#x36;&#56;&#x2e;&#x32;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;</a>
+ssh-copy-id <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#114;&#x6f;&#111;&#x74;&#64;&#x31;&#x39;&#50;&#46;&#x31;&#54;&#56;&#46;&#50;&#x31;&#x37;&#46;&#x31;&#x32;&#x39;">&#114;&#x6f;&#111;&#116;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#x38;&#46;&#x32;&#49;&#x37;&#46;&#x31;&#x32;&#57;</a>
 The authenticity of host &lsquo;192.168.217.129 (192.168.217.129)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
 Are you sure you want to continue connecting (yes/no)? yes
 /usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
 /usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
-<a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x72;&#x6f;&#x6f;&#x74;&#x40;&#49;&#57;&#50;&#x2e;&#49;&#x36;&#x38;&#46;&#x32;&#49;&#55;&#46;&#49;&#50;&#57;">&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#55;&#x2e;&#49;&#x32;&#x39;</a>&rsquo;s password:</p>
+<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#114;&#111;&#111;&#x74;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#x2e;&#x32;&#x31;&#55;&#46;&#49;&#50;&#x39;">&#x72;&#111;&#111;&#x74;&#x40;&#x31;&#57;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#x32;&#x31;&#x37;&#46;&#49;&#50;&#x39;</a>&rsquo;s password:</p>
 
 <p>Number of key(s) added: 1</p>
 
-<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#x6f;&#x6f;&#x74;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#50;&#57;">&#114;&#x6f;&#x6f;&#x74;&#x40;&#x31;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#46;&#50;&#49;&#55;&#46;&#49;&#50;&#x39;</a>&rsquo;&rdquo;
+<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#111;&#116;&#x40;&#49;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#50;&#x39;">&#x72;&#111;&#x6f;&#116;&#x40;&#x31;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#50;&#x31;&#x37;&#46;&#x31;&#50;&#x39;</a>&rsquo;&rdquo;
 and check to make sure that only the key(s) you wanted were added.
 ```</p>
 
@@ -891,433 +1496,6 @@ mount | grep nfs
 <p>/ Q: What&rsquo;s tiny and yellow and very,   \
 | very, dangerous? A: A canary with the |
 \ super-user password.                  /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Quick shares with Samba on CentOS]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/"/>
-    <updated>2017-06-09T05:47:05-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos</id>
-    <content type="html"><![CDATA[<p>The interwebz is thundering with doomsday predictions about the <a href="https://blog.qualys.com/securitylabs/2017/05/26/samba-vulnerability-cve-2017-7494">Samba CVE-2017-7494 exploit</a>, and here I am, deciding that now is the best time to make a post on setting up Samba shares! xD</p>
-
-<p>On a related note, if for some reason you can&rsquo;t patch the vulnerability yet, there is a workaround (with some drawbacks). Edit the global section in smb.conf and add the line <code>nt pipe support = no</code>.</p>
-
-<!-- more -->
-
-
-<p>Back to the matter at hand. First, let&rsquo;s verify if Samba is installed on the CentOS system:</p>
-
-<p><code>
-rpm -q samba
-package samba is not installed
-</code></p>
-
-<p>Since it&rsquo;s not installed on my machine, I installed it with <code>yum install samba</code>, and then ran the previous command again, to check the version:</p>
-
-<p><code>
-rpm -q samba
-samba-4.4.4-14.el7_3.x86_64
-</code></p>
-
-<p>Now, let&rsquo;s start Samba and see it running:</p>
-
-<p>```
-service smb start
-Redirecting to /bin/systemctl start  smb.service
-service smb status
-Redirecting to /bin/systemctl status  smb.service
-● smb.service &ndash; Samba SMB Daemon
-   Loaded: loaded (/usr/lib/systemd/system/smb.service; disabled; vendor preset: disabled)
-   Active: active (running) since Thu 2017-06-08 10:56:54 EEST; 5s ago
- Main PID: 61874 (smbd)
-   Status: &ldquo;smbd: ready to serve connections&hellip;&rdquo;
-   CGroup: /system.slice/smb.service</p>
-
-<pre><code>       ├─61874 /usr/sbin/smbd
-       ├─61875 /usr/sbin/smbd
-       ├─61876 /usr/sbin/smbd
-       └─61879 /usr/sbin/smbd
-</code></pre>
-
-<p>Jun 08 10:56:52 localhost.localdomain systemd[1]: Starting Samba SMB Daemon&hellip;
-Jun 08 10:56:54 localhost.localdomain smbd[61874]: [2017/06/08 10:56:54.513901,  0] ../lib/util/become_daemon.c:124(daemon_ready)
-Jun 08 10:56:54 localhost.localdomain smbd[61874]:   STATUS=daemon &lsquo;smbd&rsquo; finished starting up and ready to serve connections
-Jun 08 10:56:54 localhost.localdomain systemd[1]: Started Samba SMB Daemon.
-```</p>
-
-<h2>Samba daemons</h2>
-
-<p>The Samba functionality is contained within 3 daemons:</p>
-
-<ul>
-<li><p><strong>smbd</strong> &ndash; file sharing, printing services, authentication. Default ports are 139 and 445</p></li>
-<li><p><strong>nmbd</strong> &ndash; NetBIOS name service requests and browsing protocols</p></li>
-<li><p><strong>winbindd</strong> &ndash; used for Windows domains membership</p></li>
-</ul>
-
-
-<h2>Samba configuration</h2>
-
-<p>The Samba configuration file is <code>/etc/samba/smb.conf</code>. Here is how a fresh config file looks after installation:</p>
-
-<p>```</p>
-
-<h1>See smb.conf.example for a more detailed config file or</h1>
-
-<h1>read the smb.conf manpage.</h1>
-
-<h1>Run &lsquo;testparm&rsquo; to verify the config is correct after</h1>
-
-<h1>you modified it.</h1>
-
-<p>[global]</p>
-
-<pre><code>workgroup = SAMBA
-security = user
-
-passdb backend = tdbsam
-
-printing = cups
-printcap name = cups
-load printers = yes
-cups options = raw
-</code></pre>
-
-<p>[homes]</p>
-
-<pre><code>comment = Home Directories
-valid users = %S, %D%w%S
-browseable = No
-read only = No
-inherit acls = Yes
-</code></pre>
-
-<p>[printers]</p>
-
-<pre><code>comment = All Printers
-path = /var/tmp
-printable = Yes
-create mask = 0600
-browseable = No
-</code></pre>
-
-<p>[print$]</p>
-
-<pre><code>comment = Printer Drivers
-path = /var/lib/samba/drivers
-write list = root
-create mask = 0664
-directory mask = 0775
-</code></pre>
-
-<p>```</p>
-
-<p>For much more detailed information and examples, see the <a href="/downloads/code/smb.conf.example">smb.conf.example file</a></p>
-
-<h2>Create Samba share</h2>
-
-<p>In this example, let&rsquo;s create a share that users can also write to. First, create the directory that you will share: <code>mkdir -p /srv/samba/myshare</code>. I placed a text file with some random stuff inside. Then I gave full access to the path and its subfolders with <code>chmod -R 777 /srv/samba</code></p>
-
-<p>Next, we need to create a Samba user, but this account is not the same as a user account on the system. We have to make a user account on the system before assigning it to Samba:</p>
-
-<p><code>
-adduser smbuser -s /sbin/nologin
-</code></p>
-
-<p>Here I created a user just for Samba, with no login shell. Attempting to login will give the user a message that they are not allowed to login. If you prefer that the user is disconnected with no message, you can specify <code>/bin/false</code> instead.</p>
-
-<p>Then, I gave the user account a description, which you can find inside <em>/etc/passwd</em>:</p>
-
-<p><code>
-usermod -c 'Samba access is allowed for this user' smbuser
-[root@localhost ~]# cat /etc/passwd | grep smbuser
-smbuser:x:1001:1001:Samba access is allowed for this user:/home/smbuser:/sbin/nologin
-</code></p>
-
-<p>Have to give the user account a password:</p>
-
-<p><code>
-[root@localhost ~]# passwd smbuser
-Changing password for user smbuser.
-New password:
-Retype new password:
-passwd: all authentication tokens updated successfully.
-</code></p>
-
-<p>Next, we create a Samba user, by using the previously created account:</p>
-
-<p><code>
-[root@localhost ~]# smbpasswd -a smbuser
-New SMB password:
-Retype new SMB password:
-Added user smbuser.
-</code></p>
-
-<p>To be safe, check that the Samba user was created:</p>
-
-<p><code>
-[root@localhost ~]# pdbedit -L
-smbuser:1001:Samba access is allowed for this user
-</code></p>
-
-<p>We have the share location and the user, now we need to edit the smb.conf file with the relevant information:</p>
-
-<p>```
-[global]</p>
-
-<pre><code># workgroup name or Windows NT domain name
-workgroup = SAMBA
-# default: user and password authentication
-security = user
-# optional comment for Windows
-server string = Samba File Server
-# default backend for user information
-passdb backend = tdbsam
-</code></pre>
-
-<p>[sharename]</p>
-
-<pre><code>path = /srv/samba/myshare
-comment = Only authorized users
-# allow these users
-valid users = smbuser
-# same can be achieved with writable = yes
-read only = no  
-# allow subnet range
-allow hosts = 192.168.217.
-# deny access
-invalid users = root  
-</code></pre>
-
-<p>```</p>
-
-<p>I used comments for easier understanding, but for performance reasons, you might want to keep your file to minimum size, by removing all those comment lines. You can do that by keeping a configuration file with all the additional remarks, while using a smb.conf with only the required configuration. All the comments will be stripped from the config file:</p>
-
-<p><code>
-[root@localhost samba]# testparm -s smb.conf.old &gt; smb.conf
-Load smb config files from smb.conf.old
-rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
-Processing section "[sharename]"
-Loaded services file OK.
-Server role: ROLE_STANDALONE
-</code></p>
-
-<p>We checked that our config file is valid, so now it&rsquo;s time to test it. Restart Samba for the configurations to take effect with <code>service smb restart</code>. And now let&rsquo;s access the share! From another machine, I used <strong>smbclient</strong> to list the available services on the Samba server:</p>
-
-<p>```
-smbclient -L 192.168.217.131 -U smbuser
-WARNING: The &ldquo;syslog&rdquo; option is deprecated
-Enter smbuser&rsquo;s password:
-Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]</p>
-
-<pre><code>Sharename       Type      Comment
----------       ----      -------
-sharename       Disk      Only authorized users
-IPC$            IPC       IPC Service (Samba File Server)
-</code></pre>
-
-<p>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]</p>
-
-<pre><code>Server               Comment
----------            -------
-
-Workgroup            Master
----------            -------
-</code></pre>
-
-<p>```</p>
-
-<p>There is one last step that you need to accomplish if you have SELinux enabled. You have to label the directory you&rsquo;re sharing with the <strong>samba_share_t</strong> label:</p>
-
-<p><code>
-chcon -R -t samba_share_t /srv/samba
-</code></p>
-
-<p>Now the /srv/samba directory and everything it contains is labeled correctly, and SELinux won&rsquo;t interfere. View the security context of the path with:</p>
-
-<p><code>
-ls -ldZ /srv/samba/
-drwxr-xr-x. root root unconfined_u:object_r:samba_share_t:s0 /srv/samba/
-</code></p>
-
-<p>Changes made with chcon are temporary. To survive a relabel or running <em>restorerecon</em>, make the changes permanent with:</p>
-
-<p><code>
-semanage fcontext -a -t samba_share_t "path(/.*)?"
-</code></p>
-
-<p>Then apply them with <code>restorecon -R -v /path</code>.</p>
-
-<p>Finally, to connect to a share, use the syntax: <code>smbclient  //host/sharename -U username</code> (in the below examle, the name of my share is sharename, because laziness):</p>
-
-<p>```
-smbclient  //192.168.217.131/sharename -U smbuser
-WARNING: The &ldquo;syslog&rdquo; option is deprecated
-Enter smbuser&rsquo;s password:
-Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
-smb: > ls</p>
-
-<pre><code>  .                                   D        0  Thu Jun  8 09:39:42 2017
-  ..                                  D        0  Thu Jun  8 09:26:38 2017
-  read.txt                            N       11  Thu Jun  8 09:39:42 2017
-
-        18307072 blocks of size 1024. 13091600 blocks available
-</code></pre>
-
-<p>```</p>
-
-<p>List available commands:</p>
-
-<p>```</p>
-
-<pre><code>smb: \&gt; ?
-?              allinfo        altname        archive        backup         
-blocksize      cancel         case_sensitive cd             chmod          
-chown          close          del            dir            du             
-echo           exit           get            getfacl        geteas         
-hardlink       help           history        iosize         lcd            
-link           lock           lowercase      ls             l              
-mask           md             mget           mkdir          more           
-mput           newer          notify         open           posix          
-posix_encrypt  posix_open     posix_mkdir    posix_rmdir    posix_unlink   
-posix_whoami   print          prompt         put            pwd            
-q              queue          quit           readlink       rd             
-recurse        reget          rename         reput          rm             
-rmdir          showacls       setea          setmode        scopy          
-stat           symlink        tar            tarmode        timeout        
-translate      unlock         volume         vuid           wdel           
-logon          listconnect    showconnect    tcon           tdis           
-tid            logoff         ..             !              
-</code></pre>
-
-<p>```</p>
-
-<p>Download file:</p>
-
-<p><code>
-smb: \&gt; get read.txt
-getting file \read.txt of size 11 as read.txt (3.6 KiloBytes/sec) (average 3.6 KiloBytes/sec)
-</code></p>
-
-<p>Delete file:</p>
-
-<p><code>
-smb: \&gt; del read.txt
-</code></p>
-
-<p>Upload file:</p>
-
-<p>```
-smb: > put test.png
-putting file test.png as \test.png (0.2 kb/s) (average 0.2 kb/s)
-smb: > ls
-  .                                   D        0  Thu Jun  8 13:24:14 2017
-  ..                                  D        0  Thu Jun  8 09:26:38 2017
-  test.png                            A       35  Thu Jun  8 13:22:09 2017</p>
-
-<pre><code>    18307072 blocks of size 1024. 13091480 blocks available
-</code></pre>
-
-<p>```</p>
-
-<p>From a Windows system, you can run <code>\192.168.217.131\sharename</code> to connect to the share, or use the <em>net use</em> command.</p>
-
-<p>View shares:</p>
-
-<p>```
-C:\Documents and Settings\admin>net use
-New connections will be remembered.</p>
-
-<p>Status       Local     Remote                    Network</p>
-
-<hr />
-
-<p>OK                     \192.168.217.131\sharename</p>
-
-<pre><code>                                             Microsoft Windows Network
-</code></pre>
-
-<p>The command completed successfully.
-```</p>
-
-<p>Connect to shares:</p>
-
-<p>```
-C:\Documents and Settings\admin>net use S: \192.168.217.131\sharename
-The command completed successfully.</p>
-
-<p>C:\Documents and Settings\admin>s:</p>
-
-<p>S:>dir
- Volume in drive S is sharename
- Volume Serial Number is DCCC-194F</p>
-
-<p> Directory of S:\</p>
-
-<p>06/09/2017  02:24 AM    <DIR>          .
-06/08/2017  10:26 PM    <DIR>          ..
-06/09/2017  02:22 AM                35 test.png</p>
-
-<pre><code>           1 File(s)             35 bytes
-           2 Dir(s)  13,405,708,288 bytes free
-</code></pre>
-
-<p>```</p>
-
-<h3>Other useful options</h3>
-
-<p>You can drill down into the smb.conf file and customize it to your liking. Here are a few options:</p>
-
-<ul>
-<li><p>read list = user1, user2 &ndash; set read only users on a writable share</p></li>
-<li><p>write list = user1, user2 &ndash; set write access for users on a read only share</p></li>
-<li><p>deny hosts  = ip &ndash; deny access to the specified IPs</p></li>
-<li><p>hide unreadable = yes &ndash; don&rsquo;t let users see files they don&rsquo;t have access to</p></li>
-<li><p>browseable = no &ndash; hide shares from Windows network</p></li>
-</ul>
-
-
-<p>Key takeaways:</p>
-
-<ul>
-<li><p>server and share security levels are deprecated, so best to avoid them</p></li>
-<li><p>specifying a share in the smb.conf file is not enough. Ensure that you have created the path and gave it sufficient permissins</p></li>
-<li><p>Samba users need to already exist on the system</p></li>
-<li><p>you can have both a well documented config file and a minimal size one for performance, by using <code>testparm -s</code></p></li>
-<li><p>if you use SELinux, don&rsquo;t forget to label your share with <code>samba_share_t</code></p></li>
-</ul>
-
-
-<p>Learn more:</p>
-
-<ul>
-<li><p><a href="http://linux-training.be/linuxsrv.pdf">Samba section in Paul Cobbaut&rsquo;s Linux Servers course</a></p></li>
-<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smb.conf.5.html">smb.conf manpage</a> &ndash; The configuration file for the Samba suite</p></li>
-<li><p><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/ch-samba.html">CentOS Samba guide</a></p></li>
-<li><p><a href="smbpasswd%20-%20The%20Samba%20encrypted%20password%20file">smbpasswd man page</a> &ndash; The Samba encrypted password file</p></li>
-<li><p><a href="https://www.samba.org/samba/docs/man/manpages/pdbedit.8.html">pdbedit manpage</a> &ndash; manage the SAM database (Database of Samba Users)</p></li>
-<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/testparm.1.html">testparm manpage</a> &ndash; check an smb.conf configuration file for internal correctness</p></li>
-<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smbclient.1.html">smbclient manpage</a> &ndash; ftp-like client to access SMB/CIFS resources on servers</p></li>
-</ul>
-
-
-<p>```
-/ Nothing so needs reforming as other \
-| people&rsquo;s habits.                    |
-|                                     |
-\ &mdash; Mark Twain                       /</p>
 
 <hr />
 
