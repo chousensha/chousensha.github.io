@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-01-17T13:27:56-05:00</updated>
+  <updated>2018-01-27T10:06:26-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,369 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - LVM storage management]]></title>
+    <link href="http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management/"/>
+    <updated>2018-01-27T09:56:20-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at logical volume management tasks. LVM improves the traditional partition to disk approach, adding flexibility (extending and reducing space), snapshot capabilities and redundancy.</p>
+
+<!-- more -->
+
+
+<p>First, some terminology is in order:</p>
+
+<ul>
+<li><p>physical volumes (PV) are the physical devices that are mapped to be used inside LVM. Their storace unit is called a physical extent (PE)</p></li>
+<li><p>volume groups (VG) are storage pools made from PVs</p></li>
+<li><p>logical volumes (LV) are made up of the VG space</p></li>
+</ul>
+
+
+<h2>Creating PVs</h2>
+
+<p>I am now going to create 2 PVs of 100 MB each. You first need to create 2 LVM partitions. If you look inside fdisk, you see the partition code for LVM is <strong>8e</strong>:</p>
+
+<p><code>
+8e  Linux LVM
+</code></p>
+
+<p>So before writing the partition in fdisk, use <code>t</code> to change it to Linux LVM. Then verify that the new partitions were created:</p>
+
+<p><code>
+lsblk | grep sdb
+sdb             8:16   0    1G  0 disk
+├─sdb1          8:17   0  100M  0 part
+└─sdb2          8:18   0  100M  0 part
+</code></p>
+
+<p>Now the PVs can be created:</p>
+
+<p><code>
+pvcreate /dev/sdb1 /dev/sdb2
+  Physical volume "/dev/sdb1" successfully created.
+  Physical volume "/dev/sdb2" successfully created.
+</code></p>
+
+<h2>Creating VGs</h2>
+
+<p>Now you can create a VG from the 2 PVs:</p>
+
+<p><code>
+vgcreate vg-zero /dev/sdb1 /dev/sdb2
+  Volume group "vg-zero" successfully created
+</code></p>
+
+<p>Let&rsquo;s look at our existing PVs now:</p>
+
+<p><code>
+pvs
+  PV         VG      Fmt  Attr PSize  PFree
+  /dev/sda2  rhel    lvm2 a--  29.00g  4.00m
+  /dev/sdb1  vg-zero lvm2 a--  96.00m 96.00m
+  /dev/sdb2  vg-zero lvm2 a--  96.00m 96.00m
+</code></p>
+
+<p>And check an individual PV in more detail:</p>
+
+<p><code>
+pvdisplay /dev/sdb1
+  --- Physical volume ---
+  PV Name               /dev/sdb1
+  VG Name               vg-zero
+  PV Size               100.00 MiB / not usable 4.00 MiB
+  Allocatable           yes
+  PE Size               4.00 MiB
+  Total PE              24
+  Free PE               24
+  Allocated PE          0
+  PV UUID               ViTFfu-jBZE-47Ie-d6qB-WTDt-fpNf-bPC00Y
+</code></p>
+
+<p>Now let&rsquo;s check our VGs:</p>
+
+<p><code>
+vgs
+  VG      #PV #LV #SN Attr   VSize   VFree  
+  rhel      1   2   0 wz--n-  29.00g   4.00m
+  vg-zero   2   0   0 wz--n- 192.00m 192.00m
+</code></p>
+
+<p>And in more detail:</p>
+
+<p><code>
+vgdisplay vg-zero
+  --- Volume group ---
+  VG Name               vg-zero
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  1
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                0
+  Open LV               0
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               192.00 MiB
+  PE Size               4.00 MiB
+  Total PE              48
+  Alloc PE / Size       0 / 0   
+  Free  PE / Size       48 / 192.00 MiB
+  VG UUID               gUf1XI-znJt-MM2T-V721-PNbe-uxcr-m3bVTe
+</code></p>
+
+<h2>Creating LVs</h2>
+
+<p>Next, I created a LV named inventory with a size of 128 MB, from the vg-zero VG:</p>
+
+<p><code>
+lvcreate -n inventory -L 128MB vg-zero
+  Logical volume "inventory" created.
+</code></p>
+
+<p>Look at the existing LVs:</p>
+
+<p><code>
+lvs
+  LV        VG      Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  root      rhel    -wi-ao----  26.99g                                                    
+  swap      rhel    -wi-ao----   2.00g                                                    
+  inventory vg-zero -wi-a----- 128.00m     
+</code></p>
+
+<p>And check our newly created one:</p>
+
+<p><code>
+lvdisplay /dev/vg-zero/inventory
+  --- Logical volume ---
+  LV Path                /dev/vg-zero/inventory
+  LV Name                inventory
+  VG Name                vg-zero
+  LV UUID                jE4XRJ-ddlX-nM8s-NVSr-4cfK-F9O0-JcKecs
+  LV Write Access        read/write
+  LV Creation host, time rhel7, 2018-01-26 15:36:04 +0200
+  LV Status              available
+  # open                 0
+  LV Size                128.00 MiB
+  Current LE             32
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:2
+</code></p>
+
+<p>Before using the new LV, you need to create a filesystem on top of it. I went with XFS:</p>
+
+<p>```
+mkfs.xfs /dev/vg-zero/inventory
+meta-data=/dev/vg-zero/inventory isize=512    agcount=4, agsize=8192 blks</p>
+
+<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
+     =                       crc=1        finobt=0, sparse=0
+</code></pre>
+
+<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
+
+<pre><code>     =                       sunit=0      swidth=0 blks
+</code></pre>
+
+<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal log           bsize=4096   blocks=855, version=2</p>
+
+<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
+</code></pre>
+
+<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
+```</p>
+
+<p>Now prepare a location to mount it:</p>
+
+<p><code>
+mkdir /mnt/inventory
+</code></p>
+
+<p>I want it to mount at boot, so I added the following to <code>/etc/fstab</code>:</p>
+
+<p><code>
+/dev/vg-zero/inventory     /mnt/inventory                xfs    defaults        0 0
+</code></p>
+
+<p>Let&rsquo;s break down the <strong>/etc/fstab</strong> fields a bit:</p>
+
+<ul>
+<li><p>the first field represents the device, which can be specified by name, UUID, or label</p></li>
+<li><p>the second field is the mount point of the device</p></li>
+<li><p>the third is the filesystem type</p></li>
+<li><p>fourth is for the mount options. The <em>defaults</em> option specifies the usage of default options: rw, suid, dev, exec, auto, nouser, async</p></li>
+<li><p>the fifth is a backup flag for the dump utility. Use 1 to enable it and 0 to disable it</p></li>
+<li><p>sixth represents the fsck automatic check at boot. Use 0 to disable it, 1 for the root filesystem, and 2 for other filesystems that might need the automatic checking</p></li>
+</ul>
+
+
+<p>It&rsquo;s a good practice to mount the devices you added to fstab before a reboot to ensure there are no errors: <code>mount -a</code></p>
+
+<h2>Extending / reducing VGs</h2>
+
+<p>To add more space to a VG, you can add more PVs to it. Let&rsquo;s see its current space:</p>
+
+<p><code>
+vgdisplay vg-zero | grep Free
+  Free  PE / Size       16 / 64.00 MiB
+</code></p>
+
+<p>I created a new PV on /dev/sdb3 and added it to the VG:</p>
+
+<p><code>
+vgextend vg-zero /dev/sdb3
+  Volume group "vg-zero" successfully extended
+</code></p>
+
+<p>The storage size has increased now:</p>
+
+<p><code>
+vgdisplay vg-zero | grep Free
+  Free  PE / Size       28 / 112.00 MiB
+</code></p>
+
+<p>And to reduce the space of a VG, remove one or more PVs from it:</p>
+
+<p><code>
+vgreduce vg-zero /dev/sdb3
+  Removed "/dev/sdb3" from volume group "vg-zero"
+</code></p>
+
+<p>To migrate the PEs used on a PV to other PVs in the VG, use <strong>pvmove</strong>:</p>
+
+<p><code>
+pvmove /dev/sdb1
+  /dev/sdb1: Moved: 0.00%
+  /dev/sdb1: Moved: 100.00%
+</code></p>
+
+<h2>Resizing LVs</h2>
+
+<p>You can use <em>lvresize</em> for extending or shrinking LVs, or <em>lvextend</em> for extending only. There needs to be enough free space in the VG for growing the LV.</p>
+
+<p><code>
+lvextend -L +50M /dev/vg-zero/inventory
+  Rounding size to boundary between physical extents: 52.00 MiB.
+  Size of logical volume vg-zero/inventory changed from 128.00 MiB (32 extents) to 180.00 MiB (45 extents).
+  Logical volume vg-zero/inventory successfully resized.
+</code></p>
+
+<p>You also need to grow the filesystem to occupy the newly extended LV. Since I picked XFS, I&rsquo;ll use <em>xfs_growfs</em> for this:</p>
+
+<p>```
+xfs_growfs /mnt/inventory/
+meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=4, agsize=8192 blks</p>
+
+<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
+     =                       crc=1        finobt=0 spinodes=0
+</code></pre>
+
+<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
+
+<pre><code>     =                       sunit=0      swidth=0 blks
+</code></pre>
+
+<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=855, version=2</p>
+
+<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
+</code></pre>
+
+<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 32768 to 46080
+```</p>
+
+<p>This was just for demo, in practice you want to resize both the LV and the filesystem with a single command:</p>
+
+<p>```
+lvextend -L 190M -r /dev/vg-zero/inventory
+  Rounding size to boundary between physical extents: 192.00 MiB.
+  Size of logical volume vg-zero/inventory changed from 180.00 MiB (45 extents) to 192.00 MiB (48 extents).
+  Logical volume vg-zero/inventory successfully resized.
+meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=6, agsize=8192 blks</p>
+
+<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
+     =                       crc=1        finobt=0 spinodes=0
+</code></pre>
+
+<p>data     =                       bsize=4096   blocks=46080, imaxpct=25</p>
+
+<pre><code>     =                       sunit=0      swidth=0 blks
+</code></pre>
+
+<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=855, version=2</p>
+
+<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
+</code></pre>
+
+<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 46080 to 49152
+```</p>
+
+<p>This time I specified an absolute size instead of adding a certain amount.</p>
+
+<h2>Removing LVs</h2>
+
+<p>When you&rsquo;re done, you backed up your data or no longer need it, you can delete the LV. Unmount it first:</p>
+
+<p><code>
+umount -v /mnt/inventory/
+umount: /mnt/inventory (/dev/mapper/vg--zero-inventory) unmounted
+</code></p>
+
+<p>Remove the LV:</p>
+
+<p><code>
+lvremove /dev/vg-zero/inventory
+Do you really want to remove active logical volume vg-zero/inventory? [y/n]: y
+  Logical volume "inventory" successfully removed
+</code></p>
+
+<p>Remove the VG:</p>
+
+<p><code>
+vgremove vg-zero
+  Volume group "vg-zero" successfully removed
+</code></p>
+
+<p>Finally, also remove the PVs:</p>
+
+<p><code>
+pvremove /dev/sdb1 /dev/sdb2
+  Labels on physical volume "/dev/sdb1" successfully wiped.
+  Labels on physical volume "/dev/sdb2" successfully wiped.
+</code></p>
+
+<p>And don&rsquo;t forget to delete any remaining fstab entries.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ That secret you&rsquo;ve been guarding, \
+\ isn&rsquo;t.                            /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Creating custom yum repositories]]></title>
@@ -940,17 +1303,17 @@ The key's randomart image is:
 <p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
 
 <p>```
-ssh-copy-id <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#114;&#111;&#x6f;&#x74;&#64;&#x31;&#57;&#x32;&#46;&#x31;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#x2e;&#x31;&#50;&#x39;">&#x72;&#111;&#x6f;&#116;&#64;&#49;&#57;&#50;&#46;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;</a>
+ssh-copy-id <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#50;&#46;&#x31;&#54;&#56;&#46;&#50;&#49;&#55;&#x2e;&#49;&#x32;&#x39;">&#114;&#x6f;&#111;&#x74;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#54;&#56;&#46;&#50;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;</a>
 The authenticity of host &lsquo;192.168.217.129 (192.168.217.129)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
 Are you sure you want to continue connecting (yes/no)? yes
 /usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
 /usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
-<a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x72;&#111;&#x6f;&#x74;&#x40;&#x31;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#x32;&#49;&#x37;&#x2e;&#x31;&#x32;&#x39;">&#114;&#111;&#x6f;&#116;&#x40;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;</a>&rsquo;s password:</p>
+<a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#x2e;&#50;&#49;&#55;&#46;&#49;&#x32;&#57;">&#x72;&#111;&#111;&#x74;&#64;&#49;&#57;&#x32;&#46;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#x37;&#46;&#x31;&#x32;&#57;</a>&rsquo;s password:</p>
 
 <p>Number of key(s) added: 1</p>
 
-<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#x72;&#111;&#x6f;&#x74;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#50;&#x31;&#x37;&#x2e;&#x31;&#50;&#x39;">&#x72;&#111;&#x6f;&#116;&#64;&#x31;&#57;&#x32;&#x2e;&#x31;&#x36;&#x38;&#x2e;&#x32;&#49;&#x37;&#x2e;&#49;&#50;&#57;</a>&rsquo;&rdquo;
+<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#49;&#x32;&#57;">&#114;&#111;&#111;&#116;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#50;&#x39;</a>&rsquo;&rdquo;
 and check to make sure that only the key(s) you wanted were added.
 ```</p>
 
@@ -1067,535 +1430,6 @@ comfortable. They get alarmed about seeing the kernel and initializing messages,
 | might die of a misprint.                |
 |                                         |
 \ &mdash; Mark Twain                           /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[KVM virtualization on Linux hosts]]></title>
-    <link href="http://chousensha.github.io/blog/2017/09/24/kvm-virtualization-on-linux-hosts/"/>
-    <updated>2017-09-24T11:34:34-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/09/24/kvm-virtualization-on-linux-hosts</id>
-    <content type="html"><![CDATA[<p>By now you probably noticed that the last topics were centered more around Linux than the usual. That&rsquo;s because I am studying for my LFCS certification, and creating posts as I go through the material. This time, we&rsquo;re going to look at using virtualization on a Linux physical host. Since my only physical Linux at the moment is Kali, this is what I&rsquo;m going to use for today&rsquo;s post.</p>
-
-<!-- more -->
-
-
-<p>The first step before starting anything else, is to check if virtualization is enabled on your machine. For this, you can query your <code>/proc/cpuinfo</code> file and look for the following flags:</p>
-
-<ul>
-<li><p><strong>vmx</strong> for Intel CPUs</p></li>
-<li><p><strong>svm</strong> for AMD CPUs</p></li>
-</ul>
-
-
-<p>I already knew the result in my case, but I checked anyway with <code>grep &mdash;color vmx /proc/cpuinfo</code>:</p>
-
-<p><img class="center" src="/images/sysadmin/kvm/vmx.png" title="&lsquo;vmx&rsquo; &lsquo;vmx enabled&rsquo;" ></p>
-
-<p>Ok, the next step is to install the virtualization utilities:</p>
-
-<p><code>
-apt-get install qemu-kvm virt-manager libvirt0 qemu-system virt-viewer virt-top
-</code></p>
-
-<p>KVM (Kernel Virtual Machine) is a full virtualization solution for Linux on x86 and x64 hardware containing virtualization extensions (Intel VT or AMD-V). It consists of a loadable kernel module, kvm.ko, that provides the core virtualization infrastructure and a processor specific module, kvm-intel.ko or kvm-amd.ko.</p>
-
-<p>libvirt is an API toolkit for managing virtualization hosts</p>
-
-<p>The virt-manager application is a graphical tool for managing virtual machines through libvirt. It primarily targets KVM VMs, but also manages Xen and LXC (linux containers).</p>
-
-<p>virt-viewer allows access to the virtual machine console</p>
-
-<p>virt-top is for monitoring VMs performance</p>
-
-<p>After installing everything, you can go to <code>/etc/libvirt/qemu/networks</code> and look inside the <strong>default.xml</strong> file to see how the default virtual network will be configured:</p>
-
-<p>```</p>
-
-<!--
-WARNING: THIS IS AN AUTO-GENERATED FILE. CHANGES TO IT ARE LIKELY TO BE
-OVERWRITTEN AND LOST. Changes to this xml configuration should be made using:
-  virsh net-edit default
-or other application using the libvirt API.
--->
-
-
-<p><network>
-  <name>default</name>
-  <uuid>d67cdb82-233e-44f1-a6ac-9293faa2258d</uuid>
-  <forward mode='nat'/>
-  <bridge name='virbr0' stp='on' delay='0'/>
-  <mac address='52:54:00:b2:a7:6e'/>
-  <ip address='192.168.122.1' netmask='255.255.255.0'></p>
-
-<pre><code>&lt;dhcp&gt;
-  &lt;range start='192.168.122.2' end='192.168.122.254'/&gt;
-&lt;/dhcp&gt;
-</code></pre>
-
-<p>  </ip>
-</network>
-```</p>
-
-<p>Let&rsquo;s see if the default network has been created. Don&rsquo;t forget to start the <strong>libvirtd</strong> daemon first, with <code>systemctl start libvirtd</code> and then use virsh to list the defined networks. <strong>virsh</strong> is a powerful command line interface tool for managing guests and the hypervisor. It can also be used as an interactive prompt.</p>
-
-<p>```
-virsh
-Welcome to virsh, the virtualization interactive terminal.</p>
-
-<p>Type:  &lsquo;help&rsquo; for help with commands</p>
-
-<pre><code>   'quit' to quit
-</code></pre>
-
-<p>virsh # help
-Grouped commands:</p>
-
-<p> Domain Management (help keyword &lsquo;domain&rsquo;):</p>
-
-<pre><code>attach-device                  attach device from an XML file
-attach-disk                    attach disk device
-attach-interface               attach network interface
-autostart                      autostart a domain
-blkdeviotune                   Set or query a block device I/O tuning parameters.
-blkiotune                      Get or set blkio parameters
-blockcommit                    Start a block commit operation.
-blockcopy                      Start a block copy operation.
-blockjob                       Manage active block operations
-blockpull                      Populate a disk from its backing image.
-blockresize                    Resize block device of domain.
-change-media                   Change media of CD or floppy drive
-console                        connect to the guest console
-cpu-baseline                   compute baseline CPU
-cpu-compare                    compare host CPU with a CPU described by an XML file
-cpu-stats                      show domain cpu statistics
-create                         create a domain from an XML file
-define                         define (but don't start) a domain from an XML file
-desc                           show or set domain's description or title
-destroy                        destroy (stop) a domain
-detach-device                  detach device from an XML file
-detach-disk                    detach disk device
-detach-interface               detach network interface
-domdisplay                     domain display connection URI
-domfsfreeze                    Freeze domain's mounted filesystems.
-domfsthaw                      Thaw domain's mounted filesystems.
-domfsinfo                      Get information of domain's mounted filesystems.
-domfstrim                      Invoke fstrim on domain's mounted filesystems.
-domhostname                    print the domain's hostname
-domid                          convert a domain name or UUID to domain id
-domif-setlink                  set link state of a virtual interface
-domiftune                      get/set parameters of a virtual interface
-domjobabort                    abort active domain job
-domjobinfo                     domain job information
-domname                        convert a domain id or UUID to domain name
-domrename                      rename a domain
-dompmsuspend                   suspend a domain gracefully using power management functions
-dompmwakeup                    wakeup a domain from pmsuspended state
-domuuid                        convert a domain name or id to domain UUID
-domxml-from-native             Convert native config to domain XML
-domxml-to-native               Convert domain XML to native config
-dump                           dump the core of a domain to a file for analysis
-dumpxml                        domain information in XML
-edit                           edit XML configuration for a domain
-event                          Domain Events
-inject-nmi                     Inject NMI to the guest
-iothreadinfo                   view domain IOThreads
-iothreadpin                    control domain IOThread affinity
-iothreadadd                    add an IOThread to the guest domain
-iothreaddel                    delete an IOThread from the guest domain
-send-key                       Send keycodes to the guest
-send-process-signal            Send signals to processes
-lxc-enter-namespace            LXC Guest Enter Namespace
-managedsave                    managed save of a domain state
-managedsave-remove             Remove managed save of a domain
-memtune                        Get or set memory parameters
-perf                           Get or set perf event
-metadata                       show or set domain's custom XML metadata
-migrate                        migrate domain to another host
-migrate-setmaxdowntime         set maximum tolerable downtime
-migrate-compcache              get/set compression cache size
-migrate-setspeed               Set the maximum migration bandwidth
-migrate-getspeed               Get the maximum migration bandwidth
-migrate-postcopy               Switch running migration from pre-copy to post-copy
-numatune                       Get or set numa parameters
-qemu-attach                    QEMU Attach
-qemu-monitor-command           QEMU Monitor Command
-qemu-monitor-event             QEMU Monitor Events
-qemu-agent-command             QEMU Guest Agent Command
-reboot                         reboot a domain
-reset                          reset a domain
-restore                        restore a domain from a saved state in a file
-resume                         resume a domain
-save                           save a domain state to a file
-save-image-define              redefine the XML for a domain's saved state file
-save-image-dumpxml             saved state domain information in XML
-save-image-edit                edit XML for a domain's saved state file
-schedinfo                      show/set scheduler parameters
-screenshot                     take a screenshot of a current domain console and store it into a file
-set-user-password              set the user password inside the domain
-setmaxmem                      change maximum memory limit
-setmem                         change memory allocation
-setvcpus                       change number of virtual CPUs
-shutdown                       gracefully shutdown a domain
-start                          start a (previously defined) inactive domain
-suspend                        suspend a domain
-ttyconsole                     tty console
-undefine                       undefine a domain
-update-device                  update device from an XML file
-vcpucount                      domain vcpu counts
-vcpuinfo                       detailed domain vcpu information
-vcpupin                        control or query domain vcpu affinity
-emulatorpin                    control or query domain emulator affinity
-vncdisplay                     vnc display
-guestvcpus                     query or modify state of vcpu in the guest (via agent)
-setvcpu                        attach/detach vcpu or groups of threads
-domblkthreshold                set the threshold for block-threshold event for a given block device or it's backing chain element
-</code></pre>
-
-<p> Domain Monitoring (help keyword &lsquo;monitor&rsquo;):</p>
-
-<pre><code>domblkerror                    Show errors on block devices
-domblkinfo                     domain block device size information
-domblklist                     list all domain blocks
-domblkstat                     get device block stats for a domain
-domcontrol                     domain control interface state
-domif-getlink                  get link state of a virtual interface
-domifaddr                      Get network interfaces' addresses for a running domain
-domiflist                      list all domain virtual interfaces
-domifstat                      get network interface stats for a domain
-dominfo                        domain information
-dommemstat                     get memory statistics for a domain
-domstate                       domain state
-domstats                       get statistics about one or multiple domains
-domtime                        domain time
-list                           list domains
-</code></pre>
-
-<p> Host and Hypervisor (help keyword &lsquo;host&rsquo;):</p>
-
-<pre><code>allocpages                     Manipulate pages pool size
-capabilities                   capabilities
-cpu-models                     CPU models
-domcapabilities                domain capabilities
-freecell                       NUMA free memory
-freepages                      NUMA free pages
-hostname                       print the hypervisor hostname
-maxvcpus                       connection vcpu maximum
-node-memory-tune               Get or set node memory parameters
-nodecpumap                     node cpu map
-nodecpustats                   Prints cpu stats of the node.
-nodeinfo                       node information
-nodememstats                   Prints memory stats of the node.
-nodesuspend                    suspend the host node for a given time duration
-sysinfo                        print the hypervisor sysinfo
-uri                            print the hypervisor canonical URI
-version                        show version
-</code></pre>
-
-<p> Interface (help keyword &lsquo;interface&rsquo;):</p>
-
-<pre><code>iface-begin                    create a snapshot of current interfaces settings, which can be later committed (iface-commit) or restored (iface-rollback)
-iface-bridge                   create a bridge device and attach an existing network device to it
-iface-commit                   commit changes made since iface-begin and free restore point
-iface-define                   define an inactive persistent physical host interface or modify an existing persistent one from an XML file
-iface-destroy                  destroy a physical host interface (disable it / "if-down")
-iface-dumpxml                  interface information in XML
-iface-edit                     edit XML configuration for a physical host interface
-iface-list                     list physical host interfaces
-iface-mac                      convert an interface name to interface MAC address
-iface-name                     convert an interface MAC address to interface name
-iface-rollback                 rollback to previous saved configuration created via iface-begin
-iface-start                    start a physical host interface (enable it / "if-up")
-iface-unbridge                 undefine a bridge device after detaching its slave device
-iface-undefine                 undefine a physical host interface (remove it from configuration)
-</code></pre>
-
-<p> Network Filter (help keyword &lsquo;filter&rsquo;):</p>
-
-<pre><code>nwfilter-define                define or update a network filter from an XML file
-nwfilter-dumpxml               network filter information in XML
-nwfilter-edit                  edit XML configuration for a network filter
-nwfilter-list                  list network filters
-nwfilter-undefine              undefine a network filter
-</code></pre>
-
-<p> Networking (help keyword &lsquo;network&rsquo;):</p>
-
-<pre><code>net-autostart                  autostart a network
-net-create                     create a network from an XML file
-net-define                     define an inactive persistent virtual network or modify an existing persistent one from an XML file
-net-destroy                    destroy (stop) a network
-net-dhcp-leases                print lease info for a given network
-net-dumpxml                    network information in XML
-net-edit                       edit XML configuration for a network
-net-event                      Network Events
-net-info                       network information
-net-list                       list networks
-net-name                       convert a network UUID to network name
-net-start                      start a (previously defined) inactive network
-net-undefine                   undefine a persistent network
-net-update                     update parts of an existing network's configuration
-net-uuid                       convert a network name to network UUID
-</code></pre>
-
-<p> Node Device (help keyword &lsquo;nodedev&rsquo;):</p>
-
-<pre><code>nodedev-create                 create a device defined by an XML file on the node
-nodedev-destroy                destroy (stop) a device on the node
-nodedev-detach                 detach node device from its device driver
-nodedev-dumpxml                node device details in XML
-nodedev-list                   enumerate devices on this host
-nodedev-reattach               reattach node device to its device driver
-nodedev-reset                  reset node device
-nodedev-event                  Node Device Events
-</code></pre>
-
-<p> Secret (help keyword &lsquo;secret&rsquo;):</p>
-
-<pre><code>secret-define                  define or modify a secret from an XML file
-secret-dumpxml                 secret attributes in XML
-secret-event                   Secret Events
-secret-get-value               Output a secret value
-secret-list                    list secrets
-secret-set-value               set a secret value
-secret-undefine                undefine a secret
-</code></pre>
-
-<p> Snapshot (help keyword &lsquo;snapshot&rsquo;):</p>
-
-<pre><code>snapshot-create                Create a snapshot from XML
-snapshot-create-as             Create a snapshot from a set of args
-snapshot-current               Get or set the current snapshot
-snapshot-delete                Delete a domain snapshot
-snapshot-dumpxml               Dump XML for a domain snapshot
-snapshot-edit                  edit XML for a snapshot
-snapshot-info                  snapshot information
-snapshot-list                  List snapshots for a domain
-snapshot-parent                Get the name of the parent of a snapshot
-snapshot-revert                Revert a domain to a snapshot
-</code></pre>
-
-<p> Storage Pool (help keyword &lsquo;pool&rsquo;):</p>
-
-<pre><code>find-storage-pool-sources-as   find potential storage pool sources
-find-storage-pool-sources      discover potential storage pool sources
-pool-autostart                 autostart a pool
-pool-build                     build a pool
-pool-create-as                 create a pool from a set of args
-pool-create                    create a pool from an XML file
-pool-define-as                 define a pool from a set of args
-pool-define                    define an inactive persistent storage pool or modify an existing persistent one from an XML file
-pool-delete                    delete a pool
-pool-destroy                   destroy (stop) a pool
-pool-dumpxml                   pool information in XML
-pool-edit                      edit XML configuration for a storage pool
-pool-info                      storage pool information
-pool-list                      list pools
-pool-name                      convert a pool UUID to pool name
-pool-refresh                   refresh a pool
-pool-start                     start a (previously defined) inactive pool
-pool-undefine                  undefine an inactive pool
-pool-uuid                      convert a pool name to pool UUID
-pool-event                     Storage Pool Events
-</code></pre>
-
-<p> Storage Volume (help keyword &lsquo;volume&rsquo;):</p>
-
-<pre><code>vol-clone                      clone a volume.
-vol-create-as                  create a volume from a set of args
-vol-create                     create a vol from an XML file
-vol-create-from                create a vol, using another volume as input
-vol-delete                     delete a vol
-vol-download                   download volume contents to a file
-vol-dumpxml                    vol information in XML
-vol-info                       storage vol information
-vol-key                        returns the volume key for a given volume name or path
-vol-list                       list vols
-vol-name                       returns the volume name for a given volume key or path
-vol-path                       returns the volume path for a given volume name or key
-vol-pool                       returns the storage pool for a given volume key or path
-vol-resize                     resize a vol
-vol-upload                     upload file contents to a volume
-vol-wipe                       wipe a vol
-</code></pre>
-
-<p> Virsh itself (help keyword &lsquo;virsh&rsquo;):</p>
-
-<pre><code>cd                             change the current directory
-echo                           echo arguments
-exit                           quit this interactive terminal
-help                           print help
-pwd                            print the current directory
-quit                           quit this interactive terminal
-connect                        (re)connect to hypervisor
-</code></pre>
-
-<p>```</p>
-
-<p>Ok, default network check now:</p>
-
-<p>```
-virsh net-list &mdash;all</p>
-
-<h2> Name                 State      Autostart     Persistent</h2>
-
-<p> default              inactive   no            yes
-```</p>
-
-<p>The default network is inactive, so we have to enable it:</p>
-
-<p><code>
-virsh net-start default
-Network default started
-</code></p>
-
-<p>Now, if you do an <em>ifconfig</em>, you should see the new bridge interface:</p>
-
-<p>```
-virbr0: flags=4099&lt;UP,BROADCAST,MULTICAST>  mtu 1500</p>
-
-<pre><code>    inet 192.168.122.1  netmask 255.255.255.0  broadcast 192.168.122.255
-    ether 52:54:00:b2:a7:6e  txqueuelen 1000  (Ethernet)
-    RX packets 0  bytes 0 (0.0 B)
-    RX errors 0  dropped 0  overruns 0  frame 0
-    TX packets 0  bytes 0 (0.0 B)
-    TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
-</code></pre>
-
-<p>```</p>
-
-<p>To get more info about your bridge, you can use the <strong>brctl</strong> command:</p>
-
-<p>```
-brctl
-Usage: brctl [commands]
-commands:</p>
-
-<pre><code>addbr       &lt;bridge&gt;        add bridge
-delbr       &lt;bridge&gt;        delete bridge
-addif       &lt;bridge&gt; &lt;device&gt;   add interface to bridge
-delif       &lt;bridge&gt; &lt;device&gt;   delete interface from bridge
-hairpin     &lt;bridge&gt; &lt;port&gt; {on|off}    turn hairpin on/off
-setageing   &lt;bridge&gt; &lt;time&gt;     set ageing time
-setbridgeprio   &lt;bridge&gt; &lt;prio&gt;     set bridge priority
-setfd       &lt;bridge&gt; &lt;time&gt;     set bridge forward delay
-sethello    &lt;bridge&gt; &lt;time&gt;     set hello time
-setmaxage   &lt;bridge&gt; &lt;time&gt;     set max message age
-setpathcost &lt;bridge&gt; &lt;port&gt; &lt;cost&gt;  set path cost
-setportprio &lt;bridge&gt; &lt;port&gt; &lt;prio&gt;  set port priority
-show        [ &lt;bridge&gt; ]        show a list of bridges
-showmacs    &lt;bridge&gt;        show a list of mac addrs
-showstp     &lt;bridge&gt;        show bridge stp info
-stp         &lt;bridge&gt; {on|off}   turn stp on/off
-</code></pre>
-
-<p>```</p>
-
-<blockquote><p>brctl is used to set up, maintain, and inspect the ethernet bridge configuration in the linux kernel.</p>
-
-<p>An ethernet bridge is a device commonly used to connect different  networks of ethernets together, so that these
-ethernets will appear as one ethernet to the participants.</p>
-
-<p>Each of the ethernets  being  connected  corresponds  to  one  physical interface  in  the  bridge. These individual
-ethernets are bundled into one bigger (&lsquo;logical&rsquo;) ethernet, this bigger  ethernet  corresponds  to the bridge
-network interface.</p></blockquote>
-
-<p><code>
-brctl show
-bridge name bridge id       STP enabled interfaces
-virbr0      8000.525400b2a76e   yes     virbr0-nic
-</code></p>
-
-<p>Ok, now we have the default network set. It&rsquo;s time to actually start some VMs. In KVM, VMs can be managed both from the command line with virsh, and from the GUI, with Virtual Network Manager, which you can find under System Tools.</p>
-
-<p><img class="center" src="/images/sysadmin/kvm/virtmanager.png" title="&lsquo;virtmanager&rsquo; &lsquo;virtmanager&rsquo;" ></p>
-
-<p><strong>Before starting to create VMs, please reboot your host to save you time and headaches</strong>.</p>
-
-<p>I grabbed a Debian iso to showcase its live CD, and I created a VM from it:</p>
-
-<p><img class="center" src="/images/sysadmin/kvm/1-new.png" title="&lsquo;new vm&rsquo; &lsquo;new vm&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/2-os.png" title="&lsquo;os&rsquo; &lsquo;os&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/3-hw.png" title="&lsquo;hardware&rsquo; &lsquo;hardware specs&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/4-space.png" title="&lsquo;disk&rsquo; &lsquo;disk&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/5-final.png" title="&lsquo;create vm&rsquo; &lsquo;create vm&rsquo;" ></p>
-
-<p>I had to do one more step before getting rid of errors every time I finished with the VM creation. libvirt was pointing to the qemu-kvm binary, but I had no such file, so I created a symlink as specified in this <a href="https://bbs.archlinux.org/viewtopic.php?pid=1240205#p1240205">Arch Linux forum</a>:</p>
-
-<p><code>
-ln -s /usr/bin/qemu-{system-x86_64,kvm}
-ls -la /usr/bin/qemu-kvm
-lrwxrwxrwx 1 root root 27 Sep 17 13:19 /usr/bin/qemu-kvm -&gt; /usr/bin/qemu-system-x86_64
-</code></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/vm.png" title="&lsquo;vm&rsquo; &lsquo;working vm&rsquo;" ></p>
-
-<p><img class="center" src="/images/sysadmin/kvm/details.png" title="&lsquo;vm details&rsquo; &lsquo;vm details&rsquo;" ></p>
-
-<p>KVM graphical interface is nice, but we are not limited to a GUI. We can create and interact with VMs from the command line!</p>
-
-<p>First, let&rsquo;s see if what VMs we&rsquo;ve got:</p>
-
-<p>```
-virsh list &mdash;all</p>
-
-<h2> Id    Name                           State</h2>
-
-<ul>
-<li>   generic                        shut off
-```</li>
-</ul>
-
-
-<p>If we only wanted to list the running VMs, we could do it with <code>virsh list</code></p>
-
-<p>Now, I&rsquo;m going to start a VM, which in virsh talk is called a domain, and look at some info about it:</p>
-
-<p>```
-virsh # start generic
-Domain generic started</p>
-
-<p>virsh # dominfo generic
-Id:             1
-Name:           generic
-UUID:           c4982e35-ec8d-4b5f-9ad3-c8491bcd9181
-OS Type:        hvm
-State:          running
-CPU(s):         1
-CPU time:       0.4s
-Max memory:     1048576 KiB
-Used memory:    1048576 KiB
-Persistent:     yes
-Autostart:      disable
-Managed save:   no
-Security model: none
-Security DOI:   0
-```</p>
-
-<p>Now we have a better grasp on Linux-based hypervisors, and we don&rsquo;t have to rely on VMware and Virtualbox only. In a future post I will show how to install a VM from the command line.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Q: How did you get into artificial   \
-| intelligence? A: Seemed logical &mdash; I |
-\ didn&rsquo;t have any real intelligence.   /</p>
 
 <hr />
 
