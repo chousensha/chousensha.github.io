@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-01-27T10:06:26-05:00</updated>
+  <updated>2018-01-30T13:13:29-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,76 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - autofs automounter]]></title>
+    <link href="http://chousensha.github.io/blog/2018/01/30/lfcs-prep-autofs-automounter/"/>
+    <updated>2018-01-30T12:57:31-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/01/30/lfcs-prep-autofs-automounter</id>
+    <content type="html"><![CDATA[<p>In a <a href="http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7/">previous post</a> we looked at sharing folders with NFS. Now we take a step further to look at a client-only configuration that allows on demand mounting / unmounting of various filesystems. There is no need for /etc/fstab entries and resources are preserved better. The automounter is provided by the <em>autofs</em> package. After installing it, check that the autofs service has been started, before proceeding with the configuration.</p>
+
+<!-- more -->
+
+
+<p>The main configuration is done in the master map file, located at <code>/etc/auto.master</code>. Its format is:</p>
+
+<p><code>
+&lt;mount-point&gt; &lt;map-type&gt; &lt;options&gt;
+</code></p>
+
+<ul>
+<li><p><strong>mount-point</strong> = base location for the autofs filesystem to be mounted.  For indirect maps this directory will be created  (as  with  mkdir -p) and is removed when the autofs filesystem is umounted.</p></li>
+<li><p><strong>map-type</strong> = map type used for this mount point. A map file can be given here</p></li>
+<li><p><strong>options</strong> = mount options</p></li>
+</ul>
+
+
+<p>Here are the contents of my <em>/etc/auto.master</em> file:</p>
+
+<p><code>
+/mnt    /etc/auto.share
+</code></p>
+
+<p>The map file can have any name of your choosing. The auto.share file has the following format:</p>
+
+<p><code>
+&lt;mount point&gt; &lt;options&gt; &lt;location&gt;
+</code></p>
+
+<p>I made one with these values:</p>
+
+<p><code>
+nfs-share -fstype=nfs 192.168.241.130:/var/nfs-share
+</code></p>
+
+<p>The name refers to the autofs mount point. I didn&rsquo;t specify an absolute path, so the share will be mounted under the directory specified in the master map (/mnt in this case). I had a quick share served by an NFS server, and after all the above configuration, I restarted autofs and looked under /mnt:</p>
+
+<p><code>
+ls /mnt/share
+docs
+</code></p>
+
+<p>Done! No need for manually adding entries to /etc/fstab and mounting them.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Change your thoughts and you change \
+\ your world.                         /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - LVM storage management]]></title>
@@ -1303,17 +1373,17 @@ The key's randomart image is:
 <p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
 
 <p>```
-ssh-copy-id <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#50;&#46;&#x31;&#54;&#56;&#46;&#50;&#49;&#55;&#x2e;&#49;&#x32;&#x39;">&#114;&#x6f;&#111;&#x74;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#54;&#56;&#46;&#50;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;</a>
+ssh-copy-id <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#114;&#111;&#111;&#116;&#x40;&#x31;&#x39;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#50;&#x31;&#x37;&#46;&#49;&#x32;&#57;">&#x72;&#111;&#111;&#x74;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#46;&#50;&#49;&#x37;&#x2e;&#49;&#x32;&#x39;</a>
 The authenticity of host &lsquo;192.168.217.129 (192.168.217.129)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
 Are you sure you want to continue connecting (yes/no)? yes
 /usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
 /usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
-<a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#x36;&#56;&#x2e;&#50;&#49;&#55;&#46;&#49;&#x32;&#57;">&#x72;&#111;&#111;&#x74;&#64;&#49;&#57;&#x32;&#46;&#49;&#54;&#x38;&#x2e;&#x32;&#49;&#x37;&#46;&#x31;&#x32;&#57;</a>&rsquo;s password:</p>
+<a href="&#x6d;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#49;&#x39;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#x32;&#x31;&#55;&#x2e;&#x31;&#50;&#x39;">&#x72;&#111;&#111;&#116;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#x38;&#46;&#x32;&#49;&#55;&#x2e;&#x31;&#50;&#x39;</a>&rsquo;s password:</p>
 
 <p>Number of key(s) added: 1</p>
 
-<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#50;&#x31;&#55;&#x2e;&#49;&#x32;&#57;">&#114;&#111;&#111;&#116;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#50;&#x39;</a>&rsquo;&rdquo;
+<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x72;&#111;&#111;&#116;&#x40;&#49;&#57;&#x32;&#46;&#49;&#54;&#x38;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#x32;&#x39;">&#114;&#111;&#x6f;&#x74;&#x40;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#x2e;&#50;&#49;&#55;&#x2e;&#49;&#50;&#x39;</a>&rsquo;&rdquo;
 and check to make sure that only the key(s) you wanted were added.
 ```</p>
 
@@ -1356,80 +1426,6 @@ root@192.168.217.129: Permission denied (publickey,gssapi-keyex,gssapi-with-mic)
 <p>/ You learn to write as if to someone \
 | else because NEXT YEAR YOU WILL BE  |
 \ &ldquo;SOMEONE ELSE.&rdquo;                     /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Resetting root password on CentOS 7]]></title>
-    <link href="http://chousensha.github.io/blog/2017/11/11/lfcs-prep-resetting-root-password-on-centos-7/"/>
-    <updated>2017-11-11T16:53:18-05:00</updated>
-    <id>http://chousensha.github.io/blog/2017/11/11/lfcs-prep-resetting-root-password-on-centos-7</id>
-    <content type="html"><![CDATA[<p>So, you got physical access to a machine, but you don&rsquo;t remember (or never knew) the root password. This post will walk you through how to reset the root password on a CentOS 7 system.</p>
-
-<!-- more -->
-
-
-<p><img class="center" src="/images/sysadmin/rootreset/boot.png" title="&lsquo;boot&rsquo; &lsquo;edit grub boot entry&rsquo;" ></p>
-
-<p>At the boot menu, press <strong>e</strong> to edit the desired boot entry</p>
-
-<p><img class="center" src="/images/sysadmin/rootreset/initram.png" title="&lsquo;initram&rsquo; &lsquo;initram&rsquo;" ></p>
-
-<p>Now go to the end of the line that starts with <strong>linux16</strong> (you can quickly do it with <strong>Ctrl-e</strong> or <strong>End</strong> key, <strong>Ctrl-a</strong> or <strong>Home</strong> for the beginning of a line) and add <code>rd.break enforcing=0</code> to it. The first paramenter will interrupt the boot process to drop into a shell, and the second one sets SELinux to permissive mode, needed for a quicker way of resetting the password that doesn&rsquo;t require file relabeling at the end.</p>
-
-<p>Also remove the <strong>rhgb</strong> and <strong>quiet</strong> parameters to see more debugging information. These are described in <a href="https://www.redhat.com/archives/rhl-list/2004-May/msg07775.html">https://www.redhat.com/archives/rhl-list/2004-May/msg07775.html</a></p>
-
-<blockquote><p>rhgb = redhat graphical boot &ndash; This is a GUI mode booting screen with most of the information hidden while the user
-sees a rotating activity icon spining and brief information as to what the computer is doing.</p>
-
-<p>quiet = hides the majority of boot messages before rhgb starts. These are supposed to make the common user more
-comfortable. They get alarmed about seeing the kernel and initializing messages, so they hide them for their comfort.</p></blockquote>
-
-<p>Next, press <strong>Ctrl-x</strong> to boot with the new options. You will be dropped into an initramfs switch_root shell.</p>
-
-<p><img class="center" src="/images/sysadmin/rootreset/initramfs.png" title="&lsquo;initramfs switch_root&rsquo; &lsquo;initramfs switch_root shell&rsquo;" ></p>
-
-<p>This could be confusing to someone new. Basically, initramfs is a temporary filesystem loaded into memory, that the kernel can access really early, in order to offload some startup tasks. It is also called early user space, and it takes care of steps that would be too cumbersome to include in the kernel, such as loading kernel modules and drivers needed for boot. This allows the kernel to remain relatively lean and not do by itself all the possible configurations. This initramfs image is a CPIO archive that gets unpacked into a tmpfs (a temporary filesystem stored in memory) and becomes the initial root filesystem.</p>
-
-<p>Now, the filesystem is already mounted read-only inside <code>/sysroot</code>. To makey any changes, you have to mount it as read-write: <code>mount -o remount,rw /sysroot</code></p>
-
-<p><img class="center" src="/images/sysadmin/rootreset/sysroot.png" title="&lsquo;sysroot&rsquo; &lsquo;sysroot mount&rsquo;" ></p>
-
-<p>Finally, change the root directory to /sysroot in order to run a shell from it: <code>chroot /sysroot</code>. Now your prompt will change to <code>sh-4.2#</code> and from here you can change the password normally, by using <em>passwd</em>. You should get the message that all authentication tokens updated successfully. Since you updated the password, you changed <em>/etc/shadow</em> and now it won&rsquo;t be labeled correctly with a SELinux security context. You have to force a relabel of all the files at next boot, by creating an <em>.autorelabel</em> file: <code>touch /.autorelabel</code>.</p>
-
-<p>Now type exit twice to exit the chroot environment first and then to exit the initramfs shell which will cause a reboot. The relabeling will take a while, and then you can use the system.</p>
-
-<p>To skip the relabeling process, if you used <em>enforce=0</em>, you can restore the context of the shadow file with <code>restorecon /etc/shadow</code>. Then you have to remember to set SELinux back to enforcing, by running <code>setenforce 1</code></p>
-
-<p>Apparently, when you have an RHCSA exam, you start from getting a machine that you have to reset the root password for, which is really cool. Don&rsquo;t get caught unprepared!</p>
-
-<h3>Learn more</h3>
-
-<p><a href="https://www.certdepot.net/rhel7-interrupt-boot-gain-access-system/">https://www.certdepot.net/rhel7-interrupt-boot-gain-access-system/</a></p>
-
-<p><a href="http://man7.org/linux/man-pages/man7/dracut.cmdline.7.html">Kernel command line parameters</a></p>
-
-<p><a href="https://unix.stackexchange.com/questions/126217/when-would-you-use-pivot-root-over-switch-root">switch_root and initramfs</a></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Be careful of reading health books, you \
-| might die of a misprint.                |
-|                                         |
-\ &mdash; Mark Twain                           /</p>
 
 <hr />
 
