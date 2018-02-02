@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
+  <title><![CDATA[Category: sysadmin] | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-01-30T13:13:29-05:00</updated>
+  <updated>2018-02-02T14:31:56-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -14,1418 +14,153 @@
 
   
   <entry>
-    <title type="html"><![CDATA[LFCS prep - autofs automounter]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/30/lfcs-prep-autofs-automounter/"/>
-    <updated>2018-01-30T12:57:31-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/30/lfcs-prep-autofs-automounter</id>
-    <content type="html"><![CDATA[<p>In a <a href="http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7/">previous post</a> we looked at sharing folders with NFS. Now we take a step further to look at a client-only configuration that allows on demand mounting / unmounting of various filesystems. There is no need for /etc/fstab entries and resources are preserved better. The automounter is provided by the <em>autofs</em> package. After installing it, check that the autofs service has been started, before proceeding with the configuration.</p>
+    <title type="html"><![CDATA[LFCS prep - Using firewalld]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/"/>
+    <updated>2018-02-02T14:23:40-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at firewall configuration on CentOS / RedHat by using firewalld, the replacement for iptables. Since they are both mutually exclusive, if you decide to use firewalld, ensure that iptables is not running and cannot be started, by masking the service with <code>systemctl mask iptables</code></p>
 
 <!-- more -->
 
 
-<p>The main configuration is done in the master map file, located at <code>/etc/auto.master</code>. Its format is:</p>
+<p>With firewalld, traffic is classified into zones that can have their own rules and ports / services. The default zone is called the <em>public</em> zone</p>
 
-<p><code>
-&lt;mount-point&gt; &lt;map-type&gt; &lt;options&gt;
-</code></p>
+<p>Now let&rsquo;s see a couple of commands for accomplishing various tasks.</p>
 
 <ul>
-<li><p><strong>mount-point</strong> = base location for the autofs filesystem to be mounted.  For indirect maps this directory will be created  (as  with  mkdir -p) and is removed when the autofs filesystem is umounted.</p></li>
-<li><p><strong>map-type</strong> = map type used for this mount point. A map file can be given here</p></li>
-<li><p><strong>options</strong> = mount options</p></li>
+<li>list the predefined zones</li>
 </ul>
 
 
-<p>Here are the contents of my <em>/etc/auto.master</em> file:</p>
-
 <p><code>
-/mnt    /etc/auto.share
-</code></p>
-
-<p>The map file can have any name of your choosing. The auto.share file has the following format:</p>
-
-<p><code>
-&lt;mount point&gt; &lt;options&gt; &lt;location&gt;
-</code></p>
-
-<p>I made one with these values:</p>
-
-<p><code>
-nfs-share -fstype=nfs 192.168.241.130:/var/nfs-share
-</code></p>
-
-<p>The name refers to the autofs mount point. I didn&rsquo;t specify an absolute path, so the share will be mounted under the directory specified in the master map (/mnt in this case). I had a quick share served by an NFS server, and after all the above configuration, I restarted autofs and looked under /mnt:</p>
-
-<p><code>
-ls /mnt/share
-docs
-</code></p>
-
-<p>Done! No need for manually adding entries to /etc/fstab and mounting them.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Change your thoughts and you change \
-\ your world.                         /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - LVM storage management]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management/"/>
-    <updated>2018-01-27T09:56:20-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at logical volume management tasks. LVM improves the traditional partition to disk approach, adding flexibility (extending and reducing space), snapshot capabilities and redundancy.</p>
-
-<!-- more -->
-
-
-<p>First, some terminology is in order:</p>
-
-<ul>
-<li><p>physical volumes (PV) are the physical devices that are mapped to be used inside LVM. Their storace unit is called a physical extent (PE)</p></li>
-<li><p>volume groups (VG) are storage pools made from PVs</p></li>
-<li><p>logical volumes (LV) are made up of the VG space</p></li>
-</ul>
-
-
-<h2>Creating PVs</h2>
-
-<p>I am now going to create 2 PVs of 100 MB each. You first need to create 2 LVM partitions. If you look inside fdisk, you see the partition code for LVM is <strong>8e</strong>:</p>
-
-<p><code>
-8e  Linux LVM
-</code></p>
-
-<p>So before writing the partition in fdisk, use <code>t</code> to change it to Linux LVM. Then verify that the new partitions were created:</p>
-
-<p><code>
-lsblk | grep sdb
-sdb             8:16   0    1G  0 disk
-├─sdb1          8:17   0  100M  0 part
-└─sdb2          8:18   0  100M  0 part
-</code></p>
-
-<p>Now the PVs can be created:</p>
-
-<p><code>
-pvcreate /dev/sdb1 /dev/sdb2
-  Physical volume "/dev/sdb1" successfully created.
-  Physical volume "/dev/sdb2" successfully created.
-</code></p>
-
-<h2>Creating VGs</h2>
-
-<p>Now you can create a VG from the 2 PVs:</p>
-
-<p><code>
-vgcreate vg-zero /dev/sdb1 /dev/sdb2
-  Volume group "vg-zero" successfully created
-</code></p>
-
-<p>Let&rsquo;s look at our existing PVs now:</p>
-
-<p><code>
-pvs
-  PV         VG      Fmt  Attr PSize  PFree
-  /dev/sda2  rhel    lvm2 a--  29.00g  4.00m
-  /dev/sdb1  vg-zero lvm2 a--  96.00m 96.00m
-  /dev/sdb2  vg-zero lvm2 a--  96.00m 96.00m
-</code></p>
-
-<p>And check an individual PV in more detail:</p>
-
-<p><code>
-pvdisplay /dev/sdb1
-  --- Physical volume ---
-  PV Name               /dev/sdb1
-  VG Name               vg-zero
-  PV Size               100.00 MiB / not usable 4.00 MiB
-  Allocatable           yes
-  PE Size               4.00 MiB
-  Total PE              24
-  Free PE               24
-  Allocated PE          0
-  PV UUID               ViTFfu-jBZE-47Ie-d6qB-WTDt-fpNf-bPC00Y
-</code></p>
-
-<p>Now let&rsquo;s check our VGs:</p>
-
-<p><code>
-vgs
-  VG      #PV #LV #SN Attr   VSize   VFree  
-  rhel      1   2   0 wz--n-  29.00g   4.00m
-  vg-zero   2   0   0 wz--n- 192.00m 192.00m
-</code></p>
-
-<p>And in more detail:</p>
-
-<p><code>
-vgdisplay vg-zero
-  --- Volume group ---
-  VG Name               vg-zero
-  System ID             
-  Format                lvm2
-  Metadata Areas        2
-  Metadata Sequence No  1
-  VG Access             read/write
-  VG Status             resizable
-  MAX LV                0
-  Cur LV                0
-  Open LV               0
-  Max PV                0
-  Cur PV                2
-  Act PV                2
-  VG Size               192.00 MiB
-  PE Size               4.00 MiB
-  Total PE              48
-  Alloc PE / Size       0 / 0   
-  Free  PE / Size       48 / 192.00 MiB
-  VG UUID               gUf1XI-znJt-MM2T-V721-PNbe-uxcr-m3bVTe
-</code></p>
-
-<h2>Creating LVs</h2>
-
-<p>Next, I created a LV named inventory with a size of 128 MB, from the vg-zero VG:</p>
-
-<p><code>
-lvcreate -n inventory -L 128MB vg-zero
-  Logical volume "inventory" created.
-</code></p>
-
-<p>Look at the existing LVs:</p>
-
-<p><code>
-lvs
-  LV        VG      Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  root      rhel    -wi-ao----  26.99g                                                    
-  swap      rhel    -wi-ao----   2.00g                                                    
-  inventory vg-zero -wi-a----- 128.00m     
-</code></p>
-
-<p>And check our newly created one:</p>
-
-<p><code>
-lvdisplay /dev/vg-zero/inventory
-  --- Logical volume ---
-  LV Path                /dev/vg-zero/inventory
-  LV Name                inventory
-  VG Name                vg-zero
-  LV UUID                jE4XRJ-ddlX-nM8s-NVSr-4cfK-F9O0-JcKecs
-  LV Write Access        read/write
-  LV Creation host, time rhel7, 2018-01-26 15:36:04 +0200
-  LV Status              available
-  # open                 0
-  LV Size                128.00 MiB
-  Current LE             32
-  Segments               2
-  Allocation             inherit
-  Read ahead sectors     auto
-  - currently set to     8192
-  Block device           253:2
-</code></p>
-
-<p>Before using the new LV, you need to create a filesystem on top of it. I went with XFS:</p>
-
-<p>```
-mkfs.xfs /dev/vg-zero/inventory
-meta-data=/dev/vg-zero/inventory isize=512    agcount=4, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0, sparse=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal log           bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-```</p>
-
-<p>Now prepare a location to mount it:</p>
-
-<p><code>
-mkdir /mnt/inventory
-</code></p>
-
-<p>I want it to mount at boot, so I added the following to <code>/etc/fstab</code>:</p>
-
-<p><code>
-/dev/vg-zero/inventory     /mnt/inventory                xfs    defaults        0 0
-</code></p>
-
-<p>Let&rsquo;s break down the <strong>/etc/fstab</strong> fields a bit:</p>
-
-<ul>
-<li><p>the first field represents the device, which can be specified by name, UUID, or label</p></li>
-<li><p>the second field is the mount point of the device</p></li>
-<li><p>the third is the filesystem type</p></li>
-<li><p>fourth is for the mount options. The <em>defaults</em> option specifies the usage of default options: rw, suid, dev, exec, auto, nouser, async</p></li>
-<li><p>the fifth is a backup flag for the dump utility. Use 1 to enable it and 0 to disable it</p></li>
-<li><p>sixth represents the fsck automatic check at boot. Use 0 to disable it, 1 for the root filesystem, and 2 for other filesystems that might need the automatic checking</p></li>
-</ul>
-
-
-<p>It&rsquo;s a good practice to mount the devices you added to fstab before a reboot to ensure there are no errors: <code>mount -a</code></p>
-
-<h2>Extending / reducing VGs</h2>
-
-<p>To add more space to a VG, you can add more PVs to it. Let&rsquo;s see its current space:</p>
-
-<p><code>
-vgdisplay vg-zero | grep Free
-  Free  PE / Size       16 / 64.00 MiB
-</code></p>
-
-<p>I created a new PV on /dev/sdb3 and added it to the VG:</p>
-
-<p><code>
-vgextend vg-zero /dev/sdb3
-  Volume group "vg-zero" successfully extended
-</code></p>
-
-<p>The storage size has increased now:</p>
-
-<p><code>
-vgdisplay vg-zero | grep Free
-  Free  PE / Size       28 / 112.00 MiB
-</code></p>
-
-<p>And to reduce the space of a VG, remove one or more PVs from it:</p>
-
-<p><code>
-vgreduce vg-zero /dev/sdb3
-  Removed "/dev/sdb3" from volume group "vg-zero"
-</code></p>
-
-<p>To migrate the PEs used on a PV to other PVs in the VG, use <strong>pvmove</strong>:</p>
-
-<p><code>
-pvmove /dev/sdb1
-  /dev/sdb1: Moved: 0.00%
-  /dev/sdb1: Moved: 100.00%
-</code></p>
-
-<h2>Resizing LVs</h2>
-
-<p>You can use <em>lvresize</em> for extending or shrinking LVs, or <em>lvextend</em> for extending only. There needs to be enough free space in the VG for growing the LV.</p>
-
-<p><code>
-lvextend -L +50M /dev/vg-zero/inventory
-  Rounding size to boundary between physical extents: 52.00 MiB.
-  Size of logical volume vg-zero/inventory changed from 128.00 MiB (32 extents) to 180.00 MiB (45 extents).
-  Logical volume vg-zero/inventory successfully resized.
-</code></p>
-
-<p>You also need to grow the filesystem to occupy the newly extended LV. Since I picked XFS, I&rsquo;ll use <em>xfs_growfs</em> for this:</p>
-
-<p>```
-xfs_growfs /mnt/inventory/
-meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=4, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0 spinodes=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal               bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-data blocks changed from 32768 to 46080
-```</p>
-
-<p>This was just for demo, in practice you want to resize both the LV and the filesystem with a single command:</p>
-
-<p>```
-lvextend -L 190M -r /dev/vg-zero/inventory
-  Rounding size to boundary between physical extents: 192.00 MiB.
-  Size of logical volume vg-zero/inventory changed from 180.00 MiB (45 extents) to 192.00 MiB (48 extents).
-  Logical volume vg-zero/inventory successfully resized.
-meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=6, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0 spinodes=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=46080, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal               bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-data blocks changed from 46080 to 49152
-```</p>
-
-<p>This time I specified an absolute size instead of adding a certain amount.</p>
-
-<h2>Removing LVs</h2>
-
-<p>When you&rsquo;re done, you backed up your data or no longer need it, you can delete the LV. Unmount it first:</p>
-
-<p><code>
-umount -v /mnt/inventory/
-umount: /mnt/inventory (/dev/mapper/vg--zero-inventory) unmounted
-</code></p>
-
-<p>Remove the LV:</p>
-
-<p><code>
-lvremove /dev/vg-zero/inventory
-Do you really want to remove active logical volume vg-zero/inventory? [y/n]: y
-  Logical volume "inventory" successfully removed
-</code></p>
-
-<p>Remove the VG:</p>
-
-<p><code>
-vgremove vg-zero
-  Volume group "vg-zero" successfully removed
-</code></p>
-
-<p>Finally, also remove the PVs:</p>
-
-<p><code>
-pvremove /dev/sdb1 /dev/sdb2
-  Labels on physical volume "/dev/sdb1" successfully wiped.
-  Labels on physical volume "/dev/sdb2" successfully wiped.
-</code></p>
-
-<p>And don&rsquo;t forget to delete any remaining fstab entries.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ That secret you&rsquo;ve been guarding, \
-\ isn&rsquo;t.                            /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Creating custom yum repositories]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/17/lfcs-prep-creating-custom-yum-repositories/"/>
-    <updated>2018-01-17T13:21:03-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/17/lfcs-prep-creating-custom-yum-repositories</id>
-    <content type="html"><![CDATA[<p>Setting up a local package repository is useful when you need to save bandwidth or you won&rsquo;t have access to internet. In this post we&rsquo;ll set up a local yum repository from the DVD source, install vsftpd from it, and then host the repository over FTP.</p>
-
-<!-- more -->
-
-
-<h2>Making a local repository from DVD</h2>
-
-<p>I made a <strong>/mnt/cdrom</strong> directory where I can mount the DVD. Then check what you have in the drive:</p>
-
-<p><code>
-blkid /dev/sr0
-/dev/sr0: UUID="2016-10-19-18-32-06-00" LABEL="RHEL-7.3 Server.x86_64" TYPE="iso9660" PTTYPE="dos"
-</code></p>
-
-<p>Mount the ISO:</p>
-
-<p><code>
-mount -t iso9660 -o ro /dev/sr0 /mnt/cdrom
-</code></p>
-
-<p>Copy the packages on the DVD to a directory:</p>
-
-<p><code>
-mkdir -p /mnt/repos
-cp -rpv /mnt/cdrom/Packages/ /mnt/repos/rhel7
-</code></p>
-
-<p>Grab a cofee, this will take a while. When it&rsquo;s finished, create the repo from all the RPMS you copied:</p>
-
-<p><code>
-createrepo /mnt/repos/rhel7
-Spawning worker 0 with 4751 pkgs
-Workers Finished
-Saving Primary metadata
-Saving file lists metadata
-Saving other metadata
-Generating sqlite DBs
-Sqlite DBs complete
-</code></p>
-
-<p>Next, we need to create a conf file for the repo. These files should be placed in <code>/etc/yum.repos.d</code> and be of the format <em>name.repo</em>. For a listing of the repository options that you can set, see the <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/system_administrators_guide/sec-configuring_yum_and_yum_repositories#sec-Setting_repository_Options">RedHat documentation</a></p>
-
-<p>I defined a repo file that looks like this:</p>
-
-<p><code>
-cat /etc/yum.repos.d/rhel7-local.repo
-[rhel7-local]
-name=Local RHEL7 repository
-baseurl=file:///mnt/repos/rhel7
-enabled=1
-gpgcheck=0
+firewall-cmd --get-zones
+work drop internal external trusted home dmz public block
 </code></p>
 
 <ul>
-<li><p>[name] &ndash; this is a unique repository ID, and it should contain no spaces</p></li>
-<li><p>name &ndash; a description of the repository</p></li>
-<li><p>baseurl &ndash; location of the repository data. For local files: <code>file:///path/to/local/repo</code>. For <a href="HTTP:">HTTP:</a> <code><a href="http://path/to/repo">http://path/to/repo</a></code>. And for <a href="FTP:">FTP:</a> <code><a href="ftp://path/to/repo">ftp://path/to/repo</a></code></p></li>
-<li><p>enabled &ndash; this 0 or 1 value specifies whether the repository is used by yum or not</p></li>
-<li><p>gpgcheck &ndash; this 0 or 1 value specifies if yum will do a GPG signature check on the packages</p></li>
+<li>print the default zone</li>
 </ul>
 
-
-<p>I cleared the yum cache and checked that my repo has been enabled:</p>
-
-<p><code>
-yum clean all
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-Cleaning repos: rhel-7-server-rpms rhel-7-server-rt-beta-rpms rhel-7-server-rt-rpms rhel7-local
-Cleaning up everything
-yum repolist enabled | grep rhel7-local
-rhel7-local                          Local RHEL7 repository               4,751
-</code></p>
-
-<h2>Install vsftpd from local repo</h2>
-
-<p>I disabled the other repositories and installed vsftpd from my local one:</p>
-
-<p>```
-yum install -y vsftpd
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-Resolving Dependencies
-&mdash;> Running transaction check
-&mdash;&ndash;> Package vsftpd.x86_64 0:3.0.2-21.el7 will be installed
-&mdash;> Finished Dependency Resolution</p>
-
-<p>Dependencies Resolved</p>
-
-<p>=============================================================================================================================================================================</p>
-
-<h1> Package                               Arch                                  Version                                        Repository                                  Size</h1>
-
-<p>Installing:
- vsftpd                                x86_64                                3.0.2-21.el7                                   rhel7-local                                169 k</p>
-
-<h1>Transaction Summary</h1>
-
-<p>Install  1 Package</p>
-
-<p>Total download size: 169 k
-Installed size: 348 k
-Downloading packages:
-Running transaction check
-Running transaction test
-Transaction test succeeded
-Running transaction
-  Installing : vsftpd-3.0.2-21.el7.x86_64                                                                                                                                1/1
-  Verifying  : vsftpd-3.0.2-21.el7.x86_64                                                                                                                                1/1</p>
-
-<p>Installed:
-  vsftpd.x86_64 0:3.0.2-21.el7</p>
-
-<p>Complete!
-```</p>
-
-<p>Start the FTP service and see that it&rsquo;s running:</p>
-
-<p>```
-systemctl start vsftpd &amp;&amp; systemctl status vsftpd
-● vsftpd.service &ndash; Vsftpd ftp daemon
-   Loaded: loaded (/usr/lib/systemd/system/vsftpd.service; disabled; vendor preset: disabled)
-   Active: active (running) since Mon 2018-01-15 15:21:54 EET; 35ms ago
-  Process: 6025 ExecStart=/usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf (code=exited, status=0/SUCCESS)
- Main PID: 6026 (vsftpd)
-   CGroup: /system.slice/vsftpd.service</p>
-
-<pre><code>       └─6026 /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
-</code></pre>
-
-<p>Jan 15 15:21:54 rhel7 systemd[1]: Starting Vsftpd ftp daemon&hellip;
-Jan 15 15:21:54 rhel7 systemd[1]: Started Vsftpd ftp daemon.
-```</p>
-
-<p>If you have firewalld running, you have to allow vsftpd. First, chech the default zone:</p>
 
 <p><code>
 firewall-cmd --get-default-zone
 public
 </code></p>
 
-<p>Check if FTP is allowed:</p>
+<ul>
+<li>list active zones and their interfaces</li>
+</ul>
+
 
 <p><code>
-firewall-cmd --query-service=ftp
-no
+firewall-cmd --get-active-zones
+public
+  interfaces: enp0s3
 </code></p>
 
-<p>Add a rule to allow <a href="FTP:">FTP:</a></p>
+<ul>
+<li>set new default zone</li>
+</ul>
+
 
 <p><code>
-firewall-cmd --zone=public --add-service=ftp --permanent
-success
+firewall-cmd --set-default-zone=NAME
 </code></p>
 
-<p>Restart the firewall and check again:</p>
+<ul>
+<li>list predefined services</li>
+</ul>
+
 
 <p><code>
-firewall-cmd --query-service=ftp
-yes
+firewall-cmd --get-services
+RH-Satellite-6 amanda-client amanda-k5-client bacula bacula-client ceph ceph-mon dhcp dhcpv6 dhcpv6-client dns docker-registry dropbox-lansync freeipa-ldap freeipa-ldaps freeipa-replication ftp high-availability http https imap imaps ipp ipp-client ipsec iscsi-target kadmin kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mosh mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxy pmwebapi pmwebapis pop3 pop3s postgresql privoxy proxy-dhcp ptp pulseaudio puppetmaster radius rpc-bind rsyncd samba samba-client sane smtp smtps snmp snmptrap squid ssh synergy syslog syslog-tls telnet tftp tftp-client tinc tor-socks transmission-client vdsm vnc-server wbem-https xmpp-bosh xmpp-client xmpp-local xmpp-server
 </code></p>
 
-<p>Next, I copied the repository to the FTP folder in <code>/var/ftp/pub</code> and changed the ownership to <a href="ftp:">ftp:</a></p>
+<ul>
+<li>print information about the settings of the public zone</li>
+</ul>
+
 
 <p><code>
-cp -r /mnt/repos/rhel7/ /var/ftp/pub/rhel7
-chown -R ftp:ftp /var/ftp/pub/rhel7/
+firewall-cmd --list-all --zone=public
+public (active)
+  target: default
+  icmp-block-inversion: no
+  interfaces: enp0s3
+  sources:
+  services: dhcpv6-client ftp mountd nfs rpc-bind ssh
+  ports:
+  protocols:
+  masquerade: no
+  forward-ports:
+  sourceports:
+  icmp-blocks:
+  rich rules:
 </code></p>
 
-<p>Check the SELinux context:</p>
+<ul>
+<li>add a service</li>
+</ul>
+
 
 <p><code>
-ls -lZ /var/ftp/pub/
-dr-xr-xr-x. ftp ftp unconfined_u:object_r:public_content_t:s0 rhel7
+firewall-cmd --add-service samba
 </code></p>
 
-<p>And to see if everything works, FTP anonymously to the server and list the files:</p>
+<ul>
+<li><p>to make changes persist through reboots, add the <strong>&mdash;permanent</strong> flag, and don&rsquo;t forget to reload after</p></li>
+<li><p>add multiple services</p></li>
+</ul>
+
 
 <p><code>
-ftp localhost
-Trying ::1...
-Connected to localhost (::1).
-220 (vsFTPd 3.0.2)
-Name (localhost:root): anonymous
-331 Please specify the password.
-Password:
-230 Login successful.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-ftp&gt; ls
-229 Entering Extended Passive Mode (|||43989|).
-150 Here comes the directory listing.
-drwxr-xr-x    3 0        0              19 Jan 15 13:47 pub
-226 Directory send OK.
-ftp&gt; ls pub
-229 Entering Extended Passive Mode (|||35006|).
-150 Here comes the directory listing.
-dr-xr-xr-x    3 14       50         258048 Jan 15 13:49 rhel7
+firewall-cmd --zone=NAME --add-service={serv1,serv2,serv3}
 </code></p>
 
-<p>Now you can create another repo file like before, but this time served over <a href="FTP:">FTP:</a></p>
+<ul>
+<li>add port</li>
+</ul>
+
 
 <p><code>
-cat /etc/yum.repos.d/ftp-rhel7.repo
-[ftp-rhel7]
-name=RHEL7 repository FTP
-baseurl=ftp://127.0.0.1/pub/rhel7
-enabled=1
-gpgcheck=0
+firewall-cmd add-port=8080/tcp
 </code></p>
 
-<p>I disabled the local repository and only kept the FTP one:</p>
+<ul>
+<li>add source to a zone</li>
+</ul>
+
 
 <p><code>
-yum repolist
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-ftp-rhel7                                                                                                                | 2.9 kB  00:00:00     
-ftp-rhel7/primary_db                                                                                                     | 3.8 MB  00:00:00     
-repo id                                                        repo name                                                                  status
-ftp-rhel7                                                      RHEL7 repository FTP                                                       4,751
-repolist: 4,751
+firewall-cmd --permanent --zone=NAME--add-source=RANGE
 </code></p>
 
-<p>Install something to see it work:</p>
+<ul>
+<li>add masquerade for a zone</li>
+</ul>
 
-<p>```
-yum install -y squid
-[&hellip;]
-Installed:
-  squid.x86_64 7:3.5.20-2.el7</p>
 
-<p>Dependency Installed:
-  libecap.x86_64 0:1.0.0-1.el7                          perl-Digest.noarch 0:1.17-245.el7          perl-Digest-MD5.x86_64 0:2.52-3.el7       <br/>
-  squid-migration-script.x86_64 7:3.5.20-2.el7</p>
+<p><code>
+firewall-cmd --zone=NAME --add-masquerade
+</code></p>
 
-<p>Complete!
-```</p>
+<ul>
+<li>port forwarding (must enable masquerade first). Forward packets destined to port 22 to port 8888</li>
+</ul>
+
+
+<p><code>
+firewall-cmd --zone=NAME --add-forward-port=port=22:proto=tcp:toport=8888
+</code></p>
 
 <p>```</p>
 
 <hr />
 
-<p>/ Don&rsquo;t get stuck in a closet &mdash; wear \
-\ yourself out.                       /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - NetworkManager configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration/"/>
-    <updated>2018-01-11T13:31:50-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look over configuring various network settings with <strong>nmcli</strong>, the command line tool for NetworkManager.</p>
-
-<!-- more -->
-
-
-<p>The first step is to understand how network configuration settings look. Inside the <code>/etc/sysconfig/network-scripts/</code> directory, you can find config files for your network interfaces, under the format of <strong>ifcfg-name</strong>. On my system, it looks like this:</p>
-
-<p><code>
-cat ifcfg-Wired_connection_1
-HWADDR=00:0C:29:47:D7:A8
-TYPE=Ethernet
-BOOTPROTO=dhcp
-DEFROUTE=yes
-IPV4_FAILURE_FATAL=no
-IPV6INIT=yes
-IPV6_AUTOCONF=yes
-IPV6_DEFROUTE=yes
-IPV6_FAILURE_FATAL=no
-IPV6_ADDR_GEN_MODE=stable-privacy
-NAME="Wired connection 1"
-UUID=8d922966-5be4-4633-a99d-71e836e2b31a
-ONBOOT=yes
-DNS1=8.8.8.8
-PEERDNS=yes
-PEERROUTES=yes
-IPV6_PEERDNS=yes
-IPV6_PEERROUTES=yes
-</code></p>
-
-<p>You can find a more complete overview of the options at <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html">https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html</a> , but from a glance at this file, we see the interface is an Ethernet device, it uses DHCP, it&rsquo;s set as the default route for both IPv4 and IPv6 traffic, it&rsquo;s activated at boot time, and also some other details like its MAC address and name.</p>
-
-<p>nmcli is a very powerful tool, and you can press Tab to see options for its use at every stage.</p>
-
-<p>```
-nmcli help
-Usage: nmcli [OPTIONS] OBJECT { COMMAND | help }</p>
-
-<p>OPTIONS
-  -t[erse]                                   terse output
-  -p[retty]                                  pretty output
-  -m[ode] tabular|multiline                  output mode
-  -c[olors] auto|yes|no                      whether to use colors in output
-  -f[ields] &lt;field1,field2,&hellip;>|all|common   specify fields to output
-  -e[scape] yes|no                           escape columns separators in values
-  -a[sk]                                     ask for missing parameters
-  -s[how-secrets]                            allow displaying passwords
-  -w[ait] <seconds>                          set timeout waiting for finishing operations
-  -v[ersion]                                 show program version
-  -h[elp]                                    print this help</p>
-
-<p>OBJECT
-  g[eneral]       NetworkManager&rsquo;s general status and operations
-  n[etworking]    overall networking control
-  r[adio]         NetworkManager radio switches
-  c[onnection]    NetworkManager&rsquo;s connections
-  d[evice]        devices managed by NetworkManager
-  a[gent]         NetworkManager secret agent or polkit agent
-  m[onitor]       monitor NetworkManager changes
-```</p>
-
-<p>Here we will go over a few examples:</p>
-
-<h2>Device options</h2>
-
-<p>```
-nmcli device help
-Usage: nmcli device { COMMAND | help }</p>
-
-<p>COMMAND := { status | show | set | connect | reapply | modify | disconnect | delete | monitor | wifi | lldp }</p>
-
-<p>  status</p>
-
-<p>  show [<ifname>]</p>
-
-<p>  set [ifname] <ifname> [autoconnect yes|no] [managed yes|no]</p>
-
-<p>  connect <ifname></p>
-
-<p>  reapply <ifname></p>
-
-<p>  modify <ifname> ([+|&ndash;]<setting>.<property> <value>)+</p>
-
-<p>  disconnect <ifname> &hellip;</p>
-
-<p>  delete <ifname> &hellip;</p>
-
-<p>  monitor <ifname> &hellip;</p>
-
-<p>  wifi [list [ifname <ifname>] [bssid <BSSID>]]</p>
-
-<p>  wifi connect &lt;(B)SSID> [password <password>] [wep-key-type key|phrase] [ifname <ifname>]</p>
-
-<pre><code>                     [bssid &lt;BSSID&gt;] [name &lt;name&gt;] [private yes|no] [hidden yes|no]
-</code></pre>
-
-<p>  wifi hotspot [ifname <ifname>] [con-name <name>] [ssid <SSID>] [band a|bg] [channel <channel>] [password <password>]</p>
-
-<p>  wifi rescan [ifname <ifname>] [[ssid <SSID to scan>] &hellip;]</p>
-
-<p>  lldp [list [ifname <ifname>]]
-```</p>
-
-<ul>
-<li>show device status</li>
-</ul>
-
-
-<p><code>
-nmcli dev status
-DEVICE      TYPE      STATE      CONNECTION         
-virbr0      bridge    connected  virbr0             
-enp0s3      ethernet  connected  Wired connection 1
-lo          loopback  unmanaged  --                 
-virbr0-nic  tun       unmanaged  --          
-</code></p>
-
-<ul>
-<li>list device details</li>
-</ul>
-
-
-<p><code>
-nmcli dev show enp0s3
-GENERAL.DEVICE:                         enp0s3
-GENERAL.TYPE:                           ethernet
-GENERAL.HWADDR:                         00:0C:29:47:D7:A8
-GENERAL.MTU:                            1500
-GENERAL.STATE:                          100 (connected)
-GENERAL.CONNECTION:                     Wired connection 1
-GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/0
-WIRED-PROPERTIES.CARRIER:               on
-IP4.ADDRESS[1]:                         192.168.241.130/24
-IP4.GATEWAY:                            192.168.241.2
-IP4.DNS[1]:                             192.168.241.2
-IP4.DNS[2]:                             8.8.8.8
-IP4.DOMAIN[1]:                          localdomain
-IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
-IP6.GATEWAY:                            
-</code></p>
-
-<h2>Connection options</h2>
-
-<p>```
-nmcli con help
-Usage: nmcli connection { COMMAND | help }</p>
-
-<p>COMMAND := { show | up | down | add | modify | clone | edit | delete | monitor | reload | load | import | export }</p>
-
-<p>  show [&mdash;active] [&mdash;order <order spec>]
-  show [&mdash;active] [id | uuid | path | apath] <ID> &hellip;</p>
-
-<p>  up [[id | uuid | path] <ID>] [ifname <ifname>] [ap <BSSID>] [passwd-file <file with passwords>]</p>
-
-<p>  down [id | uuid | path | apath] <ID> &hellip;</p>
-
-<p>  add COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [&mdash; ([+|&ndash;]<setting>.<property> <value>)+]</p>
-
-<p>  modify [&mdash;temporary] [id | uuid | path] <ID> ([+|&ndash;]<setting>.<property> <value>)+</p>
-
-<p>  clone [&mdash;temporary] [id | uuid | path ] <ID> <new name></p>
-
-<p>  edit [id | uuid | path] <ID>
-  edit [type &lt;new_con_type>] [con-name &lt;new_con_name>]</p>
-
-<p>  delete [id | uuid | path] <ID></p>
-
-<p>  monitor [id | uuid | path] <ID> &hellip;</p>
-
-<p>  reload</p>
-
-<p>  load <filename> [ <filename>&hellip; ]</p>
-
-<p>  import [&mdash;temporary] type <type> file <file to import></p>
-
-<p>  export [id | uuid | path] <ID> [<output file>]
-```</p>
-
-<ul>
-<li>look at the available connections and list only the active ones</li>
-</ul>
-
-
-<p><code>
-nmcli con show
-NAME                UUID                                  TYPE            DEVICE
-Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3
-virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
-enp0s3              b4c32cc7-c5ff-451c-8af2-9b9124050f99  802-3-ethernet  --  
-nmcli con show --active
-NAME                UUID                                  TYPE            DEVICE
-Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3
-virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
-</code></p>
-
-<ul>
-<li>list the settings of a particular connection (the double quotes aren&rsquo;t mandatory)</li>
-</ul>
-
-
-<p><code>
-nmcli con show "Wired connection 1"
-connection.id:                          Wired connection 1
-connection.uuid:                        8d922966-5be4-4633-a99d-71e836e2b31a
-connection.stable-id:                   --
-connection.interface-name:              --
-connection.type:                        802-3-ethernet
-connection.autoconnect:                 yes
-connection.autoconnect-priority:        0
-connection.timestamp:                   1515583502
-connection.read-only:                   no
-connection.permissions:                 
-connection.zone:                        --
-connection.master:                      --
-connection.slave-type:                  --
-connection.autoconnect-slaves:          -1 (default)
-connection.secondaries:                 
-connection.gateway-ping-timeout:        0
-connection.metered:                     unknown
-connection.lldp:                        -1 (default)
-802-3-ethernet.port:                    --
-802-3-ethernet.speed:                   0
-802-3-ethernet.duplex:                  --
-802-3-ethernet.auto-negotiate:          yes
-802-3-ethernet.mac-address:             00:0C:29:47:D7:A8
-802-3-ethernet.cloned-mac-address:      --
-802-3-ethernet.generate-mac-address-mask:--
-802-3-ethernet.mac-address-blacklist:   
-802-3-ethernet.mtu:                     auto
-802-3-ethernet.s390-subchannels:        
-802-3-ethernet.s390-nettype:            --
-802-3-ethernet.s390-options:            
-802-3-ethernet.wake-on-lan:             1 (default)
-802-3-ethernet.wake-on-lan-password:    --
-ipv4.method:                            auto
-ipv4.dns:                               8.8.8.8
-ipv4.dns-search:                        
-ipv4.dns-options:                       (default)
-ipv4.dns-priority:                      0
-ipv4.addresses:                         
-ipv4.gateway:                           --
-ipv4.routes:                            
-ipv4.route-metric:                      -1
-ipv4.ignore-auto-routes:                no
-ipv4.ignore-auto-dns:                   no
-ipv4.dhcp-client-id:                    --
-ipv4.dhcp-timeout:                      0
-ipv4.dhcp-send-hostname:                yes
-ipv4.dhcp-hostname:                     --
-ipv4.dhcp-fqdn:                         --
-ipv4.never-default:                     no
-ipv4.may-fail:                          yes
-ipv4.dad-timeout:                       -1 (default)
-ipv6.method:                            auto
-ipv6.dns:                               
-ipv6.dns-search:                        
-ipv6.dns-options:                       (default)
-ipv6.dns-priority:                      0
-ipv6.addresses:                         
-ipv6.gateway:                           --
-ipv6.routes:                            
-ipv6.route-metric:                      -1
-ipv6.ignore-auto-routes:                no
-ipv6.ignore-auto-dns:                   no
-ipv6.never-default:                     no
-ipv6.may-fail:                          yes
-ipv6.ip6-privacy:                       -1 (unknown)
-ipv6.addr-gen-mode:                     stable-privacy
-ipv6.dhcp-send-hostname:                yes
-ipv6.dhcp-hostname:                     --
-ipv6.token:                             --
-GENERAL.NAME:                           Wired connection 1
-GENERAL.UUID:                           8d922966-5be4-4633-a99d-71e836e2b31a
-GENERAL.DEVICES:                        enp0s3
-GENERAL.STATE:                          activated
-GENERAL.DEFAULT:                        yes
-GENERAL.DEFAULT6:                       no
-GENERAL.VPN:                            no
-GENERAL.ZONE:                           --
-GENERAL.DBUS-PATH:                      /org/freedesktop/NetworkManager/ActiveConnection/0
-GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/Settings/0
-GENERAL.SPEC-OBJECT:                    /
-GENERAL.MASTER-PATH:                    --
-IP4.ADDRESS[1]:                         192.168.241.130/24
-IP4.GATEWAY:                            192.168.241.2
-IP4.DNS[1]:                             192.168.241.2
-IP4.DNS[2]:                             8.8.8.8
-IP4.DOMAIN[1]:                          localdomain
-DHCP4.OPTION[1]:                        requested_routers = 1
-DHCP4.OPTION[2]:                        requested_domain_search = 1
-DHCP4.OPTION[3]:                        requested_time_offset = 1
-DHCP4.OPTION[4]:                        requested_domain_name = 1
-DHCP4.OPTION[5]:                        requested_rfc3442_classless_static_routes = 1
-DHCP4.OPTION[6]:                        requested_classless_static_routes = 1
-DHCP4.OPTION[7]:                        requested_wpad = 1
-DHCP4.OPTION[8]:                        requested_broadcast_address = 1
-DHCP4.OPTION[9]:                        next_server = 192.168.241.254
-DHCP4.OPTION[10]:                       expiry = 1515584826
-DHCP4.OPTION[11]:                       requested_interface_mtu = 1
-DHCP4.OPTION[12]:                       requested_subnet_mask = 1
-DHCP4.OPTION[13]:                       domain_name = localdomain
-DHCP4.OPTION[14]:                       dhcp_message_type = 5
-DHCP4.OPTION[15]:                       ip_address = 192.168.241.130
-DHCP4.OPTION[16]:                       routers = 192.168.241.2
-DHCP4.OPTION[17]:                       requested_static_routes = 1
-DHCP4.OPTION[18]:                       subnet_mask = 255.255.255.0
-DHCP4.OPTION[19]:                       requested_domain_name_servers = 1
-DHCP4.OPTION[20]:                       requested_nis_servers = 1
-DHCP4.OPTION[21]:                       requested_ntp_servers = 1
-DHCP4.OPTION[22]:                       domain_name_servers = 192.168.241.2
-DHCP4.OPTION[23]:                       dhcp_lease_time = 1800
-DHCP4.OPTION[24]:                       requested_ms_classless_static_routes = 1
-DHCP4.OPTION[25]:                       broadcast_address = 192.168.241.255
-DHCP4.OPTION[26]:                       requested_nis_domain = 1
-DHCP4.OPTION[27]:                       network_number = 192.168.241.0
-DHCP4.OPTION[28]:                       requested_host_name = 1
-DHCP4.OPTION[29]:                       dhcp_server_identifier = 192.168.241.254
-IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
-IP6.GATEWAY:                            
-</code></p>
-
-<ul>
-<li>adding connections</li>
-</ul>
-
-
-<p>```
-nmcli con add help
-Usage: nmcli connection add { ARGUMENTS | help }</p>
-
-<p>ARGUMENTS := COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [&mdash; ([+|&ndash;]<setting>.<property> <value>)+]</p>
-
-<p>  COMMON_OPTIONS:</p>
-
-<pre><code>              type &lt;type&gt;
-              ifname &lt;interface name&gt; | "*"
-              [con-name &lt;connection name&gt;]
-              [autoconnect yes|no]
-              [save yes|no]
-              [master &lt;master (ifname, or connection UUID or name)&gt;]
-              [slave-type &lt;master connection type&gt;]
-</code></pre>
-
-<p>  TYPE_SPECIFIC_OPTIONS:</p>
-
-<pre><code>ethernet:     [mac &lt;MAC address&gt;]
-              [cloned-mac &lt;cloned MAC address&gt;]
-              [mtu &lt;MTU&gt;]
-
-wifi:         ssid &lt;SSID&gt;
-              [mac &lt;MAC address&gt;]
-              [cloned-mac &lt;cloned MAC address&gt;]
-              [mtu &lt;MTU&gt;]
-              [mode infrastructure|ap|adhoc]
-
-wimax:        [mac &lt;MAC address&gt;]
-              [nsp &lt;NSP&gt;]
-
-pppoe:        username &lt;PPPoE username&gt;
-              [password &lt;PPPoE password&gt;]
-              [service &lt;PPPoE service name&gt;]
-              [mtu &lt;MTU&gt;]
-              [mac &lt;MAC address&gt;]
-
-gsm:          apn &lt;APN&gt;
-              [user &lt;username&gt;]
-              [password &lt;password&gt;]
-
-cdma:         [user &lt;username&gt;]
-              [password &lt;password&gt;]
-
-infiniband:   [mac &lt;MAC address&gt;]
-              [mtu &lt;MTU&gt;]
-              [transport-mode datagram | connected]
-              [parent &lt;ifname&gt;]
-              [p-key &lt;IPoIB P_Key&gt;]
-
-bluetooth:    [addr &lt;bluetooth address&gt;]
-              [bt-type panu|dun-gsm|dun-cdma]
-
-vlan:         dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
-              id &lt;VLAN ID&gt;
-              [flags &lt;VLAN flags&gt;]
-              [ingress &lt;ingress priority mapping&gt;]
-              [egress &lt;egress priority mapping&gt;]
-              [mtu &lt;MTU&gt;]
-
-bond:         [mode balance-rr (0) | active-backup (1) | balance-xor (2) | broadcast (3) |
-                    802.3ad    (4) | balance-tlb   (5) | balance-alb (6)]
-              [primary &lt;ifname&gt;]
-              [miimon &lt;num&gt;]
-              [downdelay &lt;num&gt;]
-              [updelay &lt;num&gt;]
-              [arp-interval &lt;num&gt;]
-              [arp-ip-target &lt;num&gt;]
-              [lacp-rate slow (0) | fast (1)]
-
-bond-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
-
-team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
-
-team-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
-              [config &lt;file&gt;|&lt;raw JSON data&gt;]
-
-bridge:       [stp yes|no]
-              [priority &lt;num&gt;]
-              [forward-delay &lt;2-30&gt;]
-              [hello-time &lt;1-10&gt;]
-              [max-age &lt;6-40&gt;]
-              [ageing-time &lt;0-1000000&gt;]
-              [multicast-snooping yes|no]
-              [mac &lt;MAC address&gt;]
-
-bridge-slave: master &lt;master (ifname, or connection UUID or name)&gt;
-              [priority &lt;0-63&gt;]
-              [path-cost &lt;1-65535&gt;]
-              [hairpin yes|no]
-
-vpn:          vpn-type vpnc|openvpn|pptp|openconnect|openswan|libreswan|ssh|l2tp|iodine|...
-              [user &lt;username&gt;]
-
-olpc-mesh:    ssid &lt;SSID&gt;
-              [channel &lt;1-13&gt;]
-              [dhcp-anycast &lt;MAC address&gt;]
-
-adsl:         username &lt;username&gt;
-              protocol pppoa|pppoe|ipoatm
-              [password &lt;password&gt;]
-              [encapsulation vcmux|llc]
-
-tun:          mode tun|tap
-              [owner &lt;UID&gt;]
-              [group &lt;GID&gt;]
-              [pi yes|no]
-              [vnet-hdr yes|no]
-              [multi-queue yes|no]
-
-ip-tunnel:    mode ipip|gre|sit|isatap|vti|ip6ip6|ipip6|ip6gre|vti6
-              remote &lt;remote endpoint IP&gt;
-              [local &lt;local endpoint IP&gt;]
-              [dev &lt;parent device (ifname or connection UUID)&gt;]
-
-macvlan:      dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
-              mode vepa|bridge|private|passthru|source
-              [tap yes|no]
-
-vxlan:        id &lt;VXLAN ID&gt;
-              remote &lt;IP of multicast group or remote address&gt;
-              [local &lt;source IP&gt;]
-              [dev &lt;parent device (ifname or connection UUID)&gt;]
-              [source-port-min &lt;0-65535&gt;]
-              [source-port-max &lt;0-65535&gt;]
-              [destination-port &lt;0-65535&gt;]
-</code></pre>
-
-<p>  SLAVE_OPTIONS:</p>
-
-<pre><code>bridge:       [priority &lt;0-63&gt;]
-              [path-cost &lt;1-65535&gt;]
-              [hairpin yes|no]
-
-team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
-</code></pre>
-
-<p>  IP_OPTIONS:</p>
-
-<pre><code>              [ip4 &lt;IPv4 address&gt;] [gw4 &lt;IPv4 gateway&gt;]
-              [ip6 &lt;IPv6 address&gt;] [gw6 &lt;IPv6 gateway&gt;]
-</code></pre>
-
-<p>```</p>
-
-<ul>
-<li>add a new DHCP connection that will start on boot</li>
-</ul>
-
-
-<p><code>
-nmcli con add con-name newdhcp type ethernet ifname enp0s3
-Connection 'newdhcp' (8c90fcd7-5e40-43c6-819b-47cab3051b5e) successfully added.
-nmcli con up newdhcp
-Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/3)
-nmcli con show --active
-NAME     UUID                                  TYPE            DEVICE
-newdhcp  8c90fcd7-5e40-43c6-819b-47cab3051b5e  802-3-ethernet  enp0s3
-virbr0   321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
-</code></p>
-
-<ul>
-<li>add a static connection</li>
-</ul>
-
-
-<p><code>
-nmcli con add con-name static-con ifname enp0s3 autoconnect no type ethernet ip4 192.168.241.120/24 gw4 192.168.241.2
-Connection 'static-con' (258c2964-ac43-4ed8-bffa-7ad09967b748) successfully added.
-</code></p>
-
-<p>Let&rsquo;s see the IP we started with:</p>
-
-<p>```
-ifconfig | grep inet</p>
-
-<pre><code>    inet 192.168.241.130  netmask 255.255.255.0  broadcast 192.168.241.255
-</code></pre>
-
-<p>```</p>
-
-<p>And after switching to the static connection:</p>
-
-<p>```
-nmcli con up static-con
-Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/4)
-nmcli con show &mdash;active
-NAME        UUID                                  TYPE            DEVICE
-static-con  258c2964-ac43-4ed8-bffa-7ad09967b748  802-3-ethernet  enp0s3
-virbr0      321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0
-ifconfig | grep inet</p>
-
-<pre><code>    inet 192.168.241.120  netmask 255.255.255.0  broadcast 192.168.241.255
-</code></pre>
-
-<p>```</p>
-
-<ul>
-<li>modifying connections</li>
-</ul>
-
-
-<p>```
-nmcli con mod help
-Usage: nmcli connection modify { ARGUMENTS | help }</p>
-
-<p>ARGUMENTS := [id | uuid | path] <ID> ([+|&ndash;]<setting>.<property> <value>)+</p>
-
-<p>Modify one or more properties of the connection profile.
-The profile is identified by its name, UUID or D-Bus path. For multi-valued
-properties you can use optional &lsquo;+&rsquo; or &lsquo;&ndash;&rsquo; prefix to the property name.
-The &lsquo;+&rsquo; sign allows appending items instead of overwriting the whole value.
-The &lsquo;&ndash;&rsquo; sign allows removing selected items instead of the whole value.</p>
-
-<p>Examples:
-nmcli con mod home-wifi wifi.ssid rakosnicek
-nmcli con mod em1-1 ipv4.method manual ipv4.addr &ldquo;192.168.1.2/24, 10.10.1.5/8&rdquo;
-nmcli con mod em1-1 +ipv4.dns 8.8.4.4
-nmcli con mod em1-1 -ipv4.dns 1
-nmcli con mod em1-1 -ipv6.addr &ldquo;abbe::cafe/56&rdquo;
-nmcli con mod bond0 +bond.options mii=500
-nmcli con mod bond0 -bond.options downdelay
-```</p>
-
-<ul>
-<li>add a DNS server to an existing connection</li>
-</ul>
-
-
-<p><code>
-nmcli con show static-con | grep ipv4.dns
-ipv4.dns:                               
-ipv4.dns-search:                        
-ipv4.dns-options:                       (default)
-ipv4.dns-priority:                      0
-nmcli con mod static-con ipv4.dns 8.8.8.8
-nmcli con up static-con
-nmcli con show static-con | grep ipv4.dns
-ipv4.dns:                               8.8.8.8
-ipv4.dns-search:                        
-ipv4.dns-options:                       (default)
-ipv4.dns-priority:                      0
-</code></p>
-
-<h3>Learn more</h3>
-
-<ul>
-<li><a href="https://developer.gnome.org/NetworkManager/">NetworkManager documentation</a></li>
-<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/">RHEL7 networking guide</a></li>
-<li><a href="https://www.certdepot.net/rhel7-get-started-nmcli/">CertDepot NetworkManager guide</a></li>
-</ul>
-
-
-<p>```</p>
-
-<hr />
-
-<p>/ You&rsquo;re currently going through a   \
-| difficult transition period called |
-\ &ldquo;Life.&rdquo;                            /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Securing SSH]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/"/>
-    <updated>2018-01-05T16:30:55-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh</id>
-    <content type="html"><![CDATA[<p>SSH-ing between various systems is something you will definitely be doing a lot in infosec. So today I&rsquo;ll quickly go over an exam objective of configuring SSH for key based authentication and disabling root logins for extra security.</p>
-
-<!-- more -->
-
-
-<p>First of all, let&rsquo;s confirm that I can SSH to my machine as root and login with root&rsquo;s password:</p>
-
-<p><code>
-ssh root@192.168.217.129
-The authenticity of host '192.168.217.129 (192.168.217.129)' can't be established.
-ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added '192.168.217.129' (ECDSA) to the list of known hosts.
-root@192.168.217.129's password:
-Last login: Fri Jan  5 14:04:25 2018
-[root@CentOS7 ~]#
-</code></p>
-
-<p>The CentOS server&rsquo;s public key has been added to <code>~/.ssh/known_hosts</code> on my client machine, and I was able to login as root with no problem. Now it&rsquo;s time to change these dangerous defaults. On the client, generate a new pair of keys:</p>
-
-<p><code>
-ssh-keygen
-Generating public/private rsa key pair.
-Enter file in which to save the key (/root/.ssh/id_rsa):
-Enter passphrase (empty for no passphrase):
-Enter same passphrase again:
-Your identification has been saved in /root/.ssh/id_rsa.
-Your public key has been saved in /root/.ssh/id_rsa.pub.
-The key fingerprint is:
-SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali
-The key's randomart image is:
-+---[RSA 2048]----+
-|                 |
-|   .             |
-|  . . .          |
-|   + o +         |
-|  E.=++ S        |
-|.*oOo +o .       |
-|=*=o+ ... =      |
-|==Bo =.. . =     |
-|.=+++++ . .      |
-+----[SHA256]-----+
-</code></p>
-
-<p>Now you have a private and public key inside the .ssh directory. Take a look at their permissions:</p>
-
-<p><code>
--rw-------  1 root root 1675 Jan  5 16:10 id_rsa
--rw-r--r--  1 root root  391 Jan  5 16:10 id_rsa.pub
-</code></p>
-
-<p>The private key has read and write permissions only for the owner (600), while the public key has read/write permissions for the owner, and read also for group and others (644).</p>
-
-<p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
-
-<p>```
-ssh-copy-id <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x72;&#x6f;&#111;&#116;&#64;&#49;&#x39;&#x32;&#x2e;&#49;&#x36;&#56;&#x2e;&#x32;&#x31;&#x37;&#46;&#x31;&#x32;&#x39;">&#114;&#x6f;&#x6f;&#x74;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#46;&#x32;&#x31;&#55;&#x2e;&#49;&#x32;&#57;</a>
-The authenticity of host &lsquo;192.168.217.129 (192.168.217.129)&rsquo; can&rsquo;t be established.
-ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
-Are you sure you want to continue connecting (yes/no)? yes
-/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
-/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed &mdash; if you are prompted now it is to install the new keys
-<a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#x3a;&#114;&#x6f;&#x6f;&#x74;&#64;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#46;&#50;&#x31;&#x37;&#46;&#49;&#50;&#57;">&#x72;&#111;&#x6f;&#116;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#56;&#46;&#x32;&#49;&#55;&#x2e;&#49;&#50;&#57;</a>&rsquo;s password:</p>
-
-<p>Number of key(s) added: 1</p>
-
-<p>Now try logging into the machine, with:   &ldquo;ssh &lsquo;<a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x72;&#111;&#x6f;&#x74;&#64;&#x31;&#x39;&#50;&#46;&#x31;&#x36;&#56;&#x2e;&#50;&#49;&#x37;&#46;&#x31;&#x32;&#x39;">&#x72;&#111;&#x6f;&#x74;&#64;&#49;&#x39;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#50;&#x31;&#55;&#x2e;&#49;&#50;&#x39;</a>&rsquo;&rdquo;
-and check to make sure that only the key(s) you wanted were added.
-```</p>
-
-<p>If you get the error <strong>sign_and_send_pubkey: signing failed: agent refused operation</strong> when trying to SSH to the server, run <em>*ssh-add</em> to add the private key identities to the authentication agent. You can then verify they were added:</p>
-
-<p><code>
-ssh-add -l
-2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI /root/.ssh/id_rsa (RSA)
-2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali (RSA)
-</code></p>
-
-<p>Now you should be able to login with the public key:</p>
-
-<p><code>
-ssh root@192.168.217.129
-Last login: Fri Jan  5 15:06:34 2018 from 192.168.217.132
-[root@CentOS7 ~]#
-</code></p>
-
-<p>That worked, but we don&rsquo;t want root to be able to directly SSH into our host. So edit the <code>/etc/ssh/sshd_config</code> file on the server. The default settings are commented, and you can add your own changes and leave them uncommented to override the defaults. I added the following to disable root login and password authentication:</p>
-
-<p><code>
-PermitRootLogin no
-PasswordAuthentication no
-</code></p>
-
-<p>Restart ssh and try to login again:</p>
-
-<p><code>
-ssh root@192.168.217.129
-root@192.168.217.129: Permission denied (publickey,gssapi-keyex,gssapi-with-mic).
-</code></p>
-
-<p>In practice, you would generate your keys for an account that you will use on that system and if needed, give it sudo privileges to do the work you need.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You learn to write as if to someone \
-| else because NEXT YEAR YOU WILL BE  |
-\ &ldquo;SOMEONE ELSE.&rdquo;                     /</p>
+<p>/ Your best consolation is the hope that \
+| the things you failed to get weren&rsquo;t   |
+\ really worth having.                   /</p>
 
 <hr />
 
