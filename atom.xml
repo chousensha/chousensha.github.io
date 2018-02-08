@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-02T14:31:56-05:00</updated>
+  <updated>2018-02-08T12:53:28-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,189 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Runlevels and bootloader configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/"/>
+    <updated>2018-02-08T12:47:30-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at the following LFCS objectives:</p>
+
+<ul>
+<li><p>Log into graphical and text mode consoles</p></li>
+<li><p>Boot systems into different runlevels manually</p></li>
+<li><p>Install, configure and troubleshoot the  bootloader</p></li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>systemd targets</h2>
+
+<p>First, let&rsquo;s take a look at all the available targets:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl list-units --type=target --all
+</span><span class='line'>  UNIT                   LOAD      ACTIVE   SUB    DESCRIPTION
+</span><span class='line'>  basic.target           loaded    active   active Basic System
+</span><span class='line'>  cryptsetup.target      loaded    active   active Encrypted Volumes
+</span><span class='line'>  emergency.target       loaded    inactive dead   Emergency Mode
+</span><span class='line'>  final.target           loaded    inactive dead   Final Step
+</span><span class='line'>  getty.target           loaded    active   active Login Prompts
+</span><span class='line'>  graphical.target       loaded    active   active Graphical Interface
+</span><span class='line'>  local-fs-pre.target    loaded    active   active Local File Systems (Pre)
+</span><span class='line'>  local-fs.target        loaded    active   active Local File Systems
+</span><span class='line'>  multi-user.target      loaded    active   active Multi-User System
+</span><span class='line'>  network-online.target  loaded    active   active Network is Online
+</span><span class='line'>  network-pre.target     loaded    inactive dead   Network (Pre)
+</span><span class='line'>  network.target         loaded    active   active Network
+</span><span class='line'>  nfs-client.target      loaded    active   active NFS client services
+</span><span class='line'>  nss-lookup.target      loaded    inactive dead   Host and Network Name Lookups
+</span><span class='line'>  nss-user-lookup.target loaded    active   active User and Group Name Lookups
+</span><span class='line'>  paths.target           loaded    active   active Paths
+</span><span class='line'>  remote-fs-pre.target   loaded    active   active Remote File Systems (Pre)
+</span><span class='line'>  remote-fs.target       loaded    active   active Remote File Systems
+</span><span class='line'>  rescue.target          loaded    inactive dead   Rescue Mode
+</span><span class='line'>  rpcbind.target         loaded    inactive dead   RPC Port Mapper
+</span><span class='line'>  shutdown.target        loaded    inactive dead   Shutdown
+</span><span class='line'>  slices.target          loaded    active   active Slices
+</span><span class='line'>  sockets.target         loaded    active   active Sockets
+</span><span class='line'>  swap.target            loaded    active   active Swap
+</span><span class='line'>  sysinit.target         loaded    active   active System Initialization
+</span><span class='line'>● syslog.target          not-found inactive dead   syslog.target
+</span><span class='line'>  time-sync.target       loaded    inactive dead   System Time Synchronized
+</span><span class='line'>  timers.target          loaded    active   active Timers
+</span><span class='line'>  umount.target          loaded    inactive dead   Unmount All Filesystems
+</span><span class='line'>
+</span><span class='line'>LOAD   = Reflects whether the unit definition was properly loaded.
+</span><span class='line'>ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+</span><span class='line'>SUB    = The low-level unit activation state, values depend on unit type.
+</span><span class='line'>
+</span><span class='line'>29 loaded units listed.
+</span><span class='line'>To show all installed unit files use 'systemctl list-unit-files'.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Out of these, we will only look at the most relevant ones:</p>
+
+<ul>
+<li><p><strong>emergency.target</strong> = emergency mode. All you have is systemd and a shell. This is what you use if, for instance, you experience disk failure</p></li>
+<li><p><strong>rescue.target</strong> = single user mode. It&rsquo;s the equivalent of runlevel 1. In this mode, the early boot services are started and local mount points are mounted. No networking</p></li>
+<li><p><strong>multi-user.target</strong> = multi-user text mode with networking. Equivalent to runlevel 3</p></li>
+<li><p><strong>graphical.target</strong> = multi-user with GUI. Equivalent to runlevel 5</p></li>
+</ul>
+
+
+<p>Let&rsquo;s see what the default target is on my system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl get-default
+</span><span class='line'>graphical.target</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can set a new default target with <code>systemctl set-default</code></p>
+
+<p>It is possible to switch to a different target without rebooting, by using <code>systemctl isolate <target name></code>. However, only targets with AllowIsolate=yes in their unit files can be isolated. Isolation will start or stop all necessary services for that particular target. You can use isolation to quickly switch between targets. You can achieve the same with the systemctl command:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl rescue
+</span><span class='line'>systemctl emergency</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Additionally, you can boot a desired target through the boot menu, by selecting <em>e</em> at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry <strong>systemd.unit=<target name></strong></p>
+
+<h2>bootloader troubleshooting</h2>
+
+<p>Here we&rsquo;re only going to look at the grub2 bootloader. Its main configuration file is <code>/boot/grub2/grub.cfg</code>, but you&rsquo;re not supposed to edit it directly, but use <code>grub2-mkconfig</code> to generate the configuration. So you first edit the GRUB parameters in <code>/etc/default/grub</code>, and then run grub2-mkconfig to create the cfg file. Let&rsquo;s see the defaults I have:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/default/grub
+</span><span class='line'>GRUB_TIMEOUT=5
+</span><span class='line'>GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+</span><span class='line'>GRUB_DEFAULT=saved
+</span><span class='line'>GRUB_DISABLE_SUBMENU=true
+</span><span class='line'>GRUB_TERMINAL_OUTPUT="console"
+</span><span class='line'>GRUB_CMDLINE_LINUX="crashkernel=auto rd.lvm.lv=rhel/root rd.lvm.lv=rhel/swap rhgb quiet"
+</span><span class='line'>GRUB_DISABLE_RECOVERY="true"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After editing those, you can run <code>grub2-mkconfig > /boot/grub2/grub.cfg</code> to create the new boot config file.</p>
+
+<p>If you need to reinstall the bootloader, you can do so with <code>grub2-install</code></p>
+
+<h3>Learn more</h3>
+
+<p><a href="https://fedoraproject.org/wiki/SysVinit_to_Systemd_Cheatsheet">SysVinit to Systemd Cheatsheet</a></p>
+
+<p><a href="https://lists.freedesktop.org/archives/systemd-devel/2016-February/035709.html">emergency mode vs rescue mode</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ You will always get the greatest        \
+</span><span class='line'>\ recognition for the job you least like. /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Using firewalld]]></title>
@@ -10032,354 +10215,6 @@ Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
 </span><span class='line'>/ You have literary talent that you \
 </span><span class='line'>\ should take pains to develop.     /
 </span><span class='line'> -----------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[wafw00f - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/06/30/wafw00f-kali-linux-tools/"/>
-    <updated>2017-06-30T04:46:55-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/06/30/wafw00f-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you need to establish if a web application firewall is in place, and ideally, what type of WAF it is. You can go bark at it with wafw00f!</p>
-
-<p>Homepage: <a href="https://github.com/EnableSecurity/wafw00f">https://github.com/EnableSecurity/wafw00f</a></p>
-
-<!-- more -->
-
-
-<h2>wafw00f description</h2>
-
-<blockquote><p>WAFW00F identifies and fingerprints Web Application Firewall (WAF) products.</p>
-
-<p>How does it work?</p>
-
-<p>To do its magic, WAFW00F does the following:</p>
-
-<p> Sends a normal HTTP request and analyses the response; this identifies a number of WAF solutions</p>
-
-<p> If that is not successful, it sends a number of (potentially malicious) HTTP requests and uses simple logic to
-deduce which WAF it is</p>
-
-<p> If that is also not successful, it analyses the responses previously returned and uses another simple algorithm
-to guess if a WAF or security solution is actively responding to our attacks</p></blockquote>
-
-<h2>wafw00f options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wafw00f -h
-</span><span class='line'>
-</span><span class='line'>                                 ^     ^
-</span><span class='line'>        _   __  _   ____ _   __  _    _   ____
-</span><span class='line'>       ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-</span><span class='line'>      | V V // o // _/ | V V // 0 // 0 // _/
-</span><span class='line'>      |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-</span><span class='line'>                                &lt;
-</span><span class='line'>                                 ...'
-</span><span class='line'>
-</span><span class='line'>    WAFW00F - Web Application Firewall Detection Tool
-</span><span class='line'>
-</span><span class='line'>    By Sandro Gauci && Wendel G. Henrique
-</span><span class='line'>
-</span><span class='line'>Usage: wafw00f url1 [url2 [url3 ... ]]
-</span><span class='line'>example: wafw00f http://www.victim.org/
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'>  -h, --help            show this help message and exit
-</span><span class='line'>  -v, --verbose         enable verbosity - multiple -v options increase
-</span><span class='line'>                        verbosity
-</span><span class='line'>  -a, --findall         Find all WAFs, do not stop testing on the first one
-</span><span class='line'>  -r, --disableredirect
-</span><span class='line'>                        Do not follow redirections given by 3xx responses
-</span><span class='line'>  -t TEST, --test=TEST  Test for one specific WAF
-</span><span class='line'>  -l, --list            List all WAFs that we are able to detect
-</span><span class='line'>  --xmlrpc              Switch on the XML-RPC interface instead of CUI
-</span><span class='line'>  --xmlrpcport=XMLRPCPORT
-</span><span class='line'>                        Specify an alternative port to listen on, default 8001
-</span><span class='line'>  -V, --version         Print out the version</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>wafw00f usage</h2>
-
-<ul>
-<li>see what WAFs it can detect at the moment</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wafw00f -l
-</span><span class='line'>
-</span><span class='line'>                                 ^     ^
-</span><span class='line'>        _   __  _   ____ _   __  _    _   ____
-</span><span class='line'>       ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-</span><span class='line'>      | V V // o // _/ | V V // 0 // 0 // _/
-</span><span class='line'>      |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-</span><span class='line'>                                &lt;
-</span><span class='line'>                                 ...'
-</span><span class='line'>
-</span><span class='line'>    WAFW00F - Web Application Firewall Detection Tool
-</span><span class='line'>
-</span><span class='line'>    By Sandro Gauci && Wendel G. Henrique
-</span><span class='line'>
-</span><span class='line'>Can test for these WAFs:
-</span><span class='line'>
-</span><span class='line'>Profense
-</span><span class='line'>NetContinuum
-</span><span class='line'>Incapsula WAF
-</span><span class='line'>CloudFlare
-</span><span class='line'>USP Secure Entry Server
-</span><span class='line'>Cisco ACE XML Gateway
-</span><span class='line'>Barracuda Application Firewall
-</span><span class='line'>Art of Defence HyperGuard
-</span><span class='line'>BinarySec
-</span><span class='line'>Teros WAF
-</span><span class='line'>F5 BIG-IP LTM
-</span><span class='line'>F5 BIG-IP APM
-</span><span class='line'>F5 BIG-IP ASM
-</span><span class='line'>F5 FirePass
-</span><span class='line'>F5 Trafficshield
-</span><span class='line'>InfoGuard Airlock
-</span><span class='line'>Citrix NetScaler
-</span><span class='line'>Trustwave ModSecurity
-</span><span class='line'>IBM Web Application Security
-</span><span class='line'>IBM DataPower
-</span><span class='line'>DenyALL WAF
-</span><span class='line'>Applicure dotDefender
-</span><span class='line'>Juniper WebApp Secure
-</span><span class='line'>Microsoft URLScan
-</span><span class='line'>Aqtronix WebKnight
-</span><span class='line'>eEye Digital Security SecureIIS
-</span><span class='line'>Imperva SecureSphere
-</span><span class='line'>Microsoft ISA Server</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>detect WAF</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wafw00f https://bugcrowd.com
-</span><span class='line'>
-</span><span class='line'>                                 ^     ^
-</span><span class='line'>        _   __  _   ____ _   __  _    _   ____
-</span><span class='line'>       ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-</span><span class='line'>      | V V // o // _/ | V V // 0 // 0 // _/
-</span><span class='line'>      |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-</span><span class='line'>                                &lt;
-</span><span class='line'>                                 ...'
-</span><span class='line'>
-</span><span class='line'>    WAFW00F - Web Application Firewall Detection Tool
-</span><span class='line'>
-</span><span class='line'>    By Sandro Gauci && Wendel G. Henrique
-</span><span class='line'>
-</span><span class='line'>Checking https://bugcrowd.com
-</span><span class='line'>The site https://bugcrowd.com is behind a CloudFlare
-</span><span class='line'>Number of requests: 1</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>not detecting WAF</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wafw00f cisco.com
-</span><span class='line'>
-</span><span class='line'>                                 ^     ^
-</span><span class='line'>        _   __  _   ____ _   __  _    _   ____
-</span><span class='line'>       ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-</span><span class='line'>      | V V // o // _/ | V V // 0 // 0 // _/
-</span><span class='line'>      |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-</span><span class='line'>                                &lt;
-</span><span class='line'>                                 ...'
-</span><span class='line'>
-</span><span class='line'>    WAFW00F - Web Application Firewall Detection Tool
-</span><span class='line'>
-</span><span class='line'>    By Sandro Gauci && Wendel G. Henrique
-</span><span class='line'>
-</span><span class='line'>Checking http://cisco.com
-</span><span class='line'>Generic Detection results:
-</span><span class='line'>No WAF detected by the generic detection
-</span><span class='line'>Number of requests: 13</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>establish there is a WAF but without detecting its type</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wafw00f -a microsoft.com
-</span><span class='line'>
-</span><span class='line'>                                 ^     ^
-</span><span class='line'>        _   __  _   ____ _   __  _    _   ____
-</span><span class='line'>       ///7/ /.' \ / __////7/ /,' \ ,' \ / __/
-</span><span class='line'>      | V V // o // _/ | V V // 0 // 0 // _/
-</span><span class='line'>      |_n_,'/_n_//_/   |_n_,' \_,' \_,'/_/
-</span><span class='line'>                                &lt;
-</span><span class='line'>                                 ...'
-</span><span class='line'>
-</span><span class='line'>    WAFW00F - Web Application Firewall Detection Tool
-</span><span class='line'>
-</span><span class='line'>    By Sandro Gauci && Wendel G. Henrique
-</span><span class='line'>
-</span><span class='line'>Checking http://microsoft.com
-</span><span class='line'>Generic Detection results:
-</span><span class='line'>The site http://microsoft.com seems to be behind a WAF or some sort of security solution
-</span><span class='line'>Reason: The server returned a different response code when a string trigged the blacklist.
-</span><span class='line'>Normal response code is "400", while the response code to an attack is "301"
-</span><span class='line'>Number of requests: 13</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
-</span><span class='line'>/ You'll wish that you had done some of \
-</span><span class='line'>| the hard things when they were easier |
-</span><span class='line'>\ to do.                                /
-</span><span class='line'> ---------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
