@@ -3,7 +3,7 @@ layout: post
 title: "LFCS prep - Using firewalld"
 date: 2018-02-02 14:23:40 -0500
 comments: true
-categories: linux, sysadmin]
+categories: [linux, sysadmin]
 keywords: firewalld, firewalld commands, lfcs, rhcsa, lfcsa
 description: firewalld overview
 ---
