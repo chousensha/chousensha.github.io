@@ -4,7 +4,7 @@ title: "LFCS prep - Runlevels and bootloader configuration"
 date: 2018-02-08 12:47:30 -0500
 comments: true
 categories: [linux, sysadmin]
-keywords: runlevels, systemd targets, bootloader, grub, grub2
+keywords: runlevels, systemd targets, bootloader, grub, grub2, lfcs, rhcsa, lfcsa
 description: System runlevels and grub2 bootloader troubleshooting
 ---
 
