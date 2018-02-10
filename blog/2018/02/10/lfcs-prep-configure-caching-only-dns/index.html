@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>LFCS prep - Using firewalld - Core dump overflow</title>
+  <title>LFCS prep - Configure caching-only DNS - Core dump overflow</title>
   <meta name="author" content="chousensha">
 
   
   
-  <meta name="description" content="firewalld overview">
-  <meta name="keywords" content="firewalld, firewalld commands, lfcs, rhcsa, lfcsa">
+  <meta name="description" content="How to configure a caching-only DNS server for the LFCS exam objectives">
+  <meta name="keywords" content="dns, dns server, caching-only dns, dns zone, lfcs, rhcsa, lfcsa">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld">
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
@@ -84,7 +84,7 @@
   
   <header>
     
-      <h1 class="entry-title">LFCS prep - Using firewalld</h1>
+      <h1 class="entry-title">LFCS prep - Configure caching-only DNS</h1>
     
     
       <p class="meta">
@@ -100,7 +100,7 @@
   
 
 
-<time datetime="2018-02-02T14:23:40-05:00" pubdate data-updated="true">Feb 2<span>nd</span>, 2018</time>
+<time datetime="2018-02-10T14:04:48-05:00" pubdate data-updated="true">Feb 10<span>th</span>, 2018</time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://chousensha.github.io">Comments</a>
@@ -110,74 +110,108 @@
   </header>
 
 
-<div class="entry-content"><p>Today we&rsquo;ll look at firewall configuration on CentOS / RedHat by using firewalld, the replacement for iptables. Since they are both mutually exclusive, if you decide to use firewalld, ensure that iptables is not running and cannot be started, by masking the service with <code>systemctl mask iptables</code></p>
+<div class="entry-content"><p>Today we&rsquo;ll take a look at setting up a caching only DNS server for the LFCS exam objectives.</p>
 
 <!-- more -->
 
 
-<p>With firewalld, traffic is classified into zones that can have their own rules and ports / services. The default zone is called the <em>public</em> zone</p>
+<p>First, install the necessary DNS packages: <code>yum install -y bind bind-utils</code>.</p>
 
-<p>Now let&rsquo;s see a couple of commands for accomplishing various tasks.</p>
-
-<ul>
-<li>list the predefined zones</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-zones
-</span><span class='line'>work drop internal external trusted home dmz public block</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>print the default zone</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-default-zone
-</span><span class='line'>public</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>list active zones and their interfaces</li>
-</ul>
-
+<p>Then you will have to do some editing in <code>/etc/named.conf</code>. In particular, you are interested in the below:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-active-zones
-</span><span class='line'>public
-</span><span class='line'>  interfaces: enp0s3</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>listen-on port 53 { 127.0.0.1; any; };
+</span><span class='line'>allow-query     { localhost; any; };
+</span><span class='line'>allow-query-cache     { localhost; any; };</span></code></pre></td></tr></table></div></figure>
 
 
-<ul>
-<li>set new default zone</li>
-</ul>
+<p>The <em>allow-query</em> option deals with who can send queries to the server, while the <em>allow-query-cache</em> allows access to cached records</p>
 
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --set-default-zone=NAME</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>list predefined services</li>
-</ul>
-
+<p>You have to ensure the named.conf file has the proper permissions. It needs to be owned by root and belong to the group named:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-services 
-</span><span class='line'>RH-Satellite-6 amanda-client amanda-k5-client bacula bacula-client ceph ceph-mon dhcp dhcpv6 dhcpv6-client dns docker-registry dropbox-lansync freeipa-ldap freeipa-ldaps freeipa-replication ftp high-availability http https imap imaps ipp ipp-client ipsec iscsi-target kadmin kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mosh mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxy pmwebapi pmwebapis pop3 pop3s postgresql privoxy proxy-dhcp ptp pulseaudio puppetmaster radius rpc-bind rsyncd samba samba-client sane smtp smtps snmp snmptrap squid ssh synergy syslog syslog-tls telnet tftp tftp-client tinc tor-socks transmission-client vdsm vnc-server wbem-https xmpp-bosh xmpp-client xmpp-local xmpp-server</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /etc/named.conf
+</span><span class='line'>-rw-r-----. 1 root named 1754 Feb 10 19:46 /etc/named.conf</span></code></pre></td></tr></table></div></figure>
 
 
-<ul>
-<li>print information about the settings of the public zone</li>
-</ul>
+<p>Check the SELinux contexts:</p>
 
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -lZ /etc/named.*
+</span><span class='line'>-rw-r-----. root named unconfined_u:object_r:etc_t:s0   /etc/named.conf
+</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.iscdlv.key
+</span><span class='line'>-rw-r-----. root named system_u:object_r:named_conf_t:s0 /etc/named.rfc1912.zones
+</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.root.key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the config file for syntax errors before trying anything:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>named-checkconf /etc/named.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Start the DNS service:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start named</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Open port 53 on the firewall:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --add-port=53/udp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the client, add the DNS server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con mod ens33 ipv4.dns "192.168.217.131"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Restart the connection and NetworkManager. Check that the nameserver has been added in <code>/etc/resolv.conf</code>. Now you can test it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nslookup github.com
+</span><span class='line'>Server:       192.168.217.131
+</span><span class='line'>Address:  192.168.217.131#53
+</span><span class='line'>
+</span><span class='line'>Non-authoritative answer:
+</span><span class='line'>Name: github.com
+</span><span class='line'>Address: 192.30.253.113
+</span><span class='line'>Name: github.com
+</span><span class='line'>Address: 192.30.253.112</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you need to add a zone to your DNS server, take a look at the sample zone directives in <em>/etc/named.rfc1912.zones</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>zone "localhost.localdomain" IN {
+</span><span class='line'>  type master;
+</span><span class='line'>  file "named.localhost";
+</span><span class='line'>  allow-update { none; };
+</span><span class='line'>};</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You have to add a similar configuration for your zone inside <code>/etc/named.conf</code>. Then you also have to create a zone file inside <strong>/var/named</strong>. For reference, look at an existing one:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -190,81 +224,20 @@
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
 <span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --list-all --zone=public
-</span><span class='line'>public (active)
-</span><span class='line'>  target: default
-</span><span class='line'>  icmp-block-inversion: no
-</span><span class='line'>  interfaces: enp0s3
-</span><span class='line'>  sources: 
-</span><span class='line'>  services: dhcpv6-client ftp mountd nfs rpc-bind ssh
-</span><span class='line'>  ports: 
-</span><span class='line'>  protocols: 
-</span><span class='line'>  masquerade: no
-</span><span class='line'>  forward-ports: 
-</span><span class='line'>  sourceports: 
-</span><span class='line'>  icmp-blocks: 
-</span><span class='line'>  rich rules: </span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /var/named/named.localhost 
+</span><span class='line'>$TTL 1D
+</span><span class='line'>@ IN SOA  @ rname.invalid. (
+</span><span class='line'>                  0   ; serial
+</span><span class='line'>                  1D  ; refresh
+</span><span class='line'>                  1H  ; retry
+</span><span class='line'>                  1W  ; expire
+</span><span class='line'>                  3H )    ; minimum
+</span><span class='line'>  NS  @
+</span><span class='line'>  A   127.0.0.1
+</span><span class='line'>  AAAA    ::1</span></code></pre></td></tr></table></div></figure>
 
 
-<ul>
-<li>add a service</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --add-service samba</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><p>to make changes persist through reboots, add the <strong>&mdash;permanent</strong> flag, and don&rsquo;t forget to reload after</p></li>
-<li><p>add multiple services</p></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --zone=NAME --add-service={serv1,serv2,serv3}</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add port</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd add-port=8080/tcp</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add source to a zone</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --permanent --zone=NAME--add-source=RANGE</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add masquerade for a zone</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --zone=NAME --add-masquerade</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>port forwarding (must enable masquerade first). Forward packets destined to port 22 to port 8888</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --zone=NAME --add-forward-port=port=22:proto=tcp:toport=8888</span></code></pre></td></tr></table></div></figure>
-
-
-
+<p>This should be all that is needed in terms of DNS configuration for LFCS objectives.</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -276,11 +249,11 @@
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
-</span><span class='line'>/ Your best consolation is the hope that \
-</span><span class='line'>| the things you failed to get weren't   |
-</span><span class='line'>\ really worth having.                   /
-</span><span class='line'> ----------------------------------------
+</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
+</span><span class='line'>/ This life is yours. Some of it was \
+</span><span class='line'>| given to you; the rest, you made   |
+</span><span class='line'>\ yourself.                          /
+</span><span class='line'> ------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
@@ -311,7 +284,7 @@
   
 
 
-<time datetime="2018-02-02T14:23:40-05:00" pubdate data-updated="true">Feb 2<span>nd</span>, 2018</time>
+<time datetime="2018-02-10T14:04:48-05:00" pubdate data-updated="true">Feb 10<span>th</span>, 2018</time>
       
 
 <span class="categories">
@@ -325,7 +298,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" >Tweet</a>
   
   
   
@@ -334,10 +307,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2018/01/30/lfcs-prep-autofs-automounter/" title="Previous Post: LFCS prep - autofs automounter">&laquo; LFCS prep - autofs automounter</a>
+        <a class="basic-alignment left" href="/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/" title="Previous Post: LFCS prep - Runlevels and bootloader configuration">&laquo; LFCS prep - Runlevels and bootloader configuration</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/" title="Next Post: LFCS prep - Runlevels and bootloader configuration">LFCS prep - Runlevels and bootloader configuration &raquo;</a>
       
     </p>
   </footer>
@@ -472,8 +443,8 @@ default: GAMING;}</p>
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/';
-        var disqus_url = 'http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/';
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/';
         var disqus_script = 'embed.js';
       
     (function () {
