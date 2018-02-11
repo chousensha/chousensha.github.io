@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-10T14:12:32-05:00</updated>
+  <updated>2018-02-11T10:51:04-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,616 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - LDAP server and client configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/"/>
+    <updated>2018-02-11T10:37:49-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration</id>
+    <content type="html"><![CDATA[<p>Something that you may come up with in the exam and that I&rsquo;ve been avoiding is the LDAP topic. In this post we&rsquo;ll look at server and client configuration for LDAP.</p>
+
+<p>For this scenario, the hostname of my LDAP server is centos.example.com. The domain is example.com and the entry is inside /etc/hosts</p>
+
+<p>I used <a href="https://www.certdepot.net/rhel7-configure-ldap-directory-service-user-connection/">CertDepot</a> as inspiration..the LDAP syntax and topic really keeps me away from approaching it.</p>
+
+<!-- more -->
+
+
+<h2>Server configuration</h2>
+
+<p>To get started, install these packages:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y openldap openldap-clients openldap-servers migrationtools</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some info about them:</p>
+
+<ul>
+<li><p>openldap is the open source implementation of LDAP</p></li>
+<li><p>openldap-clients contains LDAP client utilities</p></li>
+<li><p>openldap-servers is the server package</p></li>
+<li><p>The MigrationTools are a set of Perl scripts for migrating users, groups, aliases, hosts, netgroups, networks, protocols, RPCs, and services from existing nameservices (flat files, NIS, and NetInfo) to LDAP.</p></li>
+</ul>
+
+
+<p>Create LDAP password from a key, (the string secret below):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>slappasswd -s secret -n &gt; /etc/openldap/passwd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside the file take note of the generated password: <code>{SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07</code></p>
+
+<p>Generate an X509 certificate valid for 1 year (note the paths of the certificate and private key):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>openssl req -new -x509 -nodes -out /etc/openldap/certs/cert.pem -keyout /etc/openldap/certs/key.pem -days 365</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At the prompt, you can leave as blank the values except the below, where you put your server&rsquo;s hostname:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Common Name (eg, your name or your server's hostname) []:centos.example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Change the ownership of the files inside <code>/etc/openldap/certs</code> and change the permissions of the private key:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /etc/openldap/certs
+</span><span class='line'>chown ldap:ldap *
+</span><span class='line'>chmod 600 key.pem 
+</span><span class='line'>ll
+</span><span class='line'>total 88
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 65536 Feb 11 14:08 cert8.db
+</span><span class='line'>-rw-r--r--. 1 ldap ldap  1298 Feb 11 14:27 cert.pem
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 16384 Feb 11 14:08 key3.db
+</span><span class='line'>-rw-------. 1 ldap ldap  1704 Feb 11 14:27 key.pem
+</span><span class='line'>-r--r-----. 1 ldap ldap    45 Apr 26  2016 password
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 16384 Apr 26  2016 secmod.db</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Copy the LDAP database:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the slapd configuration (below errors are safe):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>slaptest
+</span><span class='line'>5a8038c4 hdb_db_open: database "dc=my-domain,dc=com": db_open(/var/lib/ldap/id2entry.bdb) failed: No such file or directory (2).
+</span><span class='line'>5a8038c4 backend_startup_one (type=hdb, suffix="dc=my-domain,dc=com"): bi_db_open failed! (2)
+</span><span class='line'>slap_startup failed (test would succeed using the -u switch)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Change the ownership of the DB to ldap:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chown ldap:ldap /var/lib/ldap/*</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now start the service</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start slapd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check that the LDAP service is listening:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -lpt | grep ldap
+</span><span class='line'>tcp        0      0 0.0.0.0:ldap            0.0.0.0:*               LISTEN      5558/slapd          
+</span><span class='line'>tcp6       0      0 [::]:ldap               [::]:*                  LISTEN      5558/slapd    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next you have to add some LDAP schemas</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /etc/openldap/schema</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Mainly, add the following:</p>
+
+<ul>
+<li>cosine (Cosine and Internet X.500)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f cosine.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>adding new entry "cn=cosine,cn=schema,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>nis (Network Information Services)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f nis.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>adding new entry "cn=nis,cn=schema,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the <code>/etc/openldap/changes.ldif</code> file with the below content and remember the password value from earlier:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcSuffix
+</span><span class='line'>olcSuffix: dc=example,dc=com
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcRootDN
+</span><span class='line'>olcRootDN: cn=Manager,dc=example,dc=com
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcRootPW
+</span><span class='line'>olcRootPW: {SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcTLSCertificateFile
+</span><span class='line'>olcTLSCertificateFile: /etc/openldap/certs/cert.pem
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcTLSCertificateKeyFile
+</span><span class='line'>olcTLSCertificateKeyFile: /etc/openldap/certs/key.pem
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcLogLevel
+</span><span class='line'>olcLogLevel: -1
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={1}monitor,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcAccess
+</span><span class='line'>olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=Manager,dc=example,dc=com" read by * none</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In summary, here you have to be mindful of the certificate and key paths, and of your previously generated password.</p>
+
+<p>Now create the configuration:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapmodify -Y EXTERNAL -H ldapi:/// -f /etc/openldap/changes.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={1}monitor,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the file <code>/etc/openldap/base.ldif</code> with the following content:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dn: dc=example,dc=com
+</span><span class='line'>dc: example
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: domain
+</span><span class='line'>
+</span><span class='line'>dn: ou=People,dc=example,dc=com
+</span><span class='line'>ou: People
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: organizationalUnit
+</span><span class='line'>
+</span><span class='line'>dn: ou=Group,dc=example,dc=com
+</span><span class='line'>ou: Group
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: organizationalUnit</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the directory structure:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f /etc/openldap/base.ldif
+</span><span class='line'>adding new entry "dc=example,dc=com"
+</span><span class='line'>
+</span><span class='line'>adding new entry "ou=People,dc=example,dc=com"
+</span><span class='line'>
+</span><span class='line'>adding new entry "ou=Group,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This command uses simple authentication and reads the previously created file.</p>
+
+<p>Now it&rsquo;s time to create a sample user account and see if things are working:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ldap
+</span><span class='line'>useradd -d /home/ldap/sam sam
+</span><span class='line'>passwd sam </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some additional steps are needed for user account migration:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /usr/share/migrationtools </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Edit <strong>migrate_common.ph</strong> to have your domain values:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Default DNS domain
+</span><span class='line'>$DEFAULT_MAIL_DOMAIN = "example.com";
+</span><span class='line'>
+</span><span class='line'># Default base 
+</span><span class='line'>$DEFAULT_BASE = "dc=example,dc=com";</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the user to the directory:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/passwd | grep sam &gt; passwd
+</span><span class='line'>cat passwd 
+</span><span class='line'>sam:x:1004:1004::/home/ldap/sam:/bin/bash
+</span><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+</span><span class='line'>./migrate_passwd.pl passwd users.ldif</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check out the <em>users.ldif</em> file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat users.ldif 
+</span><span class='line'>dn: uid=sam,ou=People,dc=example,dc=com
+</span><span class='line'>uid: sam
+</span><span class='line'>cn: sam
+</span><span class='line'>objectClass: account
+</span><span class='line'>objectClass: posixAccount
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: shadowAccount
+</span><span class='line'>userPassword: {crypt}$6$L49gzmY1$n0RNoX86rhT4QMvmsKWkMruHT/BCh7yBm2cQOdb4pbOA7XM0RB4d4GsoDpSILQSjYduiPponzFDb8O7bIb1kA.
+</span><span class='line'>shadowLastChange: 17573
+</span><span class='line'>shadowMin: 0
+</span><span class='line'>shadowMax: 99999
+</span><span class='line'>shadowWarning: 7
+</span><span class='line'>loginShell: /bin/bash
+</span><span class='line'>uidNumber: 1004
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>homeDirectory: /home/ldap/sam</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the user entry:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+</span><span class='line'>adding new entry "uid=sam,ou=People,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Do the same for group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/group | grep sam &gt; group
+</span><span class='line'>cat group
+</span><span class='line'>sam:x:1004:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Migrate the group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./migrate_group.pl group groups.ldif</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the groups.ldif file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat groups.ldif 
+</span><span class='line'>dn: cn=sam,ou=Group,dc=example,dc=com
+</span><span class='line'>objectClass: posixGroup
+</span><span class='line'>objectClass: top
+</span><span class='line'>cn: sam
+</span><span class='line'>userPassword: {crypt}x
+</span><span class='line'>gidNumber: 1004</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f groups.ldif
+</span><span class='line'>adding new entry "cn=sam,ou=Group,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now search for the user:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapsearch -x cn=sam -b dc=example,dc=com
+</span><span class='line'># extended LDIF
+</span><span class='line'>#
+</span><span class='line'># LDAPv3
+</span><span class='line'># base &lt;dc=example,dc=com&gt; with scope subtree
+</span><span class='line'># filter: cn=sam
+</span><span class='line'># requesting: ALL
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'># sam, People, example.com
+</span><span class='line'>dn: uid=sam,ou=People,dc=example,dc=com
+</span><span class='line'>uid: sam
+</span><span class='line'>cn: sam
+</span><span class='line'>objectClass: account
+</span><span class='line'>objectClass: posixAccount
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: shadowAccount
+</span><span class='line'>userPassword:: e2NyeXB0fSQ2JEw0OWd6bVkxJG4wUk5vWDg2cmhUNFFNdm1zS1drTXJ1SFQvQkN
+</span><span class='line'> oN3lCbTJjUU9kYjRwYk9BN1hNMFJCNGQ0R3NvRHBTSUxRU2pZZHVpUHBvbnpGRGI4TzdiSWIxa0Eu
+</span><span class='line'>shadowLastChange: 17573
+</span><span class='line'>shadowMin: 0
+</span><span class='line'>shadowMax: 99999
+</span><span class='line'>shadowWarning: 7
+</span><span class='line'>loginShell: /bin/bash
+</span><span class='line'>uidNumber: 1004
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>homeDirectory: /home/ldap/sam
+</span><span class='line'>
+</span><span class='line'># sam, Group, example.com
+</span><span class='line'>dn: cn=sam,ou=Group,dc=example,dc=com
+</span><span class='line'>objectClass: posixGroup
+</span><span class='line'>objectClass: top
+</span><span class='line'>cn: sam
+</span><span class='line'>userPassword:: e2NyeXB0fXg=
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>
+</span><span class='line'># search result
+</span><span class='line'>search: 2
+</span><span class='line'>result: 0 Success
+</span><span class='line'>
+</span><span class='line'># numResponses: 3
+</span><span class='line'># numEntries: 2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You might also need to allow ldap in the firewall.</p>
+
+<h2>Client configuration</h2>
+
+<p>If you hoped it was over, we still have to verify the authentication from a client machine. On my client, I also added the server in /etc/hosts:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>192.168.217.131 centos.example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The interface used for configuring authentication is <code>authconfig</code>. For this example I will go over the <strong>nslcd</strong> route.</p>
+
+<p>On the client, install the needed packages:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y openldap-clients nss-pam-ldapd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run the following:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>authconfig --enableforcelegacy --update
+</span><span class='line'>authconfig --enableldap --enableldapauth --ldapserver="centos.example.com" --ldapbasedn="dc=example,dc=com" --update</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Download the certificate:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp root@centos.example.com:/etc/openldap/certs/cert.pem /etc/openldap/cacerts/cert.pem
+</span><span class='line'>root@centos.example.com's password: 
+</span><span class='line'>cert.pem                                      100% 1298   107.3KB/s   00:00    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Enable TLS:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>authconfig --enableldaptls --update</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can do a getent or try to login as the LDAP user to see if it works.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Your temporary financial embarrassment \
+</span><span class='line'>| will be relieved in a surprising       |
+</span><span class='line'>\ manner.                                /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configure caching-only DNS]]></title>
@@ -9077,449 +9687,6 @@ phishing, and corporate espionage.</p>
 </span><span class='line'>/ Tomorrow will be cancelled due to lack \
 </span><span class='line'>\ of interest.                           /
 </span><span class='line'> ----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[TheHarvester - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/02/theharvester-kali-linux-tools/"/>
-    <updated>2017-07-02T08:32:26-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/02/theharvester-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you want to perform OSINT recon on a target and aggregate information from different sources. TheHarvester is an e-mail, subdomain and people names harvester written in Python.</p>
-
-<p>Homepage: <a href="https://github.com/laramies/theHarvester">https://github.com/laramies/theHarvester</a></p>
-
-<!-- more -->
-
-
-<h2>theharvester description</h2>
-
-<blockquote><p>theHarvester is a tool for gathering e-mail accounts, subdomain names, virtual
-hosts, open ports/ banners, and employee names from different public sources
-(search engines, pgp key servers).</p>
-
-<p>Is a really simple tool, but very effective for the early stages of a penetration
-test or just to know the visibility of your company in the Internet.</p>
-
-<p>The sources are:</p>
-
-<p>Passive:</p>
-
-<p>-google: google search engine  &ndash; www.google.com</p>
-
-<p>-googleCSE: google custom search engine</p>
-
-<p>-google-profiles: google search engine, specific search for Google profiles</p>
-
-<p>-bing: microsoft search engine  &ndash; www.bing.com</p>
-
-<p>-bingapi: microsoft search engine, through the API (you need to add your Key in the discovery/bingsearch.py file)</p>
-
-<p>-dogpile: Dogpile search engine &ndash; www.dogpile.com</p>
-
-<p>-pgp: pgp key server &ndash; mit.edu</p>
-
-<p>-linkedin: google search engine, specific search for Linkedin users</p>
-
-<p>-vhost: Bing virtual hosts search</p>
-
-<p>-twitter: twitter accounts related to an specific domain (uses google search)</p>
-
-<p>-googleplus: users that works in target company (uses google search)</p>
-
-<p>-yahoo: Yahoo search engine</p>
-
-<p>-baidu: Baidu search engine</p>
-
-<p>-shodan: Shodan Computer search engine, will search for ports and banner of the
-discovered hosts  (<a href="http://www.shodanhq.com/">http://www.shodanhq.com/</a>)</p>
-
-<p>Active:</p>
-
-<p>-DNS brute force: this plugin will run a dictionary brute force enumeration</p>
-
-<p>-DNS reverse lookup: reverse lookup of ip´s discovered in order to find hostnames</p>
-
-<p>-DNS TDL expansion: TLD dictionary brute force enumeration</p>
-
-<p>Modules that need API keys to work:</p>
-
-<p>-googleCSE: You need to create a Google Custom Search engine(CSE), and add your
-Google API key and CSE ID in the plugin (discovery/googleCSE.py)</p>
-
-<p>-shodan: You need to provide your API key in discovery/shodansearch.py</p></blockquote>
-
-<h2>theharvester options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>*******************************************************************
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* | |_| |__   ___    /\  /\__ _ _ ____   _____  ___| |_ ___ _ __  *
-</span><span class='line'>* | __| '_ \ / _ \  / /_/ / _` | '__\ \ / / _ \/ __| __/ _ \ '__| *
-</span><span class='line'>* | |_| | | |  __/ / __  / (_| | |   \ V /  __/\__ \ ||  __/ |    *
-</span><span class='line'>*  \__|_| |_|\___| \/ /_/ \__,_|_|    \_/ \___||___/\__\___|_|    *
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* TheHarvester Ver. 2.7                                           *
-</span><span class='line'>* Coded by Christian Martorella                                   *
-</span><span class='line'>* Edge-Security Research                                          *
-</span><span class='line'>* cmartorella@edge-security.com                                   *
-</span><span class='line'>*******************************************************************
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Usage: theharvester options 
-</span><span class='line'>
-</span><span class='line'>       -d: Domain to search or company name
-</span><span class='line'>       -b: data source: google, googleCSE, bing, bingapi, pgp, linkedin,
-</span><span class='line'>                        google-profiles, jigsaw, twitter, googleplus, all
-</span><span class='line'>
-</span><span class='line'>       -s: Start in result number X (default: 0)
-</span><span class='line'>       -v: Verify host name via dns resolution and search for virtual hosts
-</span><span class='line'>       -f: Save the results into an HTML and XML file (both)
-</span><span class='line'>       -n: Perform a DNS reverse query on all ranges discovered
-</span><span class='line'>       -c: Perform a DNS brute force for the domain name
-</span><span class='line'>       -t: Perform a DNS TLD expansion discovery
-</span><span class='line'>       -e: Use this DNS server
-</span><span class='line'>       -l: Limit the number of results to work with(bing goes from 50 to 50 results,
-</span><span class='line'>            google 100 to 100, and pgp doesn't use this option)
-</span><span class='line'>       -h: use SHODAN database to query discovered hosts
-</span><span class='line'>
-</span><span class='line'>Examples:
-</span><span class='line'>        theharvester -d microsoft.com -l 500 -b google -h myresults.html
-</span><span class='line'>        theharvester -d microsoft.com -b pgp
-</span><span class='line'>        theharvester -d microsoft -l 200 -b linkedin
-</span><span class='line'>        theharvester -d apple.com -b googleCSE -l 500 -s 300</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>theharvester usage</h2>
-
-<ul>
-<li>search with all options for a given domain</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>theharvester -d hackerone.com -l 200 -b all -f harvested
-</span><span class='line'>
-</span><span class='line'>*******************************************************************
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* | |_| |__   ___    /\  /\__ _ _ ____   _____  ___| |_ ___ _ __  *
-</span><span class='line'>* | __| '_ \ / _ \  / /_/ / _` | '__\ \ / / _ \/ __| __/ _ \ '__| *
-</span><span class='line'>* | |_| | | |  __/ / __  / (_| | |   \ V /  __/\__ \ ||  __/ |    *
-</span><span class='line'>*  \__|_| |_|\___| \/ /_/ \__,_|_|    \_/ \___||___/\__\___|_|    *
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* TheHarvester Ver. 2.7                                           *
-</span><span class='line'>* Coded by Christian Martorella                                   *
-</span><span class='line'>* Edge-Security Research                                          *
-</span><span class='line'>* cmartorella@edge-security.com                                   *
-</span><span class='line'>*******************************************************************
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Full harvest..
-</span><span class='line'>[-] Searching in Google..
-</span><span class='line'>  Searching 0 results...
-</span><span class='line'>  Searching 100 results...
-</span><span class='line'>  Searching 200 results...
-</span><span class='line'>[-] Searching in PGP Key server..
-</span><span class='line'>[-] Searching in Bing..
-</span><span class='line'>  Searching 50 results...
-</span><span class='line'>  Searching 100 results...
-</span><span class='line'>  Searching 150 results...
-</span><span class='line'>  Searching 200 results...
-</span><span class='line'>[-] Searching in Exalead..
-</span><span class='line'>  Searching 50 results...
-</span><span class='line'>  Searching 100 results...
-</span><span class='line'>  Searching 150 results...
-</span><span class='line'>  Searching 200 results...
-</span><span class='line'>  Searching 250 results...
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>[+] Emails found:
-</span><span class='line'>------------------
-</span><span class='line'>feedback@hackerone.com
-</span><span class='line'>support@hackerone.com
-</span><span class='line'>[REDACTED}
-</span><span class='line'>
-</span><span class='line'>[+] Hosts found in search engines:
-</span><span class='line'>------------------------------------
-</span><span class='line'>[-] Resolving hostnames IPs... 
-</span><span class='line'>162.159.0.31:a.ns.hackerone.com
-</span><span class='line'>104.16.13.26:support.hackerone.com
-</span><span class='line'>104.16.99.52:www.hackerone.com
-</span><span class='line'>[+] Virtual hosts:
-</span><span class='line'>==================
-</span><span class='line'>104.16.13.26  support.hackerone
-</span><span class='line'>104.16.13.26  support.hackerone.com
-</span><span class='line'>104.16.99.52  hackerone
-</span><span class='line'>[+] Saving files...
-</span><span class='line'>Files saved!</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Keep in mind that I&rsquo;m editing some results from the output for privacy reasons. I&rsquo;m also saving all results in HTML</p>
-
-<ul>
-<li>Linkedin enumeration</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>theharvester -d cisco.com -b linkedin -l 100 -f cisco
-</span><span class='line'>
-</span><span class='line'>*******************************************************************
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* | |_| |__   ___    /\  /\__ _ _ ____   _____  ___| |_ ___ _ __  *
-</span><span class='line'>* | __| '_ \ / _ \  / /_/ / _` | '__\ \ / / _ \/ __| __/ _ \ '__| *
-</span><span class='line'>* | |_| | | |  __/ / __  / (_| | |   \ V /  __/\__ \ ||  __/ |    *
-</span><span class='line'>*  \__|_| |_|\___| \/ /_/ \__,_|_|    \_/ \___||___/\__\___|_|    *
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* TheHarvester Ver. 2.7                                           *
-</span><span class='line'>* Coded by Christian Martorella                                   *
-</span><span class='line'>* Edge-Security Research                                          *
-</span><span class='line'>* cmartorella@edge-security.com                                   *
-</span><span class='line'>*******************************************************************
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>[-] Searching in Linkedin..
-</span><span class='line'>  Searching 100 results..
-</span><span class='line'>Users from Linkedin:
-</span><span class='line'>====================
-</span><span class='line'>Name
-</span><span class='line'>Another name
-</span><span class='line'>Names 
-</span><span class='line'>Names everywhere</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>Twitter enumeration</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>theharvester -d chousensha.github.io -l 10 -b twitter
-</span><span class='line'>
-</span><span class='line'>*******************************************************************
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* | |_| |__   ___    /\  /\__ _ _ ____   _____  ___| |_ ___ _ __  *
-</span><span class='line'>* | __| '_ \ / _ \  / /_/ / _` | '__\ \ / / _ \/ __| __/ _ \ '__| *
-</span><span class='line'>* | |_| | | |  __/ / __  / (_| | |   \ V /  __/\__ \ ||  __/ |    *
-</span><span class='line'>*  \__|_| |_|\___| \/ /_/ \__,_|_|    \_/ \___||___/\__\___|_|    *
-</span><span class='line'>*                                                                 *
-</span><span class='line'>* TheHarvester Ver. 2.7                                           *
-</span><span class='line'>* Coded by Christian Martorella                                   *
-</span><span class='line'>* Edge-Security Research                                          *
-</span><span class='line'>* cmartorella@edge-security.com                                   *
-</span><span class='line'>*******************************************************************
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>[-] Searching in Twitter ..
-</span><span class='line'>  Searching 100 results..
-</span><span class='line'>Users from Twitter:
-</span><span class='line'>====================
-</span><span class='line'>@-moz-keyframes gb__a
-</span><span class='line'>@keyframes gb__a
-</span><span class='line'>@-moz-keyframes gb__nb
-</span><span class='line'>@keyframes gb__nb
-</span><span class='line'>@media 
-</span><span class='line'>@keyframes qli-container-rotate 
-</span><span class='line'>@keyframes qli-fill-unfill-rotate 
-</span><span class='line'>@keyframes qli-blue-fade-in-out 
-</span><span class='line'>@keyframes qli-red-fade-in-out 
-</span><span class='line'>@keyframes qli-yellow-fade-in-out 
-</span><span class='line'>@keyframes qli-green-fade-in-out 
-</span><span class='line'>@keyframes qli-left-spin 
-</span><span class='line'>@keyframes qli-right-spin 
-</span><span class='line'>@kalilinux load balancer detector ...
-</span><span class='line'>@chous3nsha
-</span><span class='line'>@</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>sample HTML output</li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/tools/harvester.png" title="theharvester" alt="theharvester HTML report"></p>
-
-<p>Also note that doing a reverse query on the discovered ranges takes long and the output might be overwhelming.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
-</span><span class='line'>/ In India, "cold weather" is merely a    \
-</span><span class='line'>| conventional phrase and has come into   |
-</span><span class='line'>| use through the necessity of having     |
-</span><span class='line'>| some way to distinguish between weather |
-</span><span class='line'>| which will melt a brass door-knob and   |
-</span><span class='line'>| weather which will only make it mushy.  |
-</span><span class='line'>|                                         |
-</span><span class='line'>\ -- Mark Twain                           /
-</span><span class='line'> -----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\

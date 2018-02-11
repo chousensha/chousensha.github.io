@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-10T14:12:32-05:00</updated>
+  <updated>2018-02-11T10:51:04-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,458 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - LDAP server and client configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/"/>
+    <updated>2018-02-11T10:37:49-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration</id>
+    <content type="html"><![CDATA[<p>Something that you may come up with in the exam and that I&rsquo;ve been avoiding is the LDAP topic. In this post we&rsquo;ll look at server and client configuration for LDAP.</p>
+
+<p>For this scenario, the hostname of my LDAP server is centos.example.com. The domain is example.com and the entry is inside /etc/hosts</p>
+
+<p>I used <a href="https://www.certdepot.net/rhel7-configure-ldap-directory-service-user-connection/">CertDepot</a> as inspiration..the LDAP syntax and topic really keeps me away from approaching it.</p>
+
+<!-- more -->
+
+
+<h2>Server configuration</h2>
+
+<p>To get started, install these packages:</p>
+
+<p><code>
+yum install -y openldap openldap-clients openldap-servers migrationtools
+</code></p>
+
+<p>Some info about them:</p>
+
+<ul>
+<li><p>openldap is the open source implementation of LDAP</p></li>
+<li><p>openldap-clients contains LDAP client utilities</p></li>
+<li><p>openldap-servers is the server package</p></li>
+<li><p>The MigrationTools are a set of Perl scripts for migrating users, groups, aliases, hosts, netgroups, networks, protocols, RPCs, and services from existing nameservices (flat files, NIS, and NetInfo) to LDAP.</p></li>
+</ul>
+
+
+<p>Create LDAP password from a key, (the string secret below):</p>
+
+<p><code>
+slappasswd -s secret -n &gt; /etc/openldap/passwd
+</code></p>
+
+<p>Inside the file take note of the generated password: <code>{SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07</code></p>
+
+<p>Generate an X509 certificate valid for 1 year (note the paths of the certificate and private key):</p>
+
+<p><code>
+openssl req -new -x509 -nodes -out /etc/openldap/certs/cert.pem -keyout /etc/openldap/certs/key.pem -days 365
+</code></p>
+
+<p>At the prompt, you can leave as blank the values except the below, where you put your server&rsquo;s hostname:</p>
+
+<p><code>
+Common Name (eg, your name or your server's hostname) []:centos.example.com
+</code></p>
+
+<p>Change the ownership of the files inside <code>/etc/openldap/certs</code> and change the permissions of the private key:</p>
+
+<p><code>
+cd /etc/openldap/certs
+chown ldap:ldap *
+chmod 600 key.pem
+ll
+total 88
+-rw-r--r--. 1 ldap ldap 65536 Feb 11 14:08 cert8.db
+-rw-r--r--. 1 ldap ldap  1298 Feb 11 14:27 cert.pem
+-rw-r--r--. 1 ldap ldap 16384 Feb 11 14:08 key3.db
+-rw-------. 1 ldap ldap  1704 Feb 11 14:27 key.pem
+-r--r-----. 1 ldap ldap    45 Apr 26  2016 password
+-rw-r--r--. 1 ldap ldap 16384 Apr 26  2016 secmod.db
+</code></p>
+
+<p>Copy the LDAP database:</p>
+
+<p><code>
+cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+</code></p>
+
+<p>Check the slapd configuration (below errors are safe):</p>
+
+<p><code>
+slaptest
+5a8038c4 hdb_db_open: database "dc=my-domain,dc=com": db_open(/var/lib/ldap/id2entry.bdb) failed: No such file or directory (2).
+5a8038c4 backend_startup_one (type=hdb, suffix="dc=my-domain,dc=com"): bi_db_open failed! (2)
+slap_startup failed (test would succeed using the -u switch)
+</code></p>
+
+<p>Change the ownership of the DB to ldap:</p>
+
+<p><code>
+chown ldap:ldap /var/lib/ldap/*
+</code></p>
+
+<p>Now start the service</p>
+
+<p><code>
+systemctl start slapd
+</code></p>
+
+<p>Check that the LDAP service is listening:</p>
+
+<p><code>
+netstat -lpt | grep ldap
+tcp        0      0 0.0.0.0:ldap            0.0.0.0:*               LISTEN      5558/slapd          
+tcp6       0      0 [::]:ldap               [::]:*                  LISTEN      5558/slapd    
+</code></p>
+
+<p>Next you have to add some LDAP schemas</p>
+
+<p><code>
+cd /etc/openldap/schema
+</code></p>
+
+<p>Mainly, add the following:</p>
+
+<ul>
+<li>cosine (Cosine and Internet X.500)</li>
+</ul>
+
+
+<p><code>
+ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f cosine.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=cosine,cn=schema,cn=config"
+</code></p>
+
+<ul>
+<li>nis (Network Information Services)</li>
+</ul>
+
+
+<p><code>
+ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f nis.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=nis,cn=schema,cn=config"
+</code></p>
+
+<p>Create the <code>/etc/openldap/changes.ldif</code> file with the below content and remember the password value from earlier:</p>
+
+<p>```
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=example,dc=com</p>
+
+<p>dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=Manager,dc=example,dc=com</p>
+
+<p>dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: {SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07</p>
+
+<p>dn: cn=config
+changetype: modify
+replace: olcTLSCertificateFile
+olcTLSCertificateFile: /etc/openldap/certs/cert.pem</p>
+
+<p>dn: cn=config
+changetype: modify
+replace: olcTLSCertificateKeyFile
+olcTLSCertificateKeyFile: /etc/openldap/certs/key.pem</p>
+
+<p>dn: cn=config
+changetype: modify
+replace: olcLogLevel
+olcLogLevel: -1</p>
+
+<p>dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base=&ldquo;gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth&rdquo; read by dn.base=&ldquo;cn=Manager,dc=example,dc=com&rdquo; read by * none
+```</p>
+
+<p>In summary, here you have to be mindful of the certificate and key paths, and of your previously generated password.</p>
+
+<p>Now create the configuration:</p>
+
+<p>```
+ldapmodify -Y EXTERNAL -H ldapi:/// -f /etc/openldap/changes.ldif
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry &ldquo;olcDatabase={2}hdb,cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;olcDatabase={2}hdb,cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;olcDatabase={2}hdb,cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;cn=config&rdquo;</p>
+
+<p>modifying entry &ldquo;olcDatabase={1}monitor,cn=config&rdquo;
+```</p>
+
+<p>Create the file <code>/etc/openldap/base.ldif</code> with the following content:</p>
+
+<p>```
+dn: dc=example,dc=com
+dc: example
+objectClass: top
+objectClass: domain</p>
+
+<p>dn: ou=People,dc=example,dc=com
+ou: People
+objectClass: top
+objectClass: organizationalUnit</p>
+
+<p>dn: ou=Group,dc=example,dc=com
+ou: Group
+objectClass: top
+objectClass: organizationalUnit
+```</p>
+
+<p>Create the directory structure:</p>
+
+<p>```
+ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f /etc/openldap/base.ldif
+adding new entry &ldquo;dc=example,dc=com&rdquo;</p>
+
+<p>adding new entry &ldquo;ou=People,dc=example,dc=com&rdquo;</p>
+
+<p>adding new entry &ldquo;ou=Group,dc=example,dc=com&rdquo;
+```</p>
+
+<p>This command uses simple authentication and reads the previously created file.</p>
+
+<p>Now it&rsquo;s time to create a sample user account and see if things are working:</p>
+
+<p><code>
+mkdir /home/ldap
+useradd -d /home/ldap/sam sam
+passwd sam
+</code></p>
+
+<p>Some additional steps are needed for user account migration:</p>
+
+<p><code>
+cd /usr/share/migrationtools
+</code></p>
+
+<p>Edit <strong>migrate_common.ph</strong> to have your domain values:</p>
+
+<p>```</p>
+
+<h1>Default DNS domain</h1>
+
+<p>$DEFAULT_MAIL_DOMAIN = &ldquo;example.com&rdquo;;</p>
+
+<h1>Default base</h1>
+
+<p>$DEFAULT_BASE = &ldquo;dc=example,dc=com&rdquo;;
+```</p>
+
+<p>Add the user to the directory:</p>
+
+<p><code>
+cat /etc/passwd | grep sam &gt; passwd
+cat passwd
+sam:x:1004:1004::/home/ldap/sam:/bin/bash
+ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+./migrate_passwd.pl passwd users.ldif
+</code></p>
+
+<p>Check out the <em>users.ldif</em> file:</p>
+
+<p><code>
+cat users.ldif
+dn: uid=sam,ou=People,dc=example,dc=com
+uid: sam
+cn: sam
+objectClass: account
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+userPassword: {crypt}$6$L49gzmY1$n0RNoX86rhT4QMvmsKWkMruHT/BCh7yBm2cQOdb4pbOA7XM0RB4d4GsoDpSILQSjYduiPponzFDb8O7bIb1kA.
+shadowLastChange: 17573
+shadowMin: 0
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1004
+gidNumber: 1004
+homeDirectory: /home/ldap/sam
+</code></p>
+
+<p>Add the user entry:</p>
+
+<p><code>
+ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+adding new entry "uid=sam,ou=People,dc=example,dc=com"
+</code></p>
+
+<p>Do the same for group:</p>
+
+<p><code>
+cat /etc/group | grep sam &gt; group
+cat group
+sam:x:1004:
+</code></p>
+
+<p>Migrate the group:</p>
+
+<p><code>
+./migrate_group.pl group groups.ldif
+</code></p>
+
+<p>Check the groups.ldif file:</p>
+
+<p><code>
+cat groups.ldif
+dn: cn=sam,ou=Group,dc=example,dc=com
+objectClass: posixGroup
+objectClass: top
+cn: sam
+userPassword: {crypt}x
+gidNumber: 1004
+</code></p>
+
+<p>Add the group:</p>
+
+<p><code>
+ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f groups.ldif
+adding new entry "cn=sam,ou=Group,dc=example,dc=com"
+</code></p>
+
+<p>Now search for the user:</p>
+
+<p>```
+ldapsearch -x cn=sam -b dc=example,dc=com</p>
+
+<h1>extended LDIF</h1>
+
+<p>#</p>
+
+<h1>LDAPv3</h1>
+
+<h1>base &lt;dc=example,dc=com> with scope subtree</h1>
+
+<h1>filter: cn=sam</h1>
+
+<h1>requesting: ALL</h1>
+
+<p>#</p>
+
+<h1>sam, People, example.com</h1>
+
+<p>dn: uid=sam,ou=People,dc=example,dc=com
+uid: sam
+cn: sam
+objectClass: account
+objectClass: posixAccount
+objectClass: top
+objectClass: shadowAccount
+userPassword:: e2NyeXB0fSQ2JEw0OWd6bVkxJG4wUk5vWDg2cmhUNFFNdm1zS1drTXJ1SFQvQkN
+ oN3lCbTJjUU9kYjRwYk9BN1hNMFJCNGQ0R3NvRHBTSUxRU2pZZHVpUHBvbnpGRGI4TzdiSWIxa0Eu
+shadowLastChange: 17573
+shadowMin: 0
+shadowMax: 99999
+shadowWarning: 7
+loginShell: /bin/bash
+uidNumber: 1004
+gidNumber: 1004
+homeDirectory: /home/ldap/sam</p>
+
+<h1>sam, Group, example.com</h1>
+
+<p>dn: cn=sam,ou=Group,dc=example,dc=com
+objectClass: posixGroup
+objectClass: top
+cn: sam
+userPassword:: e2NyeXB0fXg=
+gidNumber: 1004</p>
+
+<h1>search result</h1>
+
+<p>search: 2
+result: 0 Success</p>
+
+<h1>numResponses: 3</h1>
+
+<h1>numEntries: 2</h1>
+
+<p>```</p>
+
+<p>You might also need to allow ldap in the firewall.</p>
+
+<h2>Client configuration</h2>
+
+<p>If you hoped it was over, we still have to verify the authentication from a client machine. On my client, I also added the server in /etc/hosts:</p>
+
+<p><code>
+192.168.217.131 centos.example.com
+</code></p>
+
+<p>The interface used for configuring authentication is <code>authconfig</code>. For this example I will go over the <strong>nslcd</strong> route.</p>
+
+<p>On the client, install the needed packages:</p>
+
+<p><code>
+yum install -y openldap-clients nss-pam-ldapd
+</code></p>
+
+<p>Run the following:</p>
+
+<p><code>
+authconfig --enableforcelegacy --update
+authconfig --enableldap --enableldapauth --ldapserver="centos.example.com" --ldapbasedn="dc=example,dc=com" --update
+</code></p>
+
+<p>Download the certificate:</p>
+
+<p><code>
+scp root@centos.example.com:/etc/openldap/certs/cert.pem /etc/openldap/cacerts/cert.pem
+root@centos.example.com's password:
+cert.pem                                      100% 1298   107.3KB/s   00:00    
+</code></p>
+
+<p>Enable TLS:</p>
+
+<p><code>
+authconfig --enableldaptls --update
+</code></p>
+
+<p>You can do a getent or try to login as the LDAP user to see if it works.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Your temporary financial embarrassment \
+| will be relieved in a surprising       |
+\ manner.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configure caching-only DNS]]></title>
@@ -498,369 +950,6 @@ docs
 
 <p>/ Change your thoughts and you change \
 \ your world.                         /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - LVM storage management]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management/"/>
-    <updated>2018-01-27T09:56:20-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/27/lfcs-prep-lvm-storage-management</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at logical volume management tasks. LVM improves the traditional partition to disk approach, adding flexibility (extending and reducing space), snapshot capabilities and redundancy.</p>
-
-<!-- more -->
-
-
-<p>First, some terminology is in order:</p>
-
-<ul>
-<li><p>physical volumes (PV) are the physical devices that are mapped to be used inside LVM. Their storace unit is called a physical extent (PE)</p></li>
-<li><p>volume groups (VG) are storage pools made from PVs</p></li>
-<li><p>logical volumes (LV) are made up of the VG space</p></li>
-</ul>
-
-
-<h2>Creating PVs</h2>
-
-<p>I am now going to create 2 PVs of 100 MB each. You first need to create 2 LVM partitions. If you look inside fdisk, you see the partition code for LVM is <strong>8e</strong>:</p>
-
-<p><code>
-8e  Linux LVM
-</code></p>
-
-<p>So before writing the partition in fdisk, use <code>t</code> to change it to Linux LVM. Then verify that the new partitions were created:</p>
-
-<p><code>
-lsblk | grep sdb
-sdb             8:16   0    1G  0 disk
-├─sdb1          8:17   0  100M  0 part
-└─sdb2          8:18   0  100M  0 part
-</code></p>
-
-<p>Now the PVs can be created:</p>
-
-<p><code>
-pvcreate /dev/sdb1 /dev/sdb2
-  Physical volume "/dev/sdb1" successfully created.
-  Physical volume "/dev/sdb2" successfully created.
-</code></p>
-
-<h2>Creating VGs</h2>
-
-<p>Now you can create a VG from the 2 PVs:</p>
-
-<p><code>
-vgcreate vg-zero /dev/sdb1 /dev/sdb2
-  Volume group "vg-zero" successfully created
-</code></p>
-
-<p>Let&rsquo;s look at our existing PVs now:</p>
-
-<p><code>
-pvs
-  PV         VG      Fmt  Attr PSize  PFree
-  /dev/sda2  rhel    lvm2 a--  29.00g  4.00m
-  /dev/sdb1  vg-zero lvm2 a--  96.00m 96.00m
-  /dev/sdb2  vg-zero lvm2 a--  96.00m 96.00m
-</code></p>
-
-<p>And check an individual PV in more detail:</p>
-
-<p><code>
-pvdisplay /dev/sdb1
-  --- Physical volume ---
-  PV Name               /dev/sdb1
-  VG Name               vg-zero
-  PV Size               100.00 MiB / not usable 4.00 MiB
-  Allocatable           yes
-  PE Size               4.00 MiB
-  Total PE              24
-  Free PE               24
-  Allocated PE          0
-  PV UUID               ViTFfu-jBZE-47Ie-d6qB-WTDt-fpNf-bPC00Y
-</code></p>
-
-<p>Now let&rsquo;s check our VGs:</p>
-
-<p><code>
-vgs
-  VG      #PV #LV #SN Attr   VSize   VFree  
-  rhel      1   2   0 wz--n-  29.00g   4.00m
-  vg-zero   2   0   0 wz--n- 192.00m 192.00m
-</code></p>
-
-<p>And in more detail:</p>
-
-<p><code>
-vgdisplay vg-zero
-  --- Volume group ---
-  VG Name               vg-zero
-  System ID             
-  Format                lvm2
-  Metadata Areas        2
-  Metadata Sequence No  1
-  VG Access             read/write
-  VG Status             resizable
-  MAX LV                0
-  Cur LV                0
-  Open LV               0
-  Max PV                0
-  Cur PV                2
-  Act PV                2
-  VG Size               192.00 MiB
-  PE Size               4.00 MiB
-  Total PE              48
-  Alloc PE / Size       0 / 0   
-  Free  PE / Size       48 / 192.00 MiB
-  VG UUID               gUf1XI-znJt-MM2T-V721-PNbe-uxcr-m3bVTe
-</code></p>
-
-<h2>Creating LVs</h2>
-
-<p>Next, I created a LV named inventory with a size of 128 MB, from the vg-zero VG:</p>
-
-<p><code>
-lvcreate -n inventory -L 128MB vg-zero
-  Logical volume "inventory" created.
-</code></p>
-
-<p>Look at the existing LVs:</p>
-
-<p><code>
-lvs
-  LV        VG      Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-  root      rhel    -wi-ao----  26.99g                                                    
-  swap      rhel    -wi-ao----   2.00g                                                    
-  inventory vg-zero -wi-a----- 128.00m     
-</code></p>
-
-<p>And check our newly created one:</p>
-
-<p><code>
-lvdisplay /dev/vg-zero/inventory
-  --- Logical volume ---
-  LV Path                /dev/vg-zero/inventory
-  LV Name                inventory
-  VG Name                vg-zero
-  LV UUID                jE4XRJ-ddlX-nM8s-NVSr-4cfK-F9O0-JcKecs
-  LV Write Access        read/write
-  LV Creation host, time rhel7, 2018-01-26 15:36:04 +0200
-  LV Status              available
-  # open                 0
-  LV Size                128.00 MiB
-  Current LE             32
-  Segments               2
-  Allocation             inherit
-  Read ahead sectors     auto
-  - currently set to     8192
-  Block device           253:2
-</code></p>
-
-<p>Before using the new LV, you need to create a filesystem on top of it. I went with XFS:</p>
-
-<p>```
-mkfs.xfs /dev/vg-zero/inventory
-meta-data=/dev/vg-zero/inventory isize=512    agcount=4, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0, sparse=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal log           bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-```</p>
-
-<p>Now prepare a location to mount it:</p>
-
-<p><code>
-mkdir /mnt/inventory
-</code></p>
-
-<p>I want it to mount at boot, so I added the following to <code>/etc/fstab</code>:</p>
-
-<p><code>
-/dev/vg-zero/inventory     /mnt/inventory                xfs    defaults        0 0
-</code></p>
-
-<p>Let&rsquo;s break down the <strong>/etc/fstab</strong> fields a bit:</p>
-
-<ul>
-<li><p>the first field represents the device, which can be specified by name, UUID, or label</p></li>
-<li><p>the second field is the mount point of the device</p></li>
-<li><p>the third is the filesystem type</p></li>
-<li><p>fourth is for the mount options. The <em>defaults</em> option specifies the usage of default options: rw, suid, dev, exec, auto, nouser, async</p></li>
-<li><p>the fifth is a backup flag for the dump utility. Use 1 to enable it and 0 to disable it</p></li>
-<li><p>sixth represents the fsck automatic check at boot. Use 0 to disable it, 1 for the root filesystem, and 2 for other filesystems that might need the automatic checking</p></li>
-</ul>
-
-
-<p>It&rsquo;s a good practice to mount the devices you added to fstab before a reboot to ensure there are no errors: <code>mount -a</code></p>
-
-<h2>Extending / reducing VGs</h2>
-
-<p>To add more space to a VG, you can add more PVs to it. Let&rsquo;s see its current space:</p>
-
-<p><code>
-vgdisplay vg-zero | grep Free
-  Free  PE / Size       16 / 64.00 MiB
-</code></p>
-
-<p>I created a new PV on /dev/sdb3 and added it to the VG:</p>
-
-<p><code>
-vgextend vg-zero /dev/sdb3
-  Volume group "vg-zero" successfully extended
-</code></p>
-
-<p>The storage size has increased now:</p>
-
-<p><code>
-vgdisplay vg-zero | grep Free
-  Free  PE / Size       28 / 112.00 MiB
-</code></p>
-
-<p>And to reduce the space of a VG, remove one or more PVs from it:</p>
-
-<p><code>
-vgreduce vg-zero /dev/sdb3
-  Removed "/dev/sdb3" from volume group "vg-zero"
-</code></p>
-
-<p>To migrate the PEs used on a PV to other PVs in the VG, use <strong>pvmove</strong>:</p>
-
-<p><code>
-pvmove /dev/sdb1
-  /dev/sdb1: Moved: 0.00%
-  /dev/sdb1: Moved: 100.00%
-</code></p>
-
-<h2>Resizing LVs</h2>
-
-<p>You can use <em>lvresize</em> for extending or shrinking LVs, or <em>lvextend</em> for extending only. There needs to be enough free space in the VG for growing the LV.</p>
-
-<p><code>
-lvextend -L +50M /dev/vg-zero/inventory
-  Rounding size to boundary between physical extents: 52.00 MiB.
-  Size of logical volume vg-zero/inventory changed from 128.00 MiB (32 extents) to 180.00 MiB (45 extents).
-  Logical volume vg-zero/inventory successfully resized.
-</code></p>
-
-<p>You also need to grow the filesystem to occupy the newly extended LV. Since I picked XFS, I&rsquo;ll use <em>xfs_growfs</em> for this:</p>
-
-<p>```
-xfs_growfs /mnt/inventory/
-meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=4, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0 spinodes=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=32768, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal               bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-data blocks changed from 32768 to 46080
-```</p>
-
-<p>This was just for demo, in practice you want to resize both the LV and the filesystem with a single command:</p>
-
-<p>```
-lvextend -L 190M -r /dev/vg-zero/inventory
-  Rounding size to boundary between physical extents: 192.00 MiB.
-  Size of logical volume vg-zero/inventory changed from 180.00 MiB (45 extents) to 192.00 MiB (48 extents).
-  Logical volume vg-zero/inventory successfully resized.
-meta-data=/dev/mapper/vg&mdash;zero-inventory isize=512    agcount=6, agsize=8192 blks</p>
-
-<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
-     =                       crc=1        finobt=0 spinodes=0
-</code></pre>
-
-<p>data     =                       bsize=4096   blocks=46080, imaxpct=25</p>
-
-<pre><code>     =                       sunit=0      swidth=0 blks
-</code></pre>
-
-<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-log      =internal               bsize=4096   blocks=855, version=2</p>
-
-<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
-</code></pre>
-
-<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
-data blocks changed from 46080 to 49152
-```</p>
-
-<p>This time I specified an absolute size instead of adding a certain amount.</p>
-
-<h2>Removing LVs</h2>
-
-<p>When you&rsquo;re done, you backed up your data or no longer need it, you can delete the LV. Unmount it first:</p>
-
-<p><code>
-umount -v /mnt/inventory/
-umount: /mnt/inventory (/dev/mapper/vg--zero-inventory) unmounted
-</code></p>
-
-<p>Remove the LV:</p>
-
-<p><code>
-lvremove /dev/vg-zero/inventory
-Do you really want to remove active logical volume vg-zero/inventory? [y/n]: y
-  Logical volume "inventory" successfully removed
-</code></p>
-
-<p>Remove the VG:</p>
-
-<p><code>
-vgremove vg-zero
-  Volume group "vg-zero" successfully removed
-</code></p>
-
-<p>Finally, also remove the PVs:</p>
-
-<p><code>
-pvremove /dev/sdb1 /dev/sdb2
-  Labels on physical volume "/dev/sdb1" successfully wiped.
-  Labels on physical volume "/dev/sdb2" successfully wiped.
-</code></p>
-
-<p>And don&rsquo;t forget to delete any remaining fstab entries.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ That secret you&rsquo;ve been guarding, \
-\ isn&rsquo;t.                            /</p>
 
 <hr />
 
