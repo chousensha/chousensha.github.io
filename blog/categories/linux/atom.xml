@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-12T12:45:16-05:00</updated>
+  <updated>2018-02-13T12:48:13-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,104 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Configuring SGID directories]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/13/lfcs-prep-configuring-sgid-directories/"/>
+    <updated>2018-02-13T12:39:42-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/13/lfcs-prep-configuring-sgid-directories</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll see how to configure SGID directories to share files between members of the same group.</p>
+
+<!-- more -->
+
+
+<p>I created a group called saiyans with a GID of 9000 to separate it from the rest of the groups:</p>
+
+<p><code>
+groupadd -g 9000 saiyans
+</code></p>
+
+<p>I made a directory that will be used to share files within the group:</p>
+
+<p><code>
+mkdir /opt/invasion_plans
+</code></p>
+
+<p>Changed the ownership of the directory to the nobody user and the saiyans group.</p>
+
+<p><code>
+chown nobody:saiyans /opt/invasion_plans/
+ls -ld /opt/invasion_plans/
+drwxr-xr-x. 2 nobody saiyans 6 Feb 13 12:57 /opt/invasion_plans/
+</code></p>
+
+<p>Set Group ID:</p>
+
+<p><code>
+chmod g+s /opt/invasion_plans/
+ls -ld /opt/invasion_plans/
+drwxr-sr-x. 2 nobody saiyans 6 Feb 13 12:57 /opt/invasion_plans/
+</code></p>
+
+<p>There are no write permissions yet, so have to assign them:</p>
+
+<p><code>
+chmod g+w /opt/invasion_plans/
+ls -ld /opt/invasion_plans/
+drwxrwsr-x. 2 nobody saiyans 6 Feb 13 12:57 /opt/invasion_plans/
+</code></p>
+
+<p>Removed the permissions for the other users:</p>
+
+<p><code>
+chmod o-rwx /opt/invasion_plans/
+ls -ld /opt/invasion_plans/
+drwxrws---. 2 nobody saiyans 6 Feb 13 12:57 /opt/invasion_plans/
+</code></p>
+
+<p>Now I added 2 users to the saiyans group:</p>
+
+<p><code>
+useradd -G saiyans kakarot
+useradd -G saiyans vegeta
+cat /etc/group | grep saiyans
+saiyans:x:9000:kakarot,vegeta
+</code></p>
+
+<p>And tested it:</p>
+
+<p><code>
+su - kakarot
+echo kamehameha &gt; /opt/invasion_plans/boom
+su - vegeta
+echo 'final flash' &gt; /opt/invasion_plans/bang
+[kakarot@rhel7 ~]$ cat /opt/invasion_plans/bang
+final flash
+[vegeta@rhel7 ~]$ cat /opt/invasion_plans/boom
+kamehameha
+</code></p>
+
+<p>In case users need to be restricted from deleting files they didn&rsquo;t create, you can set the sticky bit with <code>chmod +t /opt/invasion_plans</code></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Your lucky number is 3552664958674928. \
+\ Watch for it everywhere.               /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Managing encrypted partitions]]></title>
@@ -260,6 +358,13 @@ Enter any existing passphrase:
 Key slot 0 unlocked.
 Key slot 0 unlocked.
 Command successful.
+</code></p>
+
+<p>And add the path of the key file to /etc/crypttab</p>
+
+<p><code>
+cat /etc/crypttab
+hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054 /root/key
 </code></p>
 
 <p>Now the volume will be unlocked automatically without the need of entering a passphrase.</p>
@@ -989,168 +1094,6 @@ GRUB_DISABLE_RECOVERY="true"
 
 <p>/ You will always get the greatest        \
 \ recognition for the job you least like. /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Using firewalld]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld/"/>
-    <updated>2018-02-02T14:23:40-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/02/lfcs-prep-using-firewalld</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at firewall configuration on CentOS / RedHat by using firewalld, the replacement for iptables. Since they are both mutually exclusive, if you decide to use firewalld, ensure that iptables is not running and cannot be started, by masking the service with <code>systemctl mask iptables</code></p>
-
-<!-- more -->
-
-
-<p>With firewalld, traffic is classified into zones that can have their own rules and ports / services. The default zone is called the <em>public</em> zone</p>
-
-<p>Now let&rsquo;s see a couple of commands for accomplishing various tasks.</p>
-
-<ul>
-<li>list the predefined zones</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --get-zones
-work drop internal external trusted home dmz public block
-</code></p>
-
-<ul>
-<li>print the default zone</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --get-default-zone
-public
-</code></p>
-
-<ul>
-<li>list active zones and their interfaces</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --get-active-zones
-public
-  interfaces: enp0s3
-</code></p>
-
-<ul>
-<li>set new default zone</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --set-default-zone=NAME
-</code></p>
-
-<ul>
-<li>list predefined services</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --get-services
-RH-Satellite-6 amanda-client amanda-k5-client bacula bacula-client ceph ceph-mon dhcp dhcpv6 dhcpv6-client dns docker-registry dropbox-lansync freeipa-ldap freeipa-ldaps freeipa-replication ftp high-availability http https imap imaps ipp ipp-client ipsec iscsi-target kadmin kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mosh mountd ms-wbt mysql nfs ntp openvpn pmcd pmproxy pmwebapi pmwebapis pop3 pop3s postgresql privoxy proxy-dhcp ptp pulseaudio puppetmaster radius rpc-bind rsyncd samba samba-client sane smtp smtps snmp snmptrap squid ssh synergy syslog syslog-tls telnet tftp tftp-client tinc tor-socks transmission-client vdsm vnc-server wbem-https xmpp-bosh xmpp-client xmpp-local xmpp-server
-</code></p>
-
-<ul>
-<li>print information about the settings of the public zone</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --list-all --zone=public
-public (active)
-  target: default
-  icmp-block-inversion: no
-  interfaces: enp0s3
-  sources:
-  services: dhcpv6-client ftp mountd nfs rpc-bind ssh
-  ports:
-  protocols:
-  masquerade: no
-  forward-ports:
-  sourceports:
-  icmp-blocks:
-  rich rules:
-</code></p>
-
-<ul>
-<li>add a service</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --add-service samba
-</code></p>
-
-<ul>
-<li><p>to make changes persist through reboots, add the <strong>&mdash;permanent</strong> flag, and don&rsquo;t forget to reload after</p></li>
-<li><p>add multiple services</p></li>
-</ul>
-
-
-<p><code>
-firewall-cmd --zone=NAME --add-service={serv1,serv2,serv3}
-</code></p>
-
-<ul>
-<li>add port</li>
-</ul>
-
-
-<p><code>
-firewall-cmd add-port=8080/tcp
-</code></p>
-
-<ul>
-<li>add source to a zone</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --permanent --zone=NAME--add-source=RANGE
-</code></p>
-
-<ul>
-<li>add masquerade for a zone</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --zone=NAME --add-masquerade
-</code></p>
-
-<ul>
-<li>port forwarding (must enable masquerade first). Forward packets destined to port 22 to port 8888</li>
-</ul>
-
-
-<p><code>
-firewall-cmd --zone=NAME --add-forward-port=port=22:proto=tcp:toport=8888
-</code></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Your best consolation is the hope that \
-| the things you failed to get weren&rsquo;t   |
-\ really worth having.                   /</p>
 
 <hr />
 
