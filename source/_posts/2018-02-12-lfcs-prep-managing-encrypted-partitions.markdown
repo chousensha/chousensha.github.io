@@ -241,6 +241,13 @@ Key slot 0 unlocked.
 Command successful.
 ```
 
+And add the path of the key file to /etc/crypttab
+ 
+``` 
+cat /etc/crypttab 
+hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054 /root/key
+```
+
 Now the volume will be unlocked automatically without the need of entering a passphrase.
 
 ``` 
