@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-14T15:00:41-05:00</updated>
+  <updated>2018-02-15T13:39:09-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,142 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Changing kernel parameters]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/"/>
+    <updated>2018-02-15T13:28:47-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at changing kernel parameters both at runtime and at boot. Such changes can be made with the <strong>sysctl</strong> command or by inputting values in different files inside <code>/proc/sys</code></p>
+
+<!-- more -->
+
+
+<p>Let&rsquo;s see a sample /proc/sys folder, which can differ between systems:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls /proc/sys
+</span><span class='line'>abi  crypto  debug  dev  fs  kernel  net  sunrpc  vm</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The most important entries are:</p>
+
+<ul>
+<li><p>dev contains parameters for system devices</p></li>
+<li><p>fs contains filesystem parameters</p></li>
+<li><p>kernel is used for kernel parameters</p></li>
+<li><p>net contains network parameters</p></li>
+<li><p>vm contains virtual memory parameters</p></li>
+</ul>
+
+
+<p>To modify runtime parameters, we can use <strong>sysctl</strong>. Let&rsquo;s take a look at all the available parameters:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -a | wc -l
+</span><span class='line'>951</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Too many to list here, so let&rsquo;s glance over a few random ipv4 parameters:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -a | grep net.ipv4 | tail
+</span><span class='line'>net.ipv4.tcp_tso_win_divisor = 3
+</span><span class='line'>net.ipv4.tcp_tw_recycle = 0
+</span><span class='line'>net.ipv4.tcp_tw_reuse = 0
+</span><span class='line'>net.ipv4.tcp_window_scaling = 1
+</span><span class='line'>net.ipv4.tcp_wmem = 4096    16384    4194304
+</span><span class='line'>net.ipv4.tcp_workaround_signed_windows = 0
+</span><span class='line'>net.ipv4.udp_mem = 43428    57905    86856
+</span><span class='line'>net.ipv4.udp_rmem_min = 4096
+</span><span class='line'>net.ipv4.udp_wmem_min = 4096
+</span><span class='line'>net.ipv4.xfrm4_gc_thresh = 32768</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The dots in the options represent actual slashes in the directory structure under /proc/sys. Now let&rsquo;s take a value and modify it. I will use the packet forwarding feature for this example</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /proc/sys/net/ipv4/ip_forward
+</span><span class='line'>1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the system is configured to forward packets as a router. To change this, we can put a 0 value in the file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo 0 &gt; /proc/sys/net/ipv4/ip_forward</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another option is to write a value with sysctl. Here I enable IP forwarding again:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -w net.ipv4.ip_forward=1
+</span><span class='line'>net.ipv4.ip_forward = 1</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Changes made in this way won&rsquo;t persist a reboot. To make them permanent, you have to edit the configuration file.
+This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer systems look for config files inside <strong>/etc/sysctl.d/</strong>, <strong>/run/sysctl.d/</strong>, and <strong>/usr/lib/sysctl.d/</strong> (in order of precedence). On such systems, you can modify the <code>/usr/lib/sysctl.d/00-system</code> file for your kernel settings.</p>
+
+<p>I edited mine to disable IP forwarding:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Disable IP forwarding
+</span><span class='line'>net.ipv4.ip_forward = 0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you don&rsquo;t want to reboot, you can have sysctl re-read its config files by doing <strong>sysctl -p</strong> with the config file of your choice (by default, it will read <strong>/etc/sysctl.conf</strong>)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> sysctl -p /usr/lib/sysctl.d/00-system.conf 
+</span><span class='line'>net.ipv4.ip_forward = 0
+</span><span class='line'>cat /proc/sys/net/ipv4/ip_forward
+</span><span class='line'>0</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ______________________________________
+</span><span class='line'>/ You're definitely on their list. The \
+</span><span class='line'>| question to ask next is what list it |
+</span><span class='line'>\ is.                                  /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
@@ -9026,158 +9162,6 @@ check.</p>
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[netmask - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/07/netmask-kali-linux-tools/"/>
-    <updated>2017-07-07T05:55:22-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/07/netmask-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you want to convert between different types of netmasks and network addresses, or generate optimized netmasks for firewall rules. netmask can take care of your netmasks!</p>
-
-<p>Homepage: <a href="https://github.com/tlby/netmask">https://github.com/tlby/netmask</a></p>
-
-<!-- more -->
-
-
-<h2>netmask description</h2>
-
-<blockquote><p>This  program  accepts and produces a variety of common network address
-and netmask formats.  Not only can it convert address and netmask notations,  but it will optimize the masks to
-generate the smallest list of rules.  This is very handy if you&rsquo;ve  ever  configured  a  firewall  or
-router  and  some  nasty  network administrator before you decided that
-base 10 numbers were good places to start and end groups of machines.</p></blockquote>
-
-<p>Manpage: <a href="https://linux.die.net/man/1/netmask">https://linux.die.net/man/1/netmask</a></p>
-
-<h2>netmask options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>This is netmask, an address netmask generation utility
-</span><span class='line'>Usage: netmask spec [spec ...]
-</span><span class='line'>  -h, --help          Print a summary of the options
-</span><span class='line'>  -v, --version           Print the version number
-</span><span class='line'>  -d, --debug         Print status/progress information
-</span><span class='line'>  -s, --standard      Output address/netmask pairs
-</span><span class='line'>  -c, --cidr          Output CIDR format address lists
-</span><span class='line'>  -i, --cisco         Output Cisco style address lists
-</span><span class='line'>  -r, --range         Output ip address ranges
-</span><span class='line'>  -x, --hex           Output address/netmask pairs in hex
-</span><span class='line'>  -o, --octal         Output address/netmask pairs in octal
-</span><span class='line'>  -b, --binary            Output address/netmask pairs in binary
-</span><span class='line'>  -n, --nodns         Disable DNS lookups for addresses
-</span><span class='line'>  -f, --files         Treat arguments as input files
-</span><span class='line'>Definitions:
-</span><span class='line'>  a spec can be any of:
-</span><span class='line'>    address
-</span><span class='line'>    address:address
-</span><span class='line'>    address:+address
-</span><span class='line'>    address/mask
-</span><span class='line'>  an address can be any of:
-</span><span class='line'>    N     decimal number
-</span><span class='line'>    0N        octal number
-</span><span class='line'>    0xN       hex number
-</span><span class='line'>    N.N.N.N   dotted quad
-</span><span class='line'>    hostname  dns domain name
-</span><span class='line'>  a mask is the number of bits set to one from the left</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>netmask usage</h2>
-
-<ul>
-<li>output standard address / netmask pairs</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# netmask -s 192.168.217.0/24
-</span><span class='line'>  192.168.217.0/255.255.255.0  </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>CIDR notation</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# netmask -c google.com
-</span><span class='line'>  216.58.210.14/32
-</span><span class='line'>2a00:1450:4001:81d::200e/128</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>Cisco-style notation</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# netmask -i google.com
-</span><span class='line'>  216.58.210.14 0.0.0.0        
-</span><span class='line'>2a00:1450:4001:81d::200e ::   </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>IP ranges</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# netmask -r 192.168.217.0/24
-</span><span class='line'>  192.168.217.0-192.168.217.255 (256)</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
-</span><span class='line'>&lt; Your ignorance cramps my conversation. &gt;
-</span><span class='line'> ----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 ]]></content>
   </entry>

@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-14T15:00:41-05:00</updated>
+  <updated>2018-02-15T13:39:09-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,119 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Changing kernel parameters]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/"/>
+    <updated>2018-02-15T13:28:47-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at changing kernel parameters both at runtime and at boot. Such changes can be made with the <strong>sysctl</strong> command or by inputting values in different files inside <code>/proc/sys</code></p>
+
+<!-- more -->
+
+
+<p>Let&rsquo;s see a sample /proc/sys folder, which can differ between systems:</p>
+
+<p><code>
+ls /proc/sys
+abi  crypto  debug  dev  fs  kernel  net  sunrpc  vm
+</code></p>
+
+<p>The most important entries are:</p>
+
+<ul>
+<li><p>dev contains parameters for system devices</p></li>
+<li><p>fs contains filesystem parameters</p></li>
+<li><p>kernel is used for kernel parameters</p></li>
+<li><p>net contains network parameters</p></li>
+<li><p>vm contains virtual memory parameters</p></li>
+</ul>
+
+
+<p>To modify runtime parameters, we can use <strong>sysctl</strong>. Let&rsquo;s take a look at all the available parameters:</p>
+
+<p><code>
+sysctl -a | wc -l
+951
+</code></p>
+
+<p>Too many to list here, so let&rsquo;s glance over a few random ipv4 parameters:</p>
+
+<p><code>
+sysctl -a | grep net.ipv4 | tail
+net.ipv4.tcp_tso_win_divisor = 3
+net.ipv4.tcp_tw_recycle = 0
+net.ipv4.tcp_tw_reuse = 0
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_wmem = 4096    16384    4194304
+net.ipv4.tcp_workaround_signed_windows = 0
+net.ipv4.udp_mem = 43428    57905    86856
+net.ipv4.udp_rmem_min = 4096
+net.ipv4.udp_wmem_min = 4096
+net.ipv4.xfrm4_gc_thresh = 32768
+</code></p>
+
+<p>The dots in the options represent actual slashes in the directory structure under /proc/sys. Now let&rsquo;s take a value and modify it. I will use the packet forwarding feature for this example</p>
+
+<p><code>
+cat /proc/sys/net/ipv4/ip_forward
+1
+</code></p>
+
+<p>So the system is configured to forward packets as a router. To change this, we can put a 0 value in the file:</p>
+
+<p><code>
+echo 0 &gt; /proc/sys/net/ipv4/ip_forward
+</code></p>
+
+<p>Another option is to write a value with sysctl. Here I enable IP forwarding again:</p>
+
+<p><code>
+sysctl -w net.ipv4.ip_forward=1
+net.ipv4.ip_forward = 1
+</code></p>
+
+<p>Changes made in this way won&rsquo;t persist a reboot. To make them permanent, you have to edit the configuration file.
+This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer systems look for config files inside <strong>/etc/sysctl.d/</strong>, <strong>/run/sysctl.d/</strong>, and <strong>/usr/lib/sysctl.d/</strong> (in order of precedence). On such systems, you can modify the <code>/usr/lib/sysctl.d/00-system</code> file for your kernel settings.</p>
+
+<p>I edited mine to disable IP forwarding:</p>
+
+<p>```</p>
+
+<h1>Disable IP forwarding</h1>
+
+<p>net.ipv4.ip_forward = 0
+```</p>
+
+<p>If you don&rsquo;t want to reboot, you can have sysctl re-read its config files by doing <strong>sysctl -p</strong> with the config file of your choice (by default, it will read <strong>/etc/sysctl.conf</strong>)</p>
+
+<p><code>
+ sysctl -p /usr/lib/sysctl.d/00-system.conf
+net.ipv4.ip_forward = 0
+cat /proc/sys/net/ipv4/ip_forward
+0
+</code></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ You&rsquo;re definitely on their list. The \
+| question to ask next is what list it |
+\ is.                                  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
@@ -155,7 +268,7 @@ chronyc sources -v
 
 <p>```
 ntpdate -vd ts1.sct.de
-15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x70;&#x35;&#64;&#49;&#46;&#x32;&#x33;&#x34;&#57;&#45;&#x6f;">&#112;&#53;&#x40;&#49;&#x2e;&#x32;&#51;&#52;&#57;&#45;&#x6f;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
+15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x70;&#x35;&#x40;&#49;&#46;&#50;&#51;&#52;&#x39;&#x2d;&#x6f;">&#x70;&#x35;&#x40;&#49;&#46;&#50;&#51;&#x34;&#57;&#45;&#111;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
 Looking for host ts1.sct.de and service ntp
 host found : ts1.sct.de
 transmit(193.141.27.1)
@@ -1054,138 +1167,6 @@ authconfig --enableldaptls --update
 <p>/ Your temporary financial embarrassment \
 | will be relieved in a surprising       |
 \ manner.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Configure caching-only DNS]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/"/>
-    <updated>2018-02-10T14:04:48-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll take a look at setting up a caching only DNS server for the LFCS exam objectives.</p>
-
-<!-- more -->
-
-
-<p>First, install the necessary DNS packages: <code>yum install -y bind bind-utils</code>.</p>
-
-<p>Then you will have to do some editing in <code>/etc/named.conf</code>. In particular, you are interested in the below:</p>
-
-<p><code>
-listen-on port 53 { 127.0.0.1; any; };
-allow-query     { localhost; any; };
-allow-query-cache     { localhost; any; };
-</code></p>
-
-<p>The <em>allow-query</em> option deals with who can send queries to the server, while the <em>allow-query-cache</em> allows access to cached records</p>
-
-<p>You have to ensure the named.conf file has the proper permissions. It needs to be owned by root and belong to the group named:</p>
-
-<p><code>
-ls -l /etc/named.conf
--rw-r-----. 1 root named 1754 Feb 10 19:46 /etc/named.conf
-</code></p>
-
-<p>Check the SELinux contexts:</p>
-
-<p><code>
-ls -lZ /etc/named.*
--rw-r-----. root named unconfined_u:object_r:etc_t:s0   /etc/named.conf
--rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.iscdlv.key
--rw-r-----. root named system_u:object_r:named_conf_t:s0 /etc/named.rfc1912.zones
--rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.root.key
-</code></p>
-
-<p>Check the config file for syntax errors before trying anything:</p>
-
-<p><code>
-named-checkconf /etc/named.conf
-</code></p>
-
-<p>Start the DNS service:</p>
-
-<p><code>
-systemctl start named
-</code></p>
-
-<p>Open port 53 on the firewall:</p>
-
-<p><code>
-firewall-cmd --add-port=53/udp
-</code></p>
-
-<p>On the client, add the DNS server:</p>
-
-<p><code>
-nmcli con mod ens33 ipv4.dns "192.168.217.131"
-</code></p>
-
-<p>Restart the connection and NetworkManager. Check that the nameserver has been added in <code>/etc/resolv.conf</code>. Now you can test it:</p>
-
-<p>```
-nslookup github.com
-Server:     192.168.217.131
-Address:    192.168.217.131#53</p>
-
-<p>Non-authoritative answer:
-Name:   github.com
-Address: 192.30.253.113
-Name:   github.com
-Address: 192.30.253.112
-```</p>
-
-<p>If you need to add a zone to your DNS server, take a look at the sample zone directives in <em>/etc/named.rfc1912.zones</em>:</p>
-
-<p>```
-zone &ldquo;localhost.localdomain&rdquo; IN {</p>
-
-<pre><code>type master;
-file "named.localhost";
-allow-update { none; };
-</code></pre>
-
-<p>};
-```</p>
-
-<p>You have to add a similar configuration for your zone inside <code>/etc/named.conf</code>. Then you also have to create a zone file inside <strong>/var/named</strong>. For reference, look at an existing one:</p>
-
-<p>```
-cat /var/named/named.localhost
-$TTL 1D
-@   IN SOA  @ rname.invalid. (</p>
-
-<pre><code>                0   ; serial
-                1D  ; refresh
-                1H  ; retry
-                1W  ; expire
-                3H )    ; minimum
-NS  @
-A   127.0.0.1
-AAAA    ::1
-</code></pre>
-
-<p>```</p>
-
-<p>This should be all that is needed in terms of DNS configuration for LFCS objectives.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ This life is yours. Some of it was \
-| given to you; the rest, you made   |
-\ yourself.                          /</p>
 
 <hr />
 

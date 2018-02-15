@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>LFCS prep - Configure caching-only DNS - Core dump overflow</title>
+  <title>LFCS prep - Changing kernel parameters - Core dump overflow</title>
   <meta name="author" content="chousensha">
 
   
   
-  <meta name="description" content="How to configure a caching-only DNS server for the LFCS exam objectives">
-  <meta name="keywords" content="dns, dns server, caching-only dns, dns zone, lfcs, rhcsa, lfcsa">
+  <meta name="description" content="Modifying kernel parameters at runtime and persistently across boots">
+  <meta name="keywords" content="kernel parameters, sysctl, /proc/sys, kernel runtime, lfcs, rhcsa, lfcsa">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns">
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
@@ -84,7 +84,7 @@
   
   <header>
     
-      <h1 class="entry-title">LFCS prep - Configure caching-only DNS</h1>
+      <h1 class="entry-title">LFCS prep - Changing kernel parameters</h1>
     
     
       <p class="meta">
@@ -100,7 +100,7 @@
   
 
 
-<time datetime="2018-02-10T14:04:48-05:00" pubdate data-updated="true">Feb 10<span>th</span>, 2018</time>
+<time datetime="2018-02-15T13:28:47-05:00" pubdate data-updated="true">Feb 15<span>th</span>, 2018</time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://chousensha.github.io">Comments</a>
@@ -110,108 +110,39 @@
   </header>
 
 
-<div class="entry-content"><p>Today we&rsquo;ll take a look at setting up a caching only DNS server for the LFCS exam objectives.</p>
+<div class="entry-content"><p>In this post we&rsquo;ll look at changing kernel parameters both at runtime and at boot. Such changes can be made with the <strong>sysctl</strong> command or by inputting values in different files inside <code>/proc/sys</code></p>
 
 <!-- more -->
 
 
-<p>First, install the necessary DNS packages: <code>yum install -y bind bind-utils</code>.</p>
-
-<p>Then you will have to do some editing in <code>/etc/named.conf</code>. In particular, you are interested in the below:</p>
+<p>Let&rsquo;s see a sample /proc/sys folder, which can differ between systems:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>listen-on port 53 { 127.0.0.1; any; };
-</span><span class='line'>allow-query     { localhost; any; };
-</span><span class='line'>allow-query-cache     { localhost; any; };</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls /proc/sys
+</span><span class='line'>abi  crypto  debug  dev  fs  kernel  net  sunrpc  vm</span></code></pre></td></tr></table></div></figure>
 
 
-<p>The <em>allow-query</em> option deals with who can send queries to the server, while the <em>allow-query-cache</em> allows access to cached records</p>
+<p>The most important entries are:</p>
 
-<p>You have to ensure the named.conf file has the proper permissions. It needs to be owned by root and belong to the group named:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /etc/named.conf
-</span><span class='line'>-rw-r-----. 1 root named 1754 Feb 10 19:46 /etc/named.conf</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Check the SELinux contexts:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ls -lZ /etc/named.*
-</span><span class='line'>-rw-r-----. root named unconfined_u:object_r:etc_t:s0   /etc/named.conf
-</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.iscdlv.key
-</span><span class='line'>-rw-r-----. root named system_u:object_r:named_conf_t:s0 /etc/named.rfc1912.zones
-</span><span class='line'>-rw-r--r--. root named system_u:object_r:etc_t:s0       /etc/named.root.key</span></code></pre></td></tr></table></div></figure>
+<ul>
+<li><p>dev contains parameters for system devices</p></li>
+<li><p>fs contains filesystem parameters</p></li>
+<li><p>kernel is used for kernel parameters</p></li>
+<li><p>net contains network parameters</p></li>
+<li><p>vm contains virtual memory parameters</p></li>
+</ul>
 
 
-<p>Check the config file for syntax errors before trying anything:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>named-checkconf /etc/named.conf</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Start the DNS service:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start named</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Open port 53 on the firewall:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --add-port=53/udp</span></code></pre></td></tr></table></div></figure>
-
-
-<p>On the client, add the DNS server:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con mod ens33 ipv4.dns "192.168.217.131"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Restart the connection and NetworkManager. Check that the nameserver has been added in <code>/etc/resolv.conf</code>. Now you can test it:</p>
+<p>To modify runtime parameters, we can use <strong>sysctl</strong>. Let&rsquo;s take a look at all the available parameters:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nslookup github.com
-</span><span class='line'>Server:       192.168.217.131
-</span><span class='line'>Address:  192.168.217.131#53
-</span><span class='line'>
-</span><span class='line'>Non-authoritative answer:
-</span><span class='line'>Name: github.com
-</span><span class='line'>Address: 192.30.253.113
-</span><span class='line'>Name: github.com
-</span><span class='line'>Address: 192.30.253.112</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -a | wc -l
+</span><span class='line'>951</span></code></pre></td></tr></table></div></figure>
 
 
-<p>If you need to add a zone to your DNS server, take a look at the sample zone directives in <em>/etc/named.rfc1912.zones</em>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>zone "localhost.localdomain" IN {
-</span><span class='line'>  type master;
-</span><span class='line'>  file "named.localhost";
-</span><span class='line'>  allow-update { none; };
-</span><span class='line'>};</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You have to add a similar configuration for your zone inside <code>/etc/named.conf</code>. Then you also have to create a zone file inside <strong>/var/named</strong>. For reference, look at an existing one:</p>
+<p>Too many to list here, so let&rsquo;s glance over a few random ipv4 parameters:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -224,20 +155,67 @@
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
 <span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /var/named/named.localhost 
-</span><span class='line'>$TTL 1D
-</span><span class='line'>@ IN SOA  @ rname.invalid. (
-</span><span class='line'>                  0   ; serial
-</span><span class='line'>                  1D  ; refresh
-</span><span class='line'>                  1H  ; retry
-</span><span class='line'>                  1W  ; expire
-</span><span class='line'>                  3H )    ; minimum
-</span><span class='line'>  NS  @
-</span><span class='line'>  A   127.0.0.1
-</span><span class='line'>  AAAA    ::1</span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -a | grep net.ipv4 | tail
+</span><span class='line'>net.ipv4.tcp_tso_win_divisor = 3
+</span><span class='line'>net.ipv4.tcp_tw_recycle = 0
+</span><span class='line'>net.ipv4.tcp_tw_reuse = 0
+</span><span class='line'>net.ipv4.tcp_window_scaling = 1
+</span><span class='line'>net.ipv4.tcp_wmem = 4096    16384    4194304
+</span><span class='line'>net.ipv4.tcp_workaround_signed_windows = 0
+</span><span class='line'>net.ipv4.udp_mem = 43428    57905    86856
+</span><span class='line'>net.ipv4.udp_rmem_min = 4096
+</span><span class='line'>net.ipv4.udp_wmem_min = 4096
+</span><span class='line'>net.ipv4.xfrm4_gc_thresh = 32768</span></code></pre></td></tr></table></div></figure>
 
 
-<p>This should be all that is needed in terms of DNS configuration for LFCS objectives.</p>
+<p>The dots in the options represent actual slashes in the directory structure under /proc/sys. Now let&rsquo;s take a value and modify it. I will use the packet forwarding feature for this example</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /proc/sys/net/ipv4/ip_forward
+</span><span class='line'>1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So the system is configured to forward packets as a router. To change this, we can put a 0 value in the file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo 0 &gt; /proc/sys/net/ipv4/ip_forward</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another option is to write a value with sysctl. Here I enable IP forwarding again:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sysctl -w net.ipv4.ip_forward=1
+</span><span class='line'>net.ipv4.ip_forward = 1</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Changes made in this way won&rsquo;t persist a reboot. To make them permanent, you have to edit the configuration file.
+This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer systems look for config files inside <strong>/etc/sysctl.d/</strong>, <strong>/run/sysctl.d/</strong>, and <strong>/usr/lib/sysctl.d/</strong> (in order of precedence). On such systems, you can modify the <code>/usr/lib/sysctl.d/00-system</code> file for your kernel settings.</p>
+
+<p>I edited mine to disable IP forwarding:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Disable IP forwarding
+</span><span class='line'>net.ipv4.ip_forward = 0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you don&rsquo;t want to reboot, you can have sysctl re-read its config files by doing <strong>sysctl -p</strong> with the config file of your choice (by default, it will read <strong>/etc/sysctl.conf</strong>)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> sysctl -p /usr/lib/sysctl.d/00-system.conf 
+</span><span class='line'>net.ipv4.ip_forward = 0
+</span><span class='line'>cat /proc/sys/net/ipv4/ip_forward
+</span><span class='line'>0</span></code></pre></td></tr></table></div></figure>
+
+
+
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -249,18 +227,16 @@
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
 <span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
-</span><span class='line'>/ This life is yours. Some of it was \
-</span><span class='line'>| given to you; the rest, you made   |
-</span><span class='line'>\ yourself.                          /
-</span><span class='line'> ------------------------------------
+</pre></td><td class='code'><pre><code class=''><span class='line'> ______________________________________
+</span><span class='line'>/ You're definitely on their list. The \
+</span><span class='line'>| question to ask next is what list it |
+</span><span class='line'>\ is.                                  /
+</span><span class='line'> --------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 </div>
 
@@ -284,7 +260,7 @@
   
 
 
-<time datetime="2018-02-10T14:04:48-05:00" pubdate data-updated="true">Feb 10<span>th</span>, 2018</time>
+<time datetime="2018-02-15T13:28:47-05:00" pubdate data-updated="true">Feb 15<span>th</span>, 2018</time>
       
 
 <span class="categories">
@@ -298,7 +274,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/" >Tweet</a>
   
   
   
@@ -307,10 +283,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/" title="Previous Post: LFCS prep - Runlevels and bootloader configuration">&laquo; LFCS prep - Runlevels and bootloader configuration</a>
+        <a class="basic-alignment left" href="/blog/2018/02/14/lfcs-prep-ntp-configuration/" title="Previous Post: LFCS prep - NTP configuration">&laquo; LFCS prep - NTP configuration</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/" title="Next Post: LFCS prep - LDAP server and client configuration">LFCS prep - LDAP server and client configuration &raquo;</a>
       
     </p>
   </footer>
@@ -445,8 +419,8 @@ default: GAMING;}</p>
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/';
-        var disqus_url = 'http://chousensha.github.io/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/';
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/';
         var disqus_script = 'embed.js';
       
     (function () {
