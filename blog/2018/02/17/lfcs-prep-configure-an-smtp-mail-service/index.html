@@ -1,0 +1,557 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LFCS prep - Configure an SMTP mail service - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Configure SMTP server, restrict access to it and use mail aliases">
+  <meta name="keywords" content="smtp, mail, postfix, smtp linux, linux mail, mail aliases, lfcs, rhcsa, lfcsa">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LFCS prep - Configure an SMTP mail service</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-17T12:16:33-05:00" pubdate data-updated="true">Feb 17<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today we&rsquo;ll look at configuring a mail service for LFCS objectives. We&rsquo;ll use the Postfix implementation that already comes preinstalled  on CentOS.</p>
+
+<!-- more -->
+
+
+<p>The configuration file with all Postfix parameters is <code>/etc/postfix/main.cf</code> and it is massive. Instead of manually editing it, it&rsquo;s easier to use <strong>postconf</strong>. Without arguments, it displays all parameters. If given a parameter name, it will show that parameter&rsquo;s value, and with the <strong>-e</strong> flag it can modify parameters.</p>
+
+<p>Another important file for mail configuration is <code>/etc/aliases</code>. If you want a mail destined to a user to be delivered to another user, you can set an alias:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>username: alias </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The alias will get the mails destined for the user. I&rsquo;ve added an alias on my system so that root&rsquo;s mail will be delivered to nixhat:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root: nixhat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After changing any alias settings, you have to refresh the alias DB with the command <code>postalias /etc/aliases</code></p>
+
+<p>Now it&rsquo;s time to edit some parameters in order to setup a working mail configuration.</p>
+
+<ul>
+<li>The <strong>myorigin</strong> parameter specifies the domain that locally-posted mail appears to come from</li>
+</ul>
+
+
+<p>The default is to use the hostname for this, but I will change it to use just the domain (example.com in this case)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf -e 'myorigin=$mydomain'
+</span><span class='line'>[root@centos ~]# postconf myorigin
+</span><span class='line'>myorigin = $mydomain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>inet_interfaces</strong> parameter specifies the network interface addresses that this mail system receives mail on</li>
+</ul>
+
+
+<p>Here I have mine listening on the Ethernet interface in addition to localhost:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf inet_interfaces
+</span><span class='line'>inet_interfaces = 192.168.217.131, localhost</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>relayhost</strong> parameter specifies the default host to send mail to when no entry is matched in the optional transport(5) table. When no relayhost is given, mail is routed directly to the destination. On an intranet, specify the organizational domain name. In the case of SMTP, specify a domain, host, host:port, [host]:port, [address] or [address]:port; the form [host] turns off MX lookups.</li>
+</ul>
+
+
+<p>If you want to forward mail to a central host, use the <strong>relayhost</strong> parameter</p>
+
+<ul>
+<li>The <strong>mydestination</strong> parameter specifies the list of domains that this machine considers itself the final destination for. This parameter is important for receiving messages</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mydestination
+</span><span class='line'>mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>mynetworks</strong> parameter specifies the list of &ldquo;trusted&rdquo; SMTP clients that are allowed to relay mail through Postfix. It can allow clients on the local subnet, in a range, just a host, or manually specified.</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mynetworks
+</span><span class='line'>mynetworks = 192.168.217.0/24 127.0.0.0/8 [::1]/128</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Restricting access to the server</h2>
+
+<p>For receiving mail, you can add some settings to harden the security of your server:</p>
+
+<ul>
+<li><strong>smtpd_helo_required</strong> &ndash; Require that a remote SMTP client sends HELO or EHLO before commencing a MAIL transaction</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_required
+</span><span class='line'>smtpd_helo_required = yes</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_helo_restrictions</strong> &ndash; other optional restrictions:</li>
+</ul>
+
+
+<p><strong>permit_mynetworks</strong> &ndash; Permit the request when the client IP address matches any network or network address listed in $mynetworks</p>
+
+<p> <strong>reject_invalid_helo_hostname</strong> &ndash; Reject the request when the HELO or EHLO hostname is malformed</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_restrictions
+</span><span class='line'>smtpd_helo_restrictions = permit_mynetworks, reject_invalid_helo_hostname</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_sender_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client MAIL FROM command:</li>
+</ul>
+
+
+<p><strong>reject_unknown_sender_domain</strong> &ndash; Reject the request when Postfix is not final destination for the sender address, and the MAIL FROM domain has 1) no DNS MX and no DNS A record, or 2) a malformed MX record such as a record with a zero-length MX hostname</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_sender_restrictions
+</span><span class='line'>smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_recipient_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client RCPT TO command</li>
+</ul>
+
+
+<p><strong>reject_unauth_destination</strong> &ndash; reject the request unless 1) Postfix is the mail forwarder; or 2) Postfix is the final destination</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_recipient_restrictions
+</span><span class='line'>smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After changing Postfix settings, it is a good idea to run <code>postfix check</code> to check the validity of the config file. Then restart Postfix.</p>
+
+<p>Now to test it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo "This is a test" | mail -s "test" root@example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On user nixhat:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mail
+</span><span class='line'>Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+</span><span class='line'>"/var/spool/mail/nixhat": 1 message 1 new
+</span><span class='line'>&gt;N  1 root                  Sat Feb 17 18:08  18/569   "test"
+</span><span class='line'>cat  /var/spool/mail/nixhat
+</span><span class='line'>From root@example.com  Sat Feb 17 18:08:09 2018
+</span><span class='line'>Return-Path: &lt;root@example.com&gt;
+</span><span class='line'>X-Original-To: root@example.com
+</span><span class='line'>Delivered-To: root@example.com
+</span><span class='line'>Received: by centos.example.com (Postfix, from userid 0)
+</span><span class='line'>  id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
+</span><span class='line'>Date: Sat, 17 Feb 2018 18:08:09 +0200
+</span><span class='line'>To: root@example.com
+</span><span class='line'>Subject: test
+</span><span class='line'>User-Agent: Heirloom mailx 12.5 7/5/10
+</span><span class='line'>MIME-Version: 1.0
+</span><span class='line'>Content-Type: text/plain; charset=us-ascii
+</span><span class='line'>Content-Transfer-Encoding: 7bit
+</span><span class='line'>Message-Id: &lt;20180217160809.51255218FED7@centos.example.com&gt;
+</span><span class='line'>From: root@example.com (root)
+</span><span class='line'>Status: O
+</span><span class='line'>
+</span><span class='line'>This is a test</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it works. If you want to see more about the status of your mails, look inside <code>/var/log/maillog</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Feb 17 18:21:11 centos postfix/pickup[8896]: 4FADF218FED8: uid=0 from=&lt;root&gt;
+</span><span class='line'>Feb 17 18:21:11 centos postfix/cleanup[9359]: 4FADF218FED8: message-id=&lt;20180217162111.4FADF218FED8@centos.example.com&gt;
+</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: from=&lt;root@example.com&gt;, size=431, nrcpt=1 (queue active)
+</span><span class='line'>Feb 17 18:21:11 centos postfix/local[9361]: 4FADF218FED8: to=&lt;nixhat@example.com&gt;, orig_to=&lt;root@example.com&gt;, relay=local, delay=0.08, delays=0.07/0.02/0/0, dsn=2.0.0, status=sent (delivered to mailbox)
+</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: removed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some other useful actions with mail would be to view the mail queue with <strong>mailq</strong> and flush the queue with <strong>postfix flush</strong></p>
+
+<p>Also see <strong>man 5 postconf</strong> for all Postfix parameters</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Q: What lies on the bottom of the ocean \
+</span><span class='line'>\ and twitches? A: A nervous wreck.       /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-17T12:16:33-05:00" pubdate data-updated="true">Feb 17<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/" title="Previous Post: LFCS prep - Changing kernel parameters">&laquo; LFCS prep - Changing kernel parameters</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/">LFCS prep - Configure an SMTP mail service</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/02/15/lfcs-prep-changing-kernel-parameters/">LFCS prep - Changing kernel parameters</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/02/14/lfcs-prep-ntp-configuration/">LFCS prep - NTP configuration</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/02/13/lfcs-prep-configuring-sgid-directories/">LFCS prep - Configuring SGID directories</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions/">LFCS prep - Managing encrypted partitions</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

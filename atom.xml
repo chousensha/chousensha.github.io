@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-15T13:39:09-05:00</updated>
+  <updated>2018-02-17T12:41:34-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,245 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Configure an SMTP mail service]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/"/>
+    <updated>2018-02-17T12:16:33-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at configuring a mail service for LFCS objectives. We&rsquo;ll use the Postfix implementation that already comes preinstalled  on CentOS.</p>
+
+<!-- more -->
+
+
+<p>The configuration file with all Postfix parameters is <code>/etc/postfix/main.cf</code> and it is massive. Instead of manually editing it, it&rsquo;s easier to use <strong>postconf</strong>. Without arguments, it displays all parameters. If given a parameter name, it will show that parameter&rsquo;s value, and with the <strong>-e</strong> flag it can modify parameters.</p>
+
+<p>Another important file for mail configuration is <code>/etc/aliases</code>. If you want a mail destined to a user to be delivered to another user, you can set an alias:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>username: alias </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The alias will get the mails destined for the user. I&rsquo;ve added an alias on my system so that root&rsquo;s mail will be delivered to nixhat:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root: nixhat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After changing any alias settings, you have to refresh the alias DB with the command <code>postalias /etc/aliases</code></p>
+
+<p>Now it&rsquo;s time to edit some parameters in order to setup a working mail configuration.</p>
+
+<ul>
+<li>The <strong>myorigin</strong> parameter specifies the domain that locally-posted mail appears to come from</li>
+</ul>
+
+
+<p>The default is to use the hostname for this, but I will change it to use just the domain (example.com in this case)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf -e 'myorigin=$mydomain'
+</span><span class='line'>[root@centos ~]# postconf myorigin
+</span><span class='line'>myorigin = $mydomain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>inet_interfaces</strong> parameter specifies the network interface addresses that this mail system receives mail on</li>
+</ul>
+
+
+<p>Here I have mine listening on the Ethernet interface in addition to localhost:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf inet_interfaces
+</span><span class='line'>inet_interfaces = 192.168.217.131, localhost</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>relayhost</strong> parameter specifies the default host to send mail to when no entry is matched in the optional transport(5) table. When no relayhost is given, mail is routed directly to the destination. On an intranet, specify the organizational domain name. In the case of SMTP, specify a domain, host, host:port, [host]:port, [address] or [address]:port; the form [host] turns off MX lookups.</li>
+</ul>
+
+
+<p>If you want to forward mail to a central host, use the <strong>relayhost</strong> parameter</p>
+
+<ul>
+<li>The <strong>mydestination</strong> parameter specifies the list of domains that this machine considers itself the final destination for. This parameter is important for receiving messages</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mydestination
+</span><span class='line'>mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>The <strong>mynetworks</strong> parameter specifies the list of &ldquo;trusted&rdquo; SMTP clients that are allowed to relay mail through Postfix. It can allow clients on the local subnet, in a range, just a host, or manually specified.</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mynetworks
+</span><span class='line'>mynetworks = 192.168.217.0/24 127.0.0.0/8 [::1]/128</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Restricting access to the server</h2>
+
+<p>For receiving mail, you can add some settings to harden the security of your server:</p>
+
+<ul>
+<li><strong>smtpd_helo_required</strong> &ndash; Require that a remote SMTP client sends HELO or EHLO before commencing a MAIL transaction</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_required
+</span><span class='line'>smtpd_helo_required = yes</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_helo_restrictions</strong> &ndash; other optional restrictions:</li>
+</ul>
+
+
+<p><strong>permit_mynetworks</strong> &ndash; Permit the request when the client IP address matches any network or network address listed in $mynetworks</p>
+
+<p> <strong>reject_invalid_helo_hostname</strong> &ndash; Reject the request when the HELO or EHLO hostname is malformed</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_restrictions
+</span><span class='line'>smtpd_helo_restrictions = permit_mynetworks, reject_invalid_helo_hostname</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_sender_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client MAIL FROM command:</li>
+</ul>
+
+
+<p><strong>reject_unknown_sender_domain</strong> &ndash; Reject the request when Postfix is not final destination for the sender address, and the MAIL FROM domain has 1) no DNS MX and no DNS A record, or 2) a malformed MX record such as a record with a zero-length MX hostname</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_sender_restrictions
+</span><span class='line'>smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li><strong>smtpd_recipient_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client RCPT TO command</li>
+</ul>
+
+
+<p><strong>reject_unauth_destination</strong> &ndash; reject the request unless 1) Postfix is the mail forwarder; or 2) Postfix is the final destination</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_recipient_restrictions
+</span><span class='line'>smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After changing Postfix settings, it is a good idea to run <code>postfix check</code> to check the validity of the config file. Then restart Postfix.</p>
+
+<p>Now to test it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo "This is a test" | mail -s "test" root@example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On user nixhat:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mail
+</span><span class='line'>Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+</span><span class='line'>"/var/spool/mail/nixhat": 1 message 1 new
+</span><span class='line'>&gt;N  1 root                  Sat Feb 17 18:08  18/569   "test"
+</span><span class='line'>cat  /var/spool/mail/nixhat
+</span><span class='line'>From root@example.com  Sat Feb 17 18:08:09 2018
+</span><span class='line'>Return-Path: &lt;root@example.com&gt;
+</span><span class='line'>X-Original-To: root@example.com
+</span><span class='line'>Delivered-To: root@example.com
+</span><span class='line'>Received: by centos.example.com (Postfix, from userid 0)
+</span><span class='line'>  id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
+</span><span class='line'>Date: Sat, 17 Feb 2018 18:08:09 +0200
+</span><span class='line'>To: root@example.com
+</span><span class='line'>Subject: test
+</span><span class='line'>User-Agent: Heirloom mailx 12.5 7/5/10
+</span><span class='line'>MIME-Version: 1.0
+</span><span class='line'>Content-Type: text/plain; charset=us-ascii
+</span><span class='line'>Content-Transfer-Encoding: 7bit
+</span><span class='line'>Message-Id: &lt;20180217160809.51255218FED7@centos.example.com&gt;
+</span><span class='line'>From: root@example.com (root)
+</span><span class='line'>Status: O
+</span><span class='line'>
+</span><span class='line'>This is a test</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it works. If you want to see more about the status of your mails, look inside <code>/var/log/maillog</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Feb 17 18:21:11 centos postfix/pickup[8896]: 4FADF218FED8: uid=0 from=&lt;root&gt;
+</span><span class='line'>Feb 17 18:21:11 centos postfix/cleanup[9359]: 4FADF218FED8: message-id=&lt;20180217162111.4FADF218FED8@centos.example.com&gt;
+</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: from=&lt;root@example.com&gt;, size=431, nrcpt=1 (queue active)
+</span><span class='line'>Feb 17 18:21:11 centos postfix/local[9361]: 4FADF218FED8: to=&lt;nixhat@example.com&gt;, orig_to=&lt;root@example.com&gt;, relay=local, delay=0.08, delays=0.07/0.02/0/0, dsn=2.0.0, status=sent (delivered to mailbox)
+</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: removed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some other useful actions with mail would be to view the mail queue with <strong>mailq</strong> and flush the queue with <strong>postfix flush</strong></p>
+
+<p>Also see <strong>man 5 postconf</strong> for all Postfix parameters</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Q: What lies on the bottom of the ocean \
+</span><span class='line'>\ and twitches? A: A nervous wreck.       /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Changing kernel parameters]]></title>
@@ -8030,1131 +8269,6 @@ for allowing SSLyze to access the low-level OpenSSL APIs needed to perform deep 
 </span><span class='line'>|                                       |
 </span><span class='line'>\ -- Mark Twain                         /
 </span><span class='line'> ---------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[dnsrecon - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/12/dnsrecon-kali-linux-tools/"/>
-    <updated>2017-07-12T14:41:27-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/12/dnsrecon-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: perform thorough DNS enumeration and subdomain bruteforcing on a target. dnsrecon is true to its name, it&rsquo;s written in Python, and judging from the number of stars on its Github repository, it&rsquo;s a much more popular choice than the other candidates in Kali&rsquo;s DNS section.</p>
-
-<p>Homepage: <a href="https://github.com/darkoperator/dnsrecon">https://github.com/darkoperator/dnsrecon</a></p>
-
-<!-- more -->
-
-
-<h2>dnsrecon description</h2>
-
-<blockquote><p>This script provides the ability to perform:</p>
-
-<p>Check all NS Records for Zone Transfers.</p>
-
-<p>Enumerate General DNS Records for a given Domain (MX, SOA, NS, A, AAAA, SPF and TXT).</p>
-
-<p>Perform common SRV Record Enumeration.</p>
-
-<p>Top Level Domain (TLD) Expansion.</p>
-
-<p>Check for Wildcard Resolution.</p>
-
-<p>Brute Force subdomain and host A and AAAA records given a domain and a wordlist.</p>
-
-<p>Perform a PTR Record lookup for a given IP Range or CIDR.</p>
-
-<p>Check a DNS Server Cached records for A, AAAA and CNAME Records provided a list of host records in a text file to
-check.</p>
-
-<p>Enumerate Common mDNS records in the Local Network</p>
-
-<p>Enumerate Hosts and Subdomains using Google</p></blockquote>
-
-<p>Manpage: <a href="http://manpages.ubuntu.com/manpages/zesty/man1/dnsrecon.1.html">http://manpages.ubuntu.com/manpages/zesty/man1/dnsrecon.1.html</a></p>
-
-<h2>dnsrecon options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Version: 0.8.10
-</span><span class='line'>Usage: dnsrecon.py &lt;options&gt;
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'>   -h, --help                   Show this help message and exit.
-</span><span class='line'>   -d, --domain      &lt;domain&gt;   Target domain.
-</span><span class='line'>   -r, --range       &lt;range&gt;    IP range for reverse lookup brute force in formats (first-last) or in (range/bitmask).
-</span><span class='line'>   -n, --name_server &lt;name&gt;     Domain server to use. If none is given, the SOA of the target will be used.
-</span><span class='line'>   -D, --dictionary  &lt;file&gt;     Dictionary file of subdomain and hostnames to use for brute force.
-</span><span class='line'>   -f                           Filter out of brute force domain lookup, records that resolve to the wildcard defined
-</span><span class='line'>                                IP address when saving records.
-</span><span class='line'>   -t, --type        &lt;types&gt;    Type of enumeration to perform:
-</span><span class='line'>                                std       SOA, NS, A, AAAA, MX and SRV if AXRF on the NS servers fail.
-</span><span class='line'>                                rvl       Reverse lookup of a given CIDR or IP range.
-</span><span class='line'>                                brt       Brute force domains and hosts using a given dictionary.
-</span><span class='line'>                                srv       SRV records.
-</span><span class='line'>                                axfr      Test all NS servers for a zone transfer.
-</span><span class='line'>                                goo       Perform Google search for subdomains and hosts.
-</span><span class='line'>                                snoop     Perform cache snooping against all NS servers for a given domain, testing
-</span><span class='line'>                                          all with file containing the domains, file given with -D option.
-</span><span class='line'>                                tld       Remove the TLD of given domain and test against all TLDs registered in IANA.
-</span><span class='line'>                                zonewalk  Perform a DNSSEC zone walk using NSEC records.
-</span><span class='line'>   -a                           Perform AXFR with standard enumeration.
-</span><span class='line'>   -s                           Perform a reverse lookup of IPv4 ranges in the SPF record with standard enumeration.
-</span><span class='line'>   -g                           Perform Google enumeration with standard enumeration.
-</span><span class='line'>   -w                           Perform deep whois record analysis and reverse lookup of IP ranges found through
-</span><span class='line'>                                Whois when doing a standard enumeration.
-</span><span class='line'>   -z                           Performs a DNSSEC zone walk with standard enumeration.
-</span><span class='line'>   --threads         &lt;number&gt;   Number of threads to use in reverse lookups, forward lookups, brute force and SRV
-</span><span class='line'>                                record enumeration.
-</span><span class='line'>   --lifetime        &lt;number&gt;   Time to wait for a server to response to a query.
-</span><span class='line'>   --db              &lt;file&gt;     SQLite 3 file to save found records.
-</span><span class='line'>   --xml             &lt;file&gt;     XML file to save found records.
-</span><span class='line'>   --iw                         Continue brute forcing a domain even if a wildcard records are discovered.
-</span><span class='line'>   -c, --csv         &lt;file&gt;     Comma separated value file.
-</span><span class='line'>   -j, --json        &lt;file&gt;     JSON file.
-</span><span class='line'>   -v                           Show attempts in the brute force modes.</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>dnsrecon usage</h2>
-
-<ul>
-<li>general enumeration</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d asterisk.org
-</span><span class='line'>[*] Performing General Enumeration of Domain: asterisk.org
-</span><span class='line'>[-] DNSSEC is not configured for asterisk.org
-</span><span class='line'>[*]    SOA ns.digium.com 216.207.245.18
-</span><span class='line'>[*]    NS nsx3.digium.com 166.78.177.30
-</span><span class='line'>[*]    Bind Version for 166.78.177.30 9.8.4-rpz2+rl005.12-P1
-</span><span class='line'>[*]    NS nsx2.digium.com 216.207.245.19
-</span><span class='line'>[*]    Bind Version for 216.207.245.19 9.8.1-P1
-</span><span class='line'>[*]    NS nsx1.digium.com 216.207.245.18
-</span><span class='line'>[*]    Bind Version for 216.207.245.18 9.8.1-P1
-</span><span class='line'>[*]    MX mail.digium.com 216.207.245.2
-</span><span class='line'>[*]    A asterisk.org 216.207.245.25
-</span><span class='line'>[*] Enumerating SRV Records
-</span><span class='line'>[*]    SRV _sip._udp.asterisk.org sip.asterisk.org 204.91.156.60 5060 0
-</span><span class='line'>[*] 1 Records Found</span></code></pre></td></tr></table></div></figure>
-
-
-<p>For this example I selected a site that would also have SRV records. These records help with identifying certain services, in this case SIP for VoIP. Here you can see SIP being used on port 5060 on the host with the address 204.91.156.60.</p>
-
-<ul>
-<li>perform Google search enumeration</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-<span class='line-number'>135</span>
-<span class='line-number'>136</span>
-<span class='line-number'>137</span>
-<span class='line-number'>138</span>
-<span class='line-number'>139</span>
-<span class='line-number'>140</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d uber.com -g
-</span><span class='line'>[*] Performing General Enumeration of Domain: uber.com
-</span><span class='line'>[-] DNSSEC is not configured for uber.com
-</span><span class='line'>[*]    SOA pdns80.ultradns.com 156.154.64.80
-</span><span class='line'>[*]    NS pdns80.ultradns.net 156.154.65.80
-</span><span class='line'>[*]    Bind Version for 156.154.65.80 UltraDNS Resolver
-</span><span class='line'>[*]    NS pdns80.ultradns.net 2610:a1:1014::74
-</span><span class='line'>[*]    NS pdns80.ultradns.biz 156.154.66.80
-</span><span class='line'>[*]    Bind Version for 156.154.66.80 UltraDNS Resolver
-</span><span class='line'>[*]    NS pdns80.ultradns.biz 2610:a1:1015::74
-</span><span class='line'>[*]    NS pdns80.ultradns.org 156.154.67.80
-</span><span class='line'>[*]    Bind Version for 156.154.67.80 UltraDNS Resolver
-</span><span class='line'>[*]    NS pdns80.ultradns.org 2001:502:4612::74
-</span><span class='line'>[*]    NS pdns80.ultradns.com 156.154.64.80
-</span><span class='line'>[*]    Bind Version for 156.154.64.80 UltraDNS Resolver
-</span><span class='line'>[*]    NS pdns80.ultradns.com 2001:502:f3ff::74
-</span><span class='line'>[*]    MX alt4.aspmx.l.google.com 74.125.28.27
-</span><span class='line'>[*]    MX alt2.aspmx.l.google.com 74.125.200.26
-</span><span class='line'>[*]    MX alt3.aspmx.l.google.com 74.125.23.26
-</span><span class='line'>[*]    MX alt1.aspmx.l.google.com 64.233.161.27
-</span><span class='line'>[*]    MX aspmx.l.google.com 64.233.167.26
-</span><span class='line'>[*]    MX alt4.aspmx.l.google.com 2607:f8b0:400e:c04::1a
-</span><span class='line'>[*]    MX alt2.aspmx.l.google.com 2404:6800:4003:c00::1b
-</span><span class='line'>[*]    MX alt3.aspmx.l.google.com 2404:6800:4008:c02::1a
-</span><span class='line'>[*]    MX alt1.aspmx.l.google.com 2a00:1450:4010:c01::1b
-</span><span class='line'>[*]    MX aspmx.l.google.com 2a00:1450:400c:c0c::1b
-</span><span class='line'>[*]    A uber.com 104.36.192.133
-</span><span class='line'>[*]    A uber.com 104.36.192.221
-</span><span class='line'>[*]    A uber.com 104.36.192.183
-</span><span class='line'>[*]    A uber.com 104.36.192.132
-</span><span class='line'>[*]    A uber.com 104.36.192.135
-</span><span class='line'>[*]    A uber.com 104.36.192.220
-</span><span class='line'>[*]    A uber.com 104.36.192.182
-</span><span class='line'>[*]    TXT uber.com v=spf1 include:uber.com._nspf.vali.email include:%{i}._ip.%{h}._ehlo.%{d}._spf.vali.email ~all
-</span><span class='line'>[*]    TXT uber.com google-site-verification=pO8Bhyhw0N0939yKp6cQICCpvY--sebhQKWGviAkuLM
-</span><span class='line'>[*]    TXT uber.com docusign=635f0402-4f58-42de-8e07-e1da6d8a971a
-</span><span class='line'>[*] Enumerating SRV Records
-</span><span class='line'>[*]    SRV _kerberos._udp.uber.com kerberos.uber.com 10.6.0.74 88 0
-</span><span class='line'>[*]    SRV _kpasswd._udp.uber.com kerberos.uber.com 10.6.0.74 464 0
-</span><span class='line'>[*] 2 Records Found
-</span><span class='line'>[*] Performing Google Search Enumeration
-</span><span class='line'>[*]    CNAME www.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    CNAME help.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    CNAME ride.uber.com d3b8kpte4epqc9.cloudfront.net
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.6
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.61
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.99
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.205
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.188
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.243
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.77
-</span><span class='line'>[*]    A d3b8kpte4epqc9.cloudfront.net 13.32.22.181
-</span><span class='line'>[*]    CNAME bonjour.uber.com frontends-geo.uber.com
-</span><span class='line'>[*]    CNAME frontends-geo.uber.com geo-frontends-dca1.uber.com
-</span><span class='line'>[*]    CNAME geo-frontends-dca1.uber.com frontends-dca1.uber.com
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.234
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.160
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.133
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.131
-</span><span class='line'>[*]    CNAME accessibility.uber.com uberpolicy.wpengine.com
-</span><span class='line'>[*]    A uberpolicy.wpengine.com 35.184.61.224
-</span><span class='line'>[*]    CNAME drive.uber.com uberdrive.wpengine.com
-</span><span class='line'>[*]    A uberdrive.wpengine.com 35.184.61.224
-</span><span class='line'>[*]    CNAME central.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    CNAME dial.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    CNAME developer.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    CNAME t.uber.com ghs.google.com
-</span><span class='line'>[*]    CNAME ghs.google.com ghs.l.google.com
-</span><span class='line'>[*]    A ghs.l.google.com 172.217.16.179
-</span><span class='line'>[*]    CNAME t.uber.com ghs.google.com
-</span><span class='line'>[*]    CNAME ghs.google.com ghs.l.google.com
-</span><span class='line'>[*]    AAAA ghs.l.google.com 2a00:1450:4001:817::2013
-</span><span class='line'>[*]    CNAME newsroom.uber.com ubernewblog.wpengine.com
-</span><span class='line'>[*]    A ubernewblog.wpengine.com 35.184.61.224
-</span><span class='line'>[*]    CNAME rush.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    CNAME join.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A pages.et.uber.com 198.245.92.62
-</span><span class='line'>[*]    CNAME get.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    CNAME freight.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    CNAME eng.uber.com ubereng.wpengine.com
-</span><span class='line'>[*]    A ubereng.wpengine.com 35.184.61.224
-</span><span class='line'>[*]    CNAME movement.uber.com frontends-geo.uber.com
-</span><span class='line'>[*]    CNAME frontends-geo.uber.com geo-frontends-dca1.uber.com
-</span><span class='line'>[*]    CNAME geo-frontends-dca1.uber.com frontends-dca1.uber.com
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.234
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.160
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.131
-</span><span class='line'>[*]    A frontends-dca1.uber.com 104.36.194.133
-</span><span class='line'>[*]    CNAME m.uber.com frontends.uber.com
-</span><span class='line'>[*]    CNAME frontends.uber.com frontends-sjc1.uber.com
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.183
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.221
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.202
-</span><span class='line'>[*]    A frontends-sjc1.uber.com 104.36.192.135
-</span><span class='line'>[*] 98 Records Found</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>pull SRV records of domain</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d cisco.com -t srv
-</span><span class='line'>[*] Enumerating Common SRV Records against cisco.com
-</span><span class='line'>[*]    SRV _sip._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 5060 10
-</span><span class='line'>[*]    SRV _sips._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 5061 10
-</span><span class='line'>[*]    SRV _h323ls._udp.cisco.com vcsgw.cisco.com 173.36.224.91 1719 10
-</span><span class='line'>[*]    SRV _sip._udp.cisco.com vcsgw.cisco.com 173.36.224.91 5060 10
-</span><span class='line'>[*]    SRV _h323cs._tcp.cisco.com vcsgw.cisco.com 173.36.224.91 1720 10
-</span><span class='line'>[*]    SRV _xmpp-client._tcp.cisco.com isj3cmx.webexconnect.com 66.163.36.181 5222 1
-</span><span class='line'>[*]    SRV _xmpp-server._tcp.cisco.com isj3jxf.webexconnect.com 66.163.36.186 5269 1
-</span><span class='line'>[*] 7 Records Found</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>domain bruteforcing</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -D /usr/share/wordlists/dnsmap.txt -t brt -d line.me
-</span><span class='line'>[*] Performing host and subdomain brute force against line.me
-</span><span class='line'>[*]    A ads.line.me 203.104.153.62
-</span><span class='line'>[*]    A agp.line.me 203.104.153.74
-</span><span class='line'>[*]    CNAME api.line.me api.line.me.akadns.net
-</span><span class='line'>[*]    CNAME api.line.me.akadns.net im.api.line.me.edgekey.net
-</span><span class='line'>[*]    CNAME im.api.line.me.edgekey.net e1102.a1.akamaiedge.net
-</span><span class='line'>[*]    A e1102.a1.akamaiedge.net 2.17.116.42
-</span><span class='line'>[*]    A biz.line.me 125.6.149.168
-</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>reverse lookup</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d nmap.org -w
-</span><span class='line'>[...]
-</span><span class='line'>[*] Performing Whois lookup against records found.
-</span><span class='line'>[*] The following IP Ranges where found:
-</span><span class='line'>[*]    0) 162.158.0.0-162.159.255.255 Cloudflare, Inc.
-</span><span class='line'>[*]    1) 74.125.0.0-74.125.255.255 Google Inc.
-</span><span class='line'>[*]    2) 64.233.160.0-64.233.191.255 Google Inc.
-</span><span class='line'>[*]    3) 45.33.0.0-45.33.127.255 Linode
-</span><span class='line'>[*] What Range do you wish to do a Revers Lookup for?
-</span><span class='line'>[*] number, comma separated list, a for all or n for none
-</span><span class='line'>3
-</span><span class='line'>[*] Linode
-</span><span class='line'>[*] Performing Reverse Lookup of range 45.33.0.0-45.33.127.255
-</span><span class='line'>[*] Performing Reverse Lookup from 45.33.0.0 to 45.33.127.255
-</span><span class='line'>[*]    PTR li954-9.members.linode.com 45.33.0.9
-</span><span class='line'>[*]    PTR li954-4.members.linode.com 45.33.0.4
-</span><span class='line'>[*]    PTR gw-li954.linode.com 45.33.0.1
-</span><span class='line'>[*]    PTR li954-7.members.linode.com 45.33.0.7
-</span><span class='line'>[*]    PTR cloud521.configrapp.com 45.33.0.8
-</span><span class='line'>[*]    PTR mr2.linode.rbkmoney.net 45.33.0.10
-</span><span class='line'>[*]    PTR li954-5.members.linode.com 45.33.0.5
-</span><span class='line'>[*]    PTR rqdq.net 45.33.0.6
-</span><span class='line'>[*]    PTR li954-12.members.linode.com 45.33.0.12
-</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>working zone transfer</li>
-</ul>
-
-
-<p><a href="https://digi.ninja/projects/zonetransferme.php">Robin Wood</a> has been nice enough to register a domain that allows zone transfers for testing purposes. It&rsquo;s called zonetransfer.me, and here we&rsquo;ll look at partial output from one of the name servers:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-<span class='line-number'>135</span>
-<span class='line-number'>136</span>
-<span class='line-number'>137</span>
-<span class='line-number'>138</span>
-<span class='line-number'>139</span>
-<span class='line-number'>140</span>
-<span class='line-number'>141</span>
-<span class='line-number'>142</span>
-<span class='line-number'>143</span>
-<span class='line-number'>144</span>
-<span class='line-number'>145</span>
-<span class='line-number'>146</span>
-<span class='line-number'>147</span>
-<span class='line-number'>148</span>
-<span class='line-number'>149</span>
-<span class='line-number'>150</span>
-<span class='line-number'>151</span>
-<span class='line-number'>152</span>
-<span class='line-number'>153</span>
-<span class='line-number'>154</span>
-<span class='line-number'>155</span>
-<span class='line-number'>156</span>
-<span class='line-number'>157</span>
-<span class='line-number'>158</span>
-<span class='line-number'>159</span>
-<span class='line-number'>160</span>
-<span class='line-number'>161</span>
-<span class='line-number'>162</span>
-<span class='line-number'>163</span>
-<span class='line-number'>164</span>
-<span class='line-number'>165</span>
-<span class='line-number'>166</span>
-<span class='line-number'>167</span>
-<span class='line-number'>168</span>
-<span class='line-number'>169</span>
-<span class='line-number'>170</span>
-<span class='line-number'>171</span>
-<span class='line-number'>172</span>
-<span class='line-number'>173</span>
-<span class='line-number'>174</span>
-<span class='line-number'>175</span>
-<span class='line-number'>176</span>
-<span class='line-number'>177</span>
-<span class='line-number'>178</span>
-<span class='line-number'>179</span>
-<span class='line-number'>180</span>
-<span class='line-number'>181</span>
-<span class='line-number'>182</span>
-<span class='line-number'>183</span>
-<span class='line-number'>184</span>
-<span class='line-number'>185</span>
-<span class='line-number'>186</span>
-<span class='line-number'>187</span>
-<span class='line-number'>188</span>
-<span class='line-number'>189</span>
-<span class='line-number'>190</span>
-<span class='line-number'>191</span>
-<span class='line-number'>192</span>
-<span class='line-number'>193</span>
-<span class='line-number'>194</span>
-<span class='line-number'>195</span>
-<span class='line-number'>196</span>
-<span class='line-number'>197</span>
-<span class='line-number'>198</span>
-<span class='line-number'>199</span>
-<span class='line-number'>200</span>
-<span class='line-number'>201</span>
-<span class='line-number'>202</span>
-<span class='line-number'>203</span>
-<span class='line-number'>204</span>
-<span class='line-number'>205</span>
-<span class='line-number'>206</span>
-<span class='line-number'>207</span>
-<span class='line-number'>208</span>
-<span class='line-number'>209</span>
-<span class='line-number'>210</span>
-<span class='line-number'>211</span>
-<span class='line-number'>212</span>
-<span class='line-number'>213</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d zonetransfer.me -a
-</span><span class='line'>[*] Performing General Enumeration of Domain: zonetransfer.me
-</span><span class='line'>[*] Checking for Zone Transfer for zonetransfer.me name servers
-</span><span class='line'>[*] Resolving SOA Record
-</span><span class='line'>[*]    SOA nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*] Resolving NS Records
-</span><span class='line'>[*] NS Servers found:
-</span><span class='line'>[*]   NS nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*]   NS nsztm2.digi.ninja 167.88.42.94
-</span><span class='line'>[*] Removing any duplicate NS server IP Addresses...
-</span><span class='line'>[*]  
-</span><span class='line'>[*] Trying NS server 167.88.42.94
-</span><span class='line'>[-] Zone Transfer Failed for 167.88.42.94!
-</span><span class='line'>[-] Port 53 TCP is being filtered
-</span><span class='line'>[*]  
-</span><span class='line'>[*] Trying NS server 81.4.108.41
-</span><span class='line'>[*] 81.4.108.41 Has port 53 TCP Open
-</span><span class='line'>[*] Zone Transfer was successful!!
-</span><span class='line'>[*]    SOA nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*]    NS nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*]    NS nsztm2.digi.ninja 167.88.42.94
-</span><span class='line'>[*]    NS intns1.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    NS intns2.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    TXT google-site-verification=tyP28J7JAUHA9fw2sHXMgcCC0I6XBmmoVi04VlMewxA
-</span><span class='line'>[*]    TXT Remember to call or email Pippa on +44 123 4567890 or pippa@zonetransfer.me when making DNS changes
-</span><span class='line'>[*]    TXT '&gt;&lt;script&gt;alert('Boo')&lt;/script&gt;
-</span><span class='line'>[*]    TXT AbCdEfG
-</span><span class='line'>[*]    TXT ZoneTransfer.me service provided by Robin Wood - robin@digi.ninja. See http://digi.ninja/projects/zonetransferme.php for more information.
-</span><span class='line'>[*]    TXT ; ls
-</span><span class='line'>[*]    TXT () { :]}; echo ShellShocked
-</span><span class='line'>[*]    TXT ' or 1=1 --
-</span><span class='line'>[*]    TXT Robin Wood
-</span><span class='line'>[*]    PTR www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 64.233.166.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 2a00:1450:400c:c07::1a
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 173.194.221.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 2a00:1450:4010:c0a::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 74.125.130.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 2404:6800:4003:c01::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 173.194.221.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 2a00:1450:4010:c0b::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 74.125.130.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 2404:6800:4003:c01::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 108.177.97.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 2404:6800:4008:c00::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 74.125.28.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 2607:f8b0:400e:c04::1b
-</span><span class='line'>[*]    AAAA deadbeef.zonetransfer.me dead:beaf::
-</span><span class='line'>[*]    AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
-</span><span class='line'>[*]    A @.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A dc-office.zonetransfer.me 143.228.181.132
-</span><span class='line'>[*]    A owa.zonetransfer.me 207.46.197.32
-</span><span class='line'>[*]    A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    A vpn.zonetransfer.me 174.36.59.154
-</span><span class='line'>[*]    A email.zonetransfer.me 74.125.206.26
-</span><span class='line'>[*]    A asfdbbox.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    A www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A canberra-office.zonetransfer.me 202.14.81.230
-</span><span class='line'>[*]    A intns1.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A intns2.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A office.zonetransfer.me 4.23.39.254
-</span><span class='line'>[*]    CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 52.64.62.190
-</span><span class='line'>[*]    CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 13.54.224.164
-</span><span class='line'>[*]    SRV _sip._tcp.zonetransfer.me www 5060 0 no_ip
-</span><span class='line'>[*]    HINFO Casio fx-700G Windows XP
-</span><span class='line'>[*]    RP robin robinwood
-</span><span class='line'>[*]    AFSDB 1 asfdbbox
-</span><span class='line'>[*]    AFSDB 1 asfdbbox
-</span><span class='line'>[*]    LOC 53 20 56.558 N 1 38 33.526 W 0.00m
-</span><span class='line'>[*]    NAPTR P 2 3 !^.*$!sip:customer-service@zonetransfer.me! . E2U+sip
-</span><span class='line'>[*]    NAPTR P 1 1  email.zonetransfer.me E2U+email
-</span><span class='line'>[*]    DNSKEY RSASHA256 256 03010001d5deaa18c99ca1dccd489f0b df0dcf6c60db133a0d77b424413774d7 a718dca807252bc46da6428672efc976 3ec86373f80ac1c4e36b01ca788f3f68 ed7ac4ff671b8a602b2c9b2cf24df57b c9455e6d5c5a24e3c8360cf6debb4fd3 3cda156002eb31eaeeab1146bff6bf46 28f32b1add13712a95ed7dd3ace09d77 f8de190b 3
-</span><span class='line'>[*]    DNSKEY RSASHA256 256 03010001d779d1f1daf7054a21ff7f82 93a1171dcd06adf6586abf4b2911354c 123273d4dce3a44735132842fecb1768 011bcbfe96d1fb9a4add600e573b0b29 dcb7fb178ba9f20b7606353f49ac8d55 d734dda898157e1ecd8b8a9eea4b8464 6091e0f8eabc4568b1a5e092009d7f0e 448b136d076188aadbb6b4ee9344a1cf 8e7cd79f 3
-</span><span class='line'>[*]    DNSKEY RSASHA256 257 03010001e14b3915ec8b1107d9fb66e6 8a3855023ae83eb3301ade8a7cac4ddc 798ce560740b4e6b723a2f7c9eee55d9 1496dd9cf670d30d1d7f636f59b2070f 32024316c98d74d4916b8dd30b979bd7 fa0453fc55c35af273e6d78176fbab9e f9c331c8c397656ff8bedd8357986c1f e94d590c4655e4c574289f52562db0f9 68c6ca581134f9be1aae2a3fd535aae2 45e717d334f3c8cebb17e82b091f9c52 8ef90a765a45b5591bb808050efcded5 4ee6d150094263ab0df33b57fa790a7f c64e2b368ac22bb043aa2b6051ba5d3e e1610aa99c29562c16b11588d6da23f3 64f652471fe9d0698052671f9c5ab4cb 3d9b64369dda86a63780bc00d115207d 86425a75 3
-</span><span class='line'>[*]    NSEC _sip._tcp
-</span><span class='line'>[*]    NSEC sqli
-</span><span class='line'>[*]    NSEC vpn
-</span><span class='line'>[*]    NSEC asfdbbox
-</span><span class='line'>[*]    NSEC deadbeef
-</span><span class='line'>[*]    NSEC intns1
-</span><span class='line'>[*]    NSEC 157.177.147.217.IN-ADDR.ARPA
-</span><span class='line'>[*]    NSEC asfdbauthdns
-</span><span class='line'>[*]    NSEC dc-office
-</span><span class='line'>[*]    NSEC alltcpportsopen.firewall.test
-</span><span class='line'>[*]    NSEC canberra-office
-</span><span class='line'>[*]    NSEC robinwood
-</span><span class='line'>[*]    NSEC testing
-</span><span class='line'>[*]    NSEC www
-</span><span class='line'>[*]    NSEC Info
-</span><span class='line'>[*]    NSEC dr
-</span><span class='line'>[*]    NSEC @
-</span><span class='line'>[*]    NSEC asfdbvolume
-</span><span class='line'>[*]    NSEC xss
-</span><span class='line'>[*]    NSEC email
-</span><span class='line'>[*]    NSEC internal
-</span><span class='line'>[*]    NSEC cmdexec
-</span><span class='line'>[*]    NSEC intns2
-</span><span class='line'>[*]    NSEC office
-</span><span class='line'>[*]    NSEC contact
-</span><span class='line'>[*]    NSEC owa
-</span><span class='line'>[*]    NSEC staging
-</span><span class='line'>[*]    NSEC sshock
-</span><span class='line'>[*]    NSEC sip
-</span><span class='line'>[*]    NSEC rp
-</span><span class='line'>[*]    NSEC DZC
-</span><span class='line'>[*]    NSEC ipv6actnow.org
-</span><span class='line'>[*] Checking for Zone Transfer for zonetransfer.me name servers
-</span><span class='line'>[*] Resolving SOA Record
-</span><span class='line'>[*]    SOA nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*] Resolving NS Records
-</span><span class='line'>[*] NS Servers found:
-</span><span class='line'>[*]   NS nsztm2.digi.ninja 167.88.42.94
-</span><span class='line'>[*]   NS nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*] Removing any duplicate NS server IP Addresses...
-</span><span class='line'>[*]  
-</span><span class='line'>[*] Trying NS server 167.88.42.94
-</span><span class='line'>[-] Zone Transfer Failed for 167.88.42.94!
-</span><span class='line'>[-] Port 53 TCP is being filtered
-</span><span class='line'>[*]  
-</span><span class='line'>[*] Trying NS server 81.4.108.41
-</span><span class='line'>[*] 81.4.108.41 Has port 53 TCP Open
-</span><span class='line'>[*] Zone Transfer was successful!!
-</span><span class='line'>[*]    SOA nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*]    NS nsztm1.digi.ninja 81.4.108.41
-</span><span class='line'>[*]    NS nsztm2.digi.ninja 167.88.42.94
-</span><span class='line'>[*]    NS intns1.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    NS intns2.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    TXT google-site-verification=tyP28J7JAUHA9fw2sHXMgcCC0I6XBmmoVi04VlMewxA
-</span><span class='line'>[*]    TXT Remember to call or email Pippa on +44 123 4567890 or pippa@zonetransfer.me when making DNS changes
-</span><span class='line'>[*]    TXT '&gt;&lt;script&gt;alert('Boo')&lt;/script&gt;
-</span><span class='line'>[*]    TXT AbCdEfG
-</span><span class='line'>[*]    TXT ZoneTransfer.me service provided by Robin Wood - robin@digi.ninja. See http://digi.ninja/projects/zonetransferme.php for more information.
-</span><span class='line'>[*]    TXT ; ls
-</span><span class='line'>[*]    TXT () { :]}; echo ShellShocked
-</span><span class='line'>[*]    TXT ' or 1=1 --
-</span><span class='line'>[*]    TXT Robin Wood
-</span><span class='line'>[*]    PTR www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 64.233.166.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX.L.GOOGLE.COM 2a00:1450:400c:c07::1a
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 173.194.221.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT1.ASPMX.L.GOOGLE.COM 2a00:1450:4010:c0a::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 74.125.130.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ALT2.ASPMX.L.GOOGLE.COM 2404:6800:4003:c01::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 173.194.221.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX2.GOOGLEMAIL.COM 2a00:1450:4010:c0b::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 74.125.130.26
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX3.GOOGLEMAIL.COM 2404:6800:4003:c01::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 108.177.97.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX4.GOOGLEMAIL.COM 2404:6800:4008:c00::1b
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 74.125.28.27
-</span><span class='line'>[*]    MX @.zonetransfer.me ASPMX5.GOOGLEMAIL.COM 2607:f8b0:400e:c04::1b
-</span><span class='line'>[*]    AAAA deadbeef.zonetransfer.me dead:beaf::
-</span><span class='line'>[*]    AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
-</span><span class='line'>[*]    A @.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A dc-office.zonetransfer.me 143.228.181.132
-</span><span class='line'>[*]    A owa.zonetransfer.me 207.46.197.32
-</span><span class='line'>[*]    A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    A vpn.zonetransfer.me 174.36.59.154
-</span><span class='line'>[*]    A email.zonetransfer.me 74.125.206.26
-</span><span class='line'>[*]    A asfdbbox.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    A www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A canberra-office.zonetransfer.me 202.14.81.230
-</span><span class='line'>[*]    A intns1.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A intns2.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A office.zonetransfer.me 4.23.39.254
-</span><span class='line'>[*]    CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 52.64.62.190
-</span><span class='line'>[*]    CNAME staging.zonetransfer.me www.sydneyoperahouse.com. 13.54.224.164
-</span><span class='line'>[*]    SRV _sip._tcp.zonetransfer.me www 5060 0 no_ip
-</span><span class='line'>[*]    HINFO Casio fx-700G Windows XP
-</span><span class='line'>[*]    RP robin robinwood
-</span><span class='line'>[*]    AFSDB 1 asfdbbox
-</span><span class='line'>[*]    AFSDB 1 asfdbbox
-</span><span class='line'>[*]    LOC 53 20 56.558 N 1 38 33.526 W 0.00m
-</span><span class='line'>[*]    NAPTR P 2 3 !^.*$!sip:customer-service@zonetransfer.me! . E2U+sip
-</span><span class='line'>[*]    NAPTR P 1 1  email.zonetransfer.me E2U+email
-</span><span class='line'>[*]    DNSKEY RSASHA256 256 03010001d5deaa18c99ca1dccd489f0b df0dcf6c60db133a0d77b424413774d7 a718dca807252bc46da6428672efc976 3ec86373f80ac1c4e36b01ca788f3f68 ed7ac4ff671b8a602b2c9b2cf24df57b c9455e6d5c5a24e3c8360cf6debb4fd3 3cda156002eb31eaeeab1146bff6bf46 28f32b1add13712a95ed7dd3ace09d77 f8de190b 3
-</span><span class='line'>[*]    DNSKEY RSASHA256 256 03010001d779d1f1daf7054a21ff7f82 93a1171dcd06adf6586abf4b2911354c 123273d4dce3a44735132842fecb1768 011bcbfe96d1fb9a4add600e573b0b29 dcb7fb178ba9f20b7606353f49ac8d55 d734dda898157e1ecd8b8a9eea4b8464 6091e0f8eabc4568b1a5e092009d7f0e 448b136d076188aadbb6b4ee9344a1cf 8e7cd79f 3
-</span><span class='line'>[*]    DNSKEY RSASHA256 257 03010001e14b3915ec8b1107d9fb66e6 8a3855023ae83eb3301ade8a7cac4ddc 798ce560740b4e6b723a2f7c9eee55d9 1496dd9cf670d30d1d7f636f59b2070f 32024316c98d74d4916b8dd30b979bd7 fa0453fc55c35af273e6d78176fbab9e f9c331c8c397656ff8bedd8357986c1f e94d590c4655e4c574289f52562db0f9 68c6ca581134f9be1aae2a3fd535aae2 45e717d334f3c8cebb17e82b091f9c52 8ef90a765a45b5591bb808050efcded5 4ee6d150094263ab0df33b57fa790a7f c64e2b368ac22bb043aa2b6051ba5d3e e1610aa99c29562c16b11588d6da23f3 64f652471fe9d0698052671f9c5ab4cb 3d9b64369dda86a63780bc00d115207d 86425a75 3
-</span><span class='line'>[*]    NSEC _sip._tcp
-</span><span class='line'>[*]    NSEC sqli
-</span><span class='line'>[*]    NSEC vpn
-</span><span class='line'>[*]    NSEC asfdbbox
-</span><span class='line'>[*]    NSEC deadbeef
-</span><span class='line'>[*]    NSEC intns1
-</span><span class='line'>[*]    NSEC 157.177.147.217.IN-ADDR.ARPA
-</span><span class='line'>[*]    NSEC asfdbauthdns
-</span><span class='line'>[*]    NSEC dc-office
-</span><span class='line'>[*]    NSEC alltcpportsopen.firewall.test
-</span><span class='line'>[*]    NSEC canberra-office
-</span><span class='line'>[*]    NSEC robinwood
-</span><span class='line'>[*]    NSEC testing
-</span><span class='line'>[*]    NSEC www
-</span><span class='line'>[*]    NSEC Info
-</span><span class='line'>[*]    NSEC dr
-</span><span class='line'>[*]    NSEC @
-</span><span class='line'>[*]    NSEC asfdbvolume
-</span><span class='line'>[*]    NSEC xss
-</span><span class='line'>[*]    NSEC email
-</span><span class='line'>[*]    NSEC internal
-</span><span class='line'>[*]    NSEC cmdexec
-</span><span class='line'>[*]    NSEC intns2
-</span><span class='line'>[*]    NSEC office
-</span><span class='line'>[*]    NSEC contact
-</span><span class='line'>[*]    NSEC owa
-</span><span class='line'>[*]    NSEC staging
-</span><span class='line'>[*]    NSEC sshock
-</span><span class='line'>[*]    NSEC sip
-</span><span class='line'>[*]    NSEC rp
-</span><span class='line'>[*]    NSEC DZC
-</span><span class='line'>[*]    NSEC ipv6actnow.org
-</span><span class='line'>[-] A timeout error occurred please make sure you can reach the target DNS Servers
-</span><span class='line'>[-] directly and requests are not being filtered. Increase the timeout from 3.0 second
-</span><span class='line'>[-] to a higher number with --lifetime &lt;time&gt; option.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here we see some interesting records that might warrant an additional explanation:</p>
-
-<p><strong>SOA</strong> &ndash; the State of Authority record indicates which DNS server is the best source of information for the specified domain</p>
-
-<p><strong>HINFO</strong> specifies the host / server&rsquo;s type of CPU and operating system. We can see a Casio here, which is highly unlikely xD</p>
-
-<p><strong>LOC</strong> &ndash; geolocation information, here in latitude / longitude values</p>
-
-<p><strong>TXT</strong> &ndash; text records, with plenty of information like mail addresses, phone numbers, XSS and shellshock attempts</p>
-
-<ul>
-<li>map internal network with DNSSEC zone walk</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dnsrecon -d zonetransfer.me -z
-</span><span class='line'>[...]
-</span><span class='line'>[*] Performing NSEC Zone Walk for zonetransfer.me
-</span><span class='line'>[*] Getting SOA record for zonetransfer.me
-</span><span class='line'>[*] Name Server 81.4.108.41 will be used
-</span><span class='line'>[*]    A zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    SRV _sip._tcp.zonetransfer.me www.zonetransfer.me 217.147.177.157 5060 0
-</span><span class='line'>[*]    A 157.177.147.217.IN-ADDR.ARPA.zonetransfer.me no_ip
-</span><span class='line'>[*]    A asfdbauthdns.zonetransfer.me no_ip
-</span><span class='line'>[*]    A asfdbbox.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    A asfdbvolume.zonetransfer.me no_ip
-</span><span class='line'>[*]    A canberra-office.zonetransfer.me 202.14.81.230
-</span><span class='line'>[*]    A cmdexec.zonetransfer.me no_ip
-</span><span class='line'>[*]    A contact.zonetransfer.me no_ip
-</span><span class='line'>[*]    A dc-office.zonetransfer.me 143.228.181.132
-</span><span class='line'>[*]    AAAA deadbeef.zonetransfer.me dead:beaf::
-</span><span class='line'>[*]    A dr.zonetransfer.me no_ip
-</span><span class='line'>[*]    A DZC.zonetransfer.me no_ip
-</span><span class='line'>[*]    A email.zonetransfer.me 74.125.206.26
-</span><span class='line'>[*]    A Info.zonetransfer.me no_ip
-</span><span class='line'>[*]    A internal.zonetransfer.me no_ip
-</span><span class='line'>[*]    A intns1.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A intns2.zonetransfer.me 167.88.42.94
-</span><span class='line'>[*]    A office.zonetransfer.me 4.23.39.254
-</span><span class='line'>[*]    AAAA ipv6actnow.org.zonetransfer.me 2001:67c:2e8:11::c100:1332
-</span><span class='line'>[*]    A owa.zonetransfer.me 207.46.197.32
-</span><span class='line'>[*]    A robinwood.zonetransfer.me no_ip
-</span><span class='line'>[*]    A rp.zonetransfer.me no_ip
-</span><span class='line'>[*]    A sip.zonetransfer.me no_ip
-</span><span class='line'>[*]    A sqli.zonetransfer.me no_ip
-</span><span class='line'>[*]    A sshock.zonetransfer.me no_ip
-</span><span class='line'>[*]    A staging.zonetransfer.me 52.64.62.190
-</span><span class='line'>[*]    A staging.zonetransfer.me 13.54.224.164
-</span><span class='line'>[*]    A alltcpportsopen.firewall.test.zonetransfer.me 127.0.0.1
-</span><span class='line'>[*]    CNAME testing.zonetransfer.me www.zonetransfer.me
-</span><span class='line'>[*]    A www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A vpn.zonetransfer.me 174.36.59.154
-</span><span class='line'>[*]    A www.zonetransfer.me 217.147.177.157
-</span><span class='line'>[*]    A xss.zonetransfer.me no_ip
-</span><span class='line'>[*] 34 records found</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>sample CSV</li>
-</ul>
-
-
-<p><img class="center" src="http://chousensha.github.io/images/tools/dnsrecon.png" title="dnsrecon" alt="dnsrecon CSV report"></p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
-</span><span class='line'>/ The only way to keep your health is to  \
-</span><span class='line'>| eat what you don't want, drink what you |
-</span><span class='line'>| don't like, and do what you'd rather    |
-</span><span class='line'>| not.                                    |
-</span><span class='line'>|                                         |
-</span><span class='line'>\ -- Mark Twain                           /
-</span><span class='line'> -----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
