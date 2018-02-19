@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>LFCS prep - Securing SSH - Core dump overflow</title>
+  <title>LFCS prep - Configure an IMAP service - Core dump overflow</title>
   <meta name="author" content="chousensha">
 
   
   
-  <meta name="description" content="Key based authentication and no root logins on SSH">
-  <meta name="keywords" content="ssh, ssh key, ssh root, lfcs, lfcsa, rhcsa, lfcs exam, rhcsa exam">
+  <meta name="description" content="Configure IMAP mail">
+  <meta name="keywords" content="imap, imaps, mail, dovecot, imap linux, linux mail, dovecot mail, lfcs, rhcsa, lfcsa">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh">
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
@@ -84,7 +84,7 @@
   
   <header>
     
-      <h1 class="entry-title">LFCS prep - Securing SSH</h1>
+      <h1 class="entry-title">LFCS prep - Configure an IMAP service</h1>
     
     
       <p class="meta">
@@ -100,7 +100,7 @@
   
 
 
-<time datetime="2018-01-05T16:30:55-05:00" pubdate data-updated="true">Jan 5<span>th</span>, 2018</time>
+<time datetime="2018-02-19T12:49:18-05:00" pubdate data-updated="true">Feb 19<span>th</span>, 2018</time>
         
            | <a href="#disqus_thread"
              data-disqus-identifier="http://chousensha.github.io">Comments</a>
@@ -110,32 +110,40 @@
   </header>
 
 
-<div class="entry-content"><p>SSH-ing between various systems is something you will definitely be doing a lot in infosec. So today I&rsquo;ll quickly go over an exam objective of configuring SSH for key based authentication and disabling root logins for extra security.</p>
+<div class="entry-content"><p>Today we continue with the IMAP/S of LFCS, by configuring Dovecot.</p>
+
+<p><a href="https://www.dovecot.org/">Dovecot</a> is an open source IMAP / POP3 server written with security in mind. It can be installed on CentOS via the <em>dovecot</em> package.</p>
 
 <!-- more -->
 
 
-<p>First of all, let&rsquo;s confirm that I can SSH to my machine as root and login with root&rsquo;s password:</p>
+<p>Inside the <code>/etc/dovecot.conf</code> file you have to add / edit some settings:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>protocols = imap pop3</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The above also include the secure versions of IMAPS and POP3 secure.</p>
+
+<p>Next you have to edit the mailbox and namespace file <code>/etc/dovecot/conf.d/10-mail.conf</code>:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
-</span><span class='line'>The authenticity of host '192.168.217.129 (192.168.217.129)' can't be established.
-</span><span class='line'>ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
-</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
-</span><span class='line'>Warning: Permanently added '192.168.217.129' (ECDSA) to the list of known hosts.
-</span><span class='line'>root@192.168.217.129's password: 
-</span><span class='line'>Last login: Fri Jan  5 14:04:25 2018
-</span><span class='line'>[root@CentOS7 ~]# </span></code></pre></td></tr></table></div></figure>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mail_location = mbox:~/mail:INBOX=/var/mail/%u
+</span><span class='line'>mail_privileged_group = mail</span></code></pre></td></tr></table></div></figure>
 
 
-<p>The CentOS server&rsquo;s public key has been added to <code>~/.ssh/known_hosts</code> on my client machine, and I was able to login as root with no problem. Now it&rsquo;s time to change these dangerous defaults. On the client, generate a new pair of keys:</p>
+<p>These will set the mailbox location to <em>/var/mail/username</em> and will set the group to <em>mail</em> for privileged operations.</p>
+
+<p>Inside <code>/etc/dovecot/conf.d/10-ssl.conf</code> ensure that the below lines are uncommented:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssl_cert = &lt;/etc/pki/dovecot/certs/dovecot.pem
+</span><span class='line'>ssl_key = &lt;/etc/pki/dovecot/private/dovecot.pem</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Dump the non-default settings if you want an overview of Dovecot&rsquo;s settings:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -158,40 +166,102 @@
 <span class='line-number'>19</span>
 <span class='line-number'>20</span>
 <span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-keygen
-</span><span class='line'>Generating public/private rsa key pair.
-</span><span class='line'>Enter file in which to save the key (/root/.ssh/id_rsa): 
-</span><span class='line'>Enter passphrase (empty for no passphrase): 
-</span><span class='line'>Enter same passphrase again: 
-</span><span class='line'>Your identification has been saved in /root/.ssh/id_rsa.
-</span><span class='line'>Your public key has been saved in /root/.ssh/id_rsa.pub.
-</span><span class='line'>The key fingerprint is:
-</span><span class='line'>SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali
-</span><span class='line'>The key's randomart image is:
-</span><span class='line'>+---[RSA 2048]----+
-</span><span class='line'>|                 |
-</span><span class='line'>|   .             |
-</span><span class='line'>|  . . .          |
-</span><span class='line'>|   + o +         |
-</span><span class='line'>|  E.=++ S        |
-</span><span class='line'>|.*oOo +o .       |
-</span><span class='line'>|=*=o+ ... =      |
-</span><span class='line'>|==Bo =.. . =     |
-</span><span class='line'>|.=+++++ . .      |
-</span><span class='line'>+----[SHA256]-----+</span></code></pre></td></tr></table></div></figure>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dovecot -n
+</span><span class='line'># 2.2.10: /etc/dovecot/dovecot.conf
+</span><span class='line'># OS: Linux 3.10.0-514.21.1.el7.x86_64 x86_64 CentOS Linux release 7.3.1611 (Core)  
+</span><span class='line'>first_valid_uid = 1000
+</span><span class='line'>mail_location = mbox:~/mail:INBOX=/var/mail/%u
+</span><span class='line'>mail_privileged_group = mail
+</span><span class='line'>mbox_write_locks = fcntl
+</span><span class='line'>namespace inbox {
+</span><span class='line'>  inbox = yes
+</span><span class='line'>  location = 
+</span><span class='line'>  mailbox Drafts {
+</span><span class='line'>    special_use = \Drafts
+</span><span class='line'>  }
+</span><span class='line'>  mailbox Junk {
+</span><span class='line'>    special_use = \Junk
+</span><span class='line'>  }
+</span><span class='line'>  mailbox Sent {
+</span><span class='line'>    special_use = \Sent
+</span><span class='line'>  }
+</span><span class='line'>  mailbox "Sent Messages" {
+</span><span class='line'>    special_use = \Sent
+</span><span class='line'>  }
+</span><span class='line'>  mailbox Trash {
+</span><span class='line'>    special_use = \Trash
+</span><span class='line'>  }
+</span><span class='line'>  prefix = 
+</span><span class='line'>}
+</span><span class='line'>passdb {
+</span><span class='line'>  driver = pam
+</span><span class='line'>}
+</span><span class='line'>protocols = imap pop3
+</span><span class='line'>ssl = required
+</span><span class='line'>ssl_cert = &lt;/etc/pki/dovecot/certs/dovecot.pem
+</span><span class='line'>ssl_key = &lt;/etc/pki/dovecot/private/dovecot.pem
+</span><span class='line'>userdb {
+</span><span class='line'>  driver = passwd
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
 
 
-<p>Now you have a private and public key inside the .ssh directory. Take a look at their permissions:</p>
+<p>Start dovecot and check that it&rsquo;s listening on its ports:</p>
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>-rw-------  1 root root 1675 Jan  5 16:10 id_rsa
-</span><span class='line'>-rw-r--r--  1 root root  391 Jan  5 16:10 id_rsa.pub</span></code></pre></td></tr></table></div></figure>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -ltpn | grep dovecot
+</span><span class='line'>tcp        0      0 0.0.0.0:110             0.0.0.0:*               LISTEN      4629/dovecot        
+</span><span class='line'>tcp        0      0 0.0.0.0:143             0.0.0.0:*               LISTEN      4629/dovecot        
+</span><span class='line'>tcp        0      0 0.0.0.0:993             0.0.0.0:*               LISTEN      4629/dovecot        
+</span><span class='line'>tcp        0      0 0.0.0.0:995             0.0.0.0:*               LISTEN      4629/dovecot        </span></code></pre></td></tr></table></div></figure>
 
 
-<p>The private key has read and write permissions only for the owner (600), while the public key has read/write permissions for the owner, and read also for group and others (644).</p>
+<p>Send a mail to a user:</p>
 
-<p>The public key won&rsquo;t do any good sitting around on the client machine, it needs to be copied to the server:</p>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo "Readme" | mail -s "README" nixhat@example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The mail will be readable in <em>/var/mail/nixhat</em>. I installed the mutt client to view it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>i:Exit  -:PrevPg  &lt;Space&gt;:NextPg v:View Attachm.  d:Del  r:Reply  j:Next ?:Help
+</span><span class='line'>Date: Mon, 19 Feb 2018 19:35:30 +0200
+</span><span class='line'>From: root &lt;root@example.com&gt;
+</span><span class='line'>To: nixhat@example.com
+</span><span class='line'>Subject: README
+</span><span class='line'>User-Agent: Heirloom mailx 12.5 7/5/10
+</span><span class='line'>
+</span><span class='line'>Readme</span></code></pre></td></tr></table></div></figure>
+
+
+
 
 <figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
@@ -202,81 +272,17 @@
 <span class='line-number'>7</span>
 <span class='line-number'>8</span>
 <span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-copy-id root@192.168.217.129
-</span><span class='line'>The authenticity of host '192.168.217.129 (192.168.217.129)' can't be established.
-</span><span class='line'>ECDSA key fingerprint is SHA256:20TtBMwQAz9KAEK2mApqOksugeZ2yi8oecLRKz8RwB4.
-</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
-</span><span class='line'>/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
-</span><span class='line'>/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
-</span><span class='line'>root@192.168.217.129's password: 
-</span><span class='line'>
-</span><span class='line'>Number of key(s) added: 1
-</span><span class='line'>
-</span><span class='line'>Now try logging into the machine, with:   "ssh 'root@192.168.217.129'"
-</span><span class='line'>and check to make sure that only the key(s) you wanted were added.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>If you get the error <strong>sign_and_send_pubkey: signing failed: agent refused operation</strong> when trying to SSH to the server, run <em>*ssh-add</em> to add the private key identities to the authentication agent. You can then verify they were added:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-add -l
-</span><span class='line'>2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI /root/.ssh/id_rsa (RSA)
-</span><span class='line'>2048 SHA256:OLHfszGKJK7wPNhc6OLZv8NeMKOIDuV0OHmBeynLLVI root@kali (RSA)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now you should be able to login with the public key:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
-</span><span class='line'>Last login: Fri Jan  5 15:06:34 2018 from 192.168.217.132
-</span><span class='line'>[root@CentOS7 ~]# </span></code></pre></td></tr></table></div></figure>
-
-
-<p>That worked, but we don&rsquo;t want root to be able to directly SSH into our host. So edit the <code>/etc/ssh/sshd_config</code> file on the server. The default settings are commented, and you can add your own changes and leave them uncommented to override the defaults. I added the following to disable root login and password authentication:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>PermitRootLogin no
-</span><span class='line'>PasswordAuthentication no</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Restart ssh and try to login again:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.217.129
-</span><span class='line'>root@192.168.217.129: Permission denied (publickey,gssapi-keyex,gssapi-with-mic).</span></code></pre></td></tr></table></div></figure>
-
-
-<p>In practice, you would generate your keys for an account that you will use on that system and if needed, give it sudo privileges to do the work you need.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
-</span><span class='line'>/ You learn to write as if to someone \
-</span><span class='line'>| else because NEXT YEAR YOU WILL BE  |
-</span><span class='line'>\ "SOMEONE ELSE."                     /
-</span><span class='line'> -------------------------------------
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Avert misunderstanding by calm, poise, \
+</span><span class='line'>\ and balance.                           /
+</span><span class='line'> ----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
 
 </div>
 
@@ -300,7 +306,7 @@
   
 
 
-<time datetime="2018-01-05T16:30:55-05:00" pubdate data-updated="true">Jan 5<span>th</span>, 2018</time>
+<time datetime="2018-02-19T12:49:18-05:00" pubdate data-updated="true">Feb 19<span>th</span>, 2018</time>
       
 
 <span class="categories">
@@ -314,7 +320,7 @@
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service/" >Tweet</a>
   
   
   
@@ -323,10 +329,8 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2017/12/02/pwning-kevgir/" title="Previous Post: Pwning Kevgir">&laquo; Pwning Kevgir</a>
+        <a class="basic-alignment left" href="/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/" title="Previous Post: LFCS prep - Configure an SMTP mail service">&laquo; LFCS prep - Configure an SMTP mail service</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2018/01/11/lfcs-prep-networkmanager-configuration/" title="Next Post: LFCS prep - NetworkManager configuration">LFCS prep - NetworkManager configuration &raquo;</a>
       
     </p>
   </footer>
@@ -461,8 +465,8 @@ default: GAMING;}</p>
       
         
         // var disqus_developer = 1;
-        var disqus_identifier = 'http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/';
-        var disqus_url = 'http://chousensha.github.io/blog/2018/01/05/lfcs-prep-securing-ssh/';
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service/';
         var disqus_script = 'embed.js';
       
     (function () {

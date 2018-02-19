@@ -4,7 +4,7 @@
   <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-17T12:41:34-05:00</updated>
+  <updated>2018-02-19T13:07:28-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,151 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Configure an IMAP service]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service/"/>
+    <updated>2018-02-19T12:49:18-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/19/lfcs-prep-configure-an-imap-service</id>
+    <content type="html"><![CDATA[<p>Today we continue with the IMAP/S of LFCS, by configuring Dovecot.</p>
+
+<p><a href="https://www.dovecot.org/">Dovecot</a> is an open source IMAP / POP3 server written with security in mind. It can be installed on CentOS via the <em>dovecot</em> package.</p>
+
+<!-- more -->
+
+
+<p>Inside the <code>/etc/dovecot.conf</code> file you have to add / edit some settings:</p>
+
+<p><code>
+protocols = imap pop3
+</code></p>
+
+<p>The above also include the secure versions of IMAPS and POP3 secure.</p>
+
+<p>Next you have to edit the mailbox and namespace file <code>/etc/dovecot/conf.d/10-mail.conf</code>:</p>
+
+<p><code>
+mail_location = mbox:~/mail:INBOX=/var/mail/%u
+mail_privileged_group = mail
+</code></p>
+
+<p>These will set the mailbox location to <em>/var/mail/username</em> and will set the group to <em>mail</em> for privileged operations.</p>
+
+<p>Inside <code>/etc/dovecot/conf.d/10-ssl.conf</code> ensure that the below lines are uncommented:</p>
+
+<p><code>
+ssl_cert = &lt;/etc/pki/dovecot/certs/dovecot.pem
+ssl_key = &lt;/etc/pki/dovecot/private/dovecot.pem
+</code></p>
+
+<p>Dump the non-default settings if you want an overview of Dovecot&rsquo;s settings:</p>
+
+<p>```
+dovecot -n</p>
+
+<h1>2.2.10: /etc/dovecot/dovecot.conf</h1>
+
+<h1>OS: Linux 3.10.0-514.21.1.el7.x86_64 x86_64 CentOS Linux release 7.3.1611 (Core)</h1>
+
+<p>first_valid_uid = 1000
+mail_location = mbox:~/mail:INBOX=/var/mail/%u
+mail_privileged_group = mail
+mbox_write_locks = fcntl
+namespace inbox {
+  inbox = yes
+  location =
+  mailbox Drafts {</p>
+
+<pre><code>special_use = \Drafts
+</code></pre>
+
+<p>  }
+  mailbox Junk {</p>
+
+<pre><code>special_use = \Junk
+</code></pre>
+
+<p>  }
+  mailbox Sent {</p>
+
+<pre><code>special_use = \Sent
+</code></pre>
+
+<p>  }
+  mailbox &ldquo;Sent Messages&rdquo; {</p>
+
+<pre><code>special_use = \Sent
+</code></pre>
+
+<p>  }
+  mailbox Trash {</p>
+
+<pre><code>special_use = \Trash
+</code></pre>
+
+<p>  }
+  prefix =
+}
+passdb {
+  driver = pam
+}
+protocols = imap pop3
+ssl = required
+ssl_cert = &lt;/etc/pki/dovecot/certs/dovecot.pem
+ssl_key = &lt;/etc/pki/dovecot/private/dovecot.pem
+userdb {
+  driver = passwd
+}
+```</p>
+
+<p>Start dovecot and check that it&rsquo;s listening on its ports:</p>
+
+<p><code>
+netstat -ltpn | grep dovecot
+tcp        0      0 0.0.0.0:110             0.0.0.0:*               LISTEN      4629/dovecot        
+tcp        0      0 0.0.0.0:143             0.0.0.0:*               LISTEN      4629/dovecot        
+tcp        0      0 0.0.0.0:993             0.0.0.0:*               LISTEN      4629/dovecot        
+tcp        0      0 0.0.0.0:995             0.0.0.0:*               LISTEN      4629/dovecot        
+</code></p>
+
+<p>Send a mail to a user:</p>
+
+<p><code>
+echo "Readme" | mail -s "README" nixhat@example.com
+</code></p>
+
+<p>The mail will be readable in <em>/var/mail/nixhat</em>. I installed the mutt client to view it:</p>
+
+<p>```
+i:Exit  &ndash;:PrevPg  <Space>:NextPg v:View Attachm.  d:Del  r:Reply  j:Next ?:Help
+Date: Mon, 19 Feb 2018 19:35:30 +0200
+From: root <a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#114;&#x6f;&#x6f;&#x74;&#x40;&#101;&#x78;&#97;&#109;&#112;&#x6c;&#x65;&#46;&#x63;&#x6f;&#109;">&#114;&#x6f;&#111;&#116;&#x40;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#109;</a>
+To: <a href="&#x6d;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#110;&#x69;&#120;&#104;&#x61;&#x74;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#46;&#99;&#x6f;&#x6d;">&#x6e;&#105;&#x78;&#104;&#x61;&#x74;&#x40;&#x65;&#x78;&#x61;&#109;&#112;&#108;&#101;&#x2e;&#99;&#111;&#109;</a>
+Subject: README
+User-Agent: Heirloom mailx 12.5 7/5/10</p>
+
+<p>Readme
+```</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Avert misunderstanding by calm, poise, \
+\ and balance.                           /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configure an SMTP mail service]]></title>
@@ -162,24 +307,24 @@ Heirloom Mail version 12.5 7/5/10.  Type ? for help.
 
 <blockquote><p>N  1 root                  Sat Feb 17 18:08  18/569   &ldquo;test&rdquo;
 cat  /var/spool/mail/nixhat
-From <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#114;&#111;&#111;&#116;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#x2e;&#99;&#x6f;&#x6d;">&#114;&#111;&#x6f;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#x70;&#x6c;&#101;&#x2e;&#x63;&#x6f;&#x6d;</a>  Sat Feb 17 18:08:09 2018
-Return-Path: <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x72;&#x6f;&#111;&#x74;&#64;&#101;&#120;&#x61;&#109;&#112;&#108;&#101;&#x2e;&#99;&#x6f;&#x6d;">&#114;&#111;&#111;&#116;&#x40;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#101;&#46;&#99;&#x6f;&#x6d;</a>
-X-Original-To: <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#114;&#x6f;&#x6f;&#116;&#64;&#101;&#120;&#x61;&#109;&#112;&#108;&#101;&#46;&#x63;&#x6f;&#x6d;">&#114;&#111;&#111;&#116;&#64;&#101;&#120;&#x61;&#109;&#x70;&#x6c;&#x65;&#x2e;&#99;&#111;&#109;</a>
-Delivered-To: <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#58;&#114;&#x6f;&#111;&#116;&#x40;&#101;&#x78;&#97;&#109;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#109;">&#114;&#111;&#x6f;&#116;&#64;&#x65;&#120;&#97;&#109;&#112;&#108;&#x65;&#46;&#x63;&#111;&#109;</a>
+From <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#58;&#114;&#111;&#111;&#x74;&#x40;&#101;&#120;&#x61;&#x6d;&#112;&#108;&#x65;&#46;&#x63;&#111;&#x6d;">&#x72;&#111;&#x6f;&#116;&#x40;&#x65;&#120;&#x61;&#x6d;&#112;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;</a>  Sat Feb 17 18:08:09 2018
+Return-Path: <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#114;&#x6f;&#x6f;&#x74;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#46;&#x63;&#x6f;&#109;">&#114;&#x6f;&#x6f;&#116;&#64;&#x65;&#x78;&#97;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#111;&#x6d;</a>
+X-Original-To: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#x6f;&#116;&#64;&#x65;&#x78;&#97;&#x6d;&#112;&#108;&#101;&#x2e;&#x63;&#x6f;&#x6d;">&#x72;&#x6f;&#x6f;&#116;&#64;&#101;&#x78;&#x61;&#109;&#x70;&#108;&#x65;&#46;&#x63;&#x6f;&#x6d;</a>
+Delivered-To: <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#x72;&#x6f;&#111;&#x74;&#64;&#x65;&#120;&#x61;&#109;&#x70;&#108;&#x65;&#x2e;&#x63;&#111;&#109;">&#x72;&#x6f;&#x6f;&#x74;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#111;&#x6d;</a>
 Received: by centos.example.com (Postfix, from userid 0)</p>
 
 <pre><code>id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
 </code></pre>
 
 <p>Date: Sat, 17 Feb 2018 18:08:09 +0200
-To: <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#x3a;&#x72;&#111;&#x6f;&#116;&#64;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#x2e;&#x63;&#111;&#x6d;">&#114;&#x6f;&#111;&#x74;&#x40;&#x65;&#x78;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#x6f;&#x6d;</a>
+To: <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#114;&#x6f;&#x6f;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;">&#114;&#x6f;&#x6f;&#x74;&#x40;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#x2e;&#99;&#x6f;&#x6d;</a>
 Subject: test
 User-Agent: Heirloom mailx 12.5 7/5/10
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Message-Id: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x32;&#48;&#x31;&#x38;&#x30;&#x32;&#49;&#x37;&#x31;&#x36;&#x30;&#56;&#48;&#57;&#46;&#53;&#x31;&#50;&#x35;&#x35;&#50;&#x31;&#56;&#70;&#69;&#68;&#x37;&#x40;&#x63;&#101;&#110;&#x74;&#111;&#115;&#46;&#x65;&#x78;&#97;&#109;&#112;&#x6c;&#x65;&#46;&#99;&#x6f;&#109;">&#50;&#48;&#49;&#x38;&#x30;&#x32;&#x31;&#x37;&#x31;&#x36;&#x30;&#56;&#48;&#x39;&#46;&#53;&#49;&#50;&#53;&#53;&#50;&#x31;&#x38;&#70;&#x45;&#68;&#55;&#64;&#99;&#x65;&#110;&#x74;&#111;&#x73;&#46;&#x65;&#120;&#x61;&#x6d;&#x70;&#108;&#101;&#x2e;&#99;&#x6f;&#109;</a>
-From: <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x72;&#x6f;&#111;&#x74;&#x40;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#101;&#x2e;&#99;&#111;&#x6d;">&#x72;&#x6f;&#x6f;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;</a> (root)
+Message-Id: <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#50;&#x30;&#x31;&#56;&#48;&#50;&#x31;&#55;&#x31;&#54;&#x30;&#56;&#x30;&#x39;&#x2e;&#x35;&#x31;&#x32;&#x35;&#53;&#x32;&#x31;&#x38;&#70;&#69;&#68;&#x37;&#x40;&#99;&#101;&#110;&#116;&#111;&#x73;&#x2e;&#101;&#120;&#97;&#109;&#x70;&#108;&#101;&#x2e;&#x63;&#x6f;&#109;">&#50;&#48;&#49;&#x38;&#48;&#x32;&#49;&#55;&#x31;&#54;&#48;&#56;&#x30;&#57;&#x2e;&#x35;&#x31;&#x32;&#x35;&#53;&#x32;&#x31;&#56;&#70;&#69;&#68;&#55;&#x40;&#x63;&#x65;&#x6e;&#x74;&#111;&#x73;&#46;&#101;&#120;&#97;&#109;&#112;&#108;&#101;&#46;&#x63;&#x6f;&#x6d;</a>
+From: <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#58;&#114;&#111;&#111;&#116;&#64;&#x65;&#x78;&#x61;&#x6d;&#112;&#x6c;&#101;&#46;&#99;&#x6f;&#109;">&#114;&#x6f;&#111;&#x74;&#x40;&#x65;&#120;&#x61;&#x6d;&#112;&#x6c;&#x65;&#46;&#x63;&#x6f;&#109;</a> (root)
 Status: O</p></blockquote>
 
 <p>This is a test
@@ -474,7 +619,7 @@ chronyc sources -v
 
 <p>```
 ntpdate -vd ts1.sct.de
-15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#109;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#x70;&#53;&#64;&#x31;&#x2e;&#50;&#x33;&#52;&#x39;&#45;&#111;">&#x70;&#x35;&#64;&#49;&#x2e;&#x32;&#51;&#52;&#x39;&#x2d;&#111;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
+15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#112;&#x35;&#64;&#x31;&#x2e;&#50;&#51;&#x34;&#x39;&#x2d;&#x6f;">&#112;&#53;&#64;&#49;&#x2e;&#x32;&#51;&#x34;&#57;&#45;&#111;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
 Looking for host ts1.sct.de and service ntp
 host found : ts1.sct.de
 transmit(193.141.27.1)
@@ -643,284 +788,6 @@ kamehameha
 
 <p>/ Your lucky number is 3552664958674928. \
 \ Watch for it everywhere.               /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Managing encrypted partitions]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions/"/>
-    <updated>2018-02-12T12:39:28-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll go over creating LUKS-encrypted partitions with <strong>cryptsetup</strong>. LUKS (Linux Unified Key Setup) is a block device encryption format that is the standard on Linux systems. Also, because it stores all the necessary data in the partition header, it&rsquo;s easy to migrate partitions.</p>
-
-<!-- more -->
-
-
-<p>To get an overview of all the cryptographic ciphers that the system can use, look in <code>/proc/crypto</code>:</p>
-
-<p><code>
- cat /proc/crypto | grep name
-name         : crc32
-name         : __ghash
-name         : ghash
-name         : __ghash
-name         : xts(aes)
-name         : lrw(aes)
-name         : __xts-aes-aesni
-name         : __lrw-aes-aesni
-name         : pcbc(aes)
-name         : rfc4106(gcm(aes))
-name         : __gcm-aes-aesni
-name         : ctr(aes)
-name         : __ctr-aes-aesni
-name         : cbc(aes)
-name         : __ecb-aes-aesni
-name         : ecb(aes)
-name         : __cbc-aes-aesni
-name         : __ecb-aes-aesni
-name         : __aes-aesni
-name         : aes
-name         : crct10dif
-name         : crct10dif
-name         : crc32c
-name         : hmac(sha256)
-name         : hmac(sha1)
-name         : lzo
-name         : crc32c
-name         : aes
-name         : sha224
-name         : sha256
-name         : sha1
-name         : md5
-name         : sha224
-name         : sha256
-name         : sha1
-name         : aes
-</code></p>
-
-<p>For this demo, I will be using a 200MB partition called /dev/sdb1. The below command initializes the partition as a LUKS device and you have to configure a passphrase at this step.</p>
-
-<p>```
-cryptsetup luksFormat /dev/sdb1</p>
-
-<h1>WARNING!</h1>
-
-<p>This will overwrite data on /dev/sdb1 irrevocably.</p>
-
-<p>Are you sure? (Type uppercase yes): YES
-Enter passphrase:
-Verify passphrase:
-```</p>
-
-<p>You can check out the header:</p>
-
-<p>```
-cryptsetup luksDump /dev/sdb1
-LUKS header information for /dev/sdb1</p>
-
-<p>Version:           1
-Cipher name:       aes
-Cipher mode:       xts-plain64
-Hash spec:         sha256
-Payload offset:    4096
-MK bits:           256
-MK digest:         6b 5e c2 bb 77 f9 0a 0d d4 67 4d 6f 01 a1 df 33 ce d7 94 b2
-MK salt:           42 9d d7 5f 3b 6c c1 0b 55 53 d1 fd 28 bd 73 27</p>
-
-<pre><code>               64 63 bb 70 02 de 33 46 0c 4f 2e 07 a9 a7 28 52 
-</code></pre>
-
-<p>MK iterations:     68500
-UUID:              85b6a404-b24e-4c31-baf3-75cb3f041054</p>
-
-<p>Key Slot 0: ENABLED</p>
-
-<pre><code>Iterations:             547007
-Salt:                   4d 13 8b 20 74 cb 88 dd 8e dc b3 b0 2c ca 83 4b 
-                          bd ab 12 2d 95 57 72 06 00 25 11 0e 43 b8 dc 81 
-Key material offset:    8
-AF stripes:                4000
-</code></pre>
-
-<p>Key Slot 1: DISABLED
-Key Slot 2: DISABLED
-Key Slot 3: DISABLED
-Key Slot 4: DISABLED
-Key Slot 5: DISABLED
-Key Slot 6: DISABLED
-Key Slot 7: DISABLED
-```</p>
-
-<p>Next, create a mapping between the opened LUKS partition and the device mapper.</p>
-
-<p><code>
-cryptsetup --verbose luksOpen /dev/sdb1 hidden
-Enter passphrase for /dev/sdb1:
-Key slot 0 unlocked.
-Command successful.
-</code></p>
-
-<p>View the mapping details:</p>
-
-<p><code>
-ls -l /dev/mapper/hidden
-lrwxrwxrwx. 1 root root 7 Feb  9 18:29 /dev/mapper/hidden -&gt; ../dm-2
-</code></p>
-
-<p>If you want to have more insight into the status of the mapping:</p>
-
-<p><code>
-cryptsetup -v status hidden
-/dev/mapper/hidden is active.
-  type:    LUKS1
-  cipher:  aes-xts-plain64
-  keysize: 256 bits
-  device:  /dev/sdb1
-  offset:  4096 sectors
-  size:    405504 sectors
-  mode:    read/write
-Command successful.
-</code></p>
-
-<p>Format the partition with the filesystem of your choice:</p>
-
-<p>```
-mkfs -t ext4 /dev/mapper/hidden
-mke2fs 1.42.9 (28-Dec-2013)
-Filesystem label=
-OS type: Linux
-Block size=1024 (log=0)
-Fragment size=1024 (log=0)
-Stride=0 blocks, Stripe width=0 blocks
-50800 inodes, 202752 blocks
-10137 blocks (5.00%) reserved for the super user
-First data block=1
-Maximum filesystem blocks=33816576
-25 block groups
-8192 blocks per group, 8192 fragments per group
-2032 inodes per group
-Superblock backups stored on blocks:</p>
-
-<pre><code>8193, 24577, 40961, 57345, 73729
-</code></pre>
-
-<p>Allocating group tables: done                          <br/>
-Writing inode tables: done                          <br/>
-Creating journal (4096 blocks): done
-Writing superblocks and filesystem accounting information: done
-```</p>
-
-<p>I made a folder for mounting the new encrypted partition and mounted it:</p>
-
-<p>```
-mount -v /dev/mapper/hidden /mnt/hidden
-mount: /mnt/hidden does not contain SELinux labels.</p>
-
-<pre><code>   You just mounted an file system that supports labels which does not
-   contain labels, onto an SELinux box. It is likely that confined
-   applications will generate AVC messages and not be allowed access to
-   this file system.  For more details see restorecon(8) and mount(8).
-</code></pre>
-
-<p>mount: /dev/mapper/hidden mounted on /mnt/hidden.
-```</p>
-
-<p>When done working on it, you can unmount it:</p>
-
-<p><code>
-umount -v /mnt/hidden
-umount: /mnt/hidden (/dev/mapper/hidden) unmounted
-</code></p>
-
-<p>And then remove the mapping:</p>
-
-<p><code>
-cryptsetup --verbose luksClose hidden
-Command successful.
-</code></p>
-
-<p>To remount it, just go through the above steps again. If you want to mount it at boot, you need to take note of some UUIDS:</p>
-
-<p><code>
-lsblk -o name,uuid,mountpoint
-NAME          UUID                                   MOUNTPOINT
-sda                                                  
-├─sda1        b8e2fb99-bf4c-4632-883b-8ed5c2350b1e   /boot
-└─sda2        PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP
-  ├─rhel-root 2c0268ac-c31a-462d-b5b9-41bdfbecd75d   /
-  └─rhel-swap 6544d880-b634-4566-a68d-d3a58cec4cf6   [SWAP]
-sdb                                                  
-└─sdb1        85b6a404-b24e-4c31-baf3-75cb3f041054   
-  └─hidden    ab98b274-9d34-41f0-9178-4f8c4b7e8a77   
-sr0                                                  
-</code></p>
-
-<p>Then you need to edit <code>/etc/crypttab</code>:</p>
-
-<p><code>
-name device &lt;password&gt; &lt;options&gt;
-</code></p>
-
-<p>Device refers to the block device or its UUID. The entries between tags are optional. In my case, the entry would look like this (the UUID is of /dev/sdb1)</p>
-
-<p><code>
-cat /etc/crypttab
-hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054
-</code></p>
-
-<p>And edit /etc/fstab like you would for any other partition (UUID refers to the hidden mapping):</p>
-
-<p><code>
-UUID=ab98b274-9d34-41f0-9178-4f8c4b7e8a77 /mnt/hidden ext4 defaults 0 0
-</code></p>
-
-<p>Now you will be prompted at boot for the password. If you want to use a key for automatic unlocking, create a key file (here a random key of 4096 bytes length):</p>
-
-<p><code>
-dd if=/dev/urandom of=/root/key bs=1024 count=4
-4+0 records in
-4+0 records out
-4096 bytes (4.1 kB) copied, 0.00100253 s, 4.1 MB/s
-</code></p>
-
-<p>Make it only readable by root with <code>chmod 400 /root/key</code></p>
-
-<p>Add the key for the encrypted volume:</p>
-
-<p><code>
-cryptsetup -v luksAddKey /dev/sdb1 /root/key
-Enter any existing passphrase:
-Key slot 0 unlocked.
-Key slot 0 unlocked.
-Command successful.
-</code></p>
-
-<p>And add the path of the key file to /etc/crypttab</p>
-
-<p><code>
-cat /etc/crypttab
-hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054 /root/key
-</code></p>
-
-<p>Now the volume will be unlocked automatically without the need of entering a passphrase.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You definitely intend to start living \
-\ sometime soon.                        /</p>
 
 <hr />
 
