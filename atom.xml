@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-19T13:07:28-05:00</updated>
+  <updated>2018-02-22T13:45:07-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,271 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Software RAID]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/22/lfcs-prep-software-raid/"/>
+    <updated>2018-02-22T13:37:45-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/22/lfcs-prep-software-raid</id>
+    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at creating software RAID devices with <em>mdadm</em>. For the example I will use /dev/sdb1 and /dev/sdb2</p>
+
+<!-- more -->
+
+
+<p>To create an array:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --create --verbose /dev/md0 --level=mirror --raid-devices=2 /dev/sdb1 /dev/sdb2
+</span><span class='line'>mdadm: /dev/sdb1 appears to be part of a raid array:
+</span><span class='line'>       level=raid0 devices=0 ctime=Thu Jan  1 09:00:00 1970
+</span><span class='line'>mdadm: partition table exists on /dev/sdb1 but will be lost or
+</span><span class='line'>       meaningless after creating array
+</span><span class='line'>mdadm: Note: this array has metadata at the start and
+</span><span class='line'>    may not be suitable as a boot device.  If you plan to
+</span><span class='line'>    store '/boot' on this device please ensure that
+</span><span class='line'>    your boot-loader understands md/v1.x metadata, or use
+</span><span class='line'>    --metadata=0.90
+</span><span class='line'>mdadm: size set to 102272K
+</span><span class='line'>Continue creating array? y
+</span><span class='line'>mdadm: Defaulting to version 1.2 metadata
+</span><span class='line'>mdadm: array /dev/md0 started.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To view more information about the array:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /proc/mdstat
+</span><span class='line'>Personalities : [raid1] 
+</span><span class='line'>md0 : active raid1 sdb2[1] sdb1[0]
+</span><span class='line'>      102272 blocks super 1.2 [2/2] [UU]
+</span><span class='line'>      
+</span><span class='line'>unused devices: &lt;none&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For more detailed information:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --detail /dev/md0
+</span><span class='line'>/dev/md0:
+</span><span class='line'>        Version : 1.2
+</span><span class='line'>  Creation Time : Tue Feb 20 00:17:49 2018
+</span><span class='line'>     Raid Level : raid1
+</span><span class='line'>     Array Size : 102272 (99.88 MiB 104.73 MB)
+</span><span class='line'>  Used Dev Size : 102272 (99.88 MiB 104.73 MB)
+</span><span class='line'>   Raid Devices : 2
+</span><span class='line'>  Total Devices : 2
+</span><span class='line'>    Persistence : Superblock is persistent
+</span><span class='line'>
+</span><span class='line'>    Update Time : Tue Feb 20 00:17:53 2018
+</span><span class='line'>          State : clean 
+</span><span class='line'> Active Devices : 2
+</span><span class='line'>Working Devices : 2
+</span><span class='line'> Failed Devices : 0
+</span><span class='line'>  Spare Devices : 0
+</span><span class='line'>
+</span><span class='line'>           Name : rhel7:0  (local to host rhel7)
+</span><span class='line'>           UUID : a92e04f3:1652f291:8c68266d:6c760648
+</span><span class='line'>         Events : 17
+</span><span class='line'>
+</span><span class='line'>    Number   Major   Minor   RaidDevice State
+</span><span class='line'>       0       8       17        0      active sync   /dev/sdb1
+</span><span class='line'>       1       8       18        1      active sync   /dev/sdb2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now format the RAID device:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkfs.ext4 /dev/md0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You need to create the config file <code>/etc/mdadm.conf</code> and add to it the output of the below command:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --detail --scan
+</span><span class='line'>ARRAY /dev/md0 metadata=1.2 name=rhel7:0 UUID=a92e04f3:1652f291:8c68266d:6c760648</span></code></pre></td></tr></table></div></figure>
+
+
+<p>See more information about the array disks:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --examine /dev/sdb1
+</span><span class='line'>/dev/sdb1:
+</span><span class='line'>          Magic : a92b4efc
+</span><span class='line'>        Version : 1.2
+</span><span class='line'>    Feature Map : 0x0
+</span><span class='line'>     Array UUID : a92e04f3:1652f291:8c68266d:6c760648
+</span><span class='line'>           Name : rhel7:0  (local to host rhel7)
+</span><span class='line'>  Creation Time : Tue Feb 20 00:17:49 2018
+</span><span class='line'>     Raid Level : raid1
+</span><span class='line'>   Raid Devices : 2
+</span><span class='line'>
+</span><span class='line'> Avail Dev Size : 204640 (99.92 MiB 104.78 MB)
+</span><span class='line'>     Array Size : 102272 (99.88 MiB 104.73 MB)
+</span><span class='line'>  Used Dev Size : 204544 (99.88 MiB 104.73 MB)
+</span><span class='line'>    Data Offset : 160 sectors
+</span><span class='line'>   Super Offset : 8 sectors
+</span><span class='line'>   Unused Space : before=72 sectors, after=96 sectors
+</span><span class='line'>          State : clean
+</span><span class='line'>    Device UUID : 109087ab:0f2121e6:b6e09819:ffba2648
+</span><span class='line'>
+</span><span class='line'>    Update Time : Tue Feb 20 00:22:17 2018
+</span><span class='line'>  Bad Block Log : 512 entries available at offset 72 sectors
+</span><span class='line'>       Checksum : f832b421 - correct
+</span><span class='line'>         Events : 17
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>   Device Role : Active device 0
+</span><span class='line'>   Array State : AA ('A' == active, '.' == missing, 'R' == replacing)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Mount the array and check it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>df -h /dev/md0
+</span><span class='line'>Filesystem      Size  Used Avail Use% Mounted on
+</span><span class='line'>/dev/md0         93M  1.6M   85M   2% /mnt/raid</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Other useful commands:</p>
+
+<ul>
+<li>assemble array</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --assemble /dev/md0</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>remove disk from array (you have to mark it as failing first)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --fail /dev/md0 /dev/sdb2
+</span><span class='line'>mdadm --remove /dev/md0 /dev/sdb2</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>add disk to array</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --add /dev/md0 /dev/sdb2</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>remove array</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mdadm --stop /dev/md0
+</span><span class='line'>mdadm --remove /dev/md0</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
+</span><span class='line'>/ Don't relax! It's only your tension \
+</span><span class='line'>\ that's holding you together.        /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Configure an IMAP service]]></title>
@@ -7703,206 +7968,6 @@ network interface.</p></blockquote>
 </span><span class='line'>| intelligence? A: Seemed logical -- I |
 </span><span class='line'>\ didn't have any real intelligence.   /
 </span><span class='line'> --------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[NFS shares on CentOS 7]]></title>
-    <link href="http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7/"/>
-    <updated>2017-09-10T07:45:30-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/09/10/nfs-shares-on-centos-7</id>
-    <content type="html"><![CDATA[<p>Today we will go over an alternate way of setting up shares on CentOS 7. In an <a href="https://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/">earlier post</a> we saw how we can share stuff with Samba, which is the preferred way, especially if you have mixed environments. But today I also wanted to go through the process using the veteran: NFS! For this example, we&rsquo;ll be looking at the newest version, NFS4, which adds performance and security features, but also operates a little bit differently than its predecessors.</p>
-
-<!-- more -->
-
-
-<p>The Network File System allows clients to mount remote filesystems as if they were present locally. By default, the NFS server is listening on port 2049. In version 4, NFS requires the use of TCP.</p>
-
-<h3>Server configuration</h3>
-
-<p>If you don&rsquo;t have it already, install the <code>nfs-utils</code> package. Next, start NFS with the command: <code>systemctl start nfs</code>. For the share, I created some directory and put a file in it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /var/nfs-share
-</span><span class='line'>chmod 777 /var/nfs-share/</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now we have to edit the <code>/etc/exports</code> file, which contains the configuration for the shares. The format is as follows:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/sharepath client(options)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can specify the client by hostname, domain name, IP address or network range. In this example, I will allow all hosts on my local subnet to have read write access to the share, and permit root users to retain their privileges:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>/var/nfs-share 192.168.217.0/24(rw,no_root_squash)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now restart the server for the configuration to take effect: <code>systemctl restart nfs</code>. You can see NFS statistics with <strong>nfstat</strong>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nfsstat
-</span><span class='line'>Server rpc stats:
-</span><span class='line'>calls      badcalls   badclnt    badauth    xdrcall
-</span><span class='line'>91         0          0          0          0       
-</span><span class='line'>
-</span><span class='line'>Server nfs v4:
-</span><span class='line'>null         compound     
-</span><span class='line'>2         2% 89       97% 
-</span><span class='line'>
-</span><span class='line'>Server nfs v4 operations:
-</span><span class='line'>op0-unused   op1-unused   op2-future   access       close        commit       
-</span><span class='line'>0         0% 0         0% 0         0% 7         2% 1         0% 0         0% 
-</span><span class='line'>create       delegpurge   delegreturn  getattr      getfh        link         
-</span><span class='line'>0         0% 0         0% 1         0% 52       20% 8         3% 0         0% 
-</span><span class='line'>lock         lockt        locku        lookup       lookup_root  nverify      
-</span><span class='line'>0         0% 0         0% 0         0% 16        6% 0         0% 0         0% 
-</span><span class='line'>open         openattr     open_conf    open_dgrd    putfh        putpubfh     
-</span><span class='line'>1         0% 0         0% 0         0% 0         0% 63       25% 0         0% 
-</span><span class='line'>putrootfh    read         readdir      readlink     remove       rename       
-</span><span class='line'>4         1% 1         0% 2         0% 0         0% 0         0% 0         0% 
-</span><span class='line'>renew        restorefh    savefh       secinfo      setattr      setcltid     
-</span><span class='line'>0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-</span><span class='line'>setcltidconf verify       write        rellockowner bc_ctl       bind_conn    
-</span><span class='line'>0         0% 0         0% 0         0% 0         0% 0         0% 0         0% 
-</span><span class='line'>exchange_id  create_ses   destroy_ses  free_stateid getdirdeleg  getdevinfo   
-</span><span class='line'>2         0% 2         0% 1         0% 0         0% 0         0% 0         0% 
-</span><span class='line'>getdevlist   layoutcommit layoutget    layoutreturn secinfononam sequence     
-</span><span class='line'>0         0% 0         0% 0         0% 0         0% 2         0% 83       33% 
-</span><span class='line'>set_ssv      test_stateid want_deleg   destroy_clid reclaim_comp 
-</span><span class='line'>0         0% 0         0% 0         0% 1         0% 2         0% </span></code></pre></td></tr></table></div></figure>
-
-
-<p>To see the available exports and their options, use <strong>exportfs</strong>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>exportfs -v
-</span><span class='line'>/var/nfs-share    192.168.217.0/24(rw,wdelay,no_root_squash,no_subtree_check,sec=sys,rw,secure,no_root_squash,no_all_squash)</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Client configuration</h3>
-
-<p>On the client, I first made a directory for the shares:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /mnt/nfs</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To mount the share, the command looks like this:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mount -t nfs -o options server:/export /mount/directory</span></code></pre></td></tr></table></div></figure>
-
-
-<p>In my case, I mounted the exported share with:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mount -t nfs 192.168.217.131:/var/nfs-share /mnt/nfs/</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Then I went to the directory and read the file:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt/nfs# ls
-</span><span class='line'>file.txt
-</span><span class='line'>root@kali:/mnt/nfs# cat file.txt 
-</span><span class='line'>something here</span></code></pre></td></tr></table></div></figure>
-
-
-<p>When done, unmount the filesystem:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>umount /mnt/nfs</span></code></pre></td></tr></table></div></figure>
-
-
-<p>If instead of manually mounting the share, we would want it automatically mounted at boot, we&rsquo;d have to edit <code>/etc/fstab</code>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># /etc/fstab: static file system information.
-</span><span class='line'>#
-</span><span class='line'># Use 'blkid' to print the universally unique identifier for a
-</span><span class='line'># device; this may be used with UUID= as a more robust way to name devices
-</span><span class='line'># that works even if disks are added and removed. See fstab(5).
-</span><span class='line'>#
-</span><span class='line'># &lt;file system&gt; &lt;mount point&gt;   &lt;type&gt;  &lt;options&gt;       &lt;dump&gt;  &lt;pass&gt;
-</span><span class='line'>192.168.217.131:/var/nfs-share /mnt/nfs nfs rw 0 0</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now reboot the client and check that the share was mounted:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mount | grep nfs
-</span><span class='line'>192.168.217.131:/var/nfs-share on /mnt/nfs type nfs4 (rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=0.0.0.0,local_lock=none,addr=192.168.217.131)</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So, it&rsquo;s pretty easy and fast to set up NFS shares, but keep in mind this tutorial only scratched the surface of the available configuration options.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
-</span><span class='line'>/ Q: What's tiny and yellow and very,   \
-</span><span class='line'>| very, dangerous? A: A canary with the |
-</span><span class='line'>\ super-user password.                  /
-</span><span class='line'> ---------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
