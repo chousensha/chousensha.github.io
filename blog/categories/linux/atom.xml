@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-22T13:45:07-05:00</updated>
+  <updated>2018-02-23T13:28:15-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,314 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Managing SELinux]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/"/>
+    <updated>2018-02-23T13:18:55-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux</id>
+    <content type="html"><![CDATA[<p>In this post we&rsquo;ll go over using SELinux to manage the security of a Linux system.</p>
+
+<p>NSA Security-Enhanced Linux or SELinux is a mandatory access control architecture controlled through the <code>/etc/selinux/config</code> file.</p>
+
+<!-- more -->
+
+
+<p>Let&rsquo;s take a peek at the file on my box:</p>
+
+<p>```
+cat /etc/selinux/config</p>
+
+<h1>This file controls the state of SELinux on the system.</h1>
+
+<h1>SELINUX= can take one of these three values:</h1>
+
+<h1>enforcing &ndash; SELinux security policy is enforced.</h1>
+
+<h1>permissive &ndash; SELinux prints warnings instead of enforcing.</h1>
+
+<h1>disabled &ndash; No SELinux policy is loaded.</h1>
+
+<p>SELINUX=enforcing</p>
+
+<h1>SELINUXTYPE= can take one of three two values:</h1>
+
+<h1>targeted &ndash; Targeted processes are protected,</h1>
+
+<h1>minimum &ndash; Modification of targeted policy. Only selected processes are protected.</h1>
+
+<h1>mls &ndash; Multi Level Security protection.</h1>
+
+<p>SELINUXTYPE=targeted
+```</p>
+
+<p>If SELinux is disabled and then enabled, all the files inside the filesystem will need to be re-labeled.</p>
+
+<p>You can adjust SELinux with many commands and utilities:</p>
+
+<h3>getenforce</h3>
+
+<blockquote><p>get the current mode of SELinux</p></blockquote>
+
+<p><code>
+getenforce
+Enforcing
+</code></p>
+
+<h3>sestatus</h3>
+
+<blockquote><p>SELinux status tool</p></blockquote>
+
+<p><code>
+sestatus
+SELinux status:                 enabled
+SELinuxfs mount:                /sys/fs/selinux
+SELinux root directory:         /etc/selinux
+Loaded policy name:             targeted
+Current mode:                   enforcing
+Mode from config file:          enforcing
+Policy MLS status:              enabled
+Policy deny_unknown status:     allowed
+Max kernel policy version:      28
+</code></p>
+
+<h3>setenforce</h3>
+
+<blockquote><p>modify the mode SELinux is running in</p>
+
+<p>Use Enforcing or 1 to put SELinux in enforcing mode.
+Use Permissive or 0 to put SELinux in permissive mode</p></blockquote>
+
+<h3>SELinux log files:</h3>
+
+<p><code>
+tail /var/log/audit/audit.log | grep AVC
+type=USER_AVC msg=audit(1518200447.761:276): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='avc:  denied  { status } for auid=n/a uid=0 gid=0 path="/etc/fstab" cmdline="systemctl show --property=RequiredBy -- -.mount" scontext=system_u:system_r:initrc_t:s0 tcontext=unconfined_u:object_r:etc_t:s0 tclass=service  exe="/usr/lib/systemd/systemd" sauid=0 hostname=? addr=? terminal=?'
+</code></p>
+
+<h3>ausearch</h3>
+
+<blockquote><p>a tool to query audit daemon logs</p></blockquote>
+
+<p>```</p>
+
+<h2>ausearch -m avc</h2>
+
+<p>time->Wed Aug  3 15:23:45 2016
+type=SYSCALL msg=audit(1470227025.724:584): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=7efd495a23a8 a2=1c a3=7fff168b531c items=0 ppid=1 pid=8541 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=&ldquo;httpd&rdquo; exe=&ldquo;/usr/sbin/httpd&rdquo; subj=system_u:system_r:httpd_t:s0 key=(null)
+type=AVC msg=audit(1470227025.724:584): avc:  denied  { name_bind } for  pid=8541 comm=&ldquo;httpd&rdquo; src=8888 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket
+```</p>
+
+<h3>restorecon</h3>
+
+<blockquote><p>restore file(s) default SELinux security contexts.</p></blockquote>
+
+<h3>chcon</h3>
+
+<blockquote><p>change file SELinux security context</p></blockquote>
+
+<h3>semanage</h3>
+
+<blockquote><p>SELinux Policy Management tool</p></blockquote>
+
+<p><code>
+semanage boolean -l | grep nfs
+xen_use_nfs                    (off  ,  off)  Allow xen to use nfs
+mpd_use_nfs                    (off  ,  off)  Allow mpd to use nfs
+virt_use_nfs                   (off  ,  off)  Allow virt to use nfs
+use_nfs_home_dirs              (off  ,  off)  Allow use to nfs home dirs
+ksmtuned_use_nfs               (off  ,  off)  Allow ksmtuned to use nfs
+nfsd_anon_write                (off  ,  off)  Allow nfsd to anon write
+git_system_use_nfs             (off  ,  off)  Allow git to system use nfs
+git_cgi_use_nfs                (off  ,  off)  Allow git to cgi use nfs
+logrotate_use_nfs              (off  ,  off)  Allow logrotate to use nfs
+cobbler_use_nfs                (off  ,  off)  Allow cobbler to use nfs
+httpd_use_nfs                  (off  ,  off)  Allow httpd to use nfs
+sge_use_nfs                    (off  ,  off)  Allow sge to use nfs
+sanlock_use_nfs                (off  ,  off)  Allow sanlock to use nfs
+samba_share_nfs                (off  ,  off)  Allow samba to share nfs
+ftpd_use_nfs                   (off  ,  off)  Allow ftpd to use nfs
+openshift_use_nfs              (off  ,  off)  Allow openshift to use nfs
+polipo_use_nfs                 (off  ,  off)  Allow polipo to use nfs
+tmpreaper_use_nfs              (off  ,  off)  Allow tmpreaper to use nfs
+nfs_export_all_rw              (on   ,   on)  Allow nfs to export all rw
+nfs_export_all_ro              (on   ,   on)  Allow nfs to export all ro
+</code></p>
+
+<ul>
+<li>list ports</li>
+</ul>
+
+
+<p><code>
+semanage port -l | grep ftp
+ftp_data_port_t                tcp      20
+ftp_port_t                     tcp      21, 989, 990
+ftp_port_t                     udp      989, 990
+tftp_port_t                    udp      69
+</code></p>
+
+<ul>
+<li>change label</li>
+</ul>
+
+
+<p><code>
+semanage fcontext --add -t &lt;type&gt; file
+</code></p>
+
+<p>You need to call restorecon after changing the context</p>
+
+<h3>getsebool</h3>
+
+<blockquote><p>get SELinux boolean value(s)</p></blockquote>
+
+<p><code>
+getsebool -a | grep ftp
+ftpd_anon_write --&gt; off
+ftpd_connect_all_unreserved --&gt; off
+ftpd_connect_db --&gt; off
+ftpd_full_access --&gt; off
+ftpd_use_cifs --&gt; off
+ftpd_use_fusefs --&gt; off
+ftpd_use_nfs --&gt; off
+ftpd_use_passive_mode --&gt; off
+httpd_can_connect_ftp --&gt; off
+httpd_enable_ftp_server --&gt; off
+tftp_anon_write --&gt; off
+tftp_home_dir --&gt; off
+</code></p>
+
+<h3>setsebool</h3>
+
+<blockquote><p>set SELinux boolean value</p></blockquote>
+
+<p><code>
+setseebol &lt;boolean&gt; on/off
+</code></p>
+
+<ul>
+<li>-P # make the change persistent to reboots</li>
+</ul>
+
+
+<h3>seinfo</h3>
+
+<blockquote><p>SELinux policy query tool</p></blockquote>
+
+<p>Install the <em>setools</em> package to get this utility</p>
+
+<p>```
+seinfo</p>
+
+<p>Statistics for policy file: /sys/fs/selinux/policy
+Policy Version &amp; Type: v.28 (binary, mls)</p>
+
+<p>   Classes:            91    Permissions:       256
+   Sensitivities:       1    Categories:       1024
+   Types:            4729    Attributes:        251
+   Users:               8    Roles:              14
+   Booleans:          301    Cond. Expr.:       350
+   Allow:          101266    Neverallow:          0
+   Auditallow:        157    Dontaudit:        8030
+   Type_trans:      17756    Type_change:        74
+   Type_member:        35    Role allow:         39
+   Role_trans:        416    Range_trans:      5697
+   Constraints:       109    Validatetrans:       0
+   Initial SIDs:       27    Fs_use:             28
+   Genfscon:          105    Portcon:           597
+   Netifcon:            0    Nodecon:             0
+   Permissives:         6    Polcap:              2
+```</p>
+
+<h3>sealert</h3>
+
+<blockquote><p>sealert is the user interface component (either GUI or command line) to
+the  setroubleshoot  system. setroubleshoot is used to diagnose SELinux
+denials and attempts  to  provide  user  friendly  explanations  for  a
+SELinux  denial (e.g. AVC) and recommendations for how one might adjust
+the system to prevent the denial in the future.</p></blockquote>
+
+<ul>
+<li><p>-l # Lookup alert by id, if id is wildcard * then return all alerts</p></li>
+<li><p>-a # Scan a log file, analyze its AVC&rsquo;s</p></li>
+</ul>
+
+
+<p>```
+sealert -a /var/log/audit/audit.log
+100% done</p>
+
+<h2>found 4 alerts in /var/log/audit/audit.log</h2>
+
+<p>SELinux is preventing /usr/bin/pgrep from getattr access on the filesystem /sys.</p>
+
+<p><strong><strong><em>  Plugin catchall (100. confidence) suggests   </em></strong></strong>*********************</p>
+
+<p>If you believe that pgrep should be allowed getattr access on the sys filesystem by default.
+Then you should report this as a bug.
+You can generate a local policy module to allow this access.
+Do
+allow this access for now by executing:</p>
+
+<h1>ausearch -c &lsquo;pgrep&rsquo; &mdash;raw | audit2allow -M my-pgrep</h1>
+
+<h1>semodule -i my-pgrep.pp</h1>
+
+<p>Additional Information:
+Source Context                system_u:system_r:ksmtuned_t:s0
+Target Context                system_u:object_r:sysfs_t:s0
+Target Objects                /sys [ filesystem ]
+Source                        pgrep
+Source Path                   /usr/bin/pgrep
+Port                          <Unknown>
+Host                          <Unknown>
+Source RPM Packages           procps-ng-3.3.10-10.el7.x86_64
+Target RPM Packages           filesystem-3.2-21.el7.x86_64
+Policy RPM                    selinux-policy-3.13.1-102.el7_3.16.noarch
+Selinux Enabled               True
+Policy Type                   targeted
+Enforcing Mode                Enforcing
+Host Name                     rhel7
+Platform                      Linux rhel7 3.10.0-514.26.2.el7.x86_64 #1 SMP Fri</p>
+
+<pre><code>                          Jun 30 05:26:04 UTC 2017 x86_64 x86_64
+</code></pre>
+
+<p>Alert Count                   9
+First Seen                    2018-02-10 02:25:54 JST
+Last Seen                     2018-02-10 03:19:45 JST
+Local ID                      d5a68144-c84d-44c4-bde0-31380fd5bb60</p>
+
+<p>Raw Audit Messages
+type=AVC msg=audit(1518200385.729:205): avc:  denied  { getattr } for  pid=4616 comm=&ldquo;pgrep&rdquo; name=&ldquo;/&rdquo; dev=&ldquo;sysfs&rdquo; ino=1 scontext=system_u:system_r:ksmtuned_t:s0 tcontext=system_u:object_r:sysfs_t:s0 tclass=filesystem</p>
+
+<p>type=SYSCALL msg=audit(1518200385.729:205): arch=x86_64 syscall=statfs success=no exit=EACCES a0=7f9407f4e013 a1=7fffcd705e80 a2=fffffffffff476d8 a3=7fffcd705b90 items=0 ppid=4615 pid=4616 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=pgrep exe=/usr/bin/pgrep subj=system_u:system_r:ksmtuned_t:s0 key=(null)</p>
+
+<p>Hash: pgrep,ksmtuned_t,sysfs_t,filesystem,getattr
+[&hellip;]
+```</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Someone is speaking well of you. \
+|                                  |
+\ How unusual!                     /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Software RAID]]></title>
@@ -353,8 +661,8 @@ echo "Readme" | mail -s "README" nixhat@example.com
 <p>```
 i:Exit  &ndash;:PrevPg  <Space>:NextPg v:View Attachm.  d:Del  r:Reply  j:Next ?:Help
 Date: Mon, 19 Feb 2018 19:35:30 +0200
-From: root <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x72;&#x6f;&#x6f;&#x74;&#64;&#x65;&#x78;&#97;&#x6d;&#x70;&#108;&#101;&#x2e;&#99;&#x6f;&#109;">&#114;&#111;&#x6f;&#116;&#64;&#101;&#x78;&#x61;&#x6d;&#112;&#108;&#101;&#x2e;&#x63;&#111;&#109;</a>
-To: <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x6e;&#x69;&#x78;&#104;&#97;&#116;&#x40;&#x65;&#120;&#97;&#109;&#112;&#108;&#101;&#x2e;&#99;&#111;&#x6d;">&#110;&#105;&#120;&#x68;&#97;&#x74;&#64;&#x65;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;</a>
+From: root <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x72;&#x6f;&#x6f;&#x74;&#64;&#101;&#120;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#111;&#x6d;">&#x72;&#111;&#x6f;&#x74;&#64;&#101;&#120;&#x61;&#109;&#112;&#x6c;&#x65;&#46;&#99;&#111;&#x6d;</a>
+To: <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x6e;&#x69;&#x78;&#x68;&#x61;&#116;&#x40;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">&#x6e;&#105;&#120;&#x68;&#x61;&#x74;&#x40;&#101;&#120;&#97;&#109;&#x70;&#108;&#x65;&#x2e;&#x63;&#111;&#109;</a>
 Subject: README
 User-Agent: Heirloom mailx 12.5 7/5/10</p>
 
@@ -530,24 +838,24 @@ Heirloom Mail version 12.5 7/5/10.  Type ? for help.
 
 <blockquote><p>N  1 root                  Sat Feb 17 18:08  18/569   &ldquo;test&rdquo;
 cat  /var/spool/mail/nixhat
-From <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x72;&#111;&#111;&#x74;&#64;&#101;&#120;&#97;&#109;&#x70;&#x6c;&#x65;&#x2e;&#99;&#111;&#109;">&#114;&#x6f;&#111;&#116;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#x6c;&#x65;&#x2e;&#x63;&#111;&#x6d;</a>  Sat Feb 17 18:08:09 2018
-Return-Path: <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#x72;&#111;&#111;&#x74;&#x40;&#x65;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#x2e;&#99;&#x6f;&#x6d;">&#114;&#x6f;&#x6f;&#x74;&#x40;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#101;&#x2e;&#x63;&#x6f;&#x6d;</a>
-X-Original-To: <a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#114;&#111;&#x6f;&#116;&#x40;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;">&#114;&#111;&#111;&#116;&#64;&#x65;&#120;&#x61;&#109;&#112;&#x6c;&#101;&#x2e;&#99;&#x6f;&#x6d;</a>
-Delivered-To: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#x72;&#x6f;&#x6f;&#x74;&#64;&#x65;&#x78;&#97;&#x6d;&#112;&#108;&#101;&#46;&#x63;&#111;&#x6d;">&#x72;&#111;&#111;&#x74;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#111;&#x6d;</a>
+From <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#114;&#111;&#x6f;&#116;&#x40;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#x2e;&#x63;&#x6f;&#109;">&#114;&#111;&#111;&#x74;&#x40;&#x65;&#120;&#97;&#109;&#112;&#x6c;&#101;&#46;&#x63;&#111;&#109;</a>  Sat Feb 17 18:08:09 2018
+Return-Path: <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#114;&#111;&#111;&#116;&#x40;&#x65;&#x78;&#x61;&#x6d;&#112;&#x6c;&#x65;&#x2e;&#99;&#x6f;&#x6d;">&#x72;&#x6f;&#111;&#x74;&#x40;&#101;&#x78;&#x61;&#x6d;&#x70;&#108;&#101;&#46;&#x63;&#x6f;&#109;</a>
+X-Original-To: <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#114;&#111;&#111;&#x74;&#64;&#101;&#120;&#x61;&#x6d;&#x70;&#108;&#101;&#46;&#99;&#111;&#109;">&#x72;&#x6f;&#111;&#116;&#64;&#x65;&#x78;&#97;&#x6d;&#x70;&#x6c;&#101;&#46;&#99;&#111;&#109;</a>
+Delivered-To: <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#114;&#111;&#111;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#x6d;">&#x72;&#111;&#111;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#x6d;</a>
 Received: by centos.example.com (Postfix, from userid 0)</p>
 
 <pre><code>id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
 </code></pre>
 
 <p>Date: Sat, 17 Feb 2018 18:08:09 +0200
-To: <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#114;&#111;&#111;&#116;&#64;&#x65;&#120;&#x61;&#109;&#112;&#x6c;&#x65;&#x2e;&#x63;&#111;&#109;">&#114;&#111;&#111;&#x74;&#64;&#101;&#x78;&#x61;&#109;&#x70;&#108;&#101;&#46;&#99;&#111;&#x6d;</a>
+To: <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#111;&#111;&#116;&#64;&#101;&#x78;&#x61;&#x6d;&#x70;&#108;&#101;&#x2e;&#99;&#111;&#109;">&#x72;&#111;&#111;&#x74;&#x40;&#x65;&#120;&#97;&#109;&#112;&#x6c;&#101;&#x2e;&#99;&#111;&#109;</a>
 Subject: test
 User-Agent: Heirloom mailx 12.5 7/5/10
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Message-Id: <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x32;&#48;&#49;&#56;&#48;&#x32;&#49;&#55;&#49;&#x36;&#48;&#x38;&#x30;&#57;&#46;&#x35;&#49;&#50;&#x35;&#53;&#50;&#x31;&#56;&#x46;&#x45;&#68;&#x37;&#x40;&#x63;&#x65;&#110;&#116;&#x6f;&#115;&#x2e;&#x65;&#x78;&#x61;&#x6d;&#x70;&#108;&#x65;&#46;&#99;&#111;&#x6d;">&#x32;&#48;&#x31;&#56;&#x30;&#x32;&#x31;&#x37;&#x31;&#54;&#48;&#56;&#x30;&#x39;&#x2e;&#x35;&#49;&#50;&#x35;&#x35;&#50;&#49;&#56;&#x46;&#69;&#x44;&#x37;&#64;&#x63;&#x65;&#x6e;&#116;&#x6f;&#115;&#46;&#101;&#120;&#x61;&#109;&#x70;&#x6c;&#101;&#x2e;&#99;&#x6f;&#109;</a>
-From: <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#x72;&#111;&#111;&#116;&#x40;&#x65;&#x78;&#97;&#109;&#x70;&#x6c;&#x65;&#x2e;&#99;&#x6f;&#109;">&#114;&#111;&#x6f;&#116;&#x40;&#x65;&#x78;&#x61;&#109;&#x70;&#x6c;&#101;&#x2e;&#99;&#111;&#109;</a> (root)
+Message-Id: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#50;&#48;&#49;&#x38;&#x30;&#x32;&#x31;&#x37;&#49;&#x36;&#48;&#x38;&#48;&#x39;&#46;&#53;&#49;&#50;&#x35;&#53;&#x32;&#49;&#56;&#70;&#69;&#68;&#x37;&#x40;&#x63;&#x65;&#110;&#116;&#x6f;&#115;&#x2e;&#x65;&#x78;&#97;&#109;&#112;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;">&#x32;&#48;&#x31;&#x38;&#48;&#x32;&#x31;&#55;&#x31;&#x36;&#48;&#56;&#x30;&#57;&#x2e;&#x35;&#49;&#x32;&#x35;&#x35;&#50;&#x31;&#x38;&#70;&#x45;&#68;&#x37;&#64;&#x63;&#x65;&#110;&#116;&#x6f;&#x73;&#x2e;&#x65;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#x63;&#x6f;&#x6d;</a>
+From: <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#x72;&#111;&#x6f;&#x74;&#x40;&#101;&#120;&#97;&#109;&#x70;&#x6c;&#x65;&#46;&#99;&#111;&#x6d;">&#x72;&#x6f;&#x6f;&#x74;&#x40;&#101;&#120;&#97;&#109;&#112;&#108;&#x65;&#46;&#99;&#111;&#109;</a> (root)
 Status: O</p></blockquote>
 
 <p>This is a test
@@ -686,233 +994,6 @@ cat /proc/sys/net/ipv4/ip_forward
 <p>/ You&rsquo;re definitely on their list. The \
 | question to ask next is what list it |
 \ is.                                  /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration/"/>
-    <updated>2018-02-14T14:50:41-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration</id>
-    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at NTP configuration by using chrony, which is installed by default on newer RedHat systems.</p>
-
-<!-- more -->
-
-
-<p>Ensure that the <strong>chronyd</strong> service is started and let&rsquo;s take a look at the current time setttings:</p>
-
-<p>```
-timedatectl</p>
-
-<pre><code>  Local time: Thu 2018-02-15 02:15:51 JST
-</code></pre>
-
-<p>  Universal time: Wed 2018-02-14 17:15:51 UTC</p>
-
-<pre><code>    RTC time: Wed 2018-02-14 17:15:52
-   Time zone: Asia/Tokyo (JST, +0900)
- NTP enabled: no
-</code></pre>
-
-<p>NTP synchronized: no
- RTC in local TZ: no</p>
-
-<pre><code>  DST active: n/a
-</code></pre>
-
-<p>```</p>
-
-<p>Now look inside chrony&rsquo;s config file, which is <code>/etc/chrony.conf</code>:</p>
-
-<p>```</p>
-
-<h1>Use public servers from the pool.ntp.org project.</h1>
-
-<h1>Please consider joining the pool (<a href="http://www.pool.ntp.org/join.html">http://www.pool.ntp.org/join.html</a>).</h1>
-
-<p>server 0.rhel.pool.ntp.org iburst
-server 1.rhel.pool.ntp.org iburst
-server 2.rhel.pool.ntp.org iburst
-server 3.rhel.pool.ntp.org iburst</p>
-
-<h1>Ignore stratum in source selection.</h1>
-
-<p>stratumweight 0</p>
-
-<h1>Record the rate at which the system clock gains/losses time.</h1>
-
-<p>driftfile /var/lib/chrony/drift</p>
-
-<h1>Enable kernel RTC synchronization.</h1>
-
-<p>rtcsync</p>
-
-<h1>In first three updates step the system clock instead of slew</h1>
-
-<h1>if the adjustment is larger than 10 seconds.</h1>
-
-<p>makestep 10 3</p>
-
-<h1>Allow NTP client access from local network.</h1>
-
-<h1>allow 192.168/16</h1>
-
-<h1>Listen for commands only on localhost.</h1>
-
-<p>bindcmdaddress 127.0.0.1
-bindcmdaddress ::1</p>
-
-<h1>Serve time even if not synchronized to any NTP server.</h1>
-
-<h1>local stratum 10</h1>
-
-<p>keyfile /etc/chrony.keys</p>
-
-<h1>Specify the key used as password for chronyc.</h1>
-
-<p>commandkey 1</p>
-
-<h1>Generate command key if missing.</h1>
-
-<p>generatecommandkey</p>
-
-<h1>Disable logging of client accesses.</h1>
-
-<p>noclientlog</p>
-
-<h1>Send a message to syslog if a clock adjustment is larger than 0.5 seconds.</h1>
-
-<p>logchange 0.5</p>
-
-<p>logdir /var/log/chrony</p>
-
-<h1>log measurements statistics tracking</h1>
-
-<p>```</p>
-
-<p>There is a set of default servers configured, but you can add your own. You can also allow NTP client access in the local network by uncommenting or adding the <strong>allow</strong> directive with a range.</p>
-
-<p>In the previous timedatectl output we saw that NTP and synchronization weren&rsquo;t enabled, so let&rsquo;s enable them:</p>
-
-<p>```
-timedatectl set-ntp 1
-timedatectl | grep -i ntp</p>
-
-<pre><code> NTP enabled: yes
-</code></pre>
-
-<p>NTP synchronized: no
-```</p>
-
-<p>We still have to manage the NTP synchronization. In the config file we have some server pools enabled, but we want to know exact names for the servers:</p>
-
-<p>```
-chronyc sources -v
-210 Number of sources = 4</p>
-
-<p>  .&mdash; Source mode  &lsquo;^&rsquo; = server, &lsquo;=&rsquo; = peer, &lsquo;#&rsquo; = local clock.
- / .&ndash; Source state &lsquo;*&rsquo; = current synced, &lsquo;+&rsquo; = combined , &lsquo;&ndash;&rsquo; = not combined,
-| /   &lsquo;?&rsquo; = unreachable, &lsquo;x&rsquo; = time may be in error, &lsquo;~&rsquo; = time too variable.
-||                                                 .&ndash; xxxx [ yyyy ] +/&ndash; zzzz
-||      Reachability register (octal) &ndash;.           |  xxxx = adjusted offset,
-||      Log2(Polling interval) &mdash;.      |          |  yyyy = measured offset,
-||                                \     |          |  zzzz = estimated error.
-||                                 |    |           \</p>
-
-<h1>MS Name/IP address         Stratum Poll Reach LastRx Last sample</h1>
-
-<p>^? ts1.sct.de                    0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
-^? greenstone-quarry.the-jad     0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
-^? 1b.ncomputers.org             0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
-^? shout.ovh                     0   8     0   10y     +0ns[   +0ns] +/&ndash;    0ns
-```</p>
-
-<p>Now we can pick a server to synchronize with:</p>
-
-<p>```
-ntpdate -vd ts1.sct.de
-15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6<a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#112;&#53;&#64;&#x31;&#x2e;&#50;&#51;&#x34;&#57;&#45;&#111;">&#112;&#x35;&#x40;&#49;&#46;&#x32;&#x33;&#52;&#x39;&#45;&#111;</a> Wed Mar  1 09:00:52 UTC 2017 (1)
-Looking for host ts1.sct.de and service ntp
-host found : ts1.sct.de
-transmit(193.141.27.1)
-receive(193.141.27.1)
-transmit(193.141.27.1)
-receive(193.141.27.1)
-transmit(193.141.27.1)
-receive(193.141.27.1)
-transmit(193.141.27.1)
-receive(193.141.27.1)
-server 193.141.27.1, port 123
-stratum 2, precision -24, leap 00, trust 000
-refid [193.141.27.1], delay 0.07736, dispersion 0.00209
-transmitted 4, in filter 4
-reference time:    de2ec48b.aba7efb5  Wed, Feb 14 2018 23:22:03.670
-originate timestamp: de2ec847.3cbf5eb1  Wed, Feb 14 2018 23:37:59.237
-transmit timestamp:  de2ef276.d94d8084  Thu, Feb 15 2018  2:37:58.848
-filter delay:  0.07916  0.07736  0.08383  0.07954</p>
-
-<pre><code>     0.00000  0.00000  0.00000  0.00000 
-</code></pre>
-
-<p>filter offset: -10799.6 -10799.6 -10799.6 -10799.6</p>
-
-<pre><code>     0.000000 0.000000 0.000000 0.000000
-</code></pre>
-
-<p>delay 0.07736, dispersion 0.00209
-offset -10799.642908</p>
-
-<p>15 Feb 02:37:58 ntpdate[9511]: step time server 193.141.27.1 offset -10799.642908 sec
-```</p>
-
-<p>To get more information about the NTP status, check the tracking:</p>
-
-<p><code>
-chronyc tracking
-Reference ID    : 193.141.27.1 (ts1.sct.de)
-Stratum         : 3
-Ref time (UTC)  : Wed Feb 14 14:41:11 2018
-System time     : 0.000000000 seconds fast of NTP time
-Last offset     : +10799.637695312 seconds
-RMS offset      : 10799.637695312 seconds
-Frequency       : 0.000 ppm fast
-Residual freq   : -1.456 ppm
-Skew            : 1000000.000 ppm
-Root delay      : 0.069487 seconds
-Root dispersion : 1528.844971 seconds
-Update interval : 0.0 seconds
-Leap status     : Normal
-</code></p>
-
-<p>You can see the server in the Reference ID and the Leap status that confirms the synchronization. Also re-check with timedatectl that NTP is working:</p>
-
-<p>```
-timedatectl | grep -i ntp</p>
-
-<pre><code> NTP enabled: yes
-</code></pre>
-
-<p>NTP synchronized: yes
-```</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Give thought to your reputation.       \
-| Consider changing name and moving to a |
-\ new town.                              /</p>
 
 <hr />
 
