@@ -89,7 +89,7 @@ systemctl rescue
 systemctl emergency
 ```
 
-Additionally, you can boot a desired target through the boot menu, by selecting *e* at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry **systemd.unit=<target name>**
+Additionally, you can boot a desired target through the boot menu, by selecting *e* at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry **systemd.unit=target name**
 
 ## bootloader troubleshooting
 
