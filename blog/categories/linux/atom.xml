@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-02-24T17:36:13-05:00</updated>
+  <updated>2018-02-27T14:25:23-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1571 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Operation of running systems]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/27/lfcs-prep-operation-of-running-systems/"/>
+    <updated>2018-02-27T12:54:56-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/27/lfcs-prep-operation-of-running-systems</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Operation of Running Systems domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/os1.png" title="&lsquo;linux cmds&rsquo; &lsquo;linux operation&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/os2.png" title="&lsquo;linux cmds&rsquo; &lsquo;linux operation&rsquo;" ></p>
+
+<ul>
+<li>systemd-analyze</li>
+</ul>
+
+
+<blockquote><p>Analyze system boot-up performance</p></blockquote>
+
+<p><code>
+systemd-analyze
+Startup finished in 403ms (kernel) + 1.517s (initrd) + 37.584s (userspace) = 39.505s
+</code></p>
+
+<h4>crontab</h4>
+
+<blockquote><p> maintains crontab files for individual users</p>
+
+<p>Crontab  is the program used to install, remove or list the tables used to serve the
+cron(8) daemon.  Each user can have their own crontab, and though  these  are  files
+in  /var/spool/, they are not intended to be edited directly</p></blockquote>
+
+<ul>
+<li>format of crontab entry</li>
+</ul>
+
+
+<p>```
+cat /etc/crontab
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root</p>
+
+<h1>For details see man 4 crontabs</h1>
+
+<h1>Example of job definition:</h1>
+
+<h1>.&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash; minute (0 &ndash; 59)</h1>
+
+<h1>|  .&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash; hour (0 &ndash; 23)</h1>
+
+<h1>|  |  .&mdash;&mdash;&mdash;&mdash;&mdash; day of month (1 &ndash; 31)</h1>
+
+<h1>|  |  |  .&mdash;&mdash;&mdash;&ndash; month (1 &ndash; 12) OR jan,feb,mar,apr &hellip;</h1>
+
+<h1>|  |  |  |  .&mdash;&mdash; day of week (0 &ndash; 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat</h1>
+
+<h1>|  |  |  |  |</h1>
+
+<h1>*  *  *  *  * user-name  command to be executed</h1>
+
+<p>```</p>
+
+<ul>
+<li>run uptime as root every minute, hour, day of month, month, on weekdays</li>
+</ul>
+
+
+<p><code>
+crontab -e
+* * * * 1-5 uptime &gt;&gt; /root/log.txt
+</code></p>
+
+<p>```
+You have new mail in /var/spool/mail/root
+[root@tron ~]# mail
+Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+&ldquo;/var/spool/mail/root&rdquo;: 4 messages 4 new</p>
+
+<blockquote><p>N  1 (Cron Daemon)         Mon Oct  9 14:10  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  2 (Cron Daemon)         Mon Oct  9 14:11  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  3 (Cron Daemon)         Mon Oct  9 14:12  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  4 (Cron Daemon)         Mon Oct  9 14:13  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+```</p></blockquote>
+
+<p><code>
+ cat log.txt
+ 14:29:02 up  1:03,  3 users,  load average: 0.01, 0.09, 0.12
+ 14:30:01 up  1:04,  3 users,  load average: 0.39, 0.24, 0.18
+</code></p>
+
+<h4>anacron</h4>
+
+<blockquote><p>runs commands periodically</p>
+
+<p>Unlike cron(8), it does not assume that the machine is  running  continuously. <br/>
+Hence, it can be used on machines that are not running 24 hours a day to control
+regular jobs  as  daily,  weekly, and monthly jobs</p></blockquote>
+
+<p>```
+ cat /etc/anacrontab
+ # /etc/anacrontab: configuration file for anacron</p>
+
+<p> # See anacron(8) and anacrontab(5) for details.</p>
+
+<p> SHELL=/bin/sh
+ PATH=/sbin:/bin:/usr/sbin:/usr/bin
+ MAILTO=root
+ # the maximal random delay added to the base delay of the jobs
+ RANDOM_DELAY=45
+ # the jobs will be started during the following hours only
+ START_HOURS_RANGE=3-22</p>
+
+<p> #period in days   delay in minutes   job-identifier   command
+ 1  5   cron.daily      nice run-parts /etc/cron.daily
+ 7  25  cron.weekly     nice run-parts /etc/cron.weekly
+ @monthly 45    cron.monthly        nice run-parts /etc/cron.monthly
+```</p>
+
+<ul>
+<li>anacron job</li>
+</ul>
+
+
+<p><code>
+1 1 demo netstat -lnt &gt; /root/conn.txt
+</code></p>
+
+<p>Check validity of job file with <code>anacron -T</code></p>
+
+<h4>at</h4>
+
+<blockquote><p>executes commands at a specified time</p></blockquote>
+
+<ul>
+<li>schedule job and use Ctrl-D at the prompt when you&rsquo;re done</li>
+</ul>
+
+
+<p><code>
+ at 19:08 oct 09
+ at&gt; netstat -lnt &gt; /root/ports.txt
+ at&gt; &lt;EOT&gt;
+ job 3 at Mon Oct  9 19:08:00 2017
+</code></p>
+
+<h4>atq</h4>
+
+<blockquote><p>lists  the  user&rsquo;s  pending  jobs, unless the user is the superuser; in that case,
+everybody&rsquo;s jobs are listed.</p></blockquote>
+
+<p><code>
+ [root@tron ~]# atq
+ 3  Mon Oct  9 19:08:00 2017 a root
+</code></p>
+
+<h4>ldd</h4>
+
+<blockquote><p>print shared library dependencies</p>
+
+<p>In the usual  case,  ldd  invokes  the  standard  dynamic  linker  (see ld.so(8))<br/>
+with the LD_TRACE_LOADED_OBJECTS environment variable set to 1, which causes the
+linker to display  the  library  dependencies.   Be aware,  > however,  that  in some
+circumstances, some versions of ldd may attempt to obtain the dependency information
+by directly executing  the program.  Thus, you should never employ ldd on an untrusted
+executable, since this may result in the execution  of  arbitrary  code.   A  safer
+alternative when dealing with untrusted executables is:</p>
+
+<p>$ objdump -p /path/to/program | grep NEEDED</p></blockquote>
+
+<p>```
+ ldd /usr/bin/bash</p>
+
+<pre><code>linux-vdso.so.1 =&gt;  (0x00007fff62b20000)
+libtinfo.so.5 =&gt; /lib64/libtinfo.so.5 (0x00007ff06afba000)
+libdl.so.2 =&gt; /lib64/libdl.so.2 (0x00007ff06adb6000)
+libc.so.6 =&gt; /lib64/libc.so.6 (0x00007ff06a9f4000)
+/lib64/ld-linux-x86-64.so.2 (0x00007ff06b1f9000)
+</code></pre>
+
+<p>```</p>
+
+<h4>sar</h4>
+
+<blockquote><p>Collect, report, or save system activity information</p></blockquote>
+
+<ul>
+<li>CPU activity</li>
+</ul>
+
+
+<p>```
+ sar
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 03:57:29 PM       LINUX RESTART</p>
+
+<p> 04:00:01 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+ 04:10:01 PM     all      2.66      0.00      1.02      0.15      0.00     96.17
+ 04:20:01 PM     all      2.64      0.00      0.83      0.01      0.00     96.52
+ 04:30:01 PM     all      0.65      0.03      0.94      0.09      0.00     98.28
+ 04:40:01 PM     all      0.35      0.00      0.20      0.00      0.00     99.45
+ 04:50:01 PM     all      0.25      0.00      0.14      0.00      0.00     99.60
+ 05:00:01 PM     all      0.24      0.00      0.17      0.00      0.00     99.58
+ 05:10:01 PM     all      0.24      0.00      0.17      0.00      0.00     99.59
+ 05:20:01 PM     all      0.35      0.00      0.20      0.00      0.00     99.45
+ 05:30:01 PM     all      0.40      0.00      0.24      0.00      0.00     99.36
+ 05:40:01 PM     all      0.51      0.00      0.21      0.00      0.00     99.27
+ 05:50:01 PM     all      5.88      0.00      1.51      0.02      0.00     92.59
+ 06:00:02 PM     all      0.48      0.00      0.25      0.00      0.00     99.27
+ 06:10:01 PM     all      0.16      0.00      0.19      0.00      0.00     99.65
+ 06:20:01 PM     all      2.16      0.00      0.59      0.01      0.00     97.25
+ 06:30:01 PM     all      2.94      0.00      0.69      0.00      0.00     96.37
+ 06:40:01 PM     all      0.10      0.00      0.18      0.00      0.00     99.72
+ 06:50:01 PM     all      0.11      0.00      0.13      0.00      0.00     99.76
+ 07:00:02 PM     all      0.17      0.00      0.21      0.00      0.00     99.62
+ 07:10:01 PM     all      0.10      0.00      0.15      0.00      0.00     99.76
+ 07:20:01 PM     all      0.10      0.00      0.14      0.00      0.00     99.76
+ 07:30:01 PM     all      0.14      0.00      0.16      0.00      0.00     99.70
+ 07:40:02 PM     all      0.10      0.00      0.14      0.00      0.00     99.76</p>
+
+<p> 07:40:02 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+ 07:50:01 PM     all      0.09      0.00      0.15      0.00      0.00     99.75
+ 08:00:01 PM     all      0.19      0.00      0.26      0.00      0.00     99.55
+ 08:10:01 PM     all      0.44      0.00      0.22      0.00      0.00     99.34
+ Average:        all      0.84      0.00      0.36      0.01      0.00     98.78
+```</p>
+
+<ul>
+<li>memory statistics</li>
+</ul>
+
+
+<p>```
+ sar -r
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 03:57:29 PM       LINUX RESTART</p>
+
+<p> 04:00:01 PM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+ 04:10:01 PM    889804    994304     52.77      1004    382376   2556680     64.22    522128    294044        12
+ 04:20:01 PM    890844    993264     52.72      1004    382456   2556872     64.22    521256    294004         4
+ 04:30:01 PM    802736   1081372     57.39      1004    387280   2557724     64.24    524088    296556         0
+ 04:40:01 PM    802744   1081364     57.39      1004    387320   2557724     64.24    524120    296564        12
+ 04:50:01 PM    802712   1081396     57.40      1004    387296   2557724     64.24    524096    296556         0
+ 05:00:01 PM    802640   1081468     57.40      1004    387304   2582312     64.86    524252    296544         8
+ 05:10:01 PM    803032   1081076     57.38      1004    387288   2581776     64.85    524048    296516         0
+ 05:20:01 PM    798948   1085160     57.60      1004    387288   2581776     64.85    528108    296516         0
+ 05:30:01 PM    798808   1085300     57.60      1004    387312   2581776     64.85    528156    296524        20
+ 05:40:01 PM    798552   1085556     57.62      1004    387344   2581720     64.85    528424    296520         0
+ 05:50:01 PM    773308   1110800     58.96      1004    388048   2605656     65.45    553040    297056         0
+ 06:00:02 PM    773116   1110992     58.97      1004    388056   2605656     65.45    553196    297056         0
+ 06:10:01 PM    770812   1113296     59.09      1004    388564   2605664     65.45    554944    297556         0
+ 06:20:01 PM    733504   1150604     61.07      1004    388708   2642264     66.37    592036    297640         0
+ 06:30:01 PM    732720   1151388     61.11      1004    388852   2642544     66.37    592928    297552         0
+ 06:40:01 PM    732732   1151376     61.11      1004    388884   2642608     66.38    592956    297556         8
+ 06:50:01 PM    732640   1151468     61.11      1004    388864   2642608     66.38    592948    297556         0
+ 07:00:02 PM    732616   1151492     61.12      1004    388872   2642608     66.38    593060    297496         0
+ 07:10:01 PM    732512   1151596     61.12      1004    388880   2642608     66.38    593120    297496         0
+ 07:20:01 PM    732536   1151572     61.12      1004    388888   2642608     66.38    593324    297320         0
+ 07:30:01 PM    732452   1151656     61.12      1004    388896   2642608     66.38    593348    297320         0
+ 07:40:02 PM    732424   1151684     61.13      1004    388924   2642608     66.38    593364    297324         4</p>
+
+<p> 07:40:02 PM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+ 07:50:01 PM    732388   1151720     61.13      1004    388908   2642608     66.38    593376    297320         0
+ 08:00:01 PM    732444   1151664     61.13      1004    388956   2642608     66.38    594632    296136         8
+ 08:10:01 PM    752844   1131264     60.04      1004    388988   2621972     65.86    574028    296148         0
+ Average:       772795   1111313     58.98      1004    387782   2608132     65.51    560359    296755         3
+```</p>
+
+<h4>iostat</h4>
+
+<blockquote><p>report CPU statistics and input/output statistics for devices and partitions.</p></blockquote>
+
+<p>```
+ iostat
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> avg-cpu:  %user   %nice %system %iowait  %steal   %idle</p>
+
+<pre><code>        1.41    0.01    0.76    0.20    0.00   97.61
+</code></pre>
+
+<p> Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
+ sda               2.09        54.42         6.10     452565      50723
+ dm-0              1.85        50.73         5.85     421879      48655
+ dm-1              0.02         0.13         0.00       1068          0
+```</p>
+
+<h4>pidstat</h4>
+
+<blockquote><p>Report statistics for Linux tasks</p></blockquote>
+
+<p>```
+ pidstat -p 3381
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 06:20:21 PM   UID       PID    %usr %system  %guest    %CPU   CPU  Command
+```</p>
+
+<h4>mpstat</h4>
+
+<blockquote><p>Report processors related statistics</p></blockquote>
+
+<p>```
+ mpstat
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 06:23:38 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+ 06:23:38 PM  all    1.59    0.01    0.76    0.20    0.00    0.02    0.00    0.00    0.00   97.42
+```</p>
+
+<h4>vmstat</h4>
+
+<blockquote><p>Report virtual memory statistics</p></blockquote>
+
+<p><code>
+ vmstat
+ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+  r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+  4  0      0 776148   1004 503192    0    0    70     8   79  169  2  1 97  0  0
+</code></p>
+
+<h4>tload</h4>
+
+<blockquote><p>graphic representation of system load average</p></blockquote>
+
+<p><code>
+ 0.01, 0.07, 0.17
+</code></p>
+
+<h4>watch</h4>
+
+<blockquote><p>execute a program periodically, showing output fullscreen</p></blockquote>
+
+<h4>lscpu</h4>
+
+<blockquote><p>display information about the CPU architecture</p></blockquote>
+
+<p><code>
+ lscpu
+ Architecture:          x86_64
+ CPU op-mode(s):        32-bit, 64-bit
+ Byte Order:            Little Endian
+ CPU(s):                1
+ On-line CPU(s) list:   0
+ Thread(s) per core:    1
+ Core(s) per socket:    1
+ Socket(s):             1
+ NUMA node(s):          1
+ Vendor ID:             GenuineIntel
+ CPU family:            6
+ Model:                 69
+ Model name:            Intel(R) Core(TM) i5-4300U CPU @ 1.90GHz
+ Stepping:              1
+ CPU MHz:               2493.585
+ BogoMIPS:              4988.45
+ Hypervisor vendor:     VMware
+ Virtualization type:   full
+ L1d cache:             32K
+ L1i cache:             32K
+ L2 cache:              256K
+ L3 cache:              3072K
+ NUMA node0 CPU(s):     0
+</code></p>
+
+<h4>uptime</h4>
+
+<blockquote><p>Tell how long the system has been running</p></blockquote>
+
+<p><code>
+ uptime
+  16:11:48 up 14 min,  3 users,  load average: 0.06, 0.20, 0.28
+</code></p>
+
+<ul>
+<li>show since when is the system up</li>
+</ul>
+
+
+<p><code>
+ uptime -s
+ 2017-10-05 15:57:10
+</code></p>
+
+<h4>pmap</h4>
+
+<blockquote><p>report memory map of a process</p></blockquote>
+
+<ul>
+<li>-p # Show full path to files in the mapping column</li>
+</ul>
+
+
+<p><code>
+ pmap -p $$
+ 3425:   bash
+ 0000000000400000    884K r-x-- /usr/bin/bash
+ 00000000006dc000      4K r---- /usr/bin/bash
+ 00000000006dd000     36K rw--- /usr/bin/bash
+ 00000000006e6000     24K rw---   [ anon ]
+ 0000000000cbc000   1572K rw---   [ anon ]
+ 00007f1b843d1000     48K r-x-- /usr/lib64/libnss_files-2.17.so
+ 00007f1b843dd000   2044K ----- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845dc000      4K r---- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845dd000      4K rw--- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845de000     24K rw---   [ anon ]
+ 00007f1b845e4000 103588K r---- /usr/lib/locale/locale-archive
+ 00007f1b8ab0d000   1756K r-x-- /usr/lib64/libc-2.17.so
+ 00007f1b8acc4000   2044K ----- /usr/lib64/libc-2.17.so
+ 00007f1b8aec3000     16K r---- /usr/lib64/libc-2.17.so
+ 00007f1b8aec7000      8K rw--- /usr/lib64/libc-2.17.so
+ 00007f1b8aec9000     20K rw---   [ anon ]
+ 00007f1b8aece000      8K r-x-- /usr/lib64/libdl-2.17.so
+ 00007f1b8aed0000   2048K ----- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d0000      4K r---- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d1000      4K rw--- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d2000    148K r-x-- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b0f7000   2048K ----- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2f7000     16K r---- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2fb000      4K rw--- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2fc000    128K r-x-- /usr/lib64/ld-2.17.so
+ 00007f1b8b504000     12K rw---   [ anon ]
+ 00007f1b8b512000      8K rw---   [ anon ]
+ 00007f1b8b514000     28K r--s- /usr/lib64/gconv/gconv-modules.cache
+ 00007f1b8b51b000      4K rw---   [ anon ]
+ 00007f1b8b51c000      4K r---- /usr/lib64/ld-2.17.so
+ 00007f1b8b51d000      4K rw--- /usr/lib64/ld-2.17.so
+ 00007f1b8b51e000      4K rw---   [ anon ]
+ 00007ffeb5ec8000    132K rw---   [ stack ]
+ 00007ffeb5efc000      8K r-x--   [ anon ]
+ ffffffffff600000      4K r-x--   [ anon ]
+  total           116692K
+</code></p>
+
+<h4>pwdx</h4>
+
+<blockquote><p>report current working directory of a process</p></blockquote>
+
+<p><code>
+ pwdx $$
+ 3425: /root
+</code></p>
+
+<h4>free</h4>
+
+<blockquote><p>Display amount of free and used memory in the system</p></blockquote>
+
+<p>```
+ free -h</p>
+
+<pre><code>           total        used        free      shared  buff/cache   available
+</code></pre>
+
+<p> Mem:           1.8G        509M        883M         10M        446M        1.1G
+ Swap:          2.0G          0B        2.0G
+```</p>
+
+<h4>nice</h4>
+
+<blockquote><p>run a program with modified scheduling priority</p></blockquote>
+
+<p> Niceness  values range  from  -20 (most favorable to the process) to 19 (least favorable to the process).</p>
+
+<ul>
+<li>-n # add integer N to the niceness (default 10)</li>
+</ul>
+
+
+<h4>renice</h4>
+
+<blockquote><p> alter priority of running processes</p></blockquote>
+
+<ul>
+<li>-n # priority</li>
+</ul>
+
+
+<h4>sleep</h4>
+
+<blockquote><p>delay for a specified amount of time</p></blockquote>
+
+<h4>bg</h4>
+
+<blockquote><p>Resume each suspended job jobspec  in  the  background,  as  if  it  had been started
+with &amp;</p></blockquote>
+
+<h4>fg</h4>
+
+<blockquote><p>Resume jobspec in the foreground, and make it the current job</p></blockquote>
+
+<h4>jobs</h4>
+
+<blockquote><p>list active jobs</p></blockquote>
+
+<p><code>
+ sleep 15 &amp;
+ [1] 9767
+ [root@tron ~]# jobs
+ [1]+  Running                 sleep 15 &amp;
+</code></p>
+
+<h4>kill</h4>
+
+<blockquote><p>terminate a process</p>
+
+<p>Default is the TERM signal, which is similar to asking nicely to terminate. The more
+forcefull option is KILL(9)</p></blockquote>
+
+<ul>
+<li>list signals</li>
+</ul>
+
+
+<p><code>
+ kill -l
+  1) SIGHUP  2) SIGINT   3) SIGQUIT  4) SIGILL   5) SIGTRAP
+  6) SIGABRT     7) SIGBUS   8) SIGFPE   9) SIGKILL 10) SIGUSR1
+ 11) SIGSEGV    12) SIGUSR2 13) SIGPIPE 14) SIGALRM 15) SIGTERM
+ 16) SIGSTKFLT  17) SIGCHLD 18) SIGCONT 19) SIGSTOP 20) SIGTSTP
+ 21) SIGTTIN    22) SIGTTOU 23) SIGURG  24) SIGXCPU 25) SIGXFSZ
+ 26) SIGVTALRM  27) SIGPROF 28) SIGWINCH    29) SIGIO   30) SIGPWR
+ 31) SIGSYS 34) SIGRTMIN    35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3
+ 38) SIGRTMIN+4 39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+ 43) SIGRTMIN+9 44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12 47) SIGRTMIN+13
+ 48) SIGRTMIN+14    49) SIGRTMIN+15 50) SIGRTMAX-14 51) SIGRTMAX-13 52) SIGRTMAX-12
+ 53) SIGRTMAX-11    54) SIGRTMAX-10 55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7
+ 58) SIGRTMAX-6 59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+ 63) SIGRTMAX-1 64) SIGRTMAX
+</code></p>
+
+<h4>pgrep,  pkill</h4>
+
+<blockquote><p>look  up  or signal processes based on name and other attributes</p></blockquote>
+
+<h4>ps</h4>
+
+<blockquote><p>report a snapshot of the current processes</p></blockquote>
+
+<ul>
+<li>-e # Select all processes.  Identical to -A</li>
+</ul>
+
+
+<p>```
+ ps -e
+   PID TTY          TIME CMD</p>
+
+<pre><code> 1 ?        00:00:02 systemd
+ 2 ?        00:00:00 kthreadd
+ 3 ?        00:00:00 ksoftirqd/0
+ 5 ?        00:00:00 kworker/0:0H
+ 7 ?        00:00:00 migration/0
+ 8 ?        00:00:00 rcu_bh
+ 9 ?        00:00:00 rcu_sched
+10 ?        00:00:00 watchdog/0
+12 ?        00:00:00 kdevtmpfs
+</code></pre>
+
+<p>[&hellip;]
+  3591 pts/0    00:00:00 man
+  3598 pts/0    00:00:00 less
+  3608 ?        00:00:00 sleep
+  3614 pts/1    00:00:00 ps
+```</p>
+
+<ul>
+<li>-r #  Restrict the selection to only running processes</li>
+</ul>
+
+
+<p><code>
+ ps -r
+   PID TTY      STAT   TIME COMMAND
+  1354 tty1     Rs+    0:08 /usr/bin/Xorg :0 -background none -noreset -audit 4 -
+  3805 pts/1    R+     0:00 ps -r
+</code></p>
+
+<ul>
+<li><p>-u # Select by effective user ID (EUID) or name</p></li>
+<li><p>process tree</p></li>
+</ul>
+
+
+<p><code>
+ ps --forest
+   PID TTY          TIME CMD
+  3508 pts/1    00:00:00 bash
+  3880 pts/1    00:00:00  \_ ps
+</code></p>
+
+<ul>
+<li>all processes + EUID</li>
+</ul>
+
+
+<p><code>
+ ps -aux
+ USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ root         1  0.1  0.3 128088  6756 ?        Ss   17:03   0:02 /usr/lib/system
+ root         2  0.0  0.0      0     0 ?        S    17:03   0:00 [kthreadd]
+ root         3  0.0  0.0      0     0 ?        S    17:03   0:00 [ksoftirqd/0]
+ root         7  0.0  0.0      0     0 ?        S    17:03   0:00 [migration/0]
+ root         8  0.0  0.0      0     0 ?        S    17:03   0:00 [rcu_bh]
+ root         9  0.0  0.0      0     0 ?        R    17:03   0:00 [rcu_sched]
+ root        10  0.0  0.0      0     0 ?        S    17:03   0:00 [watchdog/0]
+ root        12  0.0  0.0      0     0 ?        S    17:03   0:00 [kdevtmpfs]
+ root        13  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [netns]
+ root        14  0.0  0.0      0     0 ?        S    17:03   0:00 [khungtaskd]
+ root        15  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [writeback]
+ root        16  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [kintegrityd]
+ root        17  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [bioset]
+ root        18  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [kblockd]
+ root        19  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [md]
+ root        25  0.0  0.0      0     0 ?        S    17:04   0:00 [kswapd0]
+ root        26  0.0  0.0      0     0 ?        SN   17:04   0:00 [ksmd]
+ root        27  0.0  0.0      0     0 ?        SN   17:04   0:00 [khugepaged]
+ root        28  0.0  0.0      0     0 ?        S    17:04   0:00 [fsnotify_mark]
+ root        29  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [crypto]
+ [...]
+ root       587  0.0  0.3  47700  5856 ?        Ss   17:04   0:00 /usr/lib/system
+ root       625  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [nfit]
+ root       666  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [xfs-buf/sda1]
+ dbus       727  0.0  0.1  36328  3332 ?        Ssl  17:04   0:01 /bin/dbus-daemo
+ root       734  0.0  0.0 201208  1208 ?        Ssl  17:04   0:00 /usr/sbin/gsspr
+ root      2862  0.0  0.1 380356  3468 ?        Sl   17:06   0:00 /usr/libexec/gv
+ root      3508  0.0  0.1 116688  3392 pts/1    Ss   17:07   0:00 bash
+ root      3591  0.0  0.1 119548  2292 pts/0    S+   17:12   0:00 man ps
+ root      3598  0.0  0.0 110248   960 pts/0    S+   17:12   0:00 less -s
+ root      3718  0.0  0.0      0     0 ?        S&lt;   17:22   0:00 [kworker/0:2H]
+ root      3743  0.0  0.0      0     0 ?        S    17:24   0:00 [kworker/0:0]
+ root      3819  0.0  0.0      0     0 ?        S&lt;   17:27   0:00 [kworker/0:1H]
+ root      3892  0.1  0.0      0     0 ?        S    17:29   0:00 [kworker/0:2]
+ root      3955  0.0  0.0      0     0 ?        S&lt;   17:33   0:00 [kworker/0:0H]
+ root      3967  0.0  0.0 107892   604 ?        S    17:34   0:00 sleep 60
+ root      3968  0.1  0.0      0     0 ?        R    17:34   0:00 [kworker/0:1]
+ root      3979  0.0  0.0 153136  1876 pts/1    R+   17:35   0:00 ps -aux
+</code></p>
+
+<ul>
+<li>long format, don&rsquo;t show flags</li>
+</ul>
+
+
+<p><code>
+ ps -ly
+ S   UID   PID  PPID  C PRI  NI   RSS    SZ WCHAN  TTY          TIME CMD
+ S     0  3508  3438  0  80   0  3392 29172 wait   pts/1    00:00:00 bash
+ R     0  4002  3508  0  80   0  1452 37232 -      pts/1    00:00:00 ps
+</code></p>
+
+<ul>
+<li>get running processes</li>
+</ul>
+
+
+<p><code>
+ echo $$
+ 3744
+ ps -p $$ -F
+ UID        PID  PPID  C    SZ   RSS PSR STIME TTY          TIME CMD
+ root      3697  3692  0 29172  3372   0 13:09 pts/0    00:00:00 bash
+</code></p>
+
+<h4>pstree</h4>
+
+<blockquote><p>display a tree of processes</p></blockquote>
+
+<ul>
+<li>-a # Show  command  line arguments</li>
+</ul>
+
+
+<p><code>
+ pstree -a
+ systemd --switched-root --system --deserialize 21
+   ├─ModemManager
+   │   └─2*[{ModemManager}]
+   ├─NetworkManager --no-daemon
+   │   ├─dhclient -d -q -sf /usr/libexec/nm-dhcp-helper -pf /var/run/dhclient-enp0s3.pid -lf ...
+   │   └─2*[{NetworkManager}]
+   ├─abrt-watch-log -F BUG: WARNING: at WARNING: CPU: INFO: possible recursive locking detected ernel BUG at list_del corruption list_add corruptiondo_IRQ: stack overfl
+   ├─abrt-watch-log -F Backtrace /var/log/Xorg.0.log -- /usr/bin/abrt-dump-xorg -xD
+   ├─abrtd -d -s
+   ├─accounts-daemon
+   │   └─2*[{accounts-daemon}]
+   ├─alsactl -s -n 19 -c -E ALSA_CONFIG_PATH=/etc/alsa/alsactl.conf --initfile=/lib/alsa/init/00main rdaemon
+   ├─at-spi-bus-laun
+   │   ├─dbus-daemon --config-file=/etc/at-spi2/accessibility.conf --nofork --print-address 3
+   │   │   └─{dbus-daemon}
+   │   └─3*[{at-spi-bus-laun}]
+   ├─at-spi2-registr --use-gnome-session
+   │   └─2*[{at-spi2-registr}]
+   ├─atd -f
+   ├─auditd -n
+   │   ├─audispd
+   │   │   ├─sedispatch
+   │   │   └─{audispd}
+   │   └─{auditd}
+   ├─avahi-daemon
+   │   └─avahi-daemon
+   ├─caribou
+   │   └─2*[{caribou}]
+   ├─colord
+   │   └─2*[{colord}]
+   ├─crond -n
+   ├─cupsd -f
+   ├─dbus-daemon --fork --print-pid 4 --print-address 6 --session
+   │   └─{dbus-daemon}
+   ├─dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation
+   │   └─{dbus-daemon}
+   ├─dbus-launch --sh-syntax --exit-with-session
+   ├─dconf-service
+   │   └─2*[{dconf-service}]
+   ├─dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+   │   └─dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+   ├─evolution-calen
+   │   └─5*[{evolution-calen}]
+   ├─evolution-sourc
+   │   └─2*[{evolution-sourc}]
+   ├─gconfd-2
+   ├─gdm
+   │   ├─Xorg :0 -background none -noreset -audit 4 -verbose -auth /run/gdm/auth-for-gdm-kJZtDT/database -seat seat0 -nolisten tcp vt1
+   │   ├─gdm-session-wor
+   │   │   ├─gnome-session --session gnome-classic
+   │   │   │   ├─abrt-applet
+   │   │   │   │   └─2*[{abrt-applet}]
+   │   │   │   ├─gnome-settings-
+   │   │   │   │   └─5*[{gnome-settings-}]
+   │   │   │   ├─gnome-shell
+   │   │   │   │   ├─ibus-daemon --xim --panel disable
+   │   │   │   │   │   ├─ibus-dconf
+   │   │   │   │   │   │   └─3*[{ibus-dconf}]
+   │   │   │   │   │   ├─ibus-engine-sim
+   │   │   │   │   │   │   └─2*[{ibus-engine-sim}]
+   │   │   │   │   │   └─2*[{ibus-daemon}]
+   │   │   │   │   └─6*[{gnome-shell}]
+   │   │   │   ├─gnome-software --gapplication-service
+   │   │   │   │   └─3*[{gnome-software}]
+   │   │   │   ├─nautilus --no-default-window --force-desktop
+   │   │   │   │   └─3*[{nautilus}]
+   │   │   │   ├─rhsm-icon
+   │   │   │   │   └─2*[{rhsm-icon}]
+   │   │   │   ├─seapplet
+   │   │   │   ├─ssh-agent /bin/sh -c exec -l /bin/bash -c "env GNOME_SHELL_SESSION_MODE=classic gnome-session --session gnome-classic"
+   │   │   │   ├─tracker-extract
+   │   │   │   │   └─13*[{tracker-extract}]
+   │   │   │   ├─tracker-miner-a
+   │   │   │   │   └─2*[{tracker-miner-a}]
+   │   │   │   ├─tracker-miner-f
+   │   │   │   │   └─3*[{tracker-miner-f}]
+   │   │   │   ├─tracker-miner-u
+   │   │   │   │   └─2*[{tracker-miner-u}]
+   │   │   │   └─3*[{gnome-session}]
+   │   │   └─2*[{gdm-session-wor}]
+   │   └─3*[{gdm}]
+   ├─gnome-keyring-d --daemonize --login
+   │   └─4*[{gnome-keyring-d}]
+   ├─gnome-shell-cal
+   │   └─5*[{gnome-shell-cal}]
+   ├─gnome-terminal-
+   │   ├─bash
+   │   │   └─man pstree
+   │   │       └─less -s
+   │   ├─bash
+   │   │   └─pstree -a
+   │   ├─gnome-pty-helpe
+   │   └─3*[{gnome-terminal-}]
+   ├─goa-daemon
+   │   └─3*[{goa-daemon}]
+   ├─goa-identity-se
+   │   └─3*[{goa-identity-se}]
+   ├─gsd-printer
+   │   └─2*[{gsd-printer}]
+   ├─gssproxy -D
+   │   └─5*[{gssproxy}]
+   ├─gvfs-afc-volume
+   │   └─3*[{gvfs-afc-volume}]
+   ├─gvfs-goa-volume
+   │   └─2*[{gvfs-goa-volume}]
+   ├─gvfs-gphoto2-vo
+   │   └─2*[{gvfs-gphoto2-vo}]
+   ├─gvfs-mtp-volume
+   │   └─2*[{gvfs-mtp-volume}]
+   ├─gvfs-udisks2-vo
+   │   └─2*[{gvfs-udisks2-vo}]
+   ├─gvfsd
+   │   └─2*[{gvfsd}]
+   ├─gvfsd-fuse /run/user/0/gvfs -f -o big_writes
+   │   └─5*[{gvfsd-fuse}]
+   ├─gvfsd-metadata
+   │   └─2*[{gvfsd-metadata}]
+   ├─gvfsd-trash --spawner :1.3 /org/gtk/gvfs/exec_spaw/0
+   │   └─2*[{gvfsd-trash}]
+   ├─ibus-x11 --kill-daemon
+   │   └─2*[{ibus-x11}]
+   ├─ksmtuned /usr/sbin/ksmtuned
+   │   └─sleep 60
+   ├─libvirtd
+   │   └─15*[{libvirtd}]
+   ├─lsmd -d
+   ├─lvmetad -f
+   ├─master -w
+   │   ├─pickup -l -t unix -u
+   │   └─qmgr -l -t unix -u
+   ├─mcelog --ignorenodev --daemon --syslog
+   ├─mission-control
+   │   └─3*[{mission-control}]
+   ├─packagekitd
+   │   └─2*[{packagekitd}]
+   ├─polkitd --no-debug
+   │   └─5*[{polkitd}]
+   ├─pulseaudio --start
+   │   └─{pulseaudio}
+   ├─rhnsd
+   ├─rhsmcertd
+   ├─rngd -f
+   ├─rsyslogd -n
+   │   └─2*[{rsyslogd}]
+   ├─rtkit-daemon
+   │   └─2*[{rtkit-daemon}]
+   ├─smartd -n -q never
+   ├─sshd -D
+   ├─systemd-journal
+   ├─systemd-logind
+   ├─systemd-udevd
+   ├─tracker-store
+   │   └─7*[{tracker-store}]
+   ├─tuned -Es /usr/sbin/tuned -l -P
+   │   └─4*[{tuned}]
+   ├─udisksd --no-debug
+   │   └─4*[{udisksd}]
+   ├─upowerd
+   │   └─2*[{upowerd}]
+   ├─vmtoolsd
+   │   └─{vmtoolsd}
+   ├─vmtoolsd -n vmusr
+   └─wpa_supplicant -u -f /var/log/wpa_supplicant.log -c /etc/wpa_supplicant/wpa_supplicant.conf -P /var/run/wpa_supplicant.pid
+</code></p>
+
+<h4>runlevel</h4>
+
+<blockquote><p>Print previous and current SysV runlevel</p>
+
+<p>If a runlevel cannot be determined, N is printed instead</p></blockquote>
+
+<p><code>
+ runlevel
+ N 5
+</code></p>
+
+<h4>init / telinit</h4>
+
+<ul>
+<li>legacy</li>
+</ul>
+
+
+<p>```
+ init [OPTIONS&hellip;] {COMMAND}</p>
+
+<p> Send control commands to the init daemon.</p>
+
+<pre><code>  --help      Show this help
+  --no-wall   Don't send wall message before halt/power-off/reboot
+</code></pre>
+
+<p> Commands:
+   0              Power-off the machine
+   6              Reboot the machine
+   2, 3, 4, 5     Start runlevelX.target unit
+   1, s, S        Enter rescue mode
+   q, Q           Reload init daemon configuration
+   u, U           Reexecute init daemon
+```</p>
+
+<h4>mkfifo</h4>
+
+<blockquote><p>make FIFOs (named pipes)</p></blockquote>
+
+<p><code>
+ mkfifo /tmp/pipe
+ [root@tron ~]# ls -l /tmp/pipe
+ prw-r--r--. 1 root root 0 Sep 27 13:32 /tmp/pipe
+</code></p>
+
+<h4>script</h4>
+
+<blockquote><p>make typescript of terminal session</p></blockquote>
+
+<p>```
+ script
+ Script started, file is typescript
+ [root@tron ~]# ls
+ anaconda-ks.cfg  Downloads             Music          Templates
+ Desktop          hashes.txt            openscap_data  test.txt
+ dns.conf         initial-setup-ks.cfg  Pictures       typescript
+ Documents        man.txt               Public         Videos
+ [root@tron ~]# rm -f dns.conf hashes.txt
+ [root@tron ~]# exit
+ exit
+ Script done, file is typescript
+ [root@tron ~]# cat typescript
+ Script started on Wed 27 Sep 2017 01:34:50 PM EEST
+ [root@tron ~]# ls
+ anaconda-ks.cfg  Downloads             Music          Templates
+ Desktop          hashes.txt            openscap_data  test.txt
+ dns.conf         initial-setup-ks.cfg  Pictures       typescript
+ Documents        man.txt               Public         Videos
+ [root@tron ~]# rm -f dns.conf hashes.txt
+ [root@tron ~]# exit
+ exit</p>
+
+<p> Script done on Wed 27 Sep 2017 01:35:18 PM EEST
+```</p>
+
+<h4>stat</h4>
+
+<blockquote><p>display file or file system status</p></blockquote>
+
+<p><code>
+ stat hashes.txt
+   File: ‘hashes.txt’
+   Size: 43         Blocks: 8          IO Block: 4096   regular file
+ Device: fd00h/64768d   Inode: 33859054    Links: 1
+ Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+ Context: unconfined_u:object_r:admin_home_t:s0
+ Access: 2017-09-26 11:27:18.298105601 +0300
+ Modify: 2017-09-22 14:14:29.035069557 +0300
+ Change: 2017-09-22 14:14:29.035069557 +0300
+  Birth: -
+</code></p>
+
+<h4>lastlog</h4>
+
+<blockquote><p>reports the most recent login of all users or of a given user</p></blockquote>
+
+<p><code>
+ lastlog
+ Username         Port     From             Latest
+ root             :0                        Sat Oct  7 14:45:28 +0300 2017
+ bin                                        **Never logged in**
+ daemon                                     **Never logged in**
+ adm                                        **Never logged in**
+ lp                                         **Never logged in**
+ sync                                       **Never logged in**
+ shutdown                                   **Never logged in**
+ halt                                       **Never logged in**
+ mail                                       **Never logged in**
+ operator                                   **Never logged in**
+ games                                      **Never logged in**
+ ftp                                        **Never logged in**
+ nobody                                     **Never logged in**
+ systemd-bus-proxy                           **Never logged in**
+ systemd-network                            **Never logged in**
+ dbus                                       **Never logged in**
+ polkitd                                    **Never logged in**
+ abrt                                       **Never logged in**
+ unbound                                    **Never logged in**
+ tss                                        **Never logged in**
+ colord                                     **Never logged in**
+ usbmuxd                                    **Never logged in**
+ geoclue                                    **Never logged in**
+ saslauth                                   **Never logged in**
+ libstoragemgmt                             **Never logged in**
+ rpc                                        **Never logged in**
+ rtkit                                      **Never logged in**
+ chrony                                     **Never logged in**
+ radvd                                      **Never logged in**
+ qemu                                       **Never logged in**
+ ntp                                        **Never logged in**
+ rpcuser                                    **Never logged in**
+ nfsnobody                                  **Never logged in**
+ avahi-autoipd                              **Never logged in**
+ setroubleshoot                             **Never logged in**
+ sssd                                       **Never logged in**
+ pulse                                      **Never logged in**
+ gdm              :0                        Sat Oct  7 14:42:55 +0300 2017
+ gnome-initial-setup :0                        Tue Apr 26 15:36:08 +0300 2016
+ sshd                                       **Never logged in**
+ avahi                                      **Never logged in**
+ postfix                                    **Never logged in**
+ tcpdump                                    **Never logged in**
+ nixhat           :0                        Sat Aug 19 20:00:48 +0300 2017
+ apache                                     **Never logged in**
+ smbuser                                    **Never logged in**
+ squid                                      **Never logged in**
+</code></p>
+
+<ul>
+<li>see last time a user logged in</li>
+</ul>
+
+
+<p><code>
+ lastlog -u root
+ Username         Port     From             Latest
+ root             :0                        Sat Oct  7 14:45:28 +0300 2017
+</code></p>
+
+<h4>last</h4>
+
+<blockquote><p>show listing of last logged in users</p>
+
+<p>Last searches back through the file /var/log/wtmp (or the  file  designated  by  the
+f flag) and displays a list of all users logged in (and out) since that file was
+created.</p></blockquote>
+
+<p>```
+ last -n 10
+ root     pts/1        :0               Sat Oct  7 14:53   still logged in <br/>
+ root     pts/0        :0               Sat Oct  7 14:45   still logged in <br/>
+ root     :0           :0               Sat Oct  7 14:45   still logged in <br/>
+ (unknown :0           :0               Sat Oct  7 14:42 &ndash; 14:45  (00:02)  <br/>
+ reboot   system boot  3.10.0-514.21.1. Sat Oct  7 14:41 &ndash; 14:54  (00:13)  <br/>
+ root     pts/1        :0               Fri Oct  6 21:48 &ndash; 23:19  (01:30)  <br/>
+ root     pts/0        :0               Fri Oct  6 21:47 &ndash; 23:19  (01:32)  <br/>
+ root     :0           :0               Fri Oct  6 21:43 &ndash; 23:19  (01:36)  <br/>
+ (unknown :0           :0               Fri Oct  6 21:37 &ndash; 21:43  (00:05)  <br/>
+ reboot   system boot  3.10.0-514.21.1. Fri Oct  6 21:36 &ndash; 23:19  (01:43)</p>
+
+<p> wtmp begins Tue Apr 26 15:32:43 2016
+```</p>
+
+<h4>lastb</h4>
+
+<blockquote><p>shows a log of the file /var/log/btmp, which contains all the bad login attempts</p></blockquote>
+
+<p>```
+ lastb
+ root     :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)  <br/>
+ root     :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)  <br/>
+ nixhat   :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)</p>
+
+<p> btmp begins Sat Oct  7 14:57:26 2017
+```</p>
+
+<h4>logrotate</h4>
+
+<blockquote><p>rotates, compresses, and mails system logs</p></blockquote>
+
+<p> Config file: <strong>/etc/logrotate.conf</strong></p>
+
+<h4>journalctl</h4>
+
+<blockquote><p>Query the systemd journal</p></blockquote>
+
+<p><code>
+ journalctl -u httpd.service
+ -- Logs begin at Sat 2017-10-07 14:41:21 EEST, end at Sat 2017-10-07 15:34:36 EE
+ Oct 07 14:42:14 localhost.localdomain systemd[1]: Starting The Apache HTTP Serve
+ Oct 07 14:42:23 localhost.localdomain httpd[1099]: AH00558: httpd: Could not rel
+ Oct 07 14:42:24 localhost.localdomain systemd[1]: Started The Apache HTTP Server
+ Oct 07 15:11:02 localhost.localdomain httpd[6068]: AH00558: httpd: Could not rel
+ Oct 07 15:11:02 localhost.localdomain systemd[1]: Reloaded The Apache HTTP Serve
+</code></p>
+
+<ul>
+<li>show boot log</li>
+</ul>
+
+
+<p><code>
+ journalctl -b | tail
+ Jan 25 18:28:01 rhel7 systemd[1]: Created slice user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Starting user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Started Session 45 of user pcp.
+ Jan 25 18:28:01 rhel7 systemd[1]: Starting Session 45 of user pcp.
+ Jan 25 18:28:01 rhel7 CROND[6820]: (pcp) CMD ( /usr/libexec/pcp/bin/pmie_check -C)
+ Jan 25 18:28:01 rhel7 systemd[1]: Removed slice user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Stopping user-993.slice.
+ Jan 25 18:30:01 rhel7 systemd[1]: Started Session 46 of user root.
+ Jan 25 18:30:01 rhel7 systemd[1]: Starting Session 46 of user root.
+ Jan 25 18:30:01 rhel7 CROND[6978]: (root) CMD (/usr/lib64/sa/sa1 1 1)
+</code></p>
+
+<ul>
+<li>show error events</li>
+</ul>
+
+
+<p><code>
+ journalctl -p err
+ -- Logs begin at Thu 2018-01-25 14:28:07 EET, end at Thu 2018-01-25 18:30:01 EET. --
+ Jan 25 14:28:10 rhel7 kernel: piix4_smbus 0000:00:07.3: Host SMBus controller not enabled!
+ Jan 25 14:28:11 rhel7 kernel: intel_rapl: no valid rapl domains found in package 0
+ Jan 25 14:28:35 rhel7 cntlm[1121]: Error creating a new PID file
+ Jan 25 14:28:45 rhel7 spice-vdagent[2501]: Cannot access vdagent virtio channel /dev/virtio-ports/com.redhat.spice.0
+ Jan 25 14:28:57 rhel7 udisksd[2652]: Error probing device: Error sending ATA command IDENTIFY PACKET DEVICE to /dev/sr0: ATA command failed: error=0x01 count=0x02 status=0x5
+ Jan 25 14:47:48 rhel7 gdm-launch-environment][2380]: pam_systemd(gdm-launch-environment:session): Failed to release session: Interrupted system call
+ Jan 25 14:47:50 rhel7 spice-vdagent[3306]: Cannot access vdagent virtio channel /dev/virtio-ports/com.redhat.spice.0
+ Jan 25 14:48:15 rhel7 pulseaudio[3318]: GetManagedObjects() failed: org.freedesktop.DBus.Error.NoReply: Did not receive a reply. Possible causes include: the remote applicat
+ Jan 25 14:53:38 rhel7 kernel: ata4: exception Emask 0x10 SAct 0x0 SErr 0x4010000 action 0xe frozen
+ Jan 25 14:53:38 rhel7 kernel: ata4: irq_stat 0x00400040, connection status changed
+ Jan 25 14:53:38 rhel7 kernel: ata4: SError: { PHYRdyChg DevExch }
+</code></p>
+
+<h4>rpm</h4>
+
+<blockquote><p>RPM Package Manager</p></blockquote>
+
+<ul>
+<li>count all installed packages</li>
+</ul>
+
+
+<p><code>
+rpqm -qa | wc -l
+1366
+</code></p>
+
+<ul>
+<li>get info about installed package</li>
+</ul>
+
+
+<p><code>
+ rpm -qi samba
+ Name        : samba
+ Epoch       : 0
+ Version     : 4.4.4
+ Release     : 14.el7_3
+ Architecture: x86_64
+ Install Date: Thu 08 Jun 2017 10:55:00 AM EEST
+ Group       : System Environment/Daemons
+ Size        : 1869228
+ License     : GPLv3+ and LGPLv3+
+ Signature   : RSA/SHA256, Thu 25 May 2017 04:16:22 PM EEST, Key ID 24c6a8a7f4a80eb5
+ Source RPM  : samba-4.4.4-14.el7_3.src.rpm
+ Build Date  : Thu 25 May 2017 02:35:40 PM EEST
+ Build Host  : c1bm.rdu2.centos.org
+ Relocations : (not relocatable)
+ Packager    : CentOS BuildSystem &lt;http://bugs.centos.org&gt;
+ Vendor      : CentOS
+ URL         : http://www.samba.org/
+ Summary     : Server and Client software to interoperate with Windows machines
+ Description :
+ Samba is the standard Windows interoperability suite of programs for Linux and
+ Unix.
+</code></p>
+
+<ul>
+<li>list files in package</li>
+</ul>
+
+
+<p><code>
+ rpm -ql lynx
+ /etc/lynx-site.cfg
+ /etc/lynx.cfg
+ /etc/lynx.lss
+ /usr/bin/lynx
+ /usr/share/doc/lynx-2.8.8
+ [...]
+ /usr/share/locale/zh_TW/LC_MESSAGES/lynx.mo
+ /usr/share/man/man1/lynx.1.gz
+</code></p>
+
+<ul>
+<li>list config files</li>
+</ul>
+
+
+<p><code>
+ rpm -qc name
+</code></p>
+
+<ul>
+<li>install RPM package</li>
+</ul>
+
+
+<p><code>
+ rpm -i pkgname
+</code></p>
+
+<ul>
+<li>upgrade package</li>
+</ul>
+
+
+<p><code>
+ rpm -U pkgname
+</code></p>
+
+<ul>
+<li>remove package</li>
+</ul>
+
+
+<p><code>
+ rpm -e pkgname
+</code></p>
+
+<ul>
+<li>see where file comes from</li>
+</ul>
+
+
+<p><code>
+ rpm -qf /etc/httpd/conf
+ httpd-2.4.6-45.el7.centos.4.x86_64
+</code></p>
+
+<ul>
+<li>verify package</li>
+</ul>
+
+
+<p><code>
+rpm -V pgkname
+</code></p>
+
+<ul>
+<li>list documentation files</li>
+</ul>
+
+
+<p><code>
+rpm -qd cmdname
+</code></p>
+
+<h4>yum</h4>
+
+<blockquote><p>Yellowdog Updater Modified</p></blockquote>
+
+<ul>
+<li>install automatically</li>
+</ul>
+
+
+<p><code>
+ yum install -y pkgname
+</code></p>
+
+<ul>
+<li>get info about package</li>
+</ul>
+
+
+<p>```
+ yum info nmap
+ [&hellip;]
+ Available Packages
+ Name        : nmap
+ Arch        : x86_64
+ Epoch       : 2
+ Version     : 6.40
+ Release     : 7.el7
+ Size        : 4.0 M
+ Repo        : base/7/x86_64
+ Summary     : Network exploration tool and security scanner
+ URL         : <a href="http://nmap.org/">http://nmap.org/</a>
+ License     : GPLv2 and LGPLv2+ and GPLv2+ and BSD
+ Description : Nmap is a utility for network exploration or security auditing.</p>
+
+<pre><code>         : It supports ping scanning (determine which hosts are up), many
+         : port scanning techniques (determine what services the hosts are
+         : offering), and TCP/IP fingerprinting (remote host operating system
+         : identification). Nmap also offers flexible target and port
+         : specification, decoy scanning, determination of TCP sequence
+         : predictability characteristics, reverse-identd scanning, and more.
+         : In addition to the classic command-line nmap executable, the Nmap
+         : suite includes a flexible data transfer, redirection, and
+         : debugging tool (netcat utility ncat), a utility for comparing scan
+         : results (ndiff), and a packet generation and response analysis
+         : tool (nping).
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>remove pkg</li>
+</ul>
+
+
+<p><code>
+ yum remove pkgname
+</code></p>
+
+<ul>
+<li>list dependencies</li>
+</ul>
+
+
+<p>```
+ yum deplist cowsay
+ [&hellip;]
+ package: cowsay.noarch 3.04-4.el7
+   dependency: /bin/sh</p>
+
+<pre><code>provider: bash.x86_64 4.2.46-29.el7_4
+</code></pre>
+
+<p>   dependency: /usr/bin/perl</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Cwd)</p>
+
+<pre><code>provider: perl-PathTools.x86_64 3.40-5.el7
+</code></pre>
+
+<p>   dependency: perl(File::Basename)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Getopt::Std)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Text::Tabs)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Text::Wrap)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(strict)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl-Encode</p>
+
+<pre><code>provider: perl-Encode.x86_64 2.51-7.el7
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>list installed packages</li>
+</ul>
+
+
+<p><code>
+ yum list installed
+ [...]
+ yum.noarch                             3.4.3-150.el7.centos            @base    
+ yum-langpacks.noarch                   0.4.2-7.el7                     @base    
+ yum-metadata-parser.x86_64             1.1.4-10.el7                    @anaconda
+ yum-plugin-fastestmirror.noarch        1.1.31-40.el7                   @base    
+ yum-utils.noarch                       1.1.31-40.el7                   @base    
+ zenity.x86_64                          3.8.0-5.el7                     @anaconda
+ zip.x86_64                             3.0-11.el7                      @base    
+ zlib.x86_64                            1.2.7-17.el7                    @base    
+</code></p>
+
+<ul>
+<li>update all packages</li>
+</ul>
+
+
+<p><code>
+ yum update
+</code></p>
+
+<ul>
+<li>check if updates are available, without updating</li>
+</ul>
+
+
+<p><code>
+ yum check-update
+</code></p>
+
+<ul>
+<li>list info about available packages</li>
+</ul>
+
+
+<p><code>
+ yum list python
+ [...]
+ Installed Packages
+ python.x86_64                         2.7.5-48.el7                         @base
+ Available Packages
+ python.x86_64                         2.7.5-58.el7                         base
+ [root@localhost ~]#
+</code></p>
+
+<ul>
+<li>find out which package provides some feature or file</li>
+</ul>
+
+
+<p>```
+ yum provides scapy
+ scapy-2.3.3-1.el7.noarch : Interactive packet manipulation tool and network</p>
+
+<pre><code>                      : scanner
+</code></pre>
+
+<p> Repo        : epel
+```</p>
+
+<ul>
+<li>find packages when you know something about  the package but aren&rsquo;t sure of its name.</li>
+</ul>
+
+
+<p><code>
+ yum search name
+</code></p>
+
+<ul>
+<li>list package summary</li>
+</ul>
+
+
+<p>```
+ yum info scapy
+ Available Packages
+ Name        : scapy
+ Arch        : noarch
+ Version     : 2.3.3
+ Release     : 1.el7
+ Size        : 983 k
+ Repo        : epel/x86_64
+ Summary     : Interactive packet manipulation tool and network scanner
+ URL         : <a href="http://www.secdev.org/projects/scapy/">http://www.secdev.org/projects/scapy/</a>
+ License     : GPLv2
+ Description : Scapy is a powerful interactive packet manipulation program built</p>
+
+<pre><code>         : on top of the Python interpreter. It can be used to forge or
+         : decode packets of a wide number of protocols, send them over the
+         : wire, capture them, match requests and replies, and much more.
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>find which package provides an utility</li>
+</ul>
+
+
+<p><code>
+ yum provides sealert
+ Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
+ setroubleshoot-server-3.2.27.2-3.el7.x86_64 : SELinux troubleshoot server
+ Repo        : rhel7-local
+ Matched from:
+ Filename    : /usr/bin/sealert
+</code></p>
+
+<ul>
+<li>perform cleaning operations</li>
+</ul>
+
+
+<p><code>
+ yum clean
+ all           dbcache       headers       packages      
+ cache         expire-cache  metadata   
+</code></p>
+
+<ul>
+<li>Produces a list of all dependencies and  what  packages  provide those  dependencies  for the given packages.</li>
+</ul>
+
+
+<p>```
+yum deplist scapy
+ package: scapy.noarch 2.3.3-1.el7
+   dependency: /usr/bin/python</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>   dependency: python >= 2.5</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>   dependency: python(abi) = 2.7</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>list configured repositories</li>
+</ul>
+
+
+<p><code>
+ yum repolist
+ repo id               repo name                                           status
+ base/7/x86_64         CentOS-7 - Base                                      9,591
+ *epel/x86_64          Extra Packages for Enterprise Linux 7 - x86_64      11,985
+ extras/7/x86_64       CentOS-7 - Extras                                      227
+ nux-dextop/x86_64     Nux.Ro RPMs for general desktop use                  1,599
+ updates/7/x86_64      CentOS-7 - Updates                                     731
+ repolist: 24,133
+</code></p>
+
+<ul>
+<li>see past transactions</li>
+</ul>
+
+
+<p><code>
+ yum history
+</code></p>
+
+<ul>
+<li>list available kernels</li>
+</ul>
+
+
+<p>```
+ yum list kernel
+ Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-</p>
+
+<pre><code>           : manager
+</code></pre>
+
+<p> Repodata is over 2 weeks old. Install yum-cron? Or run: yum makecache fast
+ Installed Packages
+ kernel.x86_64              3.10.0-514.el7                    @anaconda/7.3    <br/>
+ kernel.x86_64              3.10.0-514.26.2.el7               @rhel-7-server-rpms
+ Available Packages
+ kernel.x86_64              3.10.0-693.2.2.el7                rhel-7-server-rpms
+```</p>
+
+<ul>
+<li>install new kernel and set it as default boot choice</li>
+</ul>
+
+
+<p><code>
+yum --enablerepo=kernelrepo install kernelname
+</code></p>
+
+<p>Set <code>GRUB_DEFAULT=0</code> to make it default, 1 otherwise</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Fine day for friends. So-so day for \
+\ you.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Essential commands]]></title>
@@ -1109,8 +2674,8 @@ echo "Readme" | mail -s "README" nixhat@example.com
 <p>```
 i:Exit  &ndash;:PrevPg  <Space>:NextPg v:View Attachm.  d:Del  r:Reply  j:Next ?:Help
 Date: Mon, 19 Feb 2018 19:35:30 +0200
-From: root <a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#x3a;&#x72;&#111;&#111;&#116;&#x40;&#x65;&#120;&#97;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#x6f;&#109;">&#114;&#111;&#x6f;&#x74;&#64;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#x2e;&#99;&#111;&#x6d;</a>
-To: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#110;&#105;&#120;&#104;&#x61;&#116;&#x40;&#x65;&#x78;&#x61;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#111;&#109;">&#110;&#x69;&#120;&#104;&#x61;&#x74;&#64;&#x65;&#120;&#97;&#109;&#112;&#x6c;&#x65;&#46;&#x63;&#x6f;&#x6d;</a>
+From: root <a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#x65;&#x78;&#97;&#x6d;&#x70;&#x6c;&#101;&#x2e;&#99;&#x6f;&#109;">&#114;&#111;&#111;&#x74;&#x40;&#x65;&#120;&#97;&#109;&#x70;&#108;&#101;&#46;&#x63;&#111;&#109;</a>
+To: <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#110;&#x69;&#120;&#x68;&#x61;&#116;&#64;&#x65;&#120;&#97;&#109;&#112;&#x6c;&#x65;&#46;&#99;&#x6f;&#x6d;">&#110;&#x69;&#x78;&#104;&#x61;&#116;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;</a>
 Subject: README
 User-Agent: Heirloom mailx 12.5 7/5/10</p>
 
@@ -1123,212 +2688,6 @@ User-Agent: Heirloom mailx 12.5 7/5/10</p>
 
 <p>/ Avert misunderstanding by calm, poise, \
 \ and balance.                           /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Configure an SMTP mail service]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/"/>
-    <updated>2018-02-17T12:16:33-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at configuring a mail service for LFCS objectives. We&rsquo;ll use the Postfix implementation that already comes preinstalled  on CentOS.</p>
-
-<!-- more -->
-
-
-<p>The configuration file with all Postfix parameters is <code>/etc/postfix/main.cf</code> and it is massive. Instead of manually editing it, it&rsquo;s easier to use <strong>postconf</strong>. Without arguments, it displays all parameters. If given a parameter name, it will show that parameter&rsquo;s value, and with the <strong>-e</strong> flag it can modify parameters.</p>
-
-<p>Another important file for mail configuration is <code>/etc/aliases</code>. If you want a mail destined to a user to be delivered to another user, you can set an alias:</p>
-
-<p><code>
-username: alias
-</code></p>
-
-<p>The alias will get the mails destined for the user. I&rsquo;ve added an alias on my system so that root&rsquo;s mail will be delivered to nixhat:</p>
-
-<p><code>
-root: nixhat
-</code></p>
-
-<p>After changing any alias settings, you have to refresh the alias DB with the command <code>postalias /etc/aliases</code></p>
-
-<p>Now it&rsquo;s time to edit some parameters in order to setup a working mail configuration.</p>
-
-<ul>
-<li>The <strong>myorigin</strong> parameter specifies the domain that locally-posted mail appears to come from</li>
-</ul>
-
-
-<p>The default is to use the hostname for this, but I will change it to use just the domain (example.com in this case)</p>
-
-<p><code>
-postconf -e 'myorigin=$mydomain'
-[root@centos ~]# postconf myorigin
-myorigin = $mydomain
-</code></p>
-
-<ul>
-<li>The <strong>inet_interfaces</strong> parameter specifies the network interface addresses that this mail system receives mail on</li>
-</ul>
-
-
-<p>Here I have mine listening on the Ethernet interface in addition to localhost:</p>
-
-<p><code>
-postconf inet_interfaces
-inet_interfaces = 192.168.217.131, localhost
-</code></p>
-
-<ul>
-<li>The <strong>relayhost</strong> parameter specifies the default host to send mail to when no entry is matched in the optional transport(5) table. When no relayhost is given, mail is routed directly to the destination. On an intranet, specify the organizational domain name. In the case of SMTP, specify a domain, host, host:port, [host]:port, [address] or [address]:port; the form [host] turns off MX lookups.</li>
-</ul>
-
-
-<p>If you want to forward mail to a central host, use the <strong>relayhost</strong> parameter</p>
-
-<ul>
-<li>The <strong>mydestination</strong> parameter specifies the list of domains that this machine considers itself the final destination for. This parameter is important for receiving messages</li>
-</ul>
-
-
-<p><code>
-postconf mydestination
-mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain
-</code></p>
-
-<ul>
-<li>The <strong>mynetworks</strong> parameter specifies the list of &ldquo;trusted&rdquo; SMTP clients that are allowed to relay mail through Postfix. It can allow clients on the local subnet, in a range, just a host, or manually specified.</li>
-</ul>
-
-
-<p><code>
-postconf mynetworks
-mynetworks = 192.168.217.0/24 127.0.0.0/8 [::1]/128
-</code></p>
-
-<h2>Restricting access to the server</h2>
-
-<p>For receiving mail, you can add some settings to harden the security of your server:</p>
-
-<ul>
-<li><strong>smtpd_helo_required</strong> &ndash; Require that a remote SMTP client sends HELO or EHLO before commencing a MAIL transaction</li>
-</ul>
-
-
-<p><code>
-postconf smtpd_helo_required
-smtpd_helo_required = yes
-</code></p>
-
-<ul>
-<li><strong>smtpd_helo_restrictions</strong> &ndash; other optional restrictions:</li>
-</ul>
-
-
-<p><strong>permit_mynetworks</strong> &ndash; Permit the request when the client IP address matches any network or network address listed in $mynetworks</p>
-
-<p> <strong>reject_invalid_helo_hostname</strong> &ndash; Reject the request when the HELO or EHLO hostname is malformed</p>
-
-<p><code>
-postconf smtpd_helo_restrictions
-smtpd_helo_restrictions = permit_mynetworks, reject_invalid_helo_hostname
-</code></p>
-
-<ul>
-<li><strong>smtpd_sender_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client MAIL FROM command:</li>
-</ul>
-
-
-<p><strong>reject_unknown_sender_domain</strong> &ndash; Reject the request when Postfix is not final destination for the sender address, and the MAIL FROM domain has 1) no DNS MX and no DNS A record, or 2) a malformed MX record such as a record with a zero-length MX hostname</p>
-
-<p><code>
-postconf smtpd_sender_restrictions
-smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain
-</code></p>
-
-<ul>
-<li><strong>smtpd_recipient_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client RCPT TO command</li>
-</ul>
-
-
-<p><strong>reject_unauth_destination</strong> &ndash; reject the request unless 1) Postfix is the mail forwarder; or 2) Postfix is the final destination</p>
-
-<p><code>
-postconf smtpd_recipient_restrictions
-smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination
-</code></p>
-
-<p>After changing Postfix settings, it is a good idea to run <code>postfix check</code> to check the validity of the config file. Then restart Postfix.</p>
-
-<p>Now to test it:</p>
-
-<p><code>
-echo "This is a test" | mail -s "test" root@example.com
-</code></p>
-
-<p>On user nixhat:</p>
-
-<p>```
-mail
-Heirloom Mail version 12.5 7/5/10.  Type ? for help.
-&ldquo;/var/spool/mail/nixhat&rdquo;: 1 message 1 new</p>
-
-<blockquote><p>N  1 root                  Sat Feb 17 18:08  18/569   &ldquo;test&rdquo;
-cat  /var/spool/mail/nixhat
-From <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#114;&#111;&#111;&#x74;&#x40;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#99;&#111;&#109;">&#114;&#x6f;&#111;&#x74;&#x40;&#x65;&#x78;&#x61;&#x6d;&#112;&#108;&#101;&#46;&#99;&#x6f;&#x6d;</a>  Sat Feb 17 18:08:09 2018
-Return-Path: <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#101;&#120;&#97;&#x6d;&#x70;&#108;&#101;&#x2e;&#99;&#x6f;&#109;">&#x72;&#x6f;&#111;&#116;&#64;&#101;&#x78;&#x61;&#109;&#x70;&#x6c;&#101;&#46;&#99;&#x6f;&#109;</a>
-X-Original-To: <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x72;&#111;&#x6f;&#116;&#x40;&#x65;&#x78;&#x61;&#109;&#x70;&#x6c;&#101;&#x2e;&#x63;&#111;&#109;">&#114;&#x6f;&#x6f;&#116;&#64;&#x65;&#x78;&#97;&#x6d;&#x70;&#x6c;&#x65;&#46;&#99;&#111;&#x6d;</a>
-Delivered-To: <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#114;&#111;&#x6f;&#x74;&#x40;&#101;&#x78;&#x61;&#109;&#112;&#108;&#101;&#46;&#x63;&#111;&#x6d;">&#x72;&#x6f;&#111;&#116;&#x40;&#101;&#120;&#x61;&#109;&#x70;&#108;&#101;&#x2e;&#x63;&#111;&#109;</a>
-Received: by centos.example.com (Postfix, from userid 0)</p>
-
-<pre><code>id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
-</code></pre>
-
-<p>Date: Sat, 17 Feb 2018 18:08:09 +0200
-To: <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#x3a;&#114;&#111;&#x6f;&#116;&#x40;&#x65;&#120;&#97;&#109;&#112;&#108;&#101;&#x2e;&#99;&#x6f;&#109;">&#114;&#111;&#x6f;&#x74;&#64;&#101;&#x78;&#97;&#109;&#112;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;</a>
-Subject: test
-User-Agent: Heirloom mailx 12.5 7/5/10
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Message-Id: <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#58;&#50;&#48;&#49;&#x38;&#48;&#50;&#49;&#55;&#x31;&#54;&#x30;&#56;&#48;&#57;&#x2e;&#53;&#49;&#x32;&#x35;&#53;&#50;&#49;&#56;&#70;&#69;&#68;&#55;&#64;&#99;&#101;&#x6e;&#x74;&#x6f;&#x73;&#46;&#x65;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;">&#x32;&#x30;&#x31;&#x38;&#x30;&#x32;&#x31;&#55;&#x31;&#x36;&#48;&#x38;&#48;&#57;&#46;&#x35;&#x31;&#x32;&#53;&#x35;&#50;&#49;&#x38;&#x46;&#x45;&#68;&#55;&#64;&#x63;&#x65;&#110;&#116;&#111;&#x73;&#x2e;&#101;&#x78;&#x61;&#109;&#112;&#108;&#101;&#46;&#99;&#111;&#109;</a>
-From: <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#x72;&#111;&#111;&#x74;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;">&#x72;&#111;&#x6f;&#x74;&#64;&#101;&#x78;&#97;&#x6d;&#x70;&#x6c;&#x65;&#x2e;&#99;&#111;&#109;</a> (root)
-Status: O</p></blockquote>
-
-<p>This is a test
-```</p>
-
-<p>So it works. If you want to see more about the status of your mails, look inside <code>/var/log/maillog</code>:</p>
-
-<p><code>
-Feb 17 18:21:11 centos postfix/pickup[8896]: 4FADF218FED8: uid=0 from=&lt;root&gt;
-Feb 17 18:21:11 centos postfix/cleanup[9359]: 4FADF218FED8: message-id=&lt;20180217162111.4FADF218FED8@centos.example.com&gt;
-Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: from=&lt;root@example.com&gt;, size=431, nrcpt=1 (queue active)
-Feb 17 18:21:11 centos postfix/local[9361]: 4FADF218FED8: to=&lt;nixhat@example.com&gt;, orig_to=&lt;root@example.com&gt;, relay=local, delay=0.08, delays=0.07/0.02/0/0, dsn=2.0.0, status=sent (delivered to mailbox)
-Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: removed
-</code></p>
-
-<p>Some other useful actions with mail would be to view the mail queue with <strong>mailq</strong> and flush the queue with <strong>postfix flush</strong></p>
-
-<p>Also see <strong>man 5 postconf</strong> for all Postfix parameters</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Q: What lies on the bottom of the ocean \
-\ and twitches? A: A nervous wreck.       /</p>
 
 <hr />
 
