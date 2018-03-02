@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-03-01T14:37:34-05:00</updated>
+  <updated>2018-03-02T13:46:02-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,680 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Storage Management]]></title>
+    <link href="http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management/"/>
+    <updated>2018-03-02T13:12:06-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Storage Management domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/storage.png" title="linux storage" alt="storage objectives"></p>
+
+<p><img class="center" src="http://chousensha.github.io/images/sysadmin/storage2.png" title="linux storage" alt="storage objectives"></p>
+
+<h4>mdadm</h4>
+
+<blockquote><p>manage MD devices aka Linux Software RAID</p></blockquote>
+
+<h4>lsblk</h4>
+
+<blockquote><p>list block devices</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>lsblk
+</span><span class='line'>NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+</span><span class='line'>fd0               2:0    1    4K  0 disk
+</span><span class='line'>sda               8:0    0   20G  0 disk
+</span><span class='line'>├─sda1            8:1    0  500M  0 part /boot
+</span><span class='line'>└─sda2            8:2    0 19.5G  0 part
+</span><span class='line'>  ├─centos-root 253:0    0 17.5G  0 lvm  /
+</span><span class='line'>  └─centos-swap 253:1    0    2G  0 lvm  [SWAP]
+</span><span class='line'>sdb               8:16   0    1G  0 disk
+</span><span class='line'>sr0              11:0    1 1024M  0 rom  </span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>output filesystem info</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>lsblk -f
+</span><span class='line'>NAME         FSTYPE      LABEL UUID                                   MOUNTPOINT
+</span><span class='line'>fd0                                                                   
+</span><span class='line'>sda                                                                   
+</span><span class='line'>├─sda1       xfs               ef67363c-0fb5-4680-aa53-572e5e38d8d0   /boot
+</span><span class='line'>└─sda2       LVM2_member       0R3HDI-jqHC-WdoO-gDZ5-ScPb-JdkI-y9sIvD
+</span><span class='line'>  ├─centos-root
+</span><span class='line'>             xfs               71dd7ac4-ba5b-4e8a-a706-a51264d85900   /
+</span><span class='line'>  └─centos-swap
+</span><span class='line'>             swap              41edd5da-8142-4fc6-9e96-e8b7a08c2ae9   [SWAP]
+</span><span class='line'>sdb                                                                   
+</span><span class='line'>sr0                                                </span></code></pre></td></tr></table></div></figure>
+
+
+<h4>fdisk</h4>
+
+<blockquote><p>manipulate disk partition table</p></blockquote>
+
+<ul>
+<li>list partition tables</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fdisk -l /dev/sda
+</span><span class='line'>
+</span><span class='line'>Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
+</span><span class='line'>Units = sectors of 1 * 512 = 512 bytes
+</span><span class='line'>Sector size (logical/physical): 512 bytes / 512 bytes
+</span><span class='line'>I/O size (minimum/optimal): 512 bytes / 512 bytes
+</span><span class='line'>Disk label type: dos
+</span><span class='line'>Disk identifier: 0x000e124e
+</span><span class='line'>
+</span><span class='line'>   Device Boot      Start         End      Blocks   Id  System
+</span><span class='line'>/dev/sda1   *        2048     1026047      512000   83  Linux
+</span><span class='line'>/dev/sda2         1026048    41943039    20458496   8e  Linux LVM</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>fdisk menu</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Command action
+</span><span class='line'>   a   toggle a bootable flag
+</span><span class='line'>   b   edit bsd disklabel
+</span><span class='line'>   c   toggle the dos compatibility flag
+</span><span class='line'>   d   delete a partition
+</span><span class='line'>   g   create a new empty GPT partition table
+</span><span class='line'>   G   create an IRIX (SGI) partition table
+</span><span class='line'>   l   list known partition types
+</span><span class='line'>   m   print this menu
+</span><span class='line'>   n   add a new partition
+</span><span class='line'>   o   create a new empty DOS partition table
+</span><span class='line'>   p   print the partition table
+</span><span class='line'>   q   quit without saving changes
+</span><span class='line'>   s   create a new empty Sun disklabel
+</span><span class='line'>   t   change a partition's system id
+</span><span class='line'>   u   change display/entry units
+</span><span class='line'>   v   verify the partition table
+</span><span class='line'>   w   write table to disk and exit
+</span><span class='line'>   x   extra functionality (experts only)</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>gdisk</h4>
+
+<blockquote><p>Interactive GUID partition table (GPT) manipulator</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdisk /dev/sdb
+</span><span class='line'>GPT fdisk (gdisk) version 0.8.6
+</span><span class='line'>
+</span><span class='line'>Partition table scan:
+</span><span class='line'>  MBR: not present
+</span><span class='line'>  BSD: not present
+</span><span class='line'>  APM: not present
+</span><span class='line'>  GPT: not present
+</span><span class='line'>
+</span><span class='line'>Creating new GPT entries.
+</span><span class='line'>
+</span><span class='line'>Command (? for help): ?
+</span><span class='line'>b back up GPT data to a file
+</span><span class='line'>c change a partition's name
+</span><span class='line'>d delete a partition
+</span><span class='line'>i show detailed information on a partition
+</span><span class='line'>l list known partition types
+</span><span class='line'>n add a new partition
+</span><span class='line'>o create a new empty GUID partition table (GPT)
+</span><span class='line'>p print the partition table
+</span><span class='line'>q quit without saving changes
+</span><span class='line'>r recovery and transformation options (experts only)
+</span><span class='line'>s sort partitions
+</span><span class='line'>t change a partition's type code
+</span><span class='line'>v verify disk
+</span><span class='line'>w write table to disk and exit
+</span><span class='line'>x extra functionality (experts only)
+</span><span class='line'>? print this menu</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>parted</h4>
+
+<blockquote><p>a partition manipulation program</p></blockquote>
+
+<ul>
+<li>list all partitions</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>parted -l
+</span><span class='line'>Model: VMware, VMware Virtual S (scsi)
+</span><span class='line'>Disk /dev/sda: 21.5GB
+</span><span class='line'>Sector size (logical/physical): 512B/512B
+</span><span class='line'>Partition Table: msdos
+</span><span class='line'>Disk Flags:
+</span><span class='line'>
+</span><span class='line'>Number  Start   End     Size    Type     File system  Flags
+</span><span class='line'> 1      1049kB  525MB   524MB   primary  xfs          boot
+</span><span class='line'> 2      525MB   21.5GB  20.9GB  primary               lvm
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Error: /dev/sdb: unrecognised disk label
+</span><span class='line'>Model: VMware, VMware Virtual S (scsi)                                    
+</span><span class='line'>Disk /dev/sdb: 1074MB
+</span><span class='line'>Sector size (logical/physical): 512B/512B
+</span><span class='line'>Partition Table: unknown
+</span><span class='line'>Disk Flags:
+</span><span class='line'>
+</span><span class='line'>Model: Linux device-mapper (linear) (dm)
+</span><span class='line'>Disk /dev/mapper/centos-swap: 2147MB
+</span><span class='line'>Sector size (logical/physical): 512B/512B
+</span><span class='line'>Partition Table: loop
+</span><span class='line'>Disk Flags:
+</span><span class='line'>
+</span><span class='line'>Number  Start  End     Size    File system     Flags
+</span><span class='line'> 1      0.00B  2147MB  2147MB  linux-swap(v1)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Model: Linux device-mapper (linear) (dm)
+</span><span class='line'>Disk /dev/mapper/centos-root: 18.8GB
+</span><span class='line'>Sector size (logical/physical): 512B/512B
+</span><span class='line'>Partition Table: loop
+</span><span class='line'>Disk Flags:
+</span><span class='line'>
+</span><span class='line'>Number  Start  End     Size    File system  Flags
+</span><span class='line'> 1      0.00B  18.8GB  18.8GB  xfs</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>mkfs</h4>
+
+<blockquote><p>build a Linux filesystem</p></blockquote>
+
+<ul>
+<li><p>-t # filesystem type</p></li>
+<li><p>types of filesystems</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkfs.
+</span><span class='line'>mkfs.btrfs   mkfs.ext2    mkfs.ext4    mkfs.minix   mkfs.vfat    
+</span><span class='line'>mkfs.cramfs  mkfs.ext3    mkfs.fat     mkfs.msdos   mkfs.xfs  </span></code></pre></td></tr></table></div></figure>
+
+
+<h4>tune2fs</h4>
+
+<blockquote><p>adjust  tunable  filesystem  parameters  on  ext2/ext3/ext4 filesystems</p></blockquote>
+
+<ul>
+<li>set label</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tune2fs -L label device</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>e2label</h4>
+
+<blockquote><p>Change the label on an ext2/ext3/ext4 filesystem</p></blockquote>
+
+<h4>dumpe2fs</h4>
+
+<blockquote><p>dump ext2/ext3/ext4 filesystem information</p></blockquote>
+
+<h4>xfs_db</h4>
+
+<blockquote><p>debug an XFS filesystem</p></blockquote>
+
+<h4>mount</h4>
+
+<blockquote><p>mount a filesystem</p>
+
+<p>mount -t type device dir</p></blockquote>
+
+<ul>
+<li>-a # mount all filesystems</li>
+<li>-r # mount read-only</li>
+<li><p>-o # mount options</p></li>
+<li><p>list all mounted filesystems</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mount -l
+</span><span class='line'>sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime,seclabel)
+</span><span class='line'>proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+</span><span class='line'>devtmpfs on /dev type devtmpfs (rw,nosuid,seclabel,size=926484k,nr_inodes=231621,mode=755)
+</span><span class='line'>securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+</span><span class='line'>tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,seclabel)
+</span><span class='line'>devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=000)
+</span><span class='line'>tmpfs on /run type tmpfs (rw,nosuid,nodev,seclabel,mode=755)
+</span><span class='line'>tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,seclabel,mode=755)
+</span><span class='line'>cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
+</span><span class='line'>pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime)
+</span><span class='line'>cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+</span><span class='line'>cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+</span><span class='line'>cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
+</span><span class='line'>cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
+</span><span class='line'>cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
+</span><span class='line'>cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
+</span><span class='line'>cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+</span><span class='line'>cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
+</span><span class='line'>cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_prio,net_cls)
+</span><span class='line'>configfs on /sys/kernel/config type configfs (rw,relatime)
+</span><span class='line'>/dev/mapper/rhel-root on / type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+</span><span class='line'>selinuxfs on /sys/fs/selinux type selinuxfs (rw,relatime)
+</span><span class='line'>systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=33,pgrp=1,timeout=300,minproto=5,maxproto=5,direct)
+</span><span class='line'>hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,seclabel)
+</span><span class='line'>debugfs on /sys/kernel/debug type debugfs (rw,relatime)
+</span><span class='line'>mqueue on /dev/mqueue type mqueue (rw,relatime,seclabel)
+</span><span class='line'>nfsd on /proc/fs/nfsd type nfsd (rw,relatime)
+</span><span class='line'>/dev/sda1 on /boot type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+</span><span class='line'>sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+</span><span class='line'>tmpfs on /run/user/0 type tmpfs (rw,nosuid,nodev,relatime,seclabel,size=188412k,mode=700)
+</span><span class='line'>gvfsd-fuse on /run/user/0/gvfs type fuse.gvfsd-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0)
+</span><span class='line'>fusectl on /sys/fs/fuse/connections type fusectl (rw,relatime)</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>umount</h4>
+
+<blockquote><p>unmount file systems</p></blockquote>
+
+<h4>blkid</h4>
+
+<blockquote><p>locate/print block device attributes</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>blkid
+</span><span class='line'>/dev/sda1: UUID="b8e2fb99-bf4c-4632-883b-8ed5c2350b1e" TYPE="xfs"
+</span><span class='line'>/dev/sda2: UUID="PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP" TYPE="LVM2_member"
+</span><span class='line'>/dev/mapper/rhel-root: UUID="2c0268ac-c31a-462d-b5b9-41bdfbecd75d" TYPE="xfs"
+</span><span class='line'>/dev/mapper/rhel-swap: UUID="6544d880-b634-4566-a68d-d3a58cec4cf6" TYPE="swap"</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>xfs_info</h4>
+
+<blockquote><p>expand an XFS filesystem</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>xfs_info /dev/sda1
+</span><span class='line'>meta-data=/dev/sda1              isize=512    agcount=4, agsize=65536 blks
+</span><span class='line'>         =                       sectsz=512   attr=2, projid32bit=1
+</span><span class='line'>         =                       crc=1        finobt=0 spinodes=0
+</span><span class='line'>data     =                       bsize=4096   blocks=262144, imaxpct=25
+</span><span class='line'>         =                       sunit=0      swidth=0 blks
+</span><span class='line'>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+</span><span class='line'>log      =internal               bsize=4096   blocks=2560, version=2
+</span><span class='line'>         =                       sectsz=512   sunit=0 blks, lazy-count=1
+</span><span class='line'>realtime =none                   extsz=4096   blocks=0, rtextents=0</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>mkswap</h4>
+
+<blockquote><p>set up a Linux swap area</p></blockquote>
+
+<h4>swapon, swapoff</h4>
+
+<blockquote><p>enable/disable devices and files for paging and swapping</p></blockquote>
+
+<ul>
+<li>display swap usage</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>swapon -s
+</span><span class='line'>Filename              Type        Size    Used    Priority
+</span><span class='line'>/dev/dm-1        </span></code></pre></td></tr></table></div></figure>
+
+
+<h4>pvscan</h4>
+
+<blockquote><p>scan all disks for physical volumes</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>pvscan
+</span><span class='line'>  PV /dev/sda2   VG centos          lvm2 [19.51 GiB / 40.00 MiB free]
+</span><span class='line'>  Total: 1 [19.51 GiB] / in use: 1 [19.51 GiB] / in no VG: 0 [0   ]</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>vgscan</h4>
+
+<blockquote><p>scan all disks for volume groups and rebuild caches</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vgscan
+</span><span class='line'>  Reading volume groups from cache.
+</span><span class='line'>  Found volume group "centos" using metadata type lvm2</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>lvscan</h4>
+
+<blockquote><p>scan (all disks) for Logical Volumes</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>lvscan
+</span><span class='line'>  ACTIVE            '/dev/centos/swap' [2.00 GiB] inherit
+</span><span class='line'>  ACTIVE            '/dev/centos/root' [17.47 GiB] inherit</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>pvcreate</h4>
+
+<blockquote><p>initialize a disk or partition for use by LVM</p></blockquote>
+
+<h4>vgcreate</h4>
+
+<blockquote><p>create a volume group</p></blockquote>
+
+<h4>vgs</h4>
+
+<blockquote><p>report information about volume groups</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>vgs
+</span><span class='line'>  VG     #PV #LV #SN Attr   VSize  VFree
+</span><span class='line'>  centos   1   2   0 wz--n- 19.51g 40.00m</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>lvcreate</h4>
+
+<blockquote><p>create a logical volume in an existing volume group</p></blockquote>
+
+<h4>vgextend</h4>
+
+<blockquote><p>add physical volumes to a volume group</p></blockquote>
+
+<h4>lvextend</h4>
+
+<blockquote><p>extend the size of a logical volume</p></blockquote>
+
+<h4>lvremove</h4>
+
+<blockquote><p>remove a logical volume</p></blockquote>
+
+<h4>pvmove</h4>
+
+<blockquote><p>move physical extents</p></blockquote>
+
+<h4>vgreduce</h4>
+
+<blockquote><p>reduce a volume group</p></blockquote>
+
+<h4>pvremove</h4>
+
+<blockquote><p>remove a physical volume</p></blockquote>
+
+<h4>getfacl</h4>
+
+<blockquote><p>get file access control lists</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>getfacl out.txt
+</span><span class='line'># file: out.txt
+</span><span class='line'># owner: root
+</span><span class='line'># group: root
+</span><span class='line'>user::rw-
+</span><span class='line'>group::r--
+</span><span class='line'>other::r--</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>setfacl</h4>
+
+<blockquote><p>set file access control lists</p></blockquote>
+
+<ul>
+<li>give user dave read and write rights on a file</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>setfacl -m u:dave:rw file</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>set default ACL recursively on a directory for a group and give read and directory traversal permissions (but no execute for files)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>setfacl -R -m d:g:rockstars:rX folder</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>_________________________________________
+</span><span class='line'>/ Q: How many IBM types does it take to   \
+</span><span class='line'>| change a light bulb? A: Fifteen. One to |
+</span><span class='line'>| do it, and fourteen to write document   |
+</span><span class='line'>| number                                  |
+</span><span class='line'>|                                         |
+</span><span class='line'>| GC7500439-0001, Multitasking            |
+</span><span class='line'>| Incandescent Source System Facility,    |
+</span><span class='line'>|                                         |
+</span><span class='line'>| of which 10% of the pages state only    |
+</span><span class='line'>| "This page intentionally                |
+</span><span class='line'>|                                         |
+</span><span class='line'>| left blank", and 20% of the definitions |
+</span><span class='line'>| are of the form "A:.....                |
+</span><span class='line'>|                                         |
+</span><span class='line'>| consists of sequences of non-blank      |
+</span><span class='line'>\ characters separated by blanks".        /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Networking]]></title>
@@ -8161,1026 +8835,6 @@ This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer
 </span><span class='line'>/ Don't get stuck in a closet -- wear \
 </span><span class='line'>\ yourself out.                       /
 </span><span class='line'> -------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - NetworkManager configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration/"/>
-    <updated>2018-01-11T13:31:50-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/01/11/lfcs-prep-networkmanager-configuration</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look over configuring various network settings with <strong>nmcli</strong>, the command line tool for NetworkManager.</p>
-
-<!-- more -->
-
-
-<p>The first step is to understand how network configuration settings look. Inside the <code>/etc/sysconfig/network-scripts/</code> directory, you can find config files for your network interfaces, under the format of <strong>ifcfg-name</strong>. On my system, it looks like this:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat ifcfg-Wired_connection_1 
-</span><span class='line'>HWADDR=00:0C:29:47:D7:A8
-</span><span class='line'>TYPE=Ethernet
-</span><span class='line'>BOOTPROTO=dhcp
-</span><span class='line'>DEFROUTE=yes
-</span><span class='line'>IPV4_FAILURE_FATAL=no
-</span><span class='line'>IPV6INIT=yes
-</span><span class='line'>IPV6_AUTOCONF=yes
-</span><span class='line'>IPV6_DEFROUTE=yes
-</span><span class='line'>IPV6_FAILURE_FATAL=no
-</span><span class='line'>IPV6_ADDR_GEN_MODE=stable-privacy
-</span><span class='line'>NAME="Wired connection 1"
-</span><span class='line'>UUID=8d922966-5be4-4633-a99d-71e836e2b31a
-</span><span class='line'>ONBOOT=yes
-</span><span class='line'>DNS1=8.8.8.8
-</span><span class='line'>PEERDNS=yes
-</span><span class='line'>PEERROUTES=yes
-</span><span class='line'>IPV6_PEERDNS=yes
-</span><span class='line'>IPV6_PEERROUTES=yes</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can find a more complete overview of the options at <a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html">https://www.centos.org/docs/5/html/Deployment_Guide-en-US/s1-networkscripts-interfaces.html</a> , but from a glance at this file, we see the interface is an Ethernet device, it uses DHCP, it&rsquo;s set as the default route for both IPv4 and IPv6 traffic, it&rsquo;s activated at boot time, and also some other details like its MAC address and name.</p>
-
-<p>nmcli is a very powerful tool, and you can press Tab to see options for its use at every stage.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli help
-</span><span class='line'>Usage: nmcli [OPTIONS] OBJECT { COMMAND | help }
-</span><span class='line'>
-</span><span class='line'>OPTIONS
-</span><span class='line'>  -t[erse]                                   terse output
-</span><span class='line'>  -p[retty]                                  pretty output
-</span><span class='line'>  -m[ode] tabular|multiline                  output mode
-</span><span class='line'>  -c[olors] auto|yes|no                      whether to use colors in output
-</span><span class='line'>  -f[ields] &lt;field1,field2,...&gt;|all|common   specify fields to output
-</span><span class='line'>  -e[scape] yes|no                           escape columns separators in values
-</span><span class='line'>  -a[sk]                                     ask for missing parameters
-</span><span class='line'>  -s[how-secrets]                            allow displaying passwords
-</span><span class='line'>  -w[ait] &lt;seconds&gt;                          set timeout waiting for finishing operations
-</span><span class='line'>  -v[ersion]                                 show program version
-</span><span class='line'>  -h[elp]                                    print this help
-</span><span class='line'>
-</span><span class='line'>OBJECT
-</span><span class='line'>  g[eneral]       NetworkManager's general status and operations
-</span><span class='line'>  n[etworking]    overall networking control
-</span><span class='line'>  r[adio]         NetworkManager radio switches
-</span><span class='line'>  c[onnection]    NetworkManager's connections
-</span><span class='line'>  d[evice]        devices managed by NetworkManager
-</span><span class='line'>  a[gent]         NetworkManager secret agent or polkit agent
-</span><span class='line'>  m[onitor]       monitor NetworkManager changes</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here we will go over a few examples:</p>
-
-<h2>Device options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli device help
-</span><span class='line'>Usage: nmcli device { COMMAND | help }
-</span><span class='line'>
-</span><span class='line'>COMMAND := { status | show | set | connect | reapply | modify | disconnect | delete | monitor | wifi | lldp }
-</span><span class='line'>
-</span><span class='line'>  status
-</span><span class='line'>
-</span><span class='line'>  show [&lt;ifname&gt;]
-</span><span class='line'>
-</span><span class='line'>  set [ifname] &lt;ifname&gt; [autoconnect yes|no] [managed yes|no]
-</span><span class='line'>
-</span><span class='line'>  connect &lt;ifname&gt;
-</span><span class='line'>
-</span><span class='line'>  reapply &lt;ifname&gt;
-</span><span class='line'>
-</span><span class='line'>  modify &lt;ifname&gt; ([+|-]&lt;setting&gt;.&lt;property&gt; &lt;value&gt;)+
-</span><span class='line'>
-</span><span class='line'>  disconnect &lt;ifname&gt; ...
-</span><span class='line'>
-</span><span class='line'>  delete &lt;ifname&gt; ...
-</span><span class='line'>
-</span><span class='line'>  monitor &lt;ifname&gt; ...
-</span><span class='line'>
-</span><span class='line'>  wifi [list [ifname &lt;ifname&gt;] [bssid &lt;BSSID&gt;]]
-</span><span class='line'>
-</span><span class='line'>  wifi connect &lt;(B)SSID&gt; [password &lt;password&gt;] [wep-key-type key|phrase] [ifname &lt;ifname&gt;]
-</span><span class='line'>                         [bssid &lt;BSSID&gt;] [name &lt;name&gt;] [private yes|no] [hidden yes|no]
-</span><span class='line'>
-</span><span class='line'>  wifi hotspot [ifname &lt;ifname&gt;] [con-name &lt;name&gt;] [ssid &lt;SSID&gt;] [band a|bg] [channel &lt;channel&gt;] [password &lt;password&gt;]
-</span><span class='line'>
-</span><span class='line'>  wifi rescan [ifname &lt;ifname&gt;] [[ssid &lt;SSID to scan&gt;] ...]
-</span><span class='line'>
-</span><span class='line'>  lldp [list [ifname &lt;ifname&gt;]]</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>show device status</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli dev status
-</span><span class='line'>DEVICE      TYPE      STATE      CONNECTION         
-</span><span class='line'>virbr0      bridge    connected  virbr0             
-</span><span class='line'>enp0s3      ethernet  connected  Wired connection 1 
-</span><span class='line'>lo          loopback  unmanaged  --                 
-</span><span class='line'>virbr0-nic  tun       unmanaged  --          </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>list device details</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli dev show enp0s3 
-</span><span class='line'>GENERAL.DEVICE:                         enp0s3
-</span><span class='line'>GENERAL.TYPE:                           ethernet
-</span><span class='line'>GENERAL.HWADDR:                         00:0C:29:47:D7:A8
-</span><span class='line'>GENERAL.MTU:                            1500
-</span><span class='line'>GENERAL.STATE:                          100 (connected)
-</span><span class='line'>GENERAL.CONNECTION:                     Wired connection 1
-</span><span class='line'>GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/0
-</span><span class='line'>WIRED-PROPERTIES.CARRIER:               on
-</span><span class='line'>IP4.ADDRESS[1]:                         192.168.241.130/24
-</span><span class='line'>IP4.GATEWAY:                            192.168.241.2
-</span><span class='line'>IP4.DNS[1]:                             192.168.241.2
-</span><span class='line'>IP4.DNS[2]:                             8.8.8.8
-</span><span class='line'>IP4.DOMAIN[1]:                          localdomain
-</span><span class='line'>IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
-</span><span class='line'>IP6.GATEWAY:                            </span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Connection options</h2>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con help
-</span><span class='line'>Usage: nmcli connection { COMMAND | help }
-</span><span class='line'>
-</span><span class='line'>COMMAND := { show | up | down | add | modify | clone | edit | delete | monitor | reload | load | import | export }
-</span><span class='line'>
-</span><span class='line'>  show [--active] [--order &lt;order spec&gt;]
-</span><span class='line'>  show [--active] [id | uuid | path | apath] &lt;ID&gt; ...
-</span><span class='line'>
-</span><span class='line'>  up [[id | uuid | path] &lt;ID&gt;] [ifname &lt;ifname&gt;] [ap &lt;BSSID&gt;] [passwd-file &lt;file with passwords&gt;]
-</span><span class='line'>
-</span><span class='line'>  down [id | uuid | path | apath] &lt;ID&gt; ...
-</span><span class='line'>
-</span><span class='line'>  add COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [-- ([+|-]&lt;setting&gt;.&lt;property&gt; &lt;value&gt;)+]
-</span><span class='line'>
-</span><span class='line'>  modify [--temporary] [id | uuid | path] &lt;ID&gt; ([+|-]&lt;setting&gt;.&lt;property&gt; &lt;value&gt;)+
-</span><span class='line'>
-</span><span class='line'>  clone [--temporary] [id | uuid | path ] &lt;ID&gt; &lt;new name&gt;
-</span><span class='line'>
-</span><span class='line'>  edit [id | uuid | path] &lt;ID&gt;
-</span><span class='line'>  edit [type &lt;new_con_type&gt;] [con-name &lt;new_con_name&gt;]
-</span><span class='line'>
-</span><span class='line'>  delete [id | uuid | path] &lt;ID&gt;
-</span><span class='line'>
-</span><span class='line'>  monitor [id | uuid | path] &lt;ID&gt; ...
-</span><span class='line'>
-</span><span class='line'>  reload
-</span><span class='line'>
-</span><span class='line'>  load &lt;filename&gt; [ &lt;filename&gt;... ]
-</span><span class='line'>
-</span><span class='line'>  import [--temporary] type &lt;type&gt; file &lt;file to import&gt;
-</span><span class='line'>
-</span><span class='line'>  export [id | uuid | path] &lt;ID&gt; [&lt;output file&gt;] </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>look at the available connections and list only the active ones</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con show
-</span><span class='line'>NAME                UUID                                  TYPE            DEVICE 
-</span><span class='line'>Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3 
-</span><span class='line'>virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0 
-</span><span class='line'>enp0s3              b4c32cc7-c5ff-451c-8af2-9b9124050f99  802-3-ethernet  --  
-</span><span class='line'>nmcli con show --active
-</span><span class='line'>NAME                UUID                                  TYPE            DEVICE 
-</span><span class='line'>Wired connection 1  8d922966-5be4-4633-a99d-71e836e2b31a  802-3-ethernet  enp0s3 
-</span><span class='line'>virbr0              321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0 </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>list the settings of a particular connection (the double quotes aren&rsquo;t mandatory)</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con show "Wired connection 1" 
-</span><span class='line'>connection.id:                          Wired connection 1
-</span><span class='line'>connection.uuid:                        8d922966-5be4-4633-a99d-71e836e2b31a
-</span><span class='line'>connection.stable-id:                   --
-</span><span class='line'>connection.interface-name:              --
-</span><span class='line'>connection.type:                        802-3-ethernet
-</span><span class='line'>connection.autoconnect:                 yes
-</span><span class='line'>connection.autoconnect-priority:        0
-</span><span class='line'>connection.timestamp:                   1515583502
-</span><span class='line'>connection.read-only:                   no
-</span><span class='line'>connection.permissions:                 
-</span><span class='line'>connection.zone:                        --
-</span><span class='line'>connection.master:                      --
-</span><span class='line'>connection.slave-type:                  --
-</span><span class='line'>connection.autoconnect-slaves:          -1 (default)
-</span><span class='line'>connection.secondaries:                 
-</span><span class='line'>connection.gateway-ping-timeout:        0
-</span><span class='line'>connection.metered:                     unknown
-</span><span class='line'>connection.lldp:                        -1 (default)
-</span><span class='line'>802-3-ethernet.port:                    --
-</span><span class='line'>802-3-ethernet.speed:                   0
-</span><span class='line'>802-3-ethernet.duplex:                  --
-</span><span class='line'>802-3-ethernet.auto-negotiate:          yes
-</span><span class='line'>802-3-ethernet.mac-address:             00:0C:29:47:D7:A8
-</span><span class='line'>802-3-ethernet.cloned-mac-address:      --
-</span><span class='line'>802-3-ethernet.generate-mac-address-mask:--
-</span><span class='line'>802-3-ethernet.mac-address-blacklist:   
-</span><span class='line'>802-3-ethernet.mtu:                     auto
-</span><span class='line'>802-3-ethernet.s390-subchannels:        
-</span><span class='line'>802-3-ethernet.s390-nettype:            --
-</span><span class='line'>802-3-ethernet.s390-options:            
-</span><span class='line'>802-3-ethernet.wake-on-lan:             1 (default)
-</span><span class='line'>802-3-ethernet.wake-on-lan-password:    --
-</span><span class='line'>ipv4.method:                            auto
-</span><span class='line'>ipv4.dns:                               8.8.8.8
-</span><span class='line'>ipv4.dns-search:                        
-</span><span class='line'>ipv4.dns-options:                       (default)
-</span><span class='line'>ipv4.dns-priority:                      0
-</span><span class='line'>ipv4.addresses:                         
-</span><span class='line'>ipv4.gateway:                           --
-</span><span class='line'>ipv4.routes:                            
-</span><span class='line'>ipv4.route-metric:                      -1
-</span><span class='line'>ipv4.ignore-auto-routes:                no
-</span><span class='line'>ipv4.ignore-auto-dns:                   no
-</span><span class='line'>ipv4.dhcp-client-id:                    --
-</span><span class='line'>ipv4.dhcp-timeout:                      0
-</span><span class='line'>ipv4.dhcp-send-hostname:                yes
-</span><span class='line'>ipv4.dhcp-hostname:                     --
-</span><span class='line'>ipv4.dhcp-fqdn:                         --
-</span><span class='line'>ipv4.never-default:                     no
-</span><span class='line'>ipv4.may-fail:                          yes
-</span><span class='line'>ipv4.dad-timeout:                       -1 (default)
-</span><span class='line'>ipv6.method:                            auto
-</span><span class='line'>ipv6.dns:                               
-</span><span class='line'>ipv6.dns-search:                        
-</span><span class='line'>ipv6.dns-options:                       (default)
-</span><span class='line'>ipv6.dns-priority:                      0
-</span><span class='line'>ipv6.addresses:                         
-</span><span class='line'>ipv6.gateway:                           --
-</span><span class='line'>ipv6.routes:                            
-</span><span class='line'>ipv6.route-metric:                      -1
-</span><span class='line'>ipv6.ignore-auto-routes:                no
-</span><span class='line'>ipv6.ignore-auto-dns:                   no
-</span><span class='line'>ipv6.never-default:                     no
-</span><span class='line'>ipv6.may-fail:                          yes
-</span><span class='line'>ipv6.ip6-privacy:                       -1 (unknown)
-</span><span class='line'>ipv6.addr-gen-mode:                     stable-privacy
-</span><span class='line'>ipv6.dhcp-send-hostname:                yes
-</span><span class='line'>ipv6.dhcp-hostname:                     --
-</span><span class='line'>ipv6.token:                             --
-</span><span class='line'>GENERAL.NAME:                           Wired connection 1
-</span><span class='line'>GENERAL.UUID:                           8d922966-5be4-4633-a99d-71e836e2b31a
-</span><span class='line'>GENERAL.DEVICES:                        enp0s3
-</span><span class='line'>GENERAL.STATE:                          activated
-</span><span class='line'>GENERAL.DEFAULT:                        yes
-</span><span class='line'>GENERAL.DEFAULT6:                       no
-</span><span class='line'>GENERAL.VPN:                            no
-</span><span class='line'>GENERAL.ZONE:                           --
-</span><span class='line'>GENERAL.DBUS-PATH:                      /org/freedesktop/NetworkManager/ActiveConnection/0
-</span><span class='line'>GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/Settings/0
-</span><span class='line'>GENERAL.SPEC-OBJECT:                    /
-</span><span class='line'>GENERAL.MASTER-PATH:                    --
-</span><span class='line'>IP4.ADDRESS[1]:                         192.168.241.130/24
-</span><span class='line'>IP4.GATEWAY:                            192.168.241.2
-</span><span class='line'>IP4.DNS[1]:                             192.168.241.2
-</span><span class='line'>IP4.DNS[2]:                             8.8.8.8
-</span><span class='line'>IP4.DOMAIN[1]:                          localdomain
-</span><span class='line'>DHCP4.OPTION[1]:                        requested_routers = 1
-</span><span class='line'>DHCP4.OPTION[2]:                        requested_domain_search = 1
-</span><span class='line'>DHCP4.OPTION[3]:                        requested_time_offset = 1
-</span><span class='line'>DHCP4.OPTION[4]:                        requested_domain_name = 1
-</span><span class='line'>DHCP4.OPTION[5]:                        requested_rfc3442_classless_static_routes = 1
-</span><span class='line'>DHCP4.OPTION[6]:                        requested_classless_static_routes = 1
-</span><span class='line'>DHCP4.OPTION[7]:                        requested_wpad = 1
-</span><span class='line'>DHCP4.OPTION[8]:                        requested_broadcast_address = 1
-</span><span class='line'>DHCP4.OPTION[9]:                        next_server = 192.168.241.254
-</span><span class='line'>DHCP4.OPTION[10]:                       expiry = 1515584826
-</span><span class='line'>DHCP4.OPTION[11]:                       requested_interface_mtu = 1
-</span><span class='line'>DHCP4.OPTION[12]:                       requested_subnet_mask = 1
-</span><span class='line'>DHCP4.OPTION[13]:                       domain_name = localdomain
-</span><span class='line'>DHCP4.OPTION[14]:                       dhcp_message_type = 5
-</span><span class='line'>DHCP4.OPTION[15]:                       ip_address = 192.168.241.130
-</span><span class='line'>DHCP4.OPTION[16]:                       routers = 192.168.241.2
-</span><span class='line'>DHCP4.OPTION[17]:                       requested_static_routes = 1
-</span><span class='line'>DHCP4.OPTION[18]:                       subnet_mask = 255.255.255.0
-</span><span class='line'>DHCP4.OPTION[19]:                       requested_domain_name_servers = 1
-</span><span class='line'>DHCP4.OPTION[20]:                       requested_nis_servers = 1
-</span><span class='line'>DHCP4.OPTION[21]:                       requested_ntp_servers = 1
-</span><span class='line'>DHCP4.OPTION[22]:                       domain_name_servers = 192.168.241.2
-</span><span class='line'>DHCP4.OPTION[23]:                       dhcp_lease_time = 1800
-</span><span class='line'>DHCP4.OPTION[24]:                       requested_ms_classless_static_routes = 1
-</span><span class='line'>DHCP4.OPTION[25]:                       broadcast_address = 192.168.241.255
-</span><span class='line'>DHCP4.OPTION[26]:                       requested_nis_domain = 1
-</span><span class='line'>DHCP4.OPTION[27]:                       network_number = 192.168.241.0
-</span><span class='line'>DHCP4.OPTION[28]:                       requested_host_name = 1
-</span><span class='line'>DHCP4.OPTION[29]:                       dhcp_server_identifier = 192.168.241.254
-</span><span class='line'>IP6.ADDRESS[1]:                         fe80::d7e8:7b48:831f:a1de/64
-</span><span class='line'>IP6.GATEWAY:                            </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>adding connections</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-<span class='line-number'>78</span>
-<span class='line-number'>79</span>
-<span class='line-number'>80</span>
-<span class='line-number'>81</span>
-<span class='line-number'>82</span>
-<span class='line-number'>83</span>
-<span class='line-number'>84</span>
-<span class='line-number'>85</span>
-<span class='line-number'>86</span>
-<span class='line-number'>87</span>
-<span class='line-number'>88</span>
-<span class='line-number'>89</span>
-<span class='line-number'>90</span>
-<span class='line-number'>91</span>
-<span class='line-number'>92</span>
-<span class='line-number'>93</span>
-<span class='line-number'>94</span>
-<span class='line-number'>95</span>
-<span class='line-number'>96</span>
-<span class='line-number'>97</span>
-<span class='line-number'>98</span>
-<span class='line-number'>99</span>
-<span class='line-number'>100</span>
-<span class='line-number'>101</span>
-<span class='line-number'>102</span>
-<span class='line-number'>103</span>
-<span class='line-number'>104</span>
-<span class='line-number'>105</span>
-<span class='line-number'>106</span>
-<span class='line-number'>107</span>
-<span class='line-number'>108</span>
-<span class='line-number'>109</span>
-<span class='line-number'>110</span>
-<span class='line-number'>111</span>
-<span class='line-number'>112</span>
-<span class='line-number'>113</span>
-<span class='line-number'>114</span>
-<span class='line-number'>115</span>
-<span class='line-number'>116</span>
-<span class='line-number'>117</span>
-<span class='line-number'>118</span>
-<span class='line-number'>119</span>
-<span class='line-number'>120</span>
-<span class='line-number'>121</span>
-<span class='line-number'>122</span>
-<span class='line-number'>123</span>
-<span class='line-number'>124</span>
-<span class='line-number'>125</span>
-<span class='line-number'>126</span>
-<span class='line-number'>127</span>
-<span class='line-number'>128</span>
-<span class='line-number'>129</span>
-<span class='line-number'>130</span>
-<span class='line-number'>131</span>
-<span class='line-number'>132</span>
-<span class='line-number'>133</span>
-<span class='line-number'>134</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con add help
-</span><span class='line'>Usage: nmcli connection add { ARGUMENTS | help }
-</span><span class='line'>
-</span><span class='line'>ARGUMENTS := COMMON_OPTIONS TYPE_SPECIFIC_OPTIONS SLAVE_OPTIONS IP_OPTIONS [-- ([+|-]&lt;setting&gt;.&lt;property&gt; &lt;value&gt;)+]
-</span><span class='line'>
-</span><span class='line'>  COMMON_OPTIONS:
-</span><span class='line'>                  type &lt;type&gt;
-</span><span class='line'>                  ifname &lt;interface name&gt; | "*"
-</span><span class='line'>                  [con-name &lt;connection name&gt;]
-</span><span class='line'>                  [autoconnect yes|no]
-</span><span class='line'>                  [save yes|no]
-</span><span class='line'>                  [master &lt;master (ifname, or connection UUID or name)&gt;]
-</span><span class='line'>                  [slave-type &lt;master connection type&gt;]
-</span><span class='line'>
-</span><span class='line'>  TYPE_SPECIFIC_OPTIONS:
-</span><span class='line'>    ethernet:     [mac &lt;MAC address&gt;]
-</span><span class='line'>                  [cloned-mac &lt;cloned MAC address&gt;]
-</span><span class='line'>                  [mtu &lt;MTU&gt;]
-</span><span class='line'>
-</span><span class='line'>    wifi:         ssid &lt;SSID&gt;
-</span><span class='line'>                  [mac &lt;MAC address&gt;]
-</span><span class='line'>                  [cloned-mac &lt;cloned MAC address&gt;]
-</span><span class='line'>                  [mtu &lt;MTU&gt;]
-</span><span class='line'>                  [mode infrastructure|ap|adhoc]
-</span><span class='line'>
-</span><span class='line'>    wimax:        [mac &lt;MAC address&gt;]
-</span><span class='line'>                  [nsp &lt;NSP&gt;]
-</span><span class='line'>
-</span><span class='line'>    pppoe:        username &lt;PPPoE username&gt;
-</span><span class='line'>                  [password &lt;PPPoE password&gt;]
-</span><span class='line'>                  [service &lt;PPPoE service name&gt;]
-</span><span class='line'>                  [mtu &lt;MTU&gt;]
-</span><span class='line'>                  [mac &lt;MAC address&gt;]
-</span><span class='line'>
-</span><span class='line'>    gsm:          apn &lt;APN&gt;
-</span><span class='line'>                  [user &lt;username&gt;]
-</span><span class='line'>                  [password &lt;password&gt;]
-</span><span class='line'>
-</span><span class='line'>    cdma:         [user &lt;username&gt;]
-</span><span class='line'>                  [password &lt;password&gt;]
-</span><span class='line'>
-</span><span class='line'>    infiniband:   [mac &lt;MAC address&gt;]
-</span><span class='line'>                  [mtu &lt;MTU&gt;]
-</span><span class='line'>                  [transport-mode datagram | connected]
-</span><span class='line'>                  [parent &lt;ifname&gt;]
-</span><span class='line'>                  [p-key &lt;IPoIB P_Key&gt;]
-</span><span class='line'>
-</span><span class='line'>    bluetooth:    [addr &lt;bluetooth address&gt;]
-</span><span class='line'>                  [bt-type panu|dun-gsm|dun-cdma]
-</span><span class='line'>
-</span><span class='line'>    vlan:         dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
-</span><span class='line'>                  id &lt;VLAN ID&gt;
-</span><span class='line'>                  [flags &lt;VLAN flags&gt;]
-</span><span class='line'>                  [ingress &lt;ingress priority mapping&gt;]
-</span><span class='line'>                  [egress &lt;egress priority mapping&gt;]
-</span><span class='line'>                  [mtu &lt;MTU&gt;]
-</span><span class='line'>
-</span><span class='line'>    bond:         [mode balance-rr (0) | active-backup (1) | balance-xor (2) | broadcast (3) |
-</span><span class='line'>                        802.3ad    (4) | balance-tlb   (5) | balance-alb (6)]
-</span><span class='line'>                  [primary &lt;ifname&gt;]
-</span><span class='line'>                  [miimon &lt;num&gt;]
-</span><span class='line'>                  [downdelay &lt;num&gt;]
-</span><span class='line'>                  [updelay &lt;num&gt;]
-</span><span class='line'>                  [arp-interval &lt;num&gt;]
-</span><span class='line'>                  [arp-ip-target &lt;num&gt;]
-</span><span class='line'>                  [lacp-rate slow (0) | fast (1)]
-</span><span class='line'>
-</span><span class='line'>    bond-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
-</span><span class='line'>
-</span><span class='line'>    team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
-</span><span class='line'>
-</span><span class='line'>    team-slave:   master &lt;master (ifname, or connection UUID or name)&gt;
-</span><span class='line'>                  [config &lt;file&gt;|&lt;raw JSON data&gt;]
-</span><span class='line'>
-</span><span class='line'>    bridge:       [stp yes|no]
-</span><span class='line'>                  [priority &lt;num&gt;]
-</span><span class='line'>                  [forward-delay &lt;2-30&gt;]
-</span><span class='line'>                  [hello-time &lt;1-10&gt;]
-</span><span class='line'>                  [max-age &lt;6-40&gt;]
-</span><span class='line'>                  [ageing-time &lt;0-1000000&gt;]
-</span><span class='line'>                  [multicast-snooping yes|no]
-</span><span class='line'>                  [mac &lt;MAC address&gt;]
-</span><span class='line'>
-</span><span class='line'>    bridge-slave: master &lt;master (ifname, or connection UUID or name)&gt;
-</span><span class='line'>                  [priority &lt;0-63&gt;]
-</span><span class='line'>                  [path-cost &lt;1-65535&gt;]
-</span><span class='line'>                  [hairpin yes|no]
-</span><span class='line'>
-</span><span class='line'>    vpn:          vpn-type vpnc|openvpn|pptp|openconnect|openswan|libreswan|ssh|l2tp|iodine|...
-</span><span class='line'>                  [user &lt;username&gt;]
-</span><span class='line'>
-</span><span class='line'>    olpc-mesh:    ssid &lt;SSID&gt;
-</span><span class='line'>                  [channel &lt;1-13&gt;]
-</span><span class='line'>                  [dhcp-anycast &lt;MAC address&gt;]
-</span><span class='line'>
-</span><span class='line'>    adsl:         username &lt;username&gt;
-</span><span class='line'>                  protocol pppoa|pppoe|ipoatm
-</span><span class='line'>                  [password &lt;password&gt;]
-</span><span class='line'>                  [encapsulation vcmux|llc]
-</span><span class='line'>
-</span><span class='line'>    tun:          mode tun|tap
-</span><span class='line'>                  [owner &lt;UID&gt;]
-</span><span class='line'>                  [group &lt;GID&gt;]
-</span><span class='line'>                  [pi yes|no]
-</span><span class='line'>                  [vnet-hdr yes|no]
-</span><span class='line'>                  [multi-queue yes|no]
-</span><span class='line'>
-</span><span class='line'>    ip-tunnel:    mode ipip|gre|sit|isatap|vti|ip6ip6|ipip6|ip6gre|vti6
-</span><span class='line'>                  remote &lt;remote endpoint IP&gt;
-</span><span class='line'>                  [local &lt;local endpoint IP&gt;]
-</span><span class='line'>                  [dev &lt;parent device (ifname or connection UUID)&gt;]
-</span><span class='line'>
-</span><span class='line'>    macvlan:      dev &lt;parent device (connection UUID, ifname, or MAC)&gt;
-</span><span class='line'>                  mode vepa|bridge|private|passthru|source
-</span><span class='line'>                  [tap yes|no]
-</span><span class='line'>
-</span><span class='line'>    vxlan:        id &lt;VXLAN ID&gt;
-</span><span class='line'>                  remote &lt;IP of multicast group or remote address&gt;
-</span><span class='line'>                  [local &lt;source IP&gt;]
-</span><span class='line'>                  [dev &lt;parent device (ifname or connection UUID)&gt;]
-</span><span class='line'>                  [source-port-min &lt;0-65535&gt;]
-</span><span class='line'>                  [source-port-max &lt;0-65535&gt;]
-</span><span class='line'>                  [destination-port &lt;0-65535&gt;]
-</span><span class='line'>
-</span><span class='line'>  SLAVE_OPTIONS:
-</span><span class='line'>    bridge:       [priority &lt;0-63&gt;]
-</span><span class='line'>                  [path-cost &lt;1-65535&gt;]
-</span><span class='line'>                  [hairpin yes|no]
-</span><span class='line'>
-</span><span class='line'>    team:         [config &lt;file&gt;|&lt;raw JSON data&gt;]
-</span><span class='line'>
-</span><span class='line'>  IP_OPTIONS:
-</span><span class='line'>                  [ip4 &lt;IPv4 address&gt;] [gw4 &lt;IPv4 gateway&gt;]
-</span><span class='line'>                  [ip6 &lt;IPv6 address&gt;] [gw6 &lt;IPv6 gateway&gt;]</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add a new DHCP connection that will start on boot</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con add con-name newdhcp type ethernet ifname enp0s3 
-</span><span class='line'>Connection 'newdhcp' (8c90fcd7-5e40-43c6-819b-47cab3051b5e) successfully added.
-</span><span class='line'>nmcli con up newdhcp 
-</span><span class='line'>Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/3)
-</span><span class='line'>nmcli con show --active 
-</span><span class='line'>NAME     UUID                                  TYPE            DEVICE 
-</span><span class='line'>newdhcp  8c90fcd7-5e40-43c6-819b-47cab3051b5e  802-3-ethernet  enp0s3 
-</span><span class='line'>virbr0   321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add a static connection</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con add con-name static-con ifname enp0s3 autoconnect no type ethernet ip4 192.168.241.120/24 gw4 192.168.241.2
-</span><span class='line'>Connection 'static-con' (258c2964-ac43-4ed8-bffa-7ad09967b748) successfully added.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Let&rsquo;s see the IP we started with:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ifconfig | grep inet
-</span><span class='line'>        inet 192.168.241.130  netmask 255.255.255.0  broadcast 192.168.241.255</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And after switching to the static connection:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con up static-con 
-</span><span class='line'>Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/4)
-</span><span class='line'>nmcli con show --active 
-</span><span class='line'>NAME        UUID                                  TYPE            DEVICE 
-</span><span class='line'>static-con  258c2964-ac43-4ed8-bffa-7ad09967b748  802-3-ethernet  enp0s3 
-</span><span class='line'>virbr0      321062a9-495a-4095-b4b5-d1af9c0cc65c  bridge          virbr0 
-</span><span class='line'>ifconfig | grep inet
-</span><span class='line'>        inet 192.168.241.120  netmask 255.255.255.0  broadcast 192.168.241.255</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>modifying connections</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con mod help
-</span><span class='line'>Usage: nmcli connection modify { ARGUMENTS | help }
-</span><span class='line'>
-</span><span class='line'>ARGUMENTS := [id | uuid | path] &lt;ID&gt; ([+|-]&lt;setting&gt;.&lt;property&gt; &lt;value&gt;)+
-</span><span class='line'>
-</span><span class='line'>Modify one or more properties of the connection profile.
-</span><span class='line'>The profile is identified by its name, UUID or D-Bus path. For multi-valued
-</span><span class='line'>properties you can use optional '+' or '-' prefix to the property name.
-</span><span class='line'>The '+' sign allows appending items instead of overwriting the whole value.
-</span><span class='line'>The '-' sign allows removing selected items instead of the whole value.
-</span><span class='line'>
-</span><span class='line'>Examples:
-</span><span class='line'>nmcli con mod home-wifi wifi.ssid rakosnicek
-</span><span class='line'>nmcli con mod em1-1 ipv4.method manual ipv4.addr "192.168.1.2/24, 10.10.1.5/8"
-</span><span class='line'>nmcli con mod em1-1 +ipv4.dns 8.8.4.4
-</span><span class='line'>nmcli con mod em1-1 -ipv4.dns 1
-</span><span class='line'>nmcli con mod em1-1 -ipv6.addr "abbe::cafe/56"
-</span><span class='line'>nmcli con mod bond0 +bond.options mii=500
-</span><span class='line'>nmcli con mod bond0 -bond.options downdelay</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>add a DNS server to an existing connection</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli con show static-con | grep ipv4.dns
-</span><span class='line'>ipv4.dns:                               
-</span><span class='line'>ipv4.dns-search:                        
-</span><span class='line'>ipv4.dns-options:                       (default)
-</span><span class='line'>ipv4.dns-priority:                      0
-</span><span class='line'>nmcli con mod static-con ipv4.dns 8.8.8.8
-</span><span class='line'>nmcli con up static-con
-</span><span class='line'>nmcli con show static-con | grep ipv4.dns
-</span><span class='line'>ipv4.dns:                               8.8.8.8
-</span><span class='line'>ipv4.dns-search:                        
-</span><span class='line'>ipv4.dns-options:                       (default)
-</span><span class='line'>ipv4.dns-priority:                      0</span></code></pre></td></tr></table></div></figure>
-
-
-<h3>Learn more</h3>
-
-<ul>
-<li><a href="https://developer.gnome.org/NetworkManager/">NetworkManager documentation</a></li>
-<li><a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/networking_guide/">RHEL7 networking guide</a></li>
-<li><a href="https://www.certdepot.net/rhel7-get-started-nmcli/">CertDepot NetworkManager guide</a></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
-</span><span class='line'>/ You're currently going through a   \
-</span><span class='line'>| difficult transition period called |
-</span><span class='line'>\ "Life."                            /
-</span><span class='line'> ------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\

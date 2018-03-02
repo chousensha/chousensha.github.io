@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-03-01T14:37:34-05:00</updated>
+  <updated>2018-03-02T13:46:02-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,503 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Storage Management]]></title>
+    <link href="http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management/"/>
+    <updated>2018-03-02T13:12:06-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Storage Management domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/storage.png" title="&lsquo;linux storage&rsquo; &lsquo;storage objectives&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/storage2.png" title="&lsquo;linux storage&rsquo; &lsquo;storage objectives&rsquo;" ></p>
+
+<h4>mdadm</h4>
+
+<blockquote><p>manage MD devices aka Linux Software RAID</p></blockquote>
+
+<h4>lsblk</h4>
+
+<blockquote><p>list block devices</p></blockquote>
+
+<p><code>
+lsblk
+NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+fd0               2:0    1    4K  0 disk
+sda               8:0    0   20G  0 disk
+├─sda1            8:1    0  500M  0 part /boot
+└─sda2            8:2    0 19.5G  0 part
+  ├─centos-root 253:0    0 17.5G  0 lvm  /
+  └─centos-swap 253:1    0    2G  0 lvm  [SWAP]
+sdb               8:16   0    1G  0 disk
+sr0              11:0    1 1024M  0 rom  
+</code></p>
+
+<ul>
+<li>output filesystem info</li>
+</ul>
+
+
+<p>```
+lsblk -f
+NAME         FSTYPE      LABEL UUID                                   MOUNTPOINT
+fd0                                                                 <br/>
+sda                                                                 <br/>
+├─sda1       xfs               ef67363c-0fb5-4680-aa53-572e5e38d8d0   /boot
+└─sda2       LVM2_member       0R3HDI-jqHC-WdoO-gDZ5-ScPb-JdkI-y9sIvD
+  ├─centos-root</p>
+
+<pre><code>         xfs               71dd7ac4-ba5b-4e8a-a706-a51264d85900   /
+</code></pre>
+
+<p>  └─centos-swap</p>
+
+<pre><code>         swap              41edd5da-8142-4fc6-9e96-e8b7a08c2ae9   [SWAP]
+</code></pre>
+
+<p>sdb                                                                 <br/>
+sr0                                              <br/>
+```</p>
+
+<h4>fdisk</h4>
+
+<blockquote><p>manipulate disk partition table</p></blockquote>
+
+<ul>
+<li>list partition tables</li>
+</ul>
+
+
+<p>```
+fdisk -l /dev/sda</p>
+
+<p>Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x000e124e</p>
+
+<p>   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+/dev/sda2         1026048    41943039    20458496   8e  Linux LVM
+```</p>
+
+<ul>
+<li>fdisk menu</li>
+</ul>
+
+
+<p><code>
+Command action
+   a   toggle a bootable flag
+   b   edit bsd disklabel
+   c   toggle the dos compatibility flag
+   d   delete a partition
+   g   create a new empty GPT partition table
+   G   create an IRIX (SGI) partition table
+   l   list known partition types
+   m   print this menu
+   n   add a new partition
+   o   create a new empty DOS partition table
+   p   print the partition table
+   q   quit without saving changes
+   s   create a new empty Sun disklabel
+   t   change a partition's system id
+   u   change display/entry units
+   v   verify the partition table
+   w   write table to disk and exit
+   x   extra functionality (experts only)
+</code></p>
+
+<h4>gdisk</h4>
+
+<blockquote><p>Interactive GUID partition table (GPT) manipulator</p></blockquote>
+
+<p>```
+gdisk /dev/sdb
+GPT fdisk (gdisk) version 0.8.6</p>
+
+<p>Partition table scan:
+  MBR: not present
+  BSD: not present
+  APM: not present
+  GPT: not present</p>
+
+<p>Creating new GPT entries.</p>
+
+<p>Command (? for help): ?
+b   back up GPT data to a file
+c   change a partition&rsquo;s name
+d   delete a partition
+i   show detailed information on a partition
+l   list known partition types
+n   add a new partition
+o   create a new empty GUID partition table (GPT)
+p   print the partition table
+q   quit without saving changes
+r   recovery and transformation options (experts only)
+s   sort partitions
+t   change a partition&rsquo;s type code
+v   verify disk
+w   write table to disk and exit
+x   extra functionality (experts only)
+?   print this menu
+```</p>
+
+<h4>parted</h4>
+
+<blockquote><p>a partition manipulation program</p></blockquote>
+
+<ul>
+<li>list all partitions</li>
+</ul>
+
+
+<p>```
+parted -l
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 21.5GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:</p>
+
+<p>Number  Start   End     Size    Type     File system  Flags
+ 1      1049kB  525MB   524MB   primary  xfs          boot
+ 2      525MB   21.5GB  20.9GB  primary               lvm</p>
+
+<p>Error: /dev/sdb: unrecognised disk label
+Model: VMware, VMware Virtual S (scsi)                                  <br/>
+Disk /dev/sdb: 1074MB
+Sector size (logical/physical): 512B/512B
+Partition Table: unknown
+Disk Flags:</p>
+
+<p>Model: Linux device-mapper (linear) (dm)
+Disk /dev/mapper/centos-swap: 2147MB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+Disk Flags:</p>
+
+<p>Number  Start  End     Size    File system     Flags
+ 1      0.00B  2147MB  2147MB  linux-swap(v1)</p>
+
+<p>Model: Linux device-mapper (linear) (dm)
+Disk /dev/mapper/centos-root: 18.8GB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+Disk Flags:</p>
+
+<p>Number  Start  End     Size    File system  Flags
+ 1      0.00B  18.8GB  18.8GB  xfs
+```</p>
+
+<h4>mkfs</h4>
+
+<blockquote><p>build a Linux filesystem</p></blockquote>
+
+<ul>
+<li><p>-t # filesystem type</p></li>
+<li><p>types of filesystems</p></li>
+</ul>
+
+
+<p><code>
+mkfs.
+mkfs.btrfs   mkfs.ext2    mkfs.ext4    mkfs.minix   mkfs.vfat    
+mkfs.cramfs  mkfs.ext3    mkfs.fat     mkfs.msdos   mkfs.xfs  
+</code></p>
+
+<h4>tune2fs</h4>
+
+<blockquote><p>adjust  tunable  filesystem  parameters  on  ext2/ext3/ext4 filesystems</p></blockquote>
+
+<ul>
+<li>set label</li>
+</ul>
+
+
+<p><code>
+tune2fs -L label device
+</code></p>
+
+<h4>e2label</h4>
+
+<blockquote><p>Change the label on an ext2/ext3/ext4 filesystem</p></blockquote>
+
+<h4>dumpe2fs</h4>
+
+<blockquote><p>dump ext2/ext3/ext4 filesystem information</p></blockquote>
+
+<h4>xfs_db</h4>
+
+<blockquote><p>debug an XFS filesystem</p></blockquote>
+
+<h4>mount</h4>
+
+<blockquote><p>mount a filesystem</p>
+
+<p>mount -t type device dir</p></blockquote>
+
+<ul>
+<li>-a # mount all filesystems</li>
+<li>-r # mount read-only</li>
+<li><p>-o # mount options</p></li>
+<li><p>list all mounted filesystems</p></li>
+</ul>
+
+
+<p><code>
+mount -l
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime,seclabel)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+devtmpfs on /dev type devtmpfs (rw,nosuid,seclabel,size=926484k,nr_inodes=231621,mode=755)
+securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,seclabel)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,seclabel,mode=755)
+tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,seclabel,mode=755)
+cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
+pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
+cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
+cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
+cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_prio,net_cls)
+configfs on /sys/kernel/config type configfs (rw,relatime)
+/dev/mapper/rhel-root on / type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+selinuxfs on /sys/fs/selinux type selinuxfs (rw,relatime)
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=33,pgrp=1,timeout=300,minproto=5,maxproto=5,direct)
+hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,seclabel)
+debugfs on /sys/kernel/debug type debugfs (rw,relatime)
+mqueue on /dev/mqueue type mqueue (rw,relatime,seclabel)
+nfsd on /proc/fs/nfsd type nfsd (rw,relatime)
+/dev/sda1 on /boot type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+tmpfs on /run/user/0 type tmpfs (rw,nosuid,nodev,relatime,seclabel,size=188412k,mode=700)
+gvfsd-fuse on /run/user/0/gvfs type fuse.gvfsd-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0)
+fusectl on /sys/fs/fuse/connections type fusectl (rw,relatime)
+</code></p>
+
+<h4>umount</h4>
+
+<blockquote><p>unmount file systems</p></blockquote>
+
+<h4>blkid</h4>
+
+<blockquote><p>locate/print block device attributes</p></blockquote>
+
+<p><code>
+blkid
+/dev/sda1: UUID="b8e2fb99-bf4c-4632-883b-8ed5c2350b1e" TYPE="xfs"
+/dev/sda2: UUID="PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP" TYPE="LVM2_member"
+/dev/mapper/rhel-root: UUID="2c0268ac-c31a-462d-b5b9-41bdfbecd75d" TYPE="xfs"
+/dev/mapper/rhel-swap: UUID="6544d880-b634-4566-a68d-d3a58cec4cf6" TYPE="swap"
+</code></p>
+
+<h4>xfs_info</h4>
+
+<blockquote><p>expand an XFS filesystem</p></blockquote>
+
+<p>```
+xfs_info /dev/sda1
+meta-data=/dev/sda1              isize=512    agcount=4, agsize=65536 blks</p>
+
+<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
+     =                       crc=1        finobt=0 spinodes=0
+</code></pre>
+
+<p>data     =                       bsize=4096   blocks=262144, imaxpct=25</p>
+
+<pre><code>     =                       sunit=0      swidth=0 blks
+</code></pre>
+
+<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=2560, version=2</p>
+
+<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
+</code></pre>
+
+<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
+```</p>
+
+<h4>mkswap</h4>
+
+<blockquote><p>set up a Linux swap area</p></blockquote>
+
+<h4>swapon, swapoff</h4>
+
+<blockquote><p>enable/disable devices and files for paging and swapping</p></blockquote>
+
+<ul>
+<li>display swap usage</li>
+</ul>
+
+
+<p><code>
+swapon -s
+Filename                Type        Size    Used    Priority
+/dev/dm-1        
+</code></p>
+
+<h4>pvscan</h4>
+
+<blockquote><p>scan all disks for physical volumes</p></blockquote>
+
+<p><code>
+pvscan
+  PV /dev/sda2   VG centos          lvm2 [19.51 GiB / 40.00 MiB free]
+  Total: 1 [19.51 GiB] / in use: 1 [19.51 GiB] / in no VG: 0 [0   ]
+</code></p>
+
+<h4>vgscan</h4>
+
+<blockquote><p>scan all disks for volume groups and rebuild caches</p></blockquote>
+
+<p><code>
+vgscan
+  Reading volume groups from cache.
+  Found volume group "centos" using metadata type lvm2
+</code></p>
+
+<h4>lvscan</h4>
+
+<blockquote><p>scan (all disks) for Logical Volumes</p></blockquote>
+
+<p><code>
+lvscan
+  ACTIVE            '/dev/centos/swap' [2.00 GiB] inherit
+  ACTIVE            '/dev/centos/root' [17.47 GiB] inherit
+</code></p>
+
+<h4>pvcreate</h4>
+
+<blockquote><p>initialize a disk or partition for use by LVM</p></blockquote>
+
+<h4>vgcreate</h4>
+
+<blockquote><p>create a volume group</p></blockquote>
+
+<h4>vgs</h4>
+
+<blockquote><p>report information about volume groups</p></blockquote>
+
+<p><code>
+vgs
+  VG     #PV #LV #SN Attr   VSize  VFree
+  centos   1   2   0 wz--n- 19.51g 40.00m
+</code></p>
+
+<h4>lvcreate</h4>
+
+<blockquote><p>create a logical volume in an existing volume group</p></blockquote>
+
+<h4>vgextend</h4>
+
+<blockquote><p>add physical volumes to a volume group</p></blockquote>
+
+<h4>lvextend</h4>
+
+<blockquote><p>extend the size of a logical volume</p></blockquote>
+
+<h4>lvremove</h4>
+
+<blockquote><p>remove a logical volume</p></blockquote>
+
+<h4>pvmove</h4>
+
+<blockquote><p>move physical extents</p></blockquote>
+
+<h4>vgreduce</h4>
+
+<blockquote><p>reduce a volume group</p></blockquote>
+
+<h4>pvremove</h4>
+
+<blockquote><p>remove a physical volume</p></blockquote>
+
+<h4>getfacl</h4>
+
+<blockquote><p>get file access control lists</p></blockquote>
+
+<p>```
+getfacl out.txt</p>
+
+<h1>file: out.txt</h1>
+
+<h1>owner: root</h1>
+
+<h1>group: root</h1>
+
+<p>user::rw-
+group::r&mdash;
+other::r&mdash;
+```</p>
+
+<h4>setfacl</h4>
+
+<blockquote><p>set file access control lists</p></blockquote>
+
+<ul>
+<li>give user dave read and write rights on a file</li>
+</ul>
+
+
+<p><code>
+setfacl -m u:dave:rw file
+</code></p>
+
+<ul>
+<li>set default ACL recursively on a directory for a group and give read and directory traversal permissions (but no execute for files)</li>
+</ul>
+
+
+<p><code>
+setfacl -R -m d:g:rockstars:rX folder
+</code></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: How many IBM types does it take to   \
+| change a light bulb? A: Fifteen. One to |
+| do it, and fourteen to write document   |
+| number                                  |
+|                                         |
+| GC7500439-0001, Multitasking            |
+| Incandescent Source System Facility,    |
+|                                         |
+| of which 10% of the pages state only    |
+| &ldquo;This page intentionally                |
+|                                         |
+| left blank&rdquo;, and 20% of the definitions |
+| are of the form &ldquo;A:&hellip;..                |
+|                                         |
+| consists of sequences of non-blank      |
+\ characters separated by blanks&rdquo;.        /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Networking]]></title>
@@ -2983,314 +3480,6 @@ drwxr-xr-x root/root         0 2017-09-08 17:54 Documents/
 | can hear and the blind can read.      |
 |                                       |
 \ &mdash; Mark Twain                         /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Managing SELinux]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/"/>
-    <updated>2018-02-23T13:18:55-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux</id>
-    <content type="html"><![CDATA[<p>In this post we&rsquo;ll go over using SELinux to manage the security of a Linux system.</p>
-
-<p>NSA Security-Enhanced Linux or SELinux is a mandatory access control architecture controlled through the <code>/etc/selinux/config</code> file.</p>
-
-<!-- more -->
-
-
-<p>Let&rsquo;s take a peek at the file on my box:</p>
-
-<p>```
-cat /etc/selinux/config</p>
-
-<h1>This file controls the state of SELinux on the system.</h1>
-
-<h1>SELINUX= can take one of these three values:</h1>
-
-<h1>enforcing &ndash; SELinux security policy is enforced.</h1>
-
-<h1>permissive &ndash; SELinux prints warnings instead of enforcing.</h1>
-
-<h1>disabled &ndash; No SELinux policy is loaded.</h1>
-
-<p>SELINUX=enforcing</p>
-
-<h1>SELINUXTYPE= can take one of three two values:</h1>
-
-<h1>targeted &ndash; Targeted processes are protected,</h1>
-
-<h1>minimum &ndash; Modification of targeted policy. Only selected processes are protected.</h1>
-
-<h1>mls &ndash; Multi Level Security protection.</h1>
-
-<p>SELINUXTYPE=targeted
-```</p>
-
-<p>If SELinux is disabled and then enabled, all the files inside the filesystem will need to be re-labeled.</p>
-
-<p>You can adjust SELinux with many commands and utilities:</p>
-
-<h3>getenforce</h3>
-
-<blockquote><p>get the current mode of SELinux</p></blockquote>
-
-<p><code>
-getenforce
-Enforcing
-</code></p>
-
-<h3>sestatus</h3>
-
-<blockquote><p>SELinux status tool</p></blockquote>
-
-<p><code>
-sestatus
-SELinux status:                 enabled
-SELinuxfs mount:                /sys/fs/selinux
-SELinux root directory:         /etc/selinux
-Loaded policy name:             targeted
-Current mode:                   enforcing
-Mode from config file:          enforcing
-Policy MLS status:              enabled
-Policy deny_unknown status:     allowed
-Max kernel policy version:      28
-</code></p>
-
-<h3>setenforce</h3>
-
-<blockquote><p>modify the mode SELinux is running in</p>
-
-<p>Use Enforcing or 1 to put SELinux in enforcing mode.
-Use Permissive or 0 to put SELinux in permissive mode</p></blockquote>
-
-<h3>SELinux log files:</h3>
-
-<p><code>
-tail /var/log/audit/audit.log | grep AVC
-type=USER_AVC msg=audit(1518200447.761:276): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='avc:  denied  { status } for auid=n/a uid=0 gid=0 path="/etc/fstab" cmdline="systemctl show --property=RequiredBy -- -.mount" scontext=system_u:system_r:initrc_t:s0 tcontext=unconfined_u:object_r:etc_t:s0 tclass=service  exe="/usr/lib/systemd/systemd" sauid=0 hostname=? addr=? terminal=?'
-</code></p>
-
-<h3>ausearch</h3>
-
-<blockquote><p>a tool to query audit daemon logs</p></blockquote>
-
-<p>```</p>
-
-<h2>ausearch -m avc</h2>
-
-<p>time->Wed Aug  3 15:23:45 2016
-type=SYSCALL msg=audit(1470227025.724:584): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=7efd495a23a8 a2=1c a3=7fff168b531c items=0 ppid=1 pid=8541 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=&ldquo;httpd&rdquo; exe=&ldquo;/usr/sbin/httpd&rdquo; subj=system_u:system_r:httpd_t:s0 key=(null)
-type=AVC msg=audit(1470227025.724:584): avc:  denied  { name_bind } for  pid=8541 comm=&ldquo;httpd&rdquo; src=8888 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket
-```</p>
-
-<h3>restorecon</h3>
-
-<blockquote><p>restore file(s) default SELinux security contexts.</p></blockquote>
-
-<h3>chcon</h3>
-
-<blockquote><p>change file SELinux security context</p></blockquote>
-
-<h3>semanage</h3>
-
-<blockquote><p>SELinux Policy Management tool</p></blockquote>
-
-<p><code>
-semanage boolean -l | grep nfs
-xen_use_nfs                    (off  ,  off)  Allow xen to use nfs
-mpd_use_nfs                    (off  ,  off)  Allow mpd to use nfs
-virt_use_nfs                   (off  ,  off)  Allow virt to use nfs
-use_nfs_home_dirs              (off  ,  off)  Allow use to nfs home dirs
-ksmtuned_use_nfs               (off  ,  off)  Allow ksmtuned to use nfs
-nfsd_anon_write                (off  ,  off)  Allow nfsd to anon write
-git_system_use_nfs             (off  ,  off)  Allow git to system use nfs
-git_cgi_use_nfs                (off  ,  off)  Allow git to cgi use nfs
-logrotate_use_nfs              (off  ,  off)  Allow logrotate to use nfs
-cobbler_use_nfs                (off  ,  off)  Allow cobbler to use nfs
-httpd_use_nfs                  (off  ,  off)  Allow httpd to use nfs
-sge_use_nfs                    (off  ,  off)  Allow sge to use nfs
-sanlock_use_nfs                (off  ,  off)  Allow sanlock to use nfs
-samba_share_nfs                (off  ,  off)  Allow samba to share nfs
-ftpd_use_nfs                   (off  ,  off)  Allow ftpd to use nfs
-openshift_use_nfs              (off  ,  off)  Allow openshift to use nfs
-polipo_use_nfs                 (off  ,  off)  Allow polipo to use nfs
-tmpreaper_use_nfs              (off  ,  off)  Allow tmpreaper to use nfs
-nfs_export_all_rw              (on   ,   on)  Allow nfs to export all rw
-nfs_export_all_ro              (on   ,   on)  Allow nfs to export all ro
-</code></p>
-
-<ul>
-<li>list ports</li>
-</ul>
-
-
-<p><code>
-semanage port -l | grep ftp
-ftp_data_port_t                tcp      20
-ftp_port_t                     tcp      21, 989, 990
-ftp_port_t                     udp      989, 990
-tftp_port_t                    udp      69
-</code></p>
-
-<ul>
-<li>change label</li>
-</ul>
-
-
-<p><code>
-semanage fcontext --add -t &lt;type&gt; file
-</code></p>
-
-<p>You need to call restorecon after changing the context</p>
-
-<h3>getsebool</h3>
-
-<blockquote><p>get SELinux boolean value(s)</p></blockquote>
-
-<p><code>
-getsebool -a | grep ftp
-ftpd_anon_write --&gt; off
-ftpd_connect_all_unreserved --&gt; off
-ftpd_connect_db --&gt; off
-ftpd_full_access --&gt; off
-ftpd_use_cifs --&gt; off
-ftpd_use_fusefs --&gt; off
-ftpd_use_nfs --&gt; off
-ftpd_use_passive_mode --&gt; off
-httpd_can_connect_ftp --&gt; off
-httpd_enable_ftp_server --&gt; off
-tftp_anon_write --&gt; off
-tftp_home_dir --&gt; off
-</code></p>
-
-<h3>setsebool</h3>
-
-<blockquote><p>set SELinux boolean value</p></blockquote>
-
-<p><code>
-setseebol &lt;boolean&gt; on/off
-</code></p>
-
-<ul>
-<li>-P # make the change persistent to reboots</li>
-</ul>
-
-
-<h3>seinfo</h3>
-
-<blockquote><p>SELinux policy query tool</p></blockquote>
-
-<p>Install the <em>setools</em> package to get this utility</p>
-
-<p>```
-seinfo</p>
-
-<p>Statistics for policy file: /sys/fs/selinux/policy
-Policy Version &amp; Type: v.28 (binary, mls)</p>
-
-<p>   Classes:            91    Permissions:       256
-   Sensitivities:       1    Categories:       1024
-   Types:            4729    Attributes:        251
-   Users:               8    Roles:              14
-   Booleans:          301    Cond. Expr.:       350
-   Allow:          101266    Neverallow:          0
-   Auditallow:        157    Dontaudit:        8030
-   Type_trans:      17756    Type_change:        74
-   Type_member:        35    Role allow:         39
-   Role_trans:        416    Range_trans:      5697
-   Constraints:       109    Validatetrans:       0
-   Initial SIDs:       27    Fs_use:             28
-   Genfscon:          105    Portcon:           597
-   Netifcon:            0    Nodecon:             0
-   Permissives:         6    Polcap:              2
-```</p>
-
-<h3>sealert</h3>
-
-<blockquote><p>sealert is the user interface component (either GUI or command line) to
-the  setroubleshoot  system. setroubleshoot is used to diagnose SELinux
-denials and attempts  to  provide  user  friendly  explanations  for  a
-SELinux  denial (e.g. AVC) and recommendations for how one might adjust
-the system to prevent the denial in the future.</p></blockquote>
-
-<ul>
-<li><p>-l # Lookup alert by id, if id is wildcard * then return all alerts</p></li>
-<li><p>-a # Scan a log file, analyze its AVC&rsquo;s</p></li>
-</ul>
-
-
-<p>```
-sealert -a /var/log/audit/audit.log
-100% done</p>
-
-<h2>found 4 alerts in /var/log/audit/audit.log</h2>
-
-<p>SELinux is preventing /usr/bin/pgrep from getattr access on the filesystem /sys.</p>
-
-<p><strong><strong><em>  Plugin catchall (100. confidence) suggests   </em></strong></strong>*********************</p>
-
-<p>If you believe that pgrep should be allowed getattr access on the sys filesystem by default.
-Then you should report this as a bug.
-You can generate a local policy module to allow this access.
-Do
-allow this access for now by executing:</p>
-
-<h1>ausearch -c &lsquo;pgrep&rsquo; &mdash;raw | audit2allow -M my-pgrep</h1>
-
-<h1>semodule -i my-pgrep.pp</h1>
-
-<p>Additional Information:
-Source Context                system_u:system_r:ksmtuned_t:s0
-Target Context                system_u:object_r:sysfs_t:s0
-Target Objects                /sys [ filesystem ]
-Source                        pgrep
-Source Path                   /usr/bin/pgrep
-Port                          <Unknown>
-Host                          <Unknown>
-Source RPM Packages           procps-ng-3.3.10-10.el7.x86_64
-Target RPM Packages           filesystem-3.2-21.el7.x86_64
-Policy RPM                    selinux-policy-3.13.1-102.el7_3.16.noarch
-Selinux Enabled               True
-Policy Type                   targeted
-Enforcing Mode                Enforcing
-Host Name                     rhel7
-Platform                      Linux rhel7 3.10.0-514.26.2.el7.x86_64 #1 SMP Fri</p>
-
-<pre><code>                          Jun 30 05:26:04 UTC 2017 x86_64 x86_64
-</code></pre>
-
-<p>Alert Count                   9
-First Seen                    2018-02-10 02:25:54 JST
-Last Seen                     2018-02-10 03:19:45 JST
-Local ID                      d5a68144-c84d-44c4-bde0-31380fd5bb60</p>
-
-<p>Raw Audit Messages
-type=AVC msg=audit(1518200385.729:205): avc:  denied  { getattr } for  pid=4616 comm=&ldquo;pgrep&rdquo; name=&ldquo;/&rdquo; dev=&ldquo;sysfs&rdquo; ino=1 scontext=system_u:system_r:ksmtuned_t:s0 tcontext=system_u:object_r:sysfs_t:s0 tclass=filesystem</p>
-
-<p>type=SYSCALL msg=audit(1518200385.729:205): arch=x86_64 syscall=statfs success=no exit=EACCES a0=7f9407f4e013 a1=7fffcd705e80 a2=fffffffffff476d8 a3=7fffcd705b90 items=0 ppid=4615 pid=4616 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=pgrep exe=/usr/bin/pgrep subj=system_u:system_r:ksmtuned_t:s0 key=(null)</p>
-
-<p>Hash: pgrep,ksmtuned_t,sysfs_t,filesystem,getattr
-[&hellip;]
-```</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Someone is speaking well of you. \
-|                                  |
-\ How unusual!                     /</p>
 
 <hr />
 
