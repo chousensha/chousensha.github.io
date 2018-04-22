@@ -4,7 +4,7 @@
   <title><![CDATA[Category: linux | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-03-02T13:46:02-05:00</updated>
+  <updated>2018-04-22T07:38:20-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,346 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Managing Docker containers]]></title>
+    <link href="http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/"/>
+    <updated>2018-04-22T07:30:54-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers</id>
+    <content type="html"><![CDATA[<p>In today&rsquo;s post we&rsquo;ll look at Docker containers. Containers are lightweight application virtualization platforms that are isolated, but contrary to virtual machines, they share resources with the host OS. They are faster and less resource intensive than traditional VMs.</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;ve had errors with the straightforward approach of installing Docker on CentOS7. So I installed by following the steps mentioned in the <a href="https://docs.docker.com/install/linux/docker-ce/centos/#set-up-the-repository">article about getting Docker Community Edition on CentOS</a></p>
+
+<p>Install needed packages:</p>
+
+<p><code>
+yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+</code></p>
+
+<p>Set up the stable Docker repository:</p>
+
+<p>```
+yum-config-manager \</p>
+
+<pre><code>--add-repo \
+https://download.docker.com/linux/centos/docker-ce.repo
+</code></pre>
+
+<p>```</p>
+
+<p>Install Docker CE:</p>
+
+<p><code>
+yum install docker-ce
+</code></p>
+
+<p>If you get errors, look in the journal log and troubleshoot from there, but this approach solved the problems for me:</p>
+
+<p><code>
+journalctl -u docker.service
+</code></p>
+
+<p>Start the Docker service:</p>
+
+<p><code>
+systemctl start docker
+</code></p>
+
+<p>Check information about your Docker installation:</p>
+
+<p><code>
+docker info
+Containers: 0
+ Running: 0
+ Paused: 0
+ Stopped: 0
+Images: 0
+Server Version: 18.03.0-ce
+Storage Driver: overlay2
+ Backing Filesystem: extfs
+ Supports d_type: true
+ Native Overlay Diff: true
+Logging Driver: json-file
+Cgroup Driver: cgroupfs
+Plugins:
+ Volume: local
+ Network: bridge host macvlan null overlay
+ Log: awslogs fluentd gcplogs gelf journald json-file logentries splunk syslog
+Swarm: inactive
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: cfd04396dc68220d1cecbe686a6cc3aa5ce3667c
+runc version: 4fc53a81fb7c994640722ac585fa9ca548971871
+init version: 949e6fa
+Security Options:
+ seccomp
+  Profile: default
+Kernel Version: 3.10.0-693.17.1.el7.x86_64
+Operating System: CentOS Linux 7 (Core)
+OSType: linux
+Architecture: x86_64
+CPUs: 4
+Total Memory: 1.687GiB
+Name: CentOS7
+ID: JRI7:OB26:2HEE:2K4Y:OCOZ:I376:F27U:22C4:L3BU:VPYQ:XZO3:FPEW
+Docker Root Dir: /var/lib/docker
+Debug Mode (client): false
+Debug Mode (server): false
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+ 127.0.0.0/8
+Live Restore Enabled: false
+</code></p>
+
+<p>Get more details about the version:</p>
+
+<p>```
+docker version
+Client:
+ Version:   18.03.0-ce
+ API version:   1.37
+ Go version:    go1.9.4
+ Git commit:    0520e24
+ Built: Wed Mar 21 23:09:15 2018
+ OS/Arch:   linux/amd64
+ Experimental:  false
+ Orchestrator:  swarm</p>
+
+<p>Server:
+ Engine:
+  Version:  18.03.0-ce
+  API version:  1.37 (minimum version 1.12)
+  Go version:   go1.9.4
+  Git commit:   0520e24
+  Built:    Wed Mar 21 23:13:03 2018
+  OS/Arch:  linux/amd64
+  Experimental: false
+```</p>
+
+<p>The docker CLI has a lot of commands:</p>
+
+<p>```
+docker &mdash;help</p>
+
+<p>Usage:  docker COMMAND</p>
+
+<p>A self-sufficient runtime for containers</p>
+
+<p>Options:</p>
+
+<pre><code>  --config string      Location of client config files (default "/root/.docker")
+</code></pre>
+
+<p>  -D, &mdash;debug              Enable debug mode
+  -H, &mdash;host list          Daemon socket(s) to connect to
+  -l, &mdash;log-level string   Set the logging level (&ldquo;debug&rdquo;|&ldquo;info&rdquo;|&ldquo;warn&rdquo;|&ldquo;error&rdquo;|&ldquo;fatal&rdquo;) (default &ldquo;info&rdquo;)</p>
+
+<pre><code>  --tls                Use TLS; implied by --tlsverify
+  --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
+  --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
+  --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
+  --tlsverify          Use TLS and verify the remote
+</code></pre>
+
+<p>  -v, &mdash;version            Print version information and quit</p>
+
+<p>Management Commands:
+  config      Manage Docker configs
+  container   Manage containers
+  image       Manage images
+  network     Manage networks
+  node        Manage Swarm nodes
+  plugin      Manage plugins
+  secret      Manage Docker secrets
+  service     Manage services
+  swarm       Manage Swarm
+  system      Manage Docker
+  trust       Manage trust on Docker images
+  volume      Manage volumes</p>
+
+<p>Commands:
+  attach      Attach local standard input, output, and error streams to a running container
+  build       Build an image from a Dockerfile
+  commit      Create a new image from a container&rsquo;s changes
+  cp          Copy files/folders between a container and the local filesystem
+  create      Create a new container
+  diff        Inspect changes to files or directories on a container&rsquo;s filesystem
+  events      Get real time events from the server
+  exec        Run a command in a running container
+  export      Export a container&rsquo;s filesystem as a tar archive
+  history     Show the history of an image
+  images      List images
+  import      Import the contents from a tarball to create a filesystem image
+  info        Display system-wide information
+  inspect     Return low-level information on Docker objects
+  kill        Kill one or more running containers
+  load        Load an image from a tar archive or STDIN
+  login       Log in to a Docker registry
+  logout      Log out from a Docker registry
+  logs        Fetch the logs of a container
+  pause       Pause all processes within one or more containers
+  port        List port mappings or a specific mapping for the container
+  ps          List containers
+  pull        Pull an image or a repository from a registry
+  push        Push an image or a repository to a registry
+  rename      Rename a container
+  restart     Restart one or more containers
+  rm          Remove one or more containers
+  rmi         Remove one or more images
+  run         Run a command in a new container
+  save        Save one or more images to a tar archive (streamed to STDOUT by default)
+  search      Search the Docker Hub for images
+  start       Start one or more stopped containers
+  stats       Display a live stream of container(s) resource usage statistics
+  stop        Stop one or more running containers
+  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+  top         Display the running processes of a container
+  unpause     Unpause all processes within one or more containers
+  update      Update configuration of one or more containers
+  version     Show the Docker version information
+  wait        Block until one or more containers stop, then print their exit codes</p>
+
+<p>Run &lsquo;docker COMMAND &mdash;help&rsquo; for more information on a command.
+```</p>
+
+<p>There are tons of containers available at <a href="https://hub.docker.com/explore/">https://hub.docker.com/explore/</a> . Here, let&rsquo;s look for a hello world one:</p>
+
+<p><code>
+docker search hello
+NAME                                       DESCRIPTION                                     STARS               OFFICIAL            AUTOMATED
+hello-world                                Hello World! (an example of minimal Dockeriz…   495                 [OK]
+</code></p>
+
+<p>Pull the image:</p>
+
+<p><code>
+docker pull hello-world
+Using default tag: latest
+latest: Pulling from library/hello-world
+9bb5a5d4561a: Pull complete
+Digest: sha256:f5233545e43561214ca4891fd1157e1c3c563316ed8e237750d59bde73361e77
+Status: Downloaded newer image for hello-world:latest
+</code></p>
+
+<p>Run the demo image:</p>
+
+<p>```
+docker run hello-world</p>
+
+<p>Hello from Docker!
+This message shows that your installation appears to be working correctly.</p>
+
+<p>To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the &ldquo;hello-world&rdquo; image from the Docker Hub.</p>
+
+<pre><code>(amd64)
+</code></pre>
+
+<ol>
+<li>The Docker daemon created a new container from that image which runs the
+executable that produces the output you are currently reading.</li>
+<li>The Docker daemon streamed that output to the Docker client, which sent it
+to your terminal.</li>
+</ol>
+
+
+<p>To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash</p>
+
+<p>Share images, automate workflows, and more with a free Docker ID:
+ <a href="https://hub.docker.com/">https://hub.docker.com/</a></p>
+
+<p>For more examples and ideas, visit:
+ <a href="https://docs.docker.com/engine/userguide/">https://docs.docker.com/engine/userguide/</a>
+```</p>
+
+<p>The Docker default storage is at <code>/var/lib/docker</code>.  Now let&rsquo;s go beyond the basics and get an Ubuntu image:</p>
+
+<p><code>
+docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+d3938036b19c: Pull complete
+a9b30c108bda: Pull complete
+67de21feec18: Pull complete
+817da545be2b: Pull complete
+d967c497ce23: Pull complete
+Digest: sha256:9ee3b83bcaa383e5e3b657f042f4034c92cdd50c03f73166c145c9ceaea9ba7c
+Status: Downloaded newer image for ubuntu:latest
+</code></p>
+
+<p>Check available images:</p>
+
+<p><code>
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              c9d990395902        9 days ago          113MB
+hello-world         latest              e38bc07ac18e        10 days ago         1.85kB
+</code></p>
+
+<p>Run a command inside the Ubuntu container:</p>
+
+<p><code>
+docker run ubuntu uname -a
+Linux 05f2f247622a 3.10.0-693.17.1.el7.x86_64 #1 SMP Thu Jan 25 20:13:58 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+</code></p>
+
+<p>Check all containers:</p>
+
+<p><code>
+docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS                          PORTS               NAMES
+05f2f247622a        ubuntu              "uname -a"          About a minute ago   Exited (0) About a minute ago                       naughty_fermi
+db7d3fcd06a7        hello-world         "/hello"            10 minutes ago       Exited (0) 9 minutes ago                            trusting_mirzakh
+</code></p>
+
+<p>Take note of the container ID if you want to start a specific container:</p>
+
+<p><code>
+docker start 05f2f247622a
+05f2f247622a
+</code></p>
+
+<p>To start an interactive session in the container with an allocated TTY, do the following:</p>
+
+<p><code>
+docker run -it ubuntu bash
+root@c8561feac38d:/# cat /etc/issue
+Ubuntu 16.04.4 LTS \n \l
+</code></p>
+
+<p>Here we&rsquo;ve run the bash shell inside the container. To return to the host, type <em>exit</em></p>
+
+<p>We&rsquo;ve only scratched the surface, but we can see how powerful and versatile Docker containers can be.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Be free and open and breezy! Enjoy!     \
+| Things won&rsquo;t get any better so get used |
+\ to it.                                  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[LFCS prep - Storage Management]]></title>
@@ -3032,454 +3372,6 @@ yum --enablerepo=kernelrepo install kernelname
 
 <p>/ Fine day for friends. So-so day for \
 \ you.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Essential commands]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/24/lfcs-prep-essential-commands/"/>
-    <updated>2018-02-24T16:46:53-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/24/lfcs-prep-essential-commands</id>
-    <content type="html"><![CDATA[<p>Various commands for the LFCS Essential Commands domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
-
-<!-- more-->
-
-
-<p><img class="center" src="/images/sysadmin/cmds.png" title="&lsquo;linux cmds&rsquo; &lsquo;cmd essentials&rsquo;" ></p>
-
-<h4>cut</h4>
-
-<blockquote><p>remove sections from each line of files</p></blockquote>
-
-<ul>
-<li>select only relevant fields of output</li>
-</ul>
-
-
-<p>Here I&rsquo;m looking only at users and their home directories from /etc/passwd:</p>
-
-<p><code>
-cat /etc/passwd | cut -d: -f1,6 | tail -n 5
-apache:/usr/share/httpd
-nixer:/home/nixer
-lfcs:/home/lfcs
-squid:/var/spool/squid
-tom:/home/tom
-</code></p>
-
-<h4>sed</h4>
-
-<blockquote><p>stream editor for filtering and transforming text</p></blockquote>
-
-<ul>
-<li>substitute all occurrences in a file to something else: <code>sed &rsquo;s/original/replacement/flag' filename</code></li>
-</ul>
-
-
-<p><code>
-cat text.txt
-Peace is a lie, there is only passion.
-Through passion, I gain strength.
-Through strength, I gain power.
-Through power, I gain victory.
-Through victory, my chains are broken.
-</code></p>
-
-<p>Changed the I to a we and redirect to a new file:</p>
-
-<p><code>
-sed 's/I/we/g' text.txt &gt; altered.txt
-cat altered.txt
-Peace is a lie, there is only passion.
-Through passion, we gain strength.
-Through strength, we gain power.
-Through power, we gain victory.
-Through victory, my chains are broken.
-The Force shall free me.
-</code></p>
-
-<h4>diff</h4>
-
-<blockquote><p>compare files line by line</p></blockquote>
-
-<ul>
-<li>compare files side by side</li>
-</ul>
-
-
-<p><code>
-diff -y text.txt altered.txt
-Peace is a lie, there is only passion.              Peace is a lie, there is only passion.
-Through passion, I gain strength.                 | Through passion, we gain strength.
-Through strength, I gain power.                   | Through strength, we gain power.
-Through power, I gain victory.                    | Through power, we gain victory.
-Through victory, my chains are broken.              Through victory, my chains are broken.
-The Force shall free me.                    The Force shall free me.
-</code></p>
-
-<h4>man</h4>
-
-<blockquote><p>an interface to the on-line reference manuals</p></blockquote>
-
-<ul>
-<li>search manpages by keyword</li>
-</ul>
-
-
-<p><code>
-man -k print | head -n 5
-fmtmsg (3)           - print formatted error messages
-isprint (3)          - character classification routines
-iswprint (3)         - test for printing wide character
-netstat (8)          - Print network connections, routing tables, interface statistics, masquerade connections, and multicast memberships
-abrt-action-list-dsos (1) - Prints out DSO from mapped memory regions.
-</code></p>
-
-<h4>umask</h4>
-
-<blockquote><p>display or set the file creation mask</p></blockquote>
-
-<p>It can be used to remove, but not add permissions</p>
-
-<p><code>
-umask
-0022
-umask -S
-u=rwx,g=rx,o=rx
-</code></p>
-
-<h4>info</h4>
-
-<blockquote><p>read Info documents</p></blockquote>
-
-<h4>touch</h4>
-
-<blockquote><p>Update the access and modification times of each FILE to the current time</p></blockquote>
-
-<ul>
-<li>r FILE &ndash;>  use this file&rsquo;s times instead of current time</li>
-</ul>
-
-
-<h4>whatis</h4>
-
-<blockquote><p>display manual page descriptions</p></blockquote>
-
-<p><code>
-whatis ip
-ip (7)               - Linux IPv4 protocol implementation
-ip (8)               - show / manipulate routing, devices, pol...
-</code></p>
-
-<h4>apropos</h4>
-
-<blockquote><p>search the manual page names and descriptions</p></blockquote>
-
-<p><code>
-apropos network | tail
-teamnl (8)           - team network device Netlink interface tool
-tracepath (8)        - traces path to a network host discoveri...
-tracepath6 (8)       - traces path to a network host discoveri...
-traceroute (8)       - print the route packets trace to networ...
-traceroute6 (8)      - print the route packets trace to networ...
-tshark (1)           - Dump and analyze network traffic
-umount.nfs (8)       - unmount a Network File System
-usernetctl (8)       - allow a user to manipulate a network in...
-wget (1)             - The non-interactive network downloader.
-wireshark (1)        - Interactively dump and analyze network ...
-</code></p>
-
-<h4>uniq</h4>
-
-<blockquote><p>report or omit repeated lines</p></blockquote>
-
-<ul>
-<li><p>D # print all duplicate lines</p></li>
-<li><p>u # only print unique lines</p></li>
-<li><p>it won&rsquo;t detect repeated lines unless they are adjacent. Sort first</p></li>
-</ul>
-
-
-<h4>sort</h4>
-
-<blockquote><p>sort lines of text files</p></blockquote>
-
-<h4>fmt</h4>
-
-<blockquote><p>simple optimal text formatter</p></blockquote>
-
-<ul>
-<li>u # uniform spacing: one space between words, two after sentences</li>
-</ul>
-
-
-<p><code>
-[root@tron ~]# cat test.txt
-Test.     Next sentence.   This    doesn't   look       right
-[root@tron ~]# fmt -u test.txt
-Test.  Next sentence.  This doesn't look right
-</code></p>
-
-<h4>nl</h4>
-
-<blockquote><p>number lines of files</p></blockquote>
-
-<p>```
-nl test.txt</p>
-
-<pre><code> 1  First line
-
- 2  Second line
-
- 3  Third line
-</code></pre>
-
-<p>```</p>
-
-<h4>updatedb</h4>
-
-<blockquote><p>creates or updates a database used by locate(1). It&rsquo;s usually  run daily by cron(8) to update the default database.</p></blockquote>
-
-<h4>tty</h4>
-
-<blockquote><p>print the file name of the terminal connected to standard input</p></blockquote>
-
-<p><code>
-tty
-/dev/pts/1
-</code></p>
-
-<h4>type</h4>
-
-<blockquote><p>indicate how each name would be interpreted  if used as a command name</p></blockquote>
-
-<p><code>
-type ls
-ls is aliased to `ls --color=auto'
-</code></p>
-
-<h4>tree</h4>
-
-<blockquote><p>list contents of directories in a tree-like format</p></blockquote>
-
-<p><code>
-tree
-.
-├── anaconda-ks.cfg
-├── Desktop
-├── Documents
-│   ├── archive_file
-│   ├── arhive.tar.gz
-│   ├── Documents
-│   │   ├── archive_file
-│   │   └── test.txt
-│   └── test.txt
-├── Downloads
-├── initial-setup-ks.cfg
-├── Music
-├── openscap_data
-│   └── eval_remediate_results.xml
-├── Pictures
-├── Public
-├── Templates
-├── test.txt
-└── Videos
-</code></p>
-
-<h4>wc</h4>
-
-<blockquote><p>print newline, word, and byte counts for each file</p></blockquote>
-
-<ul>
-<li>l # lines</li>
-</ul>
-
-
-<p><code>
-wc -l /etc/hosts
-2 /etc/hosts
-</code></p>
-
-<ul>
-<li>w # words</li>
-</ul>
-
-
-<p><code>
-wc -w test.txt
-6 test.txt
-</code></p>
-
-<h4>grep</h4>
-
-<blockquote><p>print lines matching a pattern</p></blockquote>
-
-<ul>
-<li><p>-E # Interpret PATTERN as an extended regular  expression</p></li>
-<li><p>-i # ignore case</p></li>
-<li><p>-n # prefix each line of output with its line number</p></li>
-<li><p>list items that begin with certain PATTERN</p></li>
-</ul>
-
-
-<p><code>
-yum list installed | grep ^kernel
-kernel.x86_64                        3.10.0-514.el7          @anaconda/7.3      
-kernel.x86_64                        3.10.0-514.26.2.el7     @rhel-7-server-rpms
-kernel-devel.x86_64                  3.10.0-514.el7          @anaconda/7.3      
-kernel-devel.x86_64                  3.10.0-514.26.2.el7     @rhel-7-server-rpms
-kernel-headers.x86_64                3.10.0-514.26.2.el7     @rhel-7-server-rpms
-kernel-tools.x86_64                  3.10.0-514.26.2.el7     @rhel-7-server-rpms
-kernel-tools-libs.x86_64             3.10.0-514.26.2.el7     @rhel-7-server-rpms
-</code></p>
-
-<ul>
-<li>list items that end with certain PATTERN</li>
-</ul>
-
-
-<p><code>
-yum list installed | grep x86_64$
-NetworkManager-libreswan-gnome.x86_64
-iscsi-initiator-utils-iscsiuio.x86_64
-libreport-plugin-reportuploader.x86_64
-libreport-rhel-anaconda-bugzilla.x86_64
-libvirt-daemon-driver-interface.x86_64
-libvirt-daemon-driver-nwfilter.x86_64
-openlmi-indicationmanager-libs.x86_64
-sane-backends-drivers-scanners.x86_64
-subscription-manager-initial-setup-addon.x86_64
-</code></p>
-
-<ul>
-<li>grep something that begins and ends with a certain PATTERN, but with variable content in the middle</li>
-</ul>
-
-
-<p><code>
-grep -E '^de......tion$' /usr/share/dict/words | head -n 5
-deactivation
-dealkylation
-deallocation
-deambulation
-deammonation
-</code></p>
-
-<h4>find</h4>
-
-<blockquote><p>search for files in a directory hierarchy</p></blockquote>
-
-<ul>
-<li><p>find / -perm -6000 # find SUID and SGID</p></li>
-<li><p>find / -size 10M -type f # find files whose size is 10 megabytes</p></li>
-<li><p>type d/c/l/f # directories/character devices/symlinks/files</p></li>
-<li><p>user <username> # owned by username</p></li>
-<li><p>exec <cmd> &lsquo;{}&rsquo; + # execute cmd on results of the find cmd</p></li>
-<li><p>print # print full filename to stdout, followed by newline</p></li>
-<li><p>name &ldquo;value&rdquo; # find values that start with the name</p></li>
-<li><p>iname # ignore case</p></li>
-<li><p>not -name # not <name></p></li>
-<li><p>size +/&ndash; c/k/m/G # size in bytes; + =larger than, &ndash; = smaller than; c = bytes, k = kilobytes, m = megabytes, G = gigabytes</p></li>
-<li><p>mtime # modification time</p></li>
-<li><p>atime # access time</p></li>
-</ul>
-
-
-<h4>which</h4>
-
-<blockquote><p>shows the full path of (shell) commands. It does this by searching for an executable or script in the directories listed in the environment variable PATH</p></blockquote>
-
-<p><code>
-which python
-/usr/bin/python
-</code></p>
-
-<h4>locate</h4>
-
-<blockquote><p>find files by name. Reads one or more databases prepared by updatedb(8) and writes file names matching at least one of the PATTERNs to  standard  output,  one  per line.</p></blockquote>
-
-<p>It is much faster than find. On most systems, <em>locate</em> is a link to <em>slocate</em>, which includes security features that prevent users from seeing files in directories they shouldn&rsquo;t be able to access</p>
-
-<p><code>
-locate tcpdump
-/usr/sbin/tcpdump
-/usr/share/bash-completion/completions/tcpdump
-/usr/share/doc/tcpdump-4.5.1
-/usr/share/doc/systemtap-client-3.0/examples/network/tcpdumplike.meta
-/usr/share/doc/systemtap-client-3.0/examples/network/tcpdumplike.stp
-/usr/share/doc/tcpdump-4.5.1/CHANGES
-/usr/share/doc/tcpdump-4.5.1/CREDITS
-/usr/share/doc/tcpdump-4.5.1/LICENSE
-/usr/share/doc/tcpdump-4.5.1/README.md
-/usr/share/man/man8/tcpdump.8.gz
-/usr/share/mime/application/vnd.tcpdump.pcap.xml
-/var/cache/man/cat8/tcpdump.8.gz
-</code></p>
-
-<h4>tar</h4>
-
-<blockquote><p>saves many files together into a single tape or disk archive, and can restore individual files from the archive</p></blockquote>
-
-<ul>
-<li><p>c # create archive</p></li>
-<li><p>t # list the contents of an archive</p></li>
-<li><p>x # extract files from archive</p></li>
-<li><p>v # verbosely list files processed</p></li>
-<li><p>z # gzip compression</p></li>
-<li><p>j # bzip compression</p></li>
-<li><p>A # append files to existing archive</p></li>
-<li><p>file # archive file</p></li>
-<li><p>p # preserve permissions</p></li>
-<li><p>W # attempt to verify the archive after writing it</p></li>
-<li><p>&mdash;exclude=PATTERN # exclude files</p></li>
-<li><p>create archive</p></li>
-</ul>
-
-
-<p><code>
-tar cvzf arhive.tar.gz Documents/
-Documents/
-Documents/test.txt
-Documents/archive_file
-[root@tron ~]# ls
-</code></p>
-
-<ul>
-<li>list files in archive_file</li>
-</ul>
-
-
-<p><code>
-tar tvf arhive.tar.gz
-drwxr-xr-x root/root         0 2017-09-08 17:54 Documents/
--rw-r--r-- root/root        36 2017-09-08 17:53 Documents/test.txt
--rw-r--r-- root/root         0 2017-09-08 17:54 Documents/archive_file
-</code></p>
-
-<ul>
-<li>decompress gzip archive: <code>tar xzvf arhive.tar.gz</code></li>
-</ul>
-
-
-<p>```</p>
-
-<hr />
-
-<p>/ Kindness is a language which the deaf \
-| can hear and the blind can read.      |
-|                                       |
-\ &mdash; Mark Twain                         /</p>
 
 <hr />
 
