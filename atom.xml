@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-10-14T08:33:56-04:00</updated>
+  <updated>2018-10-20T16:17:54-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,466 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SkyDog Con CTF 2016 - Catch Me If You Can]]></title>
+    <link href="http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/"/>
+    <updated>2018-10-20T11:53:46-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can</id>
+    <content type="html"><![CDATA[<p>For this box, you have to find 8 flags, each containing an MD5 hash.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -sC -sV -p- 192.168.145.136
+</span><span class='line'>
+</span><span class='line'>PORT      STATE  SERVICE  VERSION
+</span><span class='line'>22/tcp    closed ssh
+</span><span class='line'>80/tcp    open   http     Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: SkyDog Con CTF 2016 - Catch Me If You Can
+</span><span class='line'>443/tcp   open   ssl/http Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: SkyDog Con CTF 2016 - Catch Me If You Can
+</span><span class='line'>| ssl-cert: Subject: commonName=Network Solutions EV Server CA 2/organizationName=Network Solutions L.L.C./stateOrProvinceName=VA/countryName=US
+</span><span class='line'>| Not valid before: 2016-09-21T14:51:57
+</span><span class='line'>|_Not valid after:  2017-09-21T14:51:57
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>| tls-alpn: 
+</span><span class='line'>|   http/1.1
+</span><span class='line'>22222/tcp open   ssh      OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   2048 b6:64:7c:d1:55:46:4e:50:e3:ba:cf:4c:1e:81:f9:db (RSA)
+</span><span class='line'>|   256 ef:17:df:cc:db:2e:c5:24:e3:9e:25:16:3d:25:68:35 (ECDSA)
+</span><span class='line'>|_  256 0e:1b:3f:c3:4a:56:a0:ef:4d:2a:af:a1:7e:94:d2:06 (ED25519)</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Flag #1 Don’t go Home Frank! There’s a Hex on Your House.</h2>
+
+<p>Starting with the web server, the web page is the homepage of the SkyDog con. Poking through the source, I found a suspicious comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!--[If IE4]&gt;&lt;script src="http://chousensha.github.io/oldIE/html5.js"&gt;&lt;/script&gt;&lt;![Make sure to remove this before going to PROD]--&gt; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Going to the above mentioned JS file, on the first line we find a hex string:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* 666c61677b37633031333230373061306566373164353432363633653964633166356465657d */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Decoded, it gives the first flag: <code>flag{7c0132070a0ef71d542663e9dc1f5dee}</code>. And decoding the MD5 hash gives a hint: <code>nmap</code></p>
+
+<h2>Flag #2 Obscurity or Security?</h2>
+
+<p>I already ran Nmap and saw that SSH is listening on port 22222. Trying to SSH as frank gives the next flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh frank@192.168.145.136 -p 22222
+</span><span class='line'>The authenticity of host '[192.168.145.136]:22222 ([192.168.145.136]:22222)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:DeCMZ74o5wesBHFLyaVY7UTCA7mW+bx6WroHm6AgMqU.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added '[192.168.145.136]:22222' (ECDSA) to the list of known hosts.
+</span><span class='line'>###############################################################
+</span><span class='line'>#                         WARNING                             #
+</span><span class='line'>#     FBI - Authorized access only!                 # 
+</span><span class='line'># Disconnect IMMEDIATELY if you are not an authorized user!!! #
+</span><span class='line'>#         All actions Will be monitored and recorded          #
+</span><span class='line'># Flag{53c82eba31f6d416f331de9162ebe997}            #
+</span><span class='line'>###############################################################
+</span><span class='line'>frank@192.168.145.136's password: </span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>The decoded hint is <code>encrypt</code></p>
+
+<h2>Flag #3 Be Careful Agent, Frank Has Been Known to Intercept Traffic Our Traffic.</h2>
+
+<p>Remember that Nmap found also port 443 open, so I switched to https to check it out and was greeted by a self-signed certificate. Viewing the certificate gives the third flag: <code>flag3{f82366a9ddc064585d54e3f78bde3221}</code></p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/skydogctf/flag3.jpg" title="flag3" alt="flag3"></p>
+
+<p>And the next hint is <code>personnel</code></p>
+
+<h2>Flag #4 A Good Agent is Hard to Find.</h2>
+
+<p>I tried navigating to /personnel on the web server and it gave me the following message:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ACCESS DENIED!!! You Do Not Appear To Be Coming From An FBI Workstation. Preparing Interrogation Room 1. Car Batteries Charging....</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we need a specific user agent. Remembering the included JS file of the first flag, that hinted towards an old Internet Explorer version, I revisited it and searched for the string <em>fbi</em> inside it and found the lines:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* maindev -  6/7/02 Adding temporary support for IE4 FBI Workstations */
+</span><span class='line'>/* newmaindev -  5/22/16 Last maindev was and idoit and IE4 is still Gold image -@Support doug.perterson@fbi.gov */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So FBI agents use IE4 on their workstations. Cool, nothing catastrophically wrong there. I grabbed an IE4 user agent from <a href="http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,">http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,</a> changed my User Agent to <code>User-Agent: Mozilla/4.0 WebTV/2.6 (compatible; MSIE 4.0)</code>, and went straight to the FBI portal!</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/skydogctf/fbiportal.png" title="fbi portal" alt="fbi portal"></p>
+
+<p>The flag is on the page: <code> flag{14e10d570047667f904261e6d08f520f}</code>, and the decoded value is <code>evidence</code></p>
+
+<h2>Flag #5 The Devil is in the Details &ndash; Or is it Dialogue? Either Way, if it’s Simple, Guessable, or Personal it Goes Against Best Practices</h2>
+
+<p>Following up on the clue <em>new+flag</em>, I tried navigating to 192.168.145.136/newevidence and a basic authentication prompt asked me for credentials. On the FBI portal we have the message &ldquo;Welcome Agent Hanratty&rdquo;. A quick Google reveals that this is a reference to agent Carl Hanratty from the movie Catch Me If You Can. I went through the dialogue (hint hint) on the <a href="https://www.imdb.com/title/tt0264464/characters/nm0000158">IMDB page</a> to find out Carl&rsquo;s daughter is called Grace (simple? guessable? personal?). I tried some combinations in the pop up until I found the right one is <em>carl.hanratty/Grace</em> (remember the naming convention of doug.perterson)</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/skydogctf/newevidence.png" title="new evidence" alt="new evidence"></p>
+
+<p>The flag is in the Evidence Summary File: <code>flag{117c240d49f54096413dd64280399ea9}</code>. The hint is <code>panam</code></p>
+
+<h2>Flag #6 Where in the World is Frank?</h2>
+
+<p>For this one you have to work with the other 2 files from the page, the image and the PDF invoice. The invoice mentions an encryption consultation project:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/skydogctf/invoice.jpg" title="invoice" alt="invoice"></p>
+
+<p>This might suggest the use of steganography in the image, and this is confirmed if you search for Stefan Hetzl, it turns out he&rsquo;s the author of steghide! And we have the previous hint of panam, which is the passphrase in this case:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>steghide extract -sf image.jpg 
+</span><span class='line'>Enter passphrase: 
+</span><span class='line'>wrote extracted data to "flag.txt".
+</span><span class='line'>root@kali:~/Downloads# cat flag.txt 
+</span><span class='line'>flag{d1e5146b171928731385eb7ea38c37b8}
+</span><span class='line'>=ILoveFrance
+</span><span class='line'>
+</span><span class='line'>clue=iheartbrenda</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Flag #7 Frank Was Caught on Camera Cashing Checks and Yelling &ndash; I’m The Fastest Man Alive!</h2>
+
+<p>This was a movie reference and I had to look it up in other solutions&hellip;&ldquo;I’m The Fastest Man Alive!&rdquo; is a reference to The Flash, whose real name is Barry Allen. For the next part, log in to SSH with the the username <em>barryallen</em> and the password <em>iheartbrenda</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh barryallen@192.168.145.136 -p 22222
+</span><span class='line'>[...]
+</span><span class='line'>barryallen@skydogconctf2016:~$ cat flag.txt 
+</span><span class='line'>flag{bd2f6a1d5242c962a05619c56fa47ba6}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the hint for the last flag is <code>theflash</code>.</p>
+
+<h2>Flag #8 Franks Lost His Mind or Maybe it’s His Memory. He’s Locked Himself Inside the Building. Find the Code to Unlock the Door Before He Gets Himself Killed!</h2>
+
+<p>Inside barryallen&rsquo;s home there&rsquo;s a 72M ZIP file called security-system.data:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>barryallen@skydogconctf2016:~$ file security-system.data 
+</span><span class='line'>security-system.data: Zip archive data, at least v2.0 to extract</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I transferred it to my machine with scp:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp -P 22222 barryallen@192.168.145.136:security-system.data .
+</span><span class='line'>###############################################################
+</span><span class='line'>#                         WARNING                             #
+</span><span class='line'>#     FBI - Authorized access only!                 # 
+</span><span class='line'># Disconnect IMMEDIATELY if you are not an authorized user!!! #
+</span><span class='line'>#         All actions Will be monitored and recorded          #
+</span><span class='line'># Flag{53c82eba31f6d416f331de9162ebe997}            #
+</span><span class='line'>###############################################################
+</span><span class='line'>barryallen@192.168.145.136's password: 
+</span><span class='line'>security-system.data                          100%   71MB   6.6MB/s   00:10    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I unzipped the archive, but the file command didn&rsquo;t identify it as something specific, it just said it&rsquo;s data. I ran strings on it and saw various references to memory that seem to be linked to a Windows system. Time for some memory forensics with Volatility!</p>
+
+<p>First, we need to identify what type of image we&rsquo;re working with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module ImageInfo
+</span><span class='line'>---------------------------------
+</span><span class='line'>Identify information for the image 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility imageinfo -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>INFO    : volatility.debug    : Determining profile based on KDBG search...
+</span><span class='line'>          Suggested Profile(s) : WinXPSP2x86, WinXPSP3x86 (Instantiated with WinXPSP2x86)
+</span><span class='line'>                     AS Layer1 : IA32PagedMemoryPae (Kernel AS)
+</span><span class='line'>                     AS Layer2 : FileAddressSpace (/root/Downloads/data)
+</span><span class='line'>                      PAE type : PAE
+</span><span class='line'>                           DTB : 0x33e000L
+</span><span class='line'>                          KDBG : 0x80545b60L
+</span><span class='line'>          Number of Processors : 1
+</span><span class='line'>     Image Type (Service Pack) : 3
+</span><span class='line'>                KPCR for CPU 0 : 0xffdff000L
+</span><span class='line'>             KUSER_SHARED_DATA : 0xffdf0000L
+</span><span class='line'>           Image date and time : 2016-10-10 22:00:50 UTC+0000
+</span><span class='line'>     Image local date and time : 2016-10-10 18:00:50 -0400</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s an image of a Windows XP machine! Next, let&rsquo;s look at the processes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module PSList
+</span><span class='line'>---------------------------------
+</span><span class='line'>Print all running processes by following the EPROCESS lists
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility pslist -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>Offset(V)  Name                    PID   PPID   Thds     Hnds   Sess  Wow64 Start                          Exit                          
+</span><span class='line'>---------- -------------------- ------ ------ ------ -------- ------ ------ ------------------------------ ------------------------------
+</span><span class='line'>0x867c6830 System                    4      0     57      171 ------      0                                                              
+</span><span class='line'>0x86262900 smss.exe                332      4      3       19 ------      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8623b978 csrss.exe               560    332     10      423      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x865ed020 winlogon.exe            588    332     24      512      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8662d808 services.exe            664    588     15      263      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x866a5670 lsass.exe               676    588     25      356      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86358a70 vmacthlp.exe            848    664      1       25      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86651da0 svchost.exe             860    664     21      202      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x865c2790 svchost.exe             944    664     11      258      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86554020 svchost.exe            1040    664     82     1287      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x866196b8 svchost.exe            1092    664      5       59      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8643ca18 svchost.exe            1144    664     17      213      0      0 2016-10-10 21:59:15 UTC+0000                                 
+</span><span class='line'>0x866fca88 explorer.exe           1540   1520     14      417      0      0 2016-10-10 21:59:16 UTC+0000                                 
+</span><span class='line'>0x8656b4d0 spoolsv.exe            1636    664     15      125      0      0 2016-10-10 21:59:16 UTC+0000                                 
+</span><span class='line'>0x86338640 VGAuthService.e        1900    664      2       60      0      0 2016-10-10 21:59:25 UTC+0000                                 
+</span><span class='line'>0x8667bda0 vmtoolsd.exe           2012    664      9      271      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x864f6440 wmiprvse.exe            488    860     14      251      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x864fbad0 wscntfy.exe             536   1040      1       31      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x85e5dd48 alg.exe                 624    664      8      110      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x866f98b0 vmtoolsd.exe           1352   1540      7      242      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x86674410 ctfmon.exe             1356   1540      1       79      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x865bea48 CCleaner.exe           1388   1540      5      108      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x865c3d78 cmd.exe                1336   1540      1       30      0      0 2016-10-10 22:00:05 UTC+0000                                 
+</span><span class='line'>0x8634fbb8 wuauclt.exe            1884   1040      9      198      0      0 2016-10-10 22:00:13 UTC+0000                                 
+</span><span class='line'>0x86260a78 wuauclt.exe            1024   1040      6      172      0      0 2016-10-10 22:00:29 UTC+0000                                 
+</span><span class='line'>0x8667b488 notepad.exe             268   1540      1       55      0      0 2016-10-10 22:00:41 UTC+0000                                 
+</span><span class='line'>0x8640cc10 cmd.exe                1276   2012      0 --------      0      0 2016-10-10 22:00:49 UTC+0000   2016-10-10 22:00:50 UTC+0000 </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I took note of that Notepad process and several cmd.exes and then dumped the files:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module FileScan
+</span><span class='line'>---------------------------------
+</span><span class='line'>Pool scanner for file objects
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility filescan -f data &gt; filelist.txt
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I searched for the string code in the resulting list of files and got a hit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>grep "code" filelist.txt 
+</span><span class='line'>0x0000000005e612f8      1      0 -W-r-- \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt
+</span><span class='line'>0x00000000062e04b0      1      0 R--r-d \Device\HarddiskVolume1\Documents and Settings\test\Recent\code.txt.lnk
+</span><span class='line'>0x00000000064900a0      1      0 R--rwd \Device\HarddiskVolume1\WINDOWS\system32\unicode.nls
+</span><span class='line'>0x0000000006640bc8      1      0 R--rwd \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Maybe this code.txt file is connected to the running Notepad process. I used Volatility&rsquo;s notepad plugin to dump the text found into Notepad:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module Notepad
+</span><span class='line'>---------------------------------
+</span><span class='line'>List currently displayed notepad text
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility notepad -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>Process: 268
+</span><span class='line'>Text:
+</span><span class='line'>?
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>d
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>?
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>66 6c 61 67 7b 38 34 31 64 64 33 64 62 32 39 62 30 66 62 62 64 38 39 63 37 62 35 62 65 37 36 38 63 64 63 38 31 7d</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have a hex string! Decoding it yields the final flag: <code>flag{841dd3db29b0fbbd89c7b5be768cdc81}</code>. And the decoded value for the last flag is <code>Two[space]little[space]mice</code></p>
+
+<p>This is it for the SkyDog Con CTF machine! I particularly liked the memory forensics part at the end!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
+</span><span class='line'>/ Q: Do you know what the death rate \
+</span><span class='line'>\ around here is? A: One per person. /
+</span><span class='line'> ------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Git me some Irn-Bru ye Teuchter!]]></title>
@@ -996,9 +1456,9 @@ file. There are no restrictions on the format of the secret data.</p></blockquot
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#x72;&#109;&#x69;&#x63;&#x68;&#x61;&#101;&#x6c;&#x73;&#64;&#105;&#109;&#102;&#x2e;&#108;&#111;&#x63;&#97;&#x6c;">&#x72;&#109;&#x69;&#99;&#104;&#97;&#101;&#x6c;&#115;&#x40;&#x69;&#x6d;&#102;&#x2e;&#108;&#111;&#x63;&#97;&#108;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#97;&#x6b;&#101;&#105;&#116;&#104;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#111;&#99;&#97;&#x6c;">&#x61;&#107;&#101;&#x69;&#116;&#x68;&#x40;&#x69;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#101;&#x73;&#116;&#111;&#x6e;&#101;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#99;&#97;&#108;">&#x65;&#x73;&#116;&#x6f;&#110;&#x65;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#99;&#97;&#x6c;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#109;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#x72;&#109;&#105;&#x63;&#x68;&#x61;&#101;&#108;&#115;&#x40;&#x69;&#109;&#102;&#x2e;&#108;&#111;&#x63;&#x61;&#x6c;">&#114;&#109;&#105;&#x63;&#x68;&#97;&#x65;&#x6c;&#x73;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#99;&#x61;&#x6c;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#97;&#x6b;&#101;&#105;&#x74;&#104;&#64;&#x69;&#x6d;&#x66;&#x2e;&#x6c;&#111;&#99;&#x61;&#108;">&#x61;&#107;&#x65;&#x69;&#x74;&#x68;&#64;&#x69;&#x6d;&#x66;&#x2e;&#x6c;&#x6f;&#99;&#97;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#97;&#105;&#x6c;&#116;&#111;&#58;&#101;&#x73;&#x74;&#x6f;&#110;&#x65;&#64;&#105;&#109;&#102;&#x2e;&#x6c;&#111;&#99;&#x61;&#x6c;">&#101;&#x73;&#116;&#x6f;&#110;&#x65;&#x40;&#105;&#x6d;&#x66;&#46;&#108;&#x6f;&#99;&#97;&#x6c;</a></li>
 </ul>
 
 
@@ -14378,314 +14838,6 @@ This used to be <code>/etc/sysctl.conf</code> , and can still be used, but newer
 </span><span class='line'>            (__)\       )\/\
 </span><span class='line'>                ||----w |
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - NTP configuration]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration/"/>
-    <updated>2018-02-14T14:50:41-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/14/lfcs-prep-ntp-configuration</id>
-    <content type="html"><![CDATA[<p>In this post we&rsquo;ll look at NTP configuration by using chrony, which is installed by default on newer RedHat systems.</p>
-
-<!-- more -->
-
-
-<p>Ensure that the <strong>chronyd</strong> service is started and let&rsquo;s take a look at the current time setttings:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl
-</span><span class='line'>      Local time: Thu 2018-02-15 02:15:51 JST
-</span><span class='line'>  Universal time: Wed 2018-02-14 17:15:51 UTC
-</span><span class='line'>        RTC time: Wed 2018-02-14 17:15:52
-</span><span class='line'>       Time zone: Asia/Tokyo (JST, +0900)
-</span><span class='line'>     NTP enabled: no
-</span><span class='line'>NTP synchronized: no
-</span><span class='line'> RTC in local TZ: no
-</span><span class='line'>      DST active: n/a</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now look inside chrony&rsquo;s config file, which is <code>/etc/chrony.conf</code>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># Use public servers from the pool.ntp.org project.
-</span><span class='line'># Please consider joining the pool (http://www.pool.ntp.org/join.html).
-</span><span class='line'>server 0.rhel.pool.ntp.org iburst
-</span><span class='line'>server 1.rhel.pool.ntp.org iburst
-</span><span class='line'>server 2.rhel.pool.ntp.org iburst
-</span><span class='line'>server 3.rhel.pool.ntp.org iburst
-</span><span class='line'>
-</span><span class='line'># Ignore stratum in source selection.
-</span><span class='line'>stratumweight 0
-</span><span class='line'>
-</span><span class='line'># Record the rate at which the system clock gains/losses time.
-</span><span class='line'>driftfile /var/lib/chrony/drift
-</span><span class='line'>
-</span><span class='line'># Enable kernel RTC synchronization.
-</span><span class='line'>rtcsync
-</span><span class='line'>
-</span><span class='line'># In first three updates step the system clock instead of slew
-</span><span class='line'># if the adjustment is larger than 10 seconds.
-</span><span class='line'>makestep 10 3
-</span><span class='line'>
-</span><span class='line'># Allow NTP client access from local network.
-</span><span class='line'>#allow 192.168/16
-</span><span class='line'>
-</span><span class='line'># Listen for commands only on localhost.
-</span><span class='line'>bindcmdaddress 127.0.0.1
-</span><span class='line'>bindcmdaddress ::1
-</span><span class='line'>
-</span><span class='line'># Serve time even if not synchronized to any NTP server.
-</span><span class='line'>#local stratum 10
-</span><span class='line'>
-</span><span class='line'>keyfile /etc/chrony.keys
-</span><span class='line'>
-</span><span class='line'># Specify the key used as password for chronyc.
-</span><span class='line'>commandkey 1
-</span><span class='line'>
-</span><span class='line'># Generate command key if missing.
-</span><span class='line'>generatecommandkey
-</span><span class='line'>
-</span><span class='line'># Disable logging of client accesses.
-</span><span class='line'>noclientlog
-</span><span class='line'>
-</span><span class='line'># Send a message to syslog if a clock adjustment is larger than 0.5 seconds.
-</span><span class='line'>logchange 0.5
-</span><span class='line'>
-</span><span class='line'>logdir /var/log/chrony
-</span><span class='line'>#log measurements statistics tracking</span></code></pre></td></tr></table></div></figure>
-
-
-<p>There is a set of default servers configured, but you can add your own. You can also allow NTP client access in the local network by uncommenting or adding the <strong>allow</strong> directive with a range.</p>
-
-<p>In the previous timedatectl output we saw that NTP and synchronization weren&rsquo;t enabled, so let&rsquo;s enable them:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl set-ntp 1
-</span><span class='line'>timedatectl | grep -i ntp
-</span><span class='line'>     NTP enabled: yes
-</span><span class='line'>NTP synchronized: no</span></code></pre></td></tr></table></div></figure>
-
-
-<p>We still have to manage the NTP synchronization. In the config file we have some server pools enabled, but we want to know exact names for the servers:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>chronyc sources -v
-</span><span class='line'>210 Number of sources = 4
-</span><span class='line'>
-</span><span class='line'>  .-- Source mode  '^' = server, '=' = peer, '#' = local clock.
-</span><span class='line'> / .- Source state '*' = current synced, '+' = combined , '-' = not combined,
-</span><span class='line'>| /   '?' = unreachable, 'x' = time may be in error, '~' = time too variable.
-</span><span class='line'>||                                                 .- xxxx [ yyyy ] +/- zzzz
-</span><span class='line'>||      Reachability register (octal) -.           |  xxxx = adjusted offset,
-</span><span class='line'>||      Log2(Polling interval) --.      |          |  yyyy = measured offset,
-</span><span class='line'>||                                \     |          |  zzzz = estimated error.
-</span><span class='line'>||                                 |    |           \
-</span><span class='line'>MS Name/IP address         Stratum Poll Reach LastRx Last sample
-</span><span class='line'>===============================================================================
-</span><span class='line'>^? ts1.sct.de                    0   8     0   10y     +0ns[   +0ns] +/-    0ns
-</span><span class='line'>^? greenstone-quarry.the-jad     0   8     0   10y     +0ns[   +0ns] +/-    0ns
-</span><span class='line'>^? 1b.ncomputers.org             0   8     0   10y     +0ns[   +0ns] +/-    0ns
-</span><span class='line'>^? shout.ovh                     0   8     0   10y     +0ns[   +0ns] +/-    0ns</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Now we can pick a server to synchronize with:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ntpdate -vd ts1.sct.de
-</span><span class='line'>15 Feb 02:37:52 ntpdate[9511]: ntpdate 4.2.6p5@1.2349-o Wed Mar  1 09:00:52 UTC 2017 (1)
-</span><span class='line'>Looking for host ts1.sct.de and service ntp
-</span><span class='line'>host found : ts1.sct.de
-</span><span class='line'>transmit(193.141.27.1)
-</span><span class='line'>receive(193.141.27.1)
-</span><span class='line'>transmit(193.141.27.1)
-</span><span class='line'>receive(193.141.27.1)
-</span><span class='line'>transmit(193.141.27.1)
-</span><span class='line'>receive(193.141.27.1)
-</span><span class='line'>transmit(193.141.27.1)
-</span><span class='line'>receive(193.141.27.1)
-</span><span class='line'>server 193.141.27.1, port 123
-</span><span class='line'>stratum 2, precision -24, leap 00, trust 000
-</span><span class='line'>refid [193.141.27.1], delay 0.07736, dispersion 0.00209
-</span><span class='line'>transmitted 4, in filter 4
-</span><span class='line'>reference time:    de2ec48b.aba7efb5  Wed, Feb 14 2018 23:22:03.670
-</span><span class='line'>originate timestamp: de2ec847.3cbf5eb1  Wed, Feb 14 2018 23:37:59.237
-</span><span class='line'>transmit timestamp:  de2ef276.d94d8084  Thu, Feb 15 2018  2:37:58.848
-</span><span class='line'>filter delay:  0.07916  0.07736  0.08383  0.07954 
-</span><span class='line'>         0.00000  0.00000  0.00000  0.00000 
-</span><span class='line'>filter offset: -10799.6 -10799.6 -10799.6 -10799.6
-</span><span class='line'>         0.000000 0.000000 0.000000 0.000000
-</span><span class='line'>delay 0.07736, dispersion 0.00209
-</span><span class='line'>offset -10799.642908
-</span><span class='line'>
-</span><span class='line'>15 Feb 02:37:58 ntpdate[9511]: step time server 193.141.27.1 offset -10799.642908 sec</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To get more information about the NTP status, check the tracking:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>chronyc tracking
-</span><span class='line'>Reference ID    : 193.141.27.1 (ts1.sct.de)
-</span><span class='line'>Stratum         : 3
-</span><span class='line'>Ref time (UTC)  : Wed Feb 14 14:41:11 2018
-</span><span class='line'>System time     : 0.000000000 seconds fast of NTP time
-</span><span class='line'>Last offset     : +10799.637695312 seconds
-</span><span class='line'>RMS offset      : 10799.637695312 seconds
-</span><span class='line'>Frequency       : 0.000 ppm fast
-</span><span class='line'>Residual freq   : -1.456 ppm
-</span><span class='line'>Skew            : 1000000.000 ppm
-</span><span class='line'>Root delay      : 0.069487 seconds
-</span><span class='line'>Root dispersion : 1528.844971 seconds
-</span><span class='line'>Update interval : 0.0 seconds
-</span><span class='line'>Leap status     : Normal</span></code></pre></td></tr></table></div></figure>
-
-
-<p>You can see the server in the Reference ID and the Leap status that confirms the synchronization. Also re-check with timedatectl that NTP is working:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl | grep -i ntp
-</span><span class='line'>     NTP enabled: yes
-</span><span class='line'>NTP synchronized: yes</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
-</span><span class='line'>/ Give thought to your reputation.       \
-</span><span class='line'>| Consider changing name and moving to a |
-</span><span class='line'>\ new town.                              /
-</span><span class='line'> ----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
 
 ]]></content>
   </entry>
