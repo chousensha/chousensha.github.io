@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-10-27T13:22:48-04:00</updated>
+  <updated>2018-11-10T10:34:14-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,145 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Take the SpyderSec Challenge]]></title>
+    <link href="http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge/"/>
+    <updated>2018-11-10T07:43:09-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge</id>
+    <content type="html"><![CDATA[<p>The challenge:</p>
+
+<blockquote><p>You are looking for two flags. Using discovered pointers in various elements of the running web
+application you can deduce the first flag (a downloadable file) which is required to find the second
+flag (a text file). Look, read and maybe even listen. You will need to use basic web application
+recon skills as well as some forensics to find both flags.</p></blockquote>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE  SERVICE VERSION
+</span><span class='line'>22/tcp closed ssh
+</span><span class='line'>80/tcp open   http    Apache httpd
+</span><span class='line'>|_http-server-header: Apache
+</span><span class='line'>|_http-title: SpyderSec | Challenge</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is just one page for the web server:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/spydersec/spydersec.png" title="spydersec" alt="spydersec"></p>
+
+<p>There is some peculiar Javascript in the source:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;script&gt;
+</span><span class='line'>eval(function(p,a,c,k,e,d){e=function(c){return c.toString(36)};if(!''.replace(/^/,String)){while(c--){d[c.toString(a)]=k[c]||c.toString(a)}k=[function(e){return d[e]}];e=function(){return'\\w+'};c=1};while(c--){if(k[c]){p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c])}}return p}('7:0:1:2:8:6:3:5:4:0:a:1:2:d:c:b:f:3:9:e',16,16,'6c|65|72|27|75|6d|28|61|74|29|64|62|66|2e|3b|69'.split('|'),0,{}))
+</span><span class='line'>&lt;/script&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used an <a href="https://beautifier.io/">online JS beautifier</a> to deobfuscate this to a hex string, which I then decoded to <code>alert(&lsquo;mulder.fbi&rsquo;);</code>. This name is familiar to me from the X-Files. Anyway, not sure about its relevance for now. Moving on with the information gathering, since nothing came out of Nikto or Gobuster, I browsed the page in Burp, and noticed a strange cookie being set:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Cookie: URI=%2Fv%2F81JHPbvyEQ8729161jd6aKQ0N4%2F</span></code></pre></td></tr></table></div></figure>
+
+
+<p>URL decoding this gave me the value <code>/v/81JHPbvyEQ8729161jd6aKQ0N4/</code> Tried browsing to this and got a 403 Forbidden error. There is some piece of the puzzle missing..so I took the next step and downloaded all the images and ran them through exiftool..and finally got some luck with the Challenge.png image, which had a hex comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Comment                         : 35:31:3a:35:33:3a:34:36:3a:35:37:3a:36:34:3a:35:38:3a:33:35:3a:37:31:3a:36:34:3a:34:35:3a:36:37:3a:36:61:3a:34:65:3a:37:61:3a:34:39:3a:33:35:3a:36:33:3a:33:30:3a:37:38:3a:34:32:3a:34:66:3a:33:32:3a:36:37:3a:33:30:3a:34:61:3a:35:31:3a:33:64:3a:33:64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Had to hex-decode this 2 times to get a base64 string: <em>QSFWdX5qdEgjNzI5c0xBO2g0JQ==</em>, which I decoded to <code>A!Vu~jtH#729sLA;h4%</code>. This looks like a password, but where to use it?</p>
+
+<p>With the hints from the description, knowing that a file will need to be downloaded, I treated mulder.fbi as a file and tried appending it to the URL path that gave me a forbidden error: <a href="http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi">http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi</a></p>
+
+<p>That actually worked and I downloaded the file, which is apparently an MP4:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>file mulder.fbi 
+</span><span class='line'>mulder.fbi: ISO Media, MP4 v2 [ISO 14496-14]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is a song by The Platters. Since I couldn&rsquo;t use steghide on a video, I googled for MP4 steganography and found this Lifehacker article about <a href="https://lifehacker.com/5771142/embed-a-truecrypt-volume-in-a-playable-video-file">embedding a TrueCrypt volume in a video</a>. I installed Veracrypt and used it to mount the file as a volume, in TrueCrypt mode. At the password prompt, I used the string that I&rsquo;ve decoded earlier, and it served me the volume, with a file called Flag.txt inside!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat Flag.txt 
+</span><span class='line'>Congratulations! 
+</span><span class='line'>
+</span><span class='line'>You are a winner. 
+</span><span class='line'>
+</span><span class='line'>Please leave some feedback on your thoughts regarding this challenge� Was it fun? Was it hard enough or too easy? What did you like or dislike, what could be done better?
+</span><span class='line'>
+</span><span class='line'>https://www.spydersec.com/feedback</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The main takeaways from this challenge for me were the steganography possibilities for video files. Until next time!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Q: How many hardware engineers does it \
+</span><span class='line'>| take to change a light bulb? A: None.  |
+</span><span class='line'>| We'll fix it in software.              |
+</span><span class='line'>|                                        |
+</span><span class='line'>| Q: How many system programmers does it |
+</span><span class='line'>| take to change a light bulb? A: None.  |
+</span><span class='line'>| The application can work around it.    |
+</span><span class='line'>|                                        |
+</span><span class='line'>| Q: How many software engineers does it |
+</span><span class='line'>| take to change a light bulb? A: None.  |
+</span><span class='line'>| We'll document it in the manual.       |
+</span><span class='line'>|                                        |
+</span><span class='line'>| Q: How many tech writers does it take  |
+</span><span class='line'>| to change a light bulb? A: None. The   |
+</span><span class='line'>\ user can figure it out.                /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[All your 64Base are belong to us]]></title>
@@ -2503,9 +2642,9 @@ file. There are no restrictions on the format of the secret data.</p></blockquot
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x72;&#109;&#x69;&#99;&#104;&#x61;&#101;&#108;&#115;&#64;&#105;&#x6d;&#x66;&#46;&#108;&#111;&#x63;&#x61;&#x6c;">&#114;&#109;&#x69;&#x63;&#104;&#x61;&#x65;&#x6c;&#115;&#x40;&#105;&#109;&#102;&#46;&#108;&#111;&#x63;&#x61;&#x6c;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x61;&#x6b;&#x65;&#105;&#x74;&#x68;&#64;&#105;&#109;&#102;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#x6c;">&#97;&#x6b;&#101;&#105;&#116;&#x68;&#64;&#x69;&#109;&#102;&#46;&#x6c;&#x6f;&#x63;&#97;&#108;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#111;&#58;&#x65;&#115;&#116;&#x6f;&#110;&#101;&#64;&#x69;&#109;&#x66;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#108;">&#101;&#x73;&#x74;&#x6f;&#110;&#101;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#111;&#99;&#97;&#108;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#114;&#x6d;&#x69;&#x63;&#x68;&#x61;&#x65;&#108;&#x73;&#x40;&#x69;&#109;&#x66;&#46;&#x6c;&#111;&#99;&#x61;&#x6c;">&#114;&#109;&#x69;&#99;&#x68;&#97;&#x65;&#108;&#115;&#64;&#x69;&#x6d;&#x66;&#46;&#x6c;&#111;&#x63;&#97;&#x6c;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#58;&#x61;&#107;&#101;&#105;&#116;&#104;&#64;&#x69;&#109;&#102;&#x2e;&#x6c;&#111;&#x63;&#97;&#x6c;">&#x61;&#x6b;&#x65;&#105;&#x74;&#104;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#x6f;&#x63;&#x61;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#101;&#x73;&#116;&#111;&#x6e;&#101;&#64;&#105;&#x6d;&#x66;&#x2e;&#x6c;&#111;&#99;&#x61;&#x6c;">&#101;&#115;&#x74;&#111;&#x6e;&#101;&#x40;&#x69;&#109;&#x66;&#46;&#108;&#x6f;&#99;&#x61;&#x6c;</a></li>
 </ul>
 
 
@@ -15510,245 +15649,6 @@ the system to prevent the denial in the future.</p></blockquote>
 </span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Configure an SMTP mail service]]></title>
-    <link href="http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service/"/>
-    <updated>2018-02-17T12:16:33-05:00</updated>
-    <id>http://chousensha.github.io/blog/2018/02/17/lfcs-prep-configure-an-smtp-mail-service</id>
-    <content type="html"><![CDATA[<p>Today we&rsquo;ll look at configuring a mail service for LFCS objectives. We&rsquo;ll use the Postfix implementation that already comes preinstalled  on CentOS.</p>
-
-<!-- more -->
-
-
-<p>The configuration file with all Postfix parameters is <code>/etc/postfix/main.cf</code> and it is massive. Instead of manually editing it, it&rsquo;s easier to use <strong>postconf</strong>. Without arguments, it displays all parameters. If given a parameter name, it will show that parameter&rsquo;s value, and with the <strong>-e</strong> flag it can modify parameters.</p>
-
-<p>Another important file for mail configuration is <code>/etc/aliases</code>. If you want a mail destined to a user to be delivered to another user, you can set an alias:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>username: alias </span></code></pre></td></tr></table></div></figure>
-
-
-<p>The alias will get the mails destined for the user. I&rsquo;ve added an alias on my system so that root&rsquo;s mail will be delivered to nixhat:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root: nixhat</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After changing any alias settings, you have to refresh the alias DB with the command <code>postalias /etc/aliases</code></p>
-
-<p>Now it&rsquo;s time to edit some parameters in order to setup a working mail configuration.</p>
-
-<ul>
-<li>The <strong>myorigin</strong> parameter specifies the domain that locally-posted mail appears to come from</li>
-</ul>
-
-
-<p>The default is to use the hostname for this, but I will change it to use just the domain (example.com in this case)</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf -e 'myorigin=$mydomain'
-</span><span class='line'>[root@centos ~]# postconf myorigin
-</span><span class='line'>myorigin = $mydomain</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>The <strong>inet_interfaces</strong> parameter specifies the network interface addresses that this mail system receives mail on</li>
-</ul>
-
-
-<p>Here I have mine listening on the Ethernet interface in addition to localhost:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf inet_interfaces
-</span><span class='line'>inet_interfaces = 192.168.217.131, localhost</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>The <strong>relayhost</strong> parameter specifies the default host to send mail to when no entry is matched in the optional transport(5) table. When no relayhost is given, mail is routed directly to the destination. On an intranet, specify the organizational domain name. In the case of SMTP, specify a domain, host, host:port, [host]:port, [address] or [address]:port; the form [host] turns off MX lookups.</li>
-</ul>
-
-
-<p>If you want to forward mail to a central host, use the <strong>relayhost</strong> parameter</p>
-
-<ul>
-<li>The <strong>mydestination</strong> parameter specifies the list of domains that this machine considers itself the final destination for. This parameter is important for receiving messages</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mydestination
-</span><span class='line'>mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>The <strong>mynetworks</strong> parameter specifies the list of &ldquo;trusted&rdquo; SMTP clients that are allowed to relay mail through Postfix. It can allow clients on the local subnet, in a range, just a host, or manually specified.</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf mynetworks
-</span><span class='line'>mynetworks = 192.168.217.0/24 127.0.0.0/8 [::1]/128</span></code></pre></td></tr></table></div></figure>
-
-
-<h2>Restricting access to the server</h2>
-
-<p>For receiving mail, you can add some settings to harden the security of your server:</p>
-
-<ul>
-<li><strong>smtpd_helo_required</strong> &ndash; Require that a remote SMTP client sends HELO or EHLO before commencing a MAIL transaction</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_required
-</span><span class='line'>smtpd_helo_required = yes</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><strong>smtpd_helo_restrictions</strong> &ndash; other optional restrictions:</li>
-</ul>
-
-
-<p><strong>permit_mynetworks</strong> &ndash; Permit the request when the client IP address matches any network or network address listed in $mynetworks</p>
-
-<p> <strong>reject_invalid_helo_hostname</strong> &ndash; Reject the request when the HELO or EHLO hostname is malformed</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_helo_restrictions
-</span><span class='line'>smtpd_helo_restrictions = permit_mynetworks, reject_invalid_helo_hostname</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><strong>smtpd_sender_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client MAIL FROM command:</li>
-</ul>
-
-
-<p><strong>reject_unknown_sender_domain</strong> &ndash; Reject the request when Postfix is not final destination for the sender address, and the MAIL FROM domain has 1) no DNS MX and no DNS A record, or 2) a malformed MX record such as a record with a zero-length MX hostname</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_sender_restrictions
-</span><span class='line'>smtpd_sender_restrictions = permit_mynetworks, reject_unknown_sender_domain</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li><strong>smtpd_recipient_restrictions</strong> &ndash; Optional restrictions that the Postfix SMTP server applies in the context of a client RCPT TO command</li>
-</ul>
-
-
-<p><strong>reject_unauth_destination</strong> &ndash; reject the request unless 1) Postfix is the mail forwarder; or 2) Postfix is the final destination</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>postconf smtpd_recipient_restrictions
-</span><span class='line'>smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination</span></code></pre></td></tr></table></div></figure>
-
-
-<p>After changing Postfix settings, it is a good idea to run <code>postfix check</code> to check the validity of the config file. Then restart Postfix.</p>
-
-<p>Now to test it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>echo "This is a test" | mail -s "test" root@example.com</span></code></pre></td></tr></table></div></figure>
-
-
-<p>On user nixhat:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mail
-</span><span class='line'>Heirloom Mail version 12.5 7/5/10.  Type ? for help.
-</span><span class='line'>"/var/spool/mail/nixhat": 1 message 1 new
-</span><span class='line'>&gt;N  1 root                  Sat Feb 17 18:08  18/569   "test"
-</span><span class='line'>cat  /var/spool/mail/nixhat
-</span><span class='line'>From root@example.com  Sat Feb 17 18:08:09 2018
-</span><span class='line'>Return-Path: &lt;root@example.com&gt;
-</span><span class='line'>X-Original-To: root@example.com
-</span><span class='line'>Delivered-To: root@example.com
-</span><span class='line'>Received: by centos.example.com (Postfix, from userid 0)
-</span><span class='line'>  id 51255218FED7; Sat, 17 Feb 2018 18:08:09 +0200 (EET)
-</span><span class='line'>Date: Sat, 17 Feb 2018 18:08:09 +0200
-</span><span class='line'>To: root@example.com
-</span><span class='line'>Subject: test
-</span><span class='line'>User-Agent: Heirloom mailx 12.5 7/5/10
-</span><span class='line'>MIME-Version: 1.0
-</span><span class='line'>Content-Type: text/plain; charset=us-ascii
-</span><span class='line'>Content-Transfer-Encoding: 7bit
-</span><span class='line'>Message-Id: &lt;20180217160809.51255218FED7@centos.example.com&gt;
-</span><span class='line'>From: root@example.com (root)
-</span><span class='line'>Status: O
-</span><span class='line'>
-</span><span class='line'>This is a test</span></code></pre></td></tr></table></div></figure>
-
-
-<p>So it works. If you want to see more about the status of your mails, look inside <code>/var/log/maillog</code>:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Feb 17 18:21:11 centos postfix/pickup[8896]: 4FADF218FED8: uid=0 from=&lt;root&gt;
-</span><span class='line'>Feb 17 18:21:11 centos postfix/cleanup[9359]: 4FADF218FED8: message-id=&lt;20180217162111.4FADF218FED8@centos.example.com&gt;
-</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: from=&lt;root@example.com&gt;, size=431, nrcpt=1 (queue active)
-</span><span class='line'>Feb 17 18:21:11 centos postfix/local[9361]: 4FADF218FED8: to=&lt;nixhat@example.com&gt;, orig_to=&lt;root@example.com&gt;, relay=local, delay=0.08, delays=0.07/0.02/0/0, dsn=2.0.0, status=sent (delivered to mailbox)
-</span><span class='line'>Feb 17 18:21:11 centos postfix/qmgr[8897]: 4FADF218FED8: removed</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Some other useful actions with mail would be to view the mail queue with <strong>mailq</strong> and flush the queue with <strong>postfix flush</strong></p>
-
-<p>Also see <strong>man 5 postconf</strong> for all Postfix parameters</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
-</span><span class='line'>/ Q: What lies on the bottom of the ocean \
-</span><span class='line'>\ and twitches? A: A nervous wreck.       /
-</span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
 
 ]]></content>
   </entry>

