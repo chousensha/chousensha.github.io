@@ -3,7 +3,7 @@ layout: post
 title: "Book review - Nmap Network Scanning"
 date: 2016-08-24 06:02:00 -0400
 comments: true
-categories: [books]
+categories: [books, reviews]
 keywords: pentesting, nmap, hacking, penetration testing, nmap tutorial, nmap guide, port scan, scanner, nmap network guide, nmap book, nmap manual
 description: Nmap Network Scanning&#58; The Official Nmap Project Guide to Network Discovery and Security Scanning review
 ---

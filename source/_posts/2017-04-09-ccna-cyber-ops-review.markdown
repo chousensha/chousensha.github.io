@@ -3,7 +3,7 @@ layout: post
 title: "CCNA Cyber Ops review"
 date: 2017-04-09 03:11:41 -0400
 comments: true
-categories: [networking]
+categories: [networking, reviews]
 keywords: cisco, ccna, ccna cyber ops, cyber, cyber ops, cyber operations, cisco ccna cyber ops, cisco cybersecurity, cybersecurity, infosec, information security, cisco scholarship, security analyst, soc
 description: Review of the CCNA Cyber Ops scholarship program
 ---
