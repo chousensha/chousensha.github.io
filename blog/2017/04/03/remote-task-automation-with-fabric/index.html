@@ -1,0 +1,1103 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Remote task automation with Fabric - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Using Fabric to automate tasks on remote hosts">
+  <meta name="keywords" content="fabric, python, automation, fabric automation, python automation, remote task automation, automatic code deployment">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Remote task automation with Fabric</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-04-03T03:01:29-04:00" pubdate data-updated="true">Apr 3<span>rd</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today I will go over the use of <a href="http://docs.fabfile.org/en/1.13/">Fabric</a>, a Python library and CLI tool for executing local / remote tasks via SSH.</p>
+
+<p><strong>Requirements</strong>:</p>
+
+<ul>
+<li>Python 2.5 or 2.7</li>
+<li>Paramiko</li>
+<li>SSH</li>
+</ul>
+
+
+<p><strong>Features at a glance</strong>:</p>
+
+<ul>
+<li>run local or remote shell commands (also with the sudo option)</li>
+<li>upload / download files</li>
+<li>prompt for input</li>
+<li>run Python functions</li>
+<li>abort execution when encountering errors by default, but also allow for error handling</li>
+</ul>
+
+
+<p>Install Fabric with <code>pip install fabric</code></p>
+
+<!-- more -->
+
+
+<h2>Usage</h2>
+
+<p>The way Fabric works is by creating a file named <code>fabfile.py</code>, containing some functions, and then using the <strong>fab</strong> CLI tool to run them.</p>
+
+<p>Let&rsquo;s look at the options available with the <strong>fab</strong> tool:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab --help
+</span><span class='line'>Usage: fab [options] &lt;command&gt;[:arg1,arg2=val2,host=foo,hosts='h1;h2',...] ...
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>  -d NAME, --display=NAME
+</span><span class='line'>                        print detailed info about command NAME
+</span><span class='line'>  -F FORMAT, --list-format=FORMAT
+</span><span class='line'>                        formats --list, choices: short, normal, nested
+</span><span class='line'>  -I, --initial-password-prompt
+</span><span class='line'>                        Force password prompt up-front
+</span><span class='line'>  --initial-sudo-password-prompt
+</span><span class='line'>                        Force sudo password prompt up-front
+</span><span class='line'>  -l, --list            print list of possible commands and exit
+</span><span class='line'>  --set=KEY=VALUE,...   comma separated KEY=VALUE pairs to set Fab env vars
+</span><span class='line'>  --shortlist           alias for -F short --list
+</span><span class='line'>  -V, --version         show program's version number and exit
+</span><span class='line'>  -a, --no_agent        don't use the running SSH agent
+</span><span class='line'>  -A, --forward-agent   forward local agent to remote end
+</span><span class='line'>  --abort-on-prompts    abort instead of prompting (for password, host, etc)
+</span><span class='line'>  -c PATH, --config=PATH
+</span><span class='line'>                        specify location of config file to use
+</span><span class='line'>  --colorize-errors     Color error output
+</span><span class='line'>  -D, --disable-known-hosts
+</span><span class='line'>                        do not load user known_hosts file
+</span><span class='line'>  -e, --eagerly-disconnect
+</span><span class='line'>                        disconnect from hosts as soon as possible
+</span><span class='line'>  -f PATH, --fabfile=PATH
+</span><span class='line'>                        python module file to import, e.g. '../other.py'
+</span><span class='line'>  -g HOST, --gateway=HOST
+</span><span class='line'>                        gateway host to connect through
+</span><span class='line'>  --gss-auth            Use GSS-API authentication
+</span><span class='line'>  --gss-deleg           Delegate GSS-API client credentials or not
+</span><span class='line'>  --gss-kex             Perform GSS-API Key Exchange and user authentication
+</span><span class='line'>  --hide=LEVELS         comma-separated list of output levels to hide
+</span><span class='line'>  -H HOSTS, --hosts=HOSTS
+</span><span class='line'>                        comma-separated list of hosts to operate on
+</span><span class='line'>  -i PATH               path to SSH private key file. May be repeated.
+</span><span class='line'>  -k, --no-keys         don't load private key files from ~/.ssh/
+</span><span class='line'>  --keepalive=N         enables a keepalive every N seconds
+</span><span class='line'>  --linewise            print line-by-line instead of byte-by-byte
+</span><span class='line'>  -n M, --connection-attempts=M
+</span><span class='line'>                        make M attempts to connect before giving up
+</span><span class='line'>  --no-pty              do not use pseudo-terminal in run/sudo
+</span><span class='line'>  -p PASSWORD, --password=PASSWORD
+</span><span class='line'>                        password for use with authentication and/or sudo
+</span><span class='line'>  -P, --parallel        default to parallel execution method
+</span><span class='line'>  --port=PORT           SSH connection port
+</span><span class='line'>  -r, --reject-unknown-hosts
+</span><span class='line'>                        reject unknown hosts
+</span><span class='line'>  --sudo-password=SUDO_PASSWORD
+</span><span class='line'>                        password for use with sudo only
+</span><span class='line'>  --system-known-hosts=SYSTEM_KNOWN_HOSTS
+</span><span class='line'>                        load system known_hosts file before reading user
+</span><span class='line'>                        known_hosts
+</span><span class='line'>  -R ROLES, --roles=ROLES
+</span><span class='line'>                        comma-separated list of roles to operate on
+</span><span class='line'>  -s SHELL, --shell=SHELL
+</span><span class='line'>                        specify a new shell, defaults to '/bin/bash -l -c'
+</span><span class='line'>  --show=LEVELS         comma-separated list of output levels to show
+</span><span class='line'>  --skip-bad-hosts      skip over hosts that can't be reached
+</span><span class='line'>  --skip-unknown-tasks  skip over unknown tasks
+</span><span class='line'>  --ssh-config-path=PATH
+</span><span class='line'>                        Path to SSH config file
+</span><span class='line'>  -t N, --timeout=N     set connection timeout to N seconds
+</span><span class='line'>  -T N, --command-timeout=N
+</span><span class='line'>                        set remote command timeout to N seconds
+</span><span class='line'>  -u USER, --user=USER  username to use when connecting to remote hosts
+</span><span class='line'>  -w, --warn-only       warn, instead of abort, when commands fail
+</span><span class='line'>  -x HOSTS, --exclude-hosts=HOSTS
+</span><span class='line'>                        comma-separated list of hosts to exclude
+</span><span class='line'>  -z INT, --pool-size=INT
+</span><span class='line'>                        number of concurrent processes to use in parallel mode</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <strong>fab</strong> tool can execute functions from a fabfile.py by passing the function name, like so: <code>fab func-name</code></p>
+
+<h2>Examples</h2>
+
+<p>Let&rsquo;s take a look at a couple of simple fabfiles, before making a more contrived one:</p>
+
+<h3>Run commands on the local host</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">local_info</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">local</span><span class="p">(</span><span class="s">&#39;whoami&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab local_info            
+</span><span class='line'>[localhost] local: whoami
+</span><span class='line'>root
+</span><span class='line'>
+</span><span class='line'>Done.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Run commands on remote host &ndash; password authentication</h3>
+
+<p>Next, let&rsquo;s use SSH with a password to log in to a remote host and do something on it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;192.168.216.128&#39;</span><span class="p">]</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">&#39;root&#39;</span> <span class="c"># default is the local user</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="s">&#39;password&#39;</span> <span class="c"># can be used both for SSH authentication and sudo</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">remote_info</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">run</span><span class="p">(</span><span class="s">&#39;uname -a&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab remote_info 
+</span><span class='line'>[192.168.216.128] Executing task 'remote_info'
+</span><span class='line'>[192.168.216.128] run: uname -a
+</span><span class='line'>[192.168.216.128] out: Linux localhost.localdomain 3.10.0-514.2.2.el7.x86_64 #1 SMP Tue Dec 6 23:06:41 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+</span><span class='line'>[192.168.216.128] out: 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Done.
+</span><span class='line'>Disconnecting from 192.168.216.128... done.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Run commands on remote host &ndash; key authentication</h3>
+
+<p>SSH with a password might be ok for demonstration purposes, but we will most likely want to use public key authentication. First, generate the key that we&rsquo;ll use later:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-keygen -t rsa -b 2048 -v
+</span><span class='line'>Generating public/private rsa key pair.
+</span><span class='line'>Enter file in which to save the key (/root/.ssh/id_rsa): mykey.pem
+</span><span class='line'>Enter passphrase (empty for no passphrase): 
+</span><span class='line'>Enter same passphrase again: 
+</span><span class='line'>Your identification has been saved in mykey.pem.
+</span><span class='line'>Your public key has been saved in mykey.pem.pub.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, copy the key to the remote host&rsquo;s <code>~/.ssh/authorized_keys</code> location:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh-copy-id -i ~/mykey.pem.pub root@192.168.216.128 
+</span><span class='line'>/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/root/mykey.pem.pub"
+</span><span class='line'>/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+</span><span class='line'>/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+</span><span class='line'>root@192.168.216.128's password: 
+</span><span class='line'>
+</span><span class='line'>Number of key(s) added: 1
+</span><span class='line'>
+</span><span class='line'>Now try logging into the machine, with:   "ssh 'root@192.168.216.128'"
+</span><span class='line'>and check to make sure that only the key(s) you wanted were added.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Make the .pem key read-only and then try logging in by passing it to the ssh -i option:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chmod 400 mykey.pem
+</span><span class='line'>ssh -i mykey.pem root@192.168.216.128
+</span><span class='line'>Last failed login: Tue Mar 28 12:28:43 EEST 2017 from 192.168.216.1 on ssh:notty
+</span><span class='line'>There were 2 failed login attempts since the last successful login.
+</span><span class='line'>Last login: Tue Mar 28 11:30:19 2017 from 192.168.216.1
+</span><span class='line'>[root@localhost ~]#</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now add the key file in Fabric:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;192.168.217.131&#39;</span><span class="p">]</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">&#39;root&#39;</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">key_filename</span> <span class="o">=</span> <span class="s">&#39;~/.ssh/mykey.pem&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">remote_info</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">run</span><span class="p">(</span><span class="s">&#39;uptime&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Run commands on multiple hosts</h3>
+
+<p>If you want to run a command on a host, and a different command on another host, you can do so by specifying which host you want to run a command on:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">&#39;root&#39;</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">key_filename</span> <span class="o">=</span> <span class="s">&#39;~/mykey.pem&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">local_info</span><span class="p">():</span>
+</span><span class='line'>    <span class="k">print</span><span class="p">(</span><span class="s">&#39;This runs only on the localhost&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@hosts</span><span class="p">(</span><span class="s">&#39;192.168.216.128&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">remote_info</span><span class="p">():</span>
+</span><span class='line'>        <span class="k">print</span><span class="p">(</span><span class="s">&#39;This runs only on the remote host&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here is how it would look like:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab local_info remote_info
+</span><span class='line'>This runs only on the localhost
+</span><span class='line'>[192.168.216.128] Executing task 'remote_info'
+</span><span class='line'>This runs only on the remote host
+</span><span class='line'>
+</span><span class='line'>Done.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Download / upload files</h3>
+
+<p>Fabric also has built-in functionality for downloading and uploading files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">download</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">get</span><span class="p">(</span><span class="s">&#39;~/Desktop/ssh.sh&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Result:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab download
+</span><span class='line'>[192.168.23.128] Executing task 'download'
+</span><span class='line'>[192.168.23.128] download: path/192.168.23.128/ssh.sh &lt;- /root/Desktop/ssh.sh
+</span><span class='line'>
+</span><span class='line'>Done.
+</span><span class='line'>Disconnecting from 192.168.23.128... done.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the upload:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">upload</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">put</span><span class="p">(</span><span class="s">&#39;file.txt&#39;</span><span class="p">,</span> <span class="s">&#39;~/Desktop&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Output:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab upload
+</span><span class='line'>[192.168.23.128] Executing task 'upload'
+</span><span class='line'>[192.168.23.128] put: file.txt -&gt; /root/Desktop/file.txt
+</span><span class='line'>
+</span><span class='line'>Done.
+</span><span class='line'>Disconnecting from 192.168.23.128... done.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Run sudo commands</h3>
+
+<p>We saw some examples of using the root user, but Fabric allows running sudo commands from users with lower privileges:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;192.168.217.131&#39;</span><span class="p">]</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">&#39;nixhat&#39;</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">cfg_test</span><span class="p">():</span>
+</span><span class='line'>        <span class="n">sudo</span><span class="p">(</span><span class="s">&#39;apachectl configtest&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And here it is in action:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab cfg_test
+</span><span class='line'>[192.168.217.131] Executing task 'cfg_test'
+</span><span class='line'>[192.168.217.131] sudo: apachectl configtest
+</span><span class='line'>[192.168.217.131] Login password for 'nixhat':
+</span><span class='line'>[192.168.217.131] out: sudo password:
+</span><span class='line'>[192.168.217.131] out: AH00558: httpd: Could not reliably determine the server's
+</span><span class='line'> fully qualified domain name, using localhost.localdomain. Set the 'ServerName'
+</span><span class='line'>directive globally to suppress this message
+</span><span class='line'>[192.168.217.131] out: Syntax OK
+</span><span class='line'>[192.168.217.131] out:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Done.
+</span><span class='line'>Disconnecting from 192.168.217.131... done.</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Specifying multiple hosts with different users and passwords</h3>
+
+<p>In case you have many hosts that you would like to run commands on as different users, you can do so:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;root@192.168.217.130&#39;</span><span class="p">,</span> <span class="s">&#39;nixhat@192.168.216.128&#39;</span><span class="p">]</span> <span class="c"># hosts to run cmds on</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">passwords</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;root@192.168.217.130&#39;</span><span class="p">:</span><span class="s">&#39;password1&#39;</span><span class="p">,</span> <span class="s">&#39;nixhat@192.168.216.128&#39;</span><span class="p">:</span><span class="s">&#39;password2&#39;</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Running tasks on predefined hosts</h3>
+
+<p>If you have tasks that you want to run on certain hosts only, you can specify that:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="nd">@hosts</span><span class="p">(</span><span class="s">&#39;host1&#39;</span><span class="p">,</span> <span class="s">&#39;host2&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">mytask</span><span class="p">():</span>
+</span><span class='line'>    <span class="n">run</span><span class="p">(</span><span class="s">&#39;cmd&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Classifying hosts into roles</h3>
+
+<p>In a large environment, you are most likely to have many hosts that fulfill some roles, such as development machines and production servers. You can organize them in the Fabric code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">roledefs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="s">&#39;production&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;prod1&#39;</span><span class="p">,</span> <span class="s">&#39;prod2&#39;</span><span class="p">],</span>
+</span><span class='line'>    <span class="s">&#39;development&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;dev1&#39;</span><span class="p">,</span> <span class="s">&#39;dev2&#39;</span><span class="p">]</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Automating code deployment</h3>
+
+<p>In a <a href="https://chousensha.github.io/blog/2017/03/30/using-git-for-code-deployment/">previous post</a>, we used Git for updating the code on a live server from a development machine. This time, we&rsquo;ll use Fabric to automate the process!</p>
+
+<p>Besides the development and production servers we had before, we&rsquo;ll use a third computer to run the Fabric commands from. Let&rsquo;s assume this is your sysadmin machine, from which magic happens on the network. The developers made some changes to the code on the dev server, and you want to push them to production:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="o">*</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># script must be called fabfile.py</span>
+</span><span class='line'><span class="c"># fab -l - list available cmds</span>
+</span><span class='line'><span class="c"># fab CMDNAME - run cmd</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># the env dictionary allows for setting different variables for customizing the configuration</span>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">colorize_errors</span> <span class="o">=</span> <span class="s">&#39;true&#39;</span> <span class="c"># color errors in red and warnings in magenta</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">roledefs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="s">&#39;dev&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;root@192.168.217.130:22 &#39;</span><span class="p">],</span>
+</span><span class='line'>    <span class="s">&#39;prod&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s">&#39;root@192.168.217.131:22&#39;</span><span class="p">],</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">env</span><span class="o">.</span><span class="n">passwords</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;root@192.168.217.130:22&#39;</span><span class="p">:</span><span class="s">&#39;5t0rm80rn&#39;</span><span class="p">,</span> <span class="s">&#39;root@192.168.217.131:22&#39;</span><span class="p">:</span><span class="s">&#39;hakubo10&#39;</span><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@roles</span><span class="p">(</span><span class="s">&#39;dev&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">prep</span><span class="p">():</span>
+</span><span class='line'>    <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">    Stage and commit new and modified files</span>
+</span><span class='line'><span class="sd">    :return:</span>
+</span><span class='line'><span class="sd">    &#39;&#39;&#39;</span>
+</span><span class='line'>    <span class="k">with</span> <span class="n">settings</span><span class="p">(</span><span class="n">warn_only</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span> <span class="c"># continue executing even if errors were encountered</span>
+</span><span class='line'>        <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&#39;/root/Testing/Dev&#39;</span><span class="p">):</span>
+</span><span class='line'>            <span class="n">run</span><span class="p">(</span><span class="s">&#39;git add . &amp;&amp; git commit -m &quot;Add changes&quot;&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@roles</span><span class="p">(</span><span class="s">&#39;dev&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">push</span><span class="p">():</span>
+</span><span class='line'>    <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&#39;/root/Testing/Dev&#39;</span><span class="p">):</span>
+</span><span class='line'>        <span class="n">run</span><span class="p">(</span><span class="s">&#39;git push production&#39;</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="nd">@roles</span><span class="p">(</span><span class="s">&#39;prod&#39;</span><span class="p">)</span>
+</span><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">chk</span><span class="p">():</span>
+</span><span class='line'>    <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">    Confirm that files have been updated on the web server</span>
+</span><span class='line'><span class="sd">    :return:</span>
+</span><span class='line'><span class="sd">    &#39;&#39;&#39;</span>
+</span><span class='line'>    <span class="n">run</span><span class="p">(</span><span class="s">&#39;ls /var/www/html/myweb/site&#39;</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now list the available commands:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab -l
+</span><span class='line'>Available commands:
+</span><span class='line'>
+</span><span class='line'>    chk   Confirm that files have been updated on the web server
+</span><span class='line'>    prep  Stage and commit new and modified files
+</span><span class='line'>    push</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And run them:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fab prep push chk
+</span><span class='line'>[root@192.168.217.130:22] Executing task 'prep'
+</span><span class='line'>[root@192.168.217.130:22] run: git add . && git commit -m "Add changes"
+</span><span class='line'>[root@192.168.217.130:22] out: [master 5719a02] Add changes
+</span><span class='line'>[root@192.168.217.130:22] out:  1 file changed, 1 insertion(+), 1 deletion(-)
+</span><span class='line'>[root@192.168.217.130:22] out:
+</span><span class='line'>
+</span><span class='line'>[root@192.168.217.130:22] Executing task 'push'
+</span><span class='line'>[root@192.168.217.130:22] run: git push production
+</span><span class='line'>[root@192.168.217.130:22] out: root@192.168.217.131's password:
+</span><span class='line'>[root@192.168.217.130:22] out: Counting objects: 3, done.
+</span><span class='line'>[root@192.168.217.130:22] out: Compressing objects:  33% (1/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Compressing objects:  66% (2/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Compressing objects: 100% (3/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Compressing objects: 100% (3/3), done.
+</span><span class='line'>[root@192.168.217.130:22] out: Writing objects:  33% (1/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Writing objects:  66% (2/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Writing objects: 100% (3/3)
+</span><span class='line'>[root@192.168.217.130:22] out: Writing objects: 100% (3/3), 294 bytes | 0 bytes/
+</span><span class='line'>s, done.
+</span><span class='line'>[root@192.168.217.130:22] out: Total 3 (delta 2), reused 0 (delta 0)
+</span><span class='line'>[root@192.168.217.130:22] out: To 192.168.217.131:Prod
+</span><span class='line'>[root@192.168.217.130:22] out:    39e598d..5719a02  master -&gt; master
+</span><span class='line'>[root@192.168.217.130:22] out:
+</span><span class='line'>
+</span><span class='line'>[root@192.168.217.131:22] Executing task 'chk'
+</span><span class='line'>[root@192.168.217.131:22] run: ls /var/www/html/myweb/site
+</span><span class='line'>[root@192.168.217.131:22] out: index.html  new.html  updates.html
+</span><span class='line'>[root@192.168.217.131:22] out:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Done.
+</span><span class='line'>Disconnecting from root@192.168.217.130... done.
+</span><span class='line'>Disconnecting from root@192.168.217.131... done.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In a file with many tasks, it will get tiresome to always specify them on the command line. You can organize your code to have a function that calls other tasks, respecting the roles and settings for each. Add this to the previous code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="nd">@task</span>
+</span><span class='line'><span class="k">def</span> <span class="nf">deploy</span><span class="p">():</span>
+</span><span class='line'>    <span class="sd">&#39;&#39;&#39;</span>
+</span><span class='line'><span class="sd">    Execute previous tasks by taking into account the defined roles </span>
+</span><span class='line'><span class="sd">    :return:</span>
+</span><span class='line'><span class="sd">    &#39;&#39;&#39;</span>
+</span><span class='line'>    <span class="n">execute</span><span class="p">(</span><span class="n">prep</span><span class="p">)</span> <span class="c"># on dev</span>
+</span><span class='line'>    <span class="n">execute</span> <span class="p">(</span><span class="n">push</span><span class="p">)</span> <span class="c"># on dev</span>
+</span><span class='line'>    <span class="n">execute</span><span class="p">(</span><span class="n">chk</span><span class="p">)</span> <span class="c"># on prod</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now you can run only <code>fab deploy</code> to get the same results!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ In the stairway of life, you'd best \
+</span><span class='line'>\ take the elevator.                  /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-04-03T03:01:29-04:00" pubdate data-updated="true">Apr 3<span>rd</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/python/'>python</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/03/30/using-git-for-code-deployment/" title="Previous Post: Using Git for code deployment">&laquo; Using Git for code deployment</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/04/09/ccna-cyber-ops-review/" title="Next Post: CCNA Cyber Ops review">CCNA Cyber Ops review &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/04/03/remote-task-automation-with-fabric/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

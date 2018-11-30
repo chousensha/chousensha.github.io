@@ -1,0 +1,606 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Python virtualenv - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Introduction to Python virtual environments">
+  <meta name="keywords" content="virtualenv, virtualenvwrapper, python, python virtual environments, python virtualenv, python virtualenvwrapper">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2016/07/29/python-virtualenv">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Python virtualenv</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-07-29T17:55:18-04:00" pubdate data-updated="true">Jul 29<span>th</span>, 2016</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In this post I am going to introduce Python&rsquo;s virtual environments, through the <strong>virtualenv</strong> tool. With this tool, you can keep separate environments for your projects, with their own dependencies and executables. By isolating the project environments, you can keep them neat and organized, without messing up your global installation. Depending on the requirements of what you&rsquo;re working on, you can use different versions of Python or keep older libraries on a per-project basis. Nothing outside the virtual environment will be modified.</p>
+
+<!-- more -->
+
+
+<h1>Installation</h1>
+
+<p>To begin with, install <em>virtualenv</em>. You can do it in several ways. Via pip: <code>pip install virtualenv</code>, or with easy_install: <code>easy_install virtualenv</code>. Now let&rsquo;s look at the help menu:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# virtualenv -h
+</span><span class='line'>Usage: virtualenv [OPTIONS] DEST_DIR
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'>  --version             show program's version number and exit
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>  -v, --verbose         Increase verbosity.
+</span><span class='line'>  -q, --quiet           Decrease verbosity.
+</span><span class='line'>  -p PYTHON_EXE, --python=PYTHON_EXE
+</span><span class='line'>                        The Python interpreter to use, e.g.,
+</span><span class='line'>                        --python=python2.5 will use the python2.5 interpreter
+</span><span class='line'>                        to create the new environment.  The default is the
+</span><span class='line'>                        interpreter that virtualenv was installed with
+</span><span class='line'>                        (/usr/bin/python)
+</span><span class='line'>  --clear               Clear out the non-root install and start from scratch.
+</span><span class='line'>  --no-site-packages    DEPRECATED. Retained only for backward compatibility.
+</span><span class='line'>                        Not having access to global site-packages is now the
+</span><span class='line'>                        default behavior.
+</span><span class='line'>  --system-site-packages
+</span><span class='line'>                        Give the virtual environment access to the global
+</span><span class='line'>                        site-packages.
+</span><span class='line'>  --always-copy         Always copy files rather than symlinking.
+</span><span class='line'>  --unzip-setuptools    Unzip Setuptools when installing it.
+</span><span class='line'>  --relocatable         Make an EXISTING virtualenv environment relocatable.
+</span><span class='line'>                        This fixes up scripts and makes all .pth files
+</span><span class='line'>                        relative.
+</span><span class='line'>  --no-setuptools       Do not install setuptools in the new virtualenv.
+</span><span class='line'>  --no-pip              Do not install pip in the new virtualenv.
+</span><span class='line'>  --no-wheel            Do not install wheel in the new virtualenv.
+</span><span class='line'>  --extra-search-dir=DIR
+</span><span class='line'>                        Directory to look for setuptools/pip distributions in.
+</span><span class='line'>                        This option can be used multiple times.
+</span><span class='line'>  --download            Download preinstalled packages from PyPI.
+</span><span class='line'>  --no-download, --never-download
+</span><span class='line'>                        Do not download preinstalled packages from PyPI.
+</span><span class='line'>  --prompt=PROMPT       Provides an alternative prompt prefix for this
+</span><span class='line'>                        environment.
+</span><span class='line'>  --setuptools          DEPRECATED. Retained only for backward compatibility.
+</span><span class='line'>                        This option has no effect.
+</span><span class='line'>  --distribute          DEPRECATED. Retained only for backward compatibility.
+</span><span class='line'>                        This option has no effect.</span></code></pre></td></tr></table></div></figure>
+
+
+<h1>Usage</h1>
+
+<p>So you&rsquo;re about to begin a new project. You want to start from scratch and keep it contained to itself. Creating a virtual environment will help you accomplish that:</p>
+
+<p><code>virtualenv my_project</code></p>
+
+<p>Now you can go to the newly created directory and see that there are already some folders inside. <code>bin</code> has the executables, <code>include</code> holds the header files, and <code>lib</code> contains the files of the installed modules in the virtual environment.</p>
+
+<p>Before you begin to work with your new environment, you need to activate it with <code>source bin/activate</code> or <code>source env_name/bin/activate</code> if you are outside the environment&rsquo;s directory.</p>
+
+<p>You will now see your propmt change, to confirm that the environment is active. For me, it looks like:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(my_project) root@kali:~/projects/my_project#</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now you can begin your work, installing packages, etc. When you&rsquo;re done, you can type <code>deactivate</code> to exit your environment. If you want to delete it, just remove its directory.</p>
+
+<p>When working with virtual environments, it might be helpful to take a snapshot of your installed packages and their versions, in case you want to recreate the environment later. You can do this with <code>pip freeze > requirements.txt</code>. Check the newly created file for a list of your snapshotted items. In my case, I only installed requests in my environment so far:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat requirements.txt 
+</span><span class='line'>requests==2.10.0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you need the exact same environment later, maybe to let some one of your team to work on the project, you can install the same packages and versions with the command <code>pip install -r requirements.txt</code></p>
+
+<h2>virtualenvwrapper</h2>
+
+<p>To make working with virtual environments even more convenient, you can use <em>virtualenvwrapper</em>, which provides wrappers for managing your environments and helps keep all your environments in one place. It also allows you to switch between environments with only one command, and has tab completion.</p>
+
+<p>First, install it (outside your environments), with <code>pip install virtualenvwrapper</code>.</p>
+
+<p>Then you need to add a few lines to your shell startup script. In my <code>~/.bashrc</code> file, I added the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># set the location where your virtual environments will be stored
+</span><span class='line'>export WORKON_HOME=$HOME/.virtualenvs
+</span><span class='line'># set the location of the virtualenvwrapper script (where it was installed)
+</span><span class='line'>source /usr/local/bin/virtualenvwrapper.sh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now reload the startup file: <code>source ~/.bashrc</code> and you will see that your .virtualenvs folder has been created and populated with some scripts. Let&rsquo;s look at the help menu to see the available commands:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>virtualenvwrapper
+</span><span class='line'>
+</span><span class='line'>virtualenvwrapper is a set of extensions to Ian Bicking's virtualenv
+</span><span class='line'>tool.  The extensions include wrappers for creating and deleting
+</span><span class='line'>virtual environments and otherwise managing your development workflow,
+</span><span class='line'>making it easier to work on more than one project at a time without
+</span><span class='line'>introducing conflicts in their dependencies.
+</span><span class='line'>
+</span><span class='line'>For more information please refer to the documentation:
+</span><span class='line'>
+</span><span class='line'>    http://virtualenvwrapper.readthedocs.org/en/latest/command_ref.html
+</span><span class='line'>
+</span><span class='line'>Commands available:
+</span><span class='line'>
+</span><span class='line'>  add2virtualenv: add directory to the import path
+</span><span class='line'>
+</span><span class='line'>  allvirtualenv: run a command in all virtualenvs
+</span><span class='line'>
+</span><span class='line'>  cdproject: change directory to the active project
+</span><span class='line'>
+</span><span class='line'>  cdsitepackages: change to the site-packages directory
+</span><span class='line'>
+</span><span class='line'>  cdvirtualenv: change to the $VIRTUAL_ENV directory
+</span><span class='line'>
+</span><span class='line'>  cpvirtualenv: duplicate the named virtualenv to make a new one
+</span><span class='line'>
+</span><span class='line'>  lssitepackages: list contents of the site-packages directory
+</span><span class='line'>
+</span><span class='line'>  lsvirtualenv: list virtualenvs
+</span><span class='line'>
+</span><span class='line'>  mkproject: create a new project directory and its associated virtualenv
+</span><span class='line'>
+</span><span class='line'>  mktmpenv: create a temporary virtualenv
+</span><span class='line'>
+</span><span class='line'>  mkvirtualenv: Create a new virtualenv in $WORKON_HOME
+</span><span class='line'>
+</span><span class='line'>  rmvirtualenv: Remove a virtualenv
+</span><span class='line'>
+</span><span class='line'>  setvirtualenvproject: associate a project directory with a virtualenv
+</span><span class='line'>
+</span><span class='line'>  showvirtualenv: show details of a single virtualenv
+</span><span class='line'>
+</span><span class='line'>  toggleglobalsitepackages: turn access to global site-packages on/off
+</span><span class='line'>
+</span><span class='line'>  virtualenvwrapper: show this help message
+</span><span class='line'>
+</span><span class='line'>  wipeenv: remove all packages installed in the current virtualenv
+</span><span class='line'>
+</span><span class='line'>  workon: list or change working virtualenvs</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, let&rsquo;s create a new environment: <code>mkvirtualenv beta_proj</code>. You can list all your environments with <code>lsvirtualenv</code></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>lsvirtualenv
+</span><span class='line'>beta_proj
+</span><span class='line'>=========</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Use the <code>workon</code> command to begin..working on your new environment: <code>workon beta_proj</code>. When finished, you can use <code>deactivate</code> again,or you can switch between multiple environments with <code>workon</code>.</p>
+
+<p>Removing an environment can be done with the <code>rmvirtualenv</code> command</p>
+
+<p>That&rsquo;s about all the basic tips needed to quick start your use of virtual environments in your Python projects. For more information, you can check the <a href="https://virtualenv.pypa.io/en/stable/">virtualenv</a> and <a href="https://virtualenvwrapper.readthedocs.io/en/latest/index.html">virtualenvwrapper</a> documentation.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
+</span><span class='line'>/ Do what comes naturally. Seethe and \
+</span><span class='line'>\ fume and throw a tantrum.           /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-07-29T17:55:18-04:00" pubdate data-updated="true">Jul 29<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/python/'>python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2016/07/29/python-virtualenv/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2016/07/29/python-virtualenv/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/07/20/pentest-lab-hackademic-rtb2/" title="Previous Post: Pentest lab - Hackademic RTB2">&laquo; Pentest lab - Hackademic RTB2</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/07/31/nmap-cheatsheet/" title="Next Post: Nmap cheatsheet">Nmap cheatsheet &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2016/07/29/python-virtualenv/';
+        var disqus_url = 'http://chousensha.github.io/blog/2016/07/29/python-virtualenv/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

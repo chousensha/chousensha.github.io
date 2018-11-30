@@ -1,0 +1,750 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LFCS prep - Managing SELinux - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Securing Linu with SELinux">
+  <meta name="keywords" content="selinux, linux security, lfcs, rhcsa, lfcsa">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LFCS prep - Managing SELinux</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-23T13:18:55-05:00" pubdate data-updated="true">Feb 23<span>rd</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In this post we&rsquo;ll go over using SELinux to manage the security of a Linux system.</p>
+
+<p>NSA Security-Enhanced Linux or SELinux is a mandatory access control architecture controlled through the <code>/etc/selinux/config</code> file.</p>
+
+<!-- more -->
+
+
+<p>Let&rsquo;s take a peek at the file on my box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/selinux/config 
+</span><span class='line'>
+</span><span class='line'># This file controls the state of SELinux on the system.
+</span><span class='line'># SELINUX= can take one of these three values:
+</span><span class='line'>#     enforcing - SELinux security policy is enforced.
+</span><span class='line'>#     permissive - SELinux prints warnings instead of enforcing.
+</span><span class='line'>#     disabled - No SELinux policy is loaded.
+</span><span class='line'>SELINUX=enforcing
+</span><span class='line'># SELINUXTYPE= can take one of three two values:
+</span><span class='line'>#     targeted - Targeted processes are protected,
+</span><span class='line'>#     minimum - Modification of targeted policy. Only selected processes are protected. 
+</span><span class='line'>#     mls - Multi Level Security protection.
+</span><span class='line'>SELINUXTYPE=targeted </span></code></pre></td></tr></table></div></figure>
+
+
+<p>If SELinux is disabled and then enabled, all the files inside the filesystem will need to be re-labeled.</p>
+
+<p>You can adjust SELinux with many commands and utilities:</p>
+
+<h3>getenforce</h3>
+
+<blockquote><p>get the current mode of SELinux</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>getenforce
+</span><span class='line'>Enforcing</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>sestatus</h3>
+
+<blockquote><p>SELinux status tool</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sestatus
+</span><span class='line'>SELinux status:                 enabled
+</span><span class='line'>SELinuxfs mount:                /sys/fs/selinux
+</span><span class='line'>SELinux root directory:         /etc/selinux
+</span><span class='line'>Loaded policy name:             targeted
+</span><span class='line'>Current mode:                   enforcing
+</span><span class='line'>Mode from config file:          enforcing
+</span><span class='line'>Policy MLS status:              enabled
+</span><span class='line'>Policy deny_unknown status:     allowed
+</span><span class='line'>Max kernel policy version:      28</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>setenforce</h3>
+
+<blockquote><p>modify the mode SELinux is running in</p>
+
+<p>Use Enforcing or 1 to put SELinux in enforcing mode.
+Use Permissive or 0 to put SELinux in permissive mode</p></blockquote>
+
+<h3>SELinux log files:</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tail /var/log/audit/audit.log | grep AVC
+</span><span class='line'>type=USER_AVC msg=audit(1518200447.761:276): pid=1 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:init_t:s0 msg='avc:  denied  { status } for auid=n/a uid=0 gid=0 path="/etc/fstab" cmdline="systemctl show --property=RequiredBy -- -.mount" scontext=system_u:system_r:initrc_t:s0 tcontext=unconfined_u:object_r:etc_t:s0 tclass=service  exe="/usr/lib/systemd/systemd" sauid=0 hostname=? addr=? terminal=?'</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>ausearch</h3>
+
+<blockquote><p>a tool to query audit daemon logs</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ausearch -m avc
+</span><span class='line'>----
+</span><span class='line'>time-&gt;Wed Aug  3 15:23:45 2016
+</span><span class='line'>type=SYSCALL msg=audit(1470227025.724:584): arch=c000003e syscall=49 success=no exit=-13 a0=6 a1=7efd495a23a8 a2=1c a3=7fff168b531c items=0 ppid=1 pid=8541 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="httpd" exe="/usr/sbin/httpd" subj=system_u:system_r:httpd_t:s0 key=(null)
+</span><span class='line'>type=AVC msg=audit(1470227025.724:584): avc:  denied  { name_bind } for  pid=8541 comm="httpd" src=8888 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:unreserved_port_t:s0 tclass=tcp_socket</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>restorecon</h3>
+
+<blockquote><p>restore file(s) default SELinux security contexts.</p></blockquote>
+
+<h3>chcon</h3>
+
+<blockquote><p>change file SELinux security context</p></blockquote>
+
+<h3>semanage</h3>
+
+<blockquote><p>SELinux Policy Management tool</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>semanage boolean -l | grep nfs
+</span><span class='line'>xen_use_nfs                    (off  ,  off)  Allow xen to use nfs
+</span><span class='line'>mpd_use_nfs                    (off  ,  off)  Allow mpd to use nfs
+</span><span class='line'>virt_use_nfs                   (off  ,  off)  Allow virt to use nfs
+</span><span class='line'>use_nfs_home_dirs              (off  ,  off)  Allow use to nfs home dirs
+</span><span class='line'>ksmtuned_use_nfs               (off  ,  off)  Allow ksmtuned to use nfs
+</span><span class='line'>nfsd_anon_write                (off  ,  off)  Allow nfsd to anon write
+</span><span class='line'>git_system_use_nfs             (off  ,  off)  Allow git to system use nfs
+</span><span class='line'>git_cgi_use_nfs                (off  ,  off)  Allow git to cgi use nfs
+</span><span class='line'>logrotate_use_nfs              (off  ,  off)  Allow logrotate to use nfs
+</span><span class='line'>cobbler_use_nfs                (off  ,  off)  Allow cobbler to use nfs
+</span><span class='line'>httpd_use_nfs                  (off  ,  off)  Allow httpd to use nfs
+</span><span class='line'>sge_use_nfs                    (off  ,  off)  Allow sge to use nfs
+</span><span class='line'>sanlock_use_nfs                (off  ,  off)  Allow sanlock to use nfs
+</span><span class='line'>samba_share_nfs                (off  ,  off)  Allow samba to share nfs
+</span><span class='line'>ftpd_use_nfs                   (off  ,  off)  Allow ftpd to use nfs
+</span><span class='line'>openshift_use_nfs              (off  ,  off)  Allow openshift to use nfs
+</span><span class='line'>polipo_use_nfs                 (off  ,  off)  Allow polipo to use nfs
+</span><span class='line'>tmpreaper_use_nfs              (off  ,  off)  Allow tmpreaper to use nfs
+</span><span class='line'>nfs_export_all_rw              (on   ,   on)  Allow nfs to export all rw
+</span><span class='line'>nfs_export_all_ro              (on   ,   on)  Allow nfs to export all ro</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>list ports</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>semanage port -l | grep ftp
+</span><span class='line'>ftp_data_port_t                tcp      20
+</span><span class='line'>ftp_port_t                     tcp      21, 989, 990
+</span><span class='line'>ftp_port_t                     udp      989, 990
+</span><span class='line'>tftp_port_t                    udp      69</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>change label</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>semanage fcontext --add -t &lt;type&gt; file</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You need to call restorecon after changing the context</p>
+
+<h3>getsebool</h3>
+
+<blockquote><p>get SELinux boolean value(s)</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>getsebool -a | grep ftp
+</span><span class='line'>ftpd_anon_write --&gt; off
+</span><span class='line'>ftpd_connect_all_unreserved --&gt; off
+</span><span class='line'>ftpd_connect_db --&gt; off
+</span><span class='line'>ftpd_full_access --&gt; off
+</span><span class='line'>ftpd_use_cifs --&gt; off
+</span><span class='line'>ftpd_use_fusefs --&gt; off
+</span><span class='line'>ftpd_use_nfs --&gt; off
+</span><span class='line'>ftpd_use_passive_mode --&gt; off
+</span><span class='line'>httpd_can_connect_ftp --&gt; off
+</span><span class='line'>httpd_enable_ftp_server --&gt; off
+</span><span class='line'>tftp_anon_write --&gt; off
+</span><span class='line'>tftp_home_dir --&gt; off</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>setsebool</h3>
+
+<blockquote><p>set SELinux boolean value</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>setseebol &lt;boolean&gt; on/off</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>-P # make the change persistent to reboots</li>
+</ul>
+
+
+<h3>seinfo</h3>
+
+<blockquote><p>SELinux policy query tool</p></blockquote>
+
+<p>Install the <em>setools</em> package to get this utility</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>seinfo
+</span><span class='line'>
+</span><span class='line'>Statistics for policy file: /sys/fs/selinux/policy
+</span><span class='line'>Policy Version & Type: v.28 (binary, mls)
+</span><span class='line'>
+</span><span class='line'>   Classes:            91    Permissions:       256
+</span><span class='line'>   Sensitivities:       1    Categories:       1024
+</span><span class='line'>   Types:            4729    Attributes:        251
+</span><span class='line'>   Users:               8    Roles:              14
+</span><span class='line'>   Booleans:          301    Cond. Expr.:       350
+</span><span class='line'>   Allow:          101266    Neverallow:          0
+</span><span class='line'>   Auditallow:        157    Dontaudit:        8030
+</span><span class='line'>   Type_trans:      17756    Type_change:        74
+</span><span class='line'>   Type_member:        35    Role allow:         39
+</span><span class='line'>   Role_trans:        416    Range_trans:      5697
+</span><span class='line'>   Constraints:       109    Validatetrans:       0
+</span><span class='line'>   Initial SIDs:       27    Fs_use:             28
+</span><span class='line'>   Genfscon:          105    Portcon:           597
+</span><span class='line'>   Netifcon:            0    Nodecon:             0
+</span><span class='line'>   Permissives:         6    Polcap:              2</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>sealert</h3>
+
+<blockquote><p>sealert is the user interface component (either GUI or command line) to
+the  setroubleshoot  system. setroubleshoot is used to diagnose SELinux
+denials and attempts  to  provide  user  friendly  explanations  for  a
+SELinux  denial (e.g. AVC) and recommendations for how one might adjust
+the system to prevent the denial in the future.</p></blockquote>
+
+<ul>
+<li><p>-l # Lookup alert by id, if id is wildcard * then return all alerts</p></li>
+<li><p>-a # Scan a log file, analyze its AVC&rsquo;s</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sealert -a /var/log/audit/audit.log
+</span><span class='line'>100% done
+</span><span class='line'>found 4 alerts in /var/log/audit/audit.log
+</span><span class='line'>--------------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>SELinux is preventing /usr/bin/pgrep from getattr access on the filesystem /sys.
+</span><span class='line'>
+</span><span class='line'>*****  Plugin catchall (100. confidence) suggests   **************************
+</span><span class='line'>
+</span><span class='line'>If you believe that pgrep should be allowed getattr access on the sys filesystem by default.
+</span><span class='line'>Then you should report this as a bug.
+</span><span class='line'>You can generate a local policy module to allow this access.
+</span><span class='line'>Do
+</span><span class='line'>allow this access for now by executing:
+</span><span class='line'># ausearch -c 'pgrep' --raw | audit2allow -M my-pgrep
+</span><span class='line'># semodule -i my-pgrep.pp
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Additional Information:
+</span><span class='line'>Source Context                system_u:system_r:ksmtuned_t:s0
+</span><span class='line'>Target Context                system_u:object_r:sysfs_t:s0
+</span><span class='line'>Target Objects                /sys [ filesystem ]
+</span><span class='line'>Source                        pgrep
+</span><span class='line'>Source Path                   /usr/bin/pgrep
+</span><span class='line'>Port                          &lt;Unknown&gt;
+</span><span class='line'>Host                          &lt;Unknown&gt;
+</span><span class='line'>Source RPM Packages           procps-ng-3.3.10-10.el7.x86_64
+</span><span class='line'>Target RPM Packages           filesystem-3.2-21.el7.x86_64
+</span><span class='line'>Policy RPM                    selinux-policy-3.13.1-102.el7_3.16.noarch
+</span><span class='line'>Selinux Enabled               True
+</span><span class='line'>Policy Type                   targeted
+</span><span class='line'>Enforcing Mode                Enforcing
+</span><span class='line'>Host Name                     rhel7
+</span><span class='line'>Platform                      Linux rhel7 3.10.0-514.26.2.el7.x86_64 #1 SMP Fri
+</span><span class='line'>                              Jun 30 05:26:04 UTC 2017 x86_64 x86_64
+</span><span class='line'>Alert Count                   9
+</span><span class='line'>First Seen                    2018-02-10 02:25:54 JST
+</span><span class='line'>Last Seen                     2018-02-10 03:19:45 JST
+</span><span class='line'>Local ID                      d5a68144-c84d-44c4-bde0-31380fd5bb60
+</span><span class='line'>
+</span><span class='line'>Raw Audit Messages
+</span><span class='line'>type=AVC msg=audit(1518200385.729:205): avc:  denied  { getattr } for  pid=4616 comm="pgrep" name="/" dev="sysfs" ino=1 scontext=system_u:system_r:ksmtuned_t:s0 tcontext=system_u:object_r:sysfs_t:s0 tclass=filesystem
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>type=SYSCALL msg=audit(1518200385.729:205): arch=x86_64 syscall=statfs success=no exit=EACCES a0=7f9407f4e013 a1=7fffcd705e80 a2=fffffffffff476d8 a3=7fffcd705b90 items=0 ppid=4615 pid=4616 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm=pgrep exe=/usr/bin/pgrep subj=system_u:system_r:ksmtuned_t:s0 key=(null)
+</span><span class='line'>
+</span><span class='line'>Hash: pgrep,ksmtuned_t,sysfs_t,filesystem,getattr
+</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> __________________________________
+</span><span class='line'>/ Someone is speaking well of you. \
+</span><span class='line'>|                                  |
+</span><span class='line'>\ How unusual!                     /
+</span><span class='line'> ----------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-23T13:18:55-05:00" pubdate data-updated="true">Feb 23<span>rd</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/02/22/lfcs-prep-software-raid/" title="Previous Post: LFCS prep - Software RAID">&laquo; LFCS prep - Software RAID</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/02/24/lfcs-prep-essential-commands/" title="Next Post: LFCS prep - Essential commands">LFCS prep - Essential commands &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/23/lfcs-prep-managing-selinux/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -1,0 +1,568 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>iptables firewall - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Intro to the iptables firewall">
+  <meta name="keywords" content="iptables, iptables firewall, iptables tutorial, iptables examples, linux firewall, linux iptables, iptables linux">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/05/23/iptables-firewall">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">iptables firewall</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-05-23T12:27:45-04:00" pubdate data-updated="true">May 23<span>rd</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>iptables is a CLI tool for configuring firewall functionality in Linux. It operates on a series of tables, which on a CentOS 7 system are:</p>
+
+<!-- more -->
+
+
+<ul>
+<li><p><strong>filter</strong> &ndash; the default table used for packet filtering</p></li>
+<li><p><strong>nat</strong> &ndash; for nat</p></li>
+<li><p><strong>mangle</strong> &ndash; specialized packet alteration</p></li>
+<li><p><strong>raw</strong> &ndash; used mainly for configuring connection exemptions</p></li>
+<li><p><strong>security</strong> &ndash; Mandatory Access Control networking rules</p></li>
+</ul>
+
+
+<p>For the purpose of this post, we will be focusing on the filter table, which uses sets of rules to send (or not) packets on their merry way. These rules are called chains and they are as follows:</p>
+
+<ul>
+<li><p>INPUT &ndash; incoming connections</p></li>
+<li><p>OUTPUT &ndash; outbound connections</p></li>
+<li><p>FORWARD &ndash; packets being forwarded through the system</p></li>
+</ul>
+
+
+<p>Let&rsquo;s see the currently configured rules:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -t filter -L | grep policy
+</span><span class='line'>Chain INPUT (policy ACCEPT)
+</span><span class='line'>Chain FORWARD (policy ACCEPT)
+</span><span class='line'>Chain OUTPUT (policy ACCEPT)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Well, everything is set to ACCEPT. The opposite of accepting connections is DROP, where the packets are silently dropped. Let&rsquo;s see it in action. First, change the policy to drop the packets: <code>iptables -P INPUT DROP</code>. Then try to ping the machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ping 192.168.217.131
+</span><span class='line'>
+</span><span class='line'>Pinging 192.168.217.131 with 32 bytes of data:
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>Request timed out.
+</span><span class='line'>
+</span><span class='line'>Ping statistics for 192.168.217.131:
+</span><span class='line'>    Packets: Sent = 4, Received = 0, Lost = 4 (100% loss),</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It is possible to also use the REJECT extension,  where packets are being dropped but the source host receives an error, thereby being notified that there may be filtering in place: <code>iptables -I INPUT -j REJECT</code>. Here the REJECT was inserted at the beginning of the INPUT chain, to ensure that it will be matched before anything else:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ping 192.168.217.131
+</span><span class='line'>
+</span><span class='line'>Pinging 192.168.217.131 with 32 bytes of data:
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>Reply from 192.168.217.131: Destination port unreachable.
+</span><span class='line'>
+</span><span class='line'>Ping statistics for 192.168.217.131:
+</span><span class='line'>    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some example scenarios:</p>
+
+<h3>only allow SSH connections from specific IP</h3>
+
+<p>Let&rsquo;s assume that a computer has to be locked down, and only accept SSH connections from a certain IP:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -I INPUT -p tcp --dport 22 -s 192.168.217.137 -j ACCEPT</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With a policy of dropping packets, running the above will allow TCP connections for port 22, from the 192.168.217.137 source address, while still denying everything else.</p>
+
+<h3>traffic forwarding</h3>
+
+<p>Next, we have a machine with the IP 192.168.217.131 that we want to use to forward traffic to 192.168.217.137. How would we accomplish that?</p>
+
+<p>First, we enable forwarding in the forwarding machine&rsquo;s kernel by putting a 1 inside <code>/proc/sys/net/ipv4/ip_forward</code>. On the .137 machine, I have a netcat listener on port 8000. On the .131 box, I also have netcat listening on port 4444. All connections coming to port 4444 on this machine will be routed to port 8000 on .137. The iptables rules to make that happen are:</p>
+
+<ul>
+<li><p><code>iptables -t nat -A PREROUTING -p tcp &mdash;dport 4444 -j DNAT &mdash;to-destination 192.168.217.137:8000</code> &ndash; we operate on the nat table. PREROUTING is used for altering packets as soon as they  come  in. We append a rule to this chain, stating that for TCP packets coming to port 4444 on this host, the destination IP will be changed to 192.168.217.137, on port 8000</p></li>
+<li><p><code>iptables -t nat -A POSTROUTING -j MASQUERADE</code> &ndash; next we append to the POSTROUTING chain, that alters packets as they are about to go out, telling iptables to masquerate packets: replacing the IP of the sender to the IP of the forwarding machine</p></li>
+</ul>
+
+
+<p>Now I connect to port 4444 on 192.168.217.131 and send some random text, and checking my 192.168.217.137 listener, I see the traffic:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>c -vnlp 8000
+</span><span class='line'>listening on [any] 8000 ...
+</span><span class='line'>connect to [192.168.217.137] from (UNKNOWN) [192.168.217.131] 1859
+</span><span class='line'>dasa
+</span><span class='line'>knock kncok</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>list rules of a table</h3>
+
+<ul>
+<li><code>iptables -L -n -v</code> &ndash; display the rules of the default filter table, also printing the number of packets and bytes processed by each chain, and use numerical format for ports and addresses</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Chain INPUT (policy ACCEPT 172 packets, 21210 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>
+</span><span class='line'>Chain FORWARD (policy ACCEPT 37 packets, 1523 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination         
+</span><span class='line'>
+</span><span class='line'>Chain OUTPUT (policy ACCEPT 82 packets, 6554 bytes)
+</span><span class='line'> pkts bytes target     prot opt in     out     source               destination   </span></code></pre></td></tr></table></div></figure>
+
+
+<h3>flush all the rules</h3>
+
+<ul>
+<li><code>iptables -F</code> &ndash; delete your rules and start anew</li>
+</ul>
+
+
+<h3>save rules to survive reboots</h3>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service iptables save
+</span><span class='line'>iptables: Saving firewall rules to /etc/sysconfig/iptables:[  OK  ]</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>block specific IP</h3>
+
+<ul>
+<li><code>iptables -A INPUT -s 192.168.217.137 -j DROP</code> &ndash; packets from .137 will be dropped</li>
+</ul>
+
+
+<h3>block outgoing connections to a host or range</h3>
+
+<p>Let&rsquo;s imagine that you are tired of your users spending all their day on Twitter. First, find out Twitter&rsquo;s IPs:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>host twitter.com
+</span><span class='line'>twitter.com has address 104.244.42.65
+</span><span class='line'>twitter.com has address 104.244.42.1
+</span><span class='line'>twitter.com mail is handled by 20 alt1.aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 30 aspmx2.googlemail.com.
+</span><span class='line'>twitter.com mail is handled by 20 alt2.aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 10 aspmx.l.google.com.
+</span><span class='line'>twitter.com mail is handled by 30 aspmx3.googlemail.com.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, do a whois lookup on the IP, looking for the CIDR range it belongs to:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>hois 104.244.42.65 | grep CIDR
+</span><span class='line'>CIDR:           104.244.40.0/21</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Block access to Twitter&rsquo;s IP range: <code>iptables -A OUTPUT -p tcp -d 66.220.144.0/20 -j DROP</code></p>
+
+<h3>log dropped packets</h3>
+
+<ul>
+<li><code>iptables -A INPUT -i eth0 -j LOG &mdash;log-prefix &ldquo;Packets dropped by firewall:&rdquo;</code> &ndash; turn on kernel logging for matching packets and prefix the log messages with some text to make them stand out</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@pwnbox:~#grep "Packets dropped by firewall:" /var/log/messages
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.154203] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=288 TOS=0x00 PREC=0x00 TTL=128 ID=20858 PROTO=UDP SPT=53 DPT=57477 LEN=268
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.158231] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=356 TOS=0x00 PREC=0x00 TTL=128 ID=20859 PROTO=UDP SPT=53 DPT=36464 LEN=336
+</span><span class='line'>May 23 12:11:34 pwnbox kernel: [ 3285.162645] Packets dropped by firewall:IN=eth0 OUT= MAC=00:0c:29:22:f9:ae:00:50:56:ed:cb:c0:08:00 SRC=192.168.217.2 DST=192.168.217.137 LEN=360 TOS=0x00 PREC=0x00 TTL=128 ID=20860 PROTO=UDP SPT=53 DPT=47777 LEN=340
+</span><span class='line'>...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This post only scratched the tip of the iceberg when it comes to Linux firewalls. The key takeaway should be that iptables is a very powerful utility that can be customized to meet your specific networking needs.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>___________________________
+</span><span class='line'>&lt; You will wish you hadn't. &gt;
+</span><span class='line'> ---------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-05-23T12:27:45-04:00" pubdate data-updated="true">May 23<span>rd</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/05/23/iptables-firewall/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/05/23/iptables-firewall/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/05/04/pentest-lab-web-for-pentester/" title="Previous Post: Pentest lab - Web for Pentester">&laquo; Pentest lab - Web for Pentester</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/05/29/dnsenum-kali-linux-tools/" title="Next Post: dnsenum - Kali Linux tools">dnsenum - Kali Linux tools &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/05/23/iptables-firewall/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/05/23/iptables-firewall/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

