@@ -1,0 +1,868 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>sslyze - Kali Linux tools - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="sslyze tutorial">
+  <meta name="keywords" content="sslyze, sslyze python, sslyze kali, sslyze tool, sslyze commands, sslyze tutorial">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/07/16/sslyze-kali-linux-tools">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">sslyze - Kali Linux tools</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-16T11:57:44+03:00" pubdate data-updated="true">Jul 16<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><strong>Objective</strong>: test the SSL/TLS security posture of a target as a standalone tool or as a custom made solution. sslyze is a fast and powerful SSL/TLS scanning Python tool that can be used both from the command line or as a library to include in your own scripts. It&rsquo;s being updated frequently and it&rsquo;s been tested on Windows, Linux and MacOS platforms.</p>
+
+<p>Homepage: <a href="https://github.com/nabla-c0d3/sslyze">https://github.com/nabla-c0d3/sslyze</a></p>
+
+<!-- more -->
+
+
+<h2>sslyze description</h2>
+
+<blockquote><p>SSLyze is a Python library and a CLI tool that can analyze the SSL configuration of a server by connecting to it. It
+is designed to be fast and comprehensive, and should help organizations and testers identify mis-configurations
+affecting their SSL/TLS servers.</p>
+
+<p>Key features include:</p>
+
+<ul>
+<li><p>Python API, in order to run scans and process the results directly from Python.</p></li>
+<li><p>Scans are automatically dispatched among multiple processes, making them very fast.</p></li>
+<li><p>Performance testing: session resumption and TLS tickets support.</p></li>
+<li><p>Security testing: weak cipher suites, insecure renegotiation, CRIME, Heartbleed and more.</p></li>
+<li><p>Server certificate validation and revocation checking through OCSP stapling.</p></li>
+<li><p>Support for StartTLS handshakes on SMTP, XMPP, LDAP, POP, IMAP, RDP, PostGres and FTP.</p></li>
+<li><p>Support for client certificates when scanning servers that perform mutual authentication.</p></li>
+<li><p>Scan results can be written to an XML or JSON file for further processing.</p></li>
+<li><p>And much more!</p></li>
+</ul>
+
+
+<p>SSLyze is all Python code but it uses an OpenSSL wrapper written in C called nassl, which was specifically developed
+for allowing SSLyze to access the low-level OpenSSL APIs needed to perform deep SSL testing.</p></blockquote>
+
+<p>Documentation: <a href="https://nabla-c0d3.github.io/sslyze/documentation/">https://nabla-c0d3.github.io/sslyze/documentation/</a></p>
+
+<h2>sslyze options</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Usage: sslyze.py [options] target1.com target2.com:443 etc...
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'>  --version             show program's version number and exit
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>  --xml_out=XML_FILE    Writes the scan results as an XML document to the file
+</span><span class='line'>                        XML_FILE. If XML_FILE is set to "-", the XML output
+</span><span class='line'>                        will instead be printed to stdout.
+</span><span class='line'>  --targets_in=TARGETS_IN
+</span><span class='line'>                        Reads the list of targets to scan from the file
+</span><span class='line'>                        TARGETS_IN. It should contain one host:port per line.
+</span><span class='line'>  --timeout=TIMEOUT     Sets the timeout value in seconds used for every
+</span><span class='line'>                        socket connection made to the target server(s).
+</span><span class='line'>                        Default is 5s.
+</span><span class='line'>  --nb_retries=NB_RETRIES
+</span><span class='line'>                        Sets the number retry attempts for all network
+</span><span class='line'>                        connections initiated throughout the scan. Increase
+</span><span class='line'>                        this value if you are getting a lot of
+</span><span class='line'>                        timeout/connection errors when scanning a specific
+</span><span class='line'>                        server. Decrease this value to increase the speed of
+</span><span class='line'>                        the scans; results may however return connection
+</span><span class='line'>                        errors. Default is 4 connection attempts.
+</span><span class='line'>  --https_tunnel=HTTPS_TUNNEL
+</span><span class='line'>                        Tunnels all traffic to the target server(s) through an
+</span><span class='line'>                        HTTP CONNECT proxy. HTTP_TUNNEL should be the proxy's
+</span><span class='line'>                        URL: 'http://USER:PW@HOST:PORT/'. For proxies
+</span><span class='line'>                        requiring authentication, only Basic Authentication is
+</span><span class='line'>                        supported.
+</span><span class='line'>  --starttls=STARTTLS   Performs StartTLS handshakes when connecting to the
+</span><span class='line'>                        target server(s). STARTTLS should be one of: ['smtp',
+</span><span class='line'>                        'xmpp', 'xmpp_server', 'pop3', 'ftp', 'imap', 'ldap',
+</span><span class='line'>                        'rdp', 'postgres', 'auto']. The 'auto' option will
+</span><span class='line'>                        cause SSLyze to deduce the protocol (ftp, imap, etc.)
+</span><span class='line'>                        from the supplied port number, for each target
+</span><span class='line'>                        servers.
+</span><span class='line'>  --xmpp_to=XMPP_TO     Optional setting for STARTTLS XMPP.  XMPP_TO should be
+</span><span class='line'>                        the hostname to be put in the 'to' attribute of the
+</span><span class='line'>                        XMPP stream. Default is the server's hostname.
+</span><span class='line'>  --sni=SNI             Use Server Name Indication to specify the hostname to
+</span><span class='line'>                        connect to. Will only affect TLS 1.0+ connections.
+</span><span class='line'>  --quiet               Hide script standard outputs. Will only affect script
+</span><span class='line'>                        output if --xml_out is set.
+</span><span class='line'>  --regular             Regular HTTPS scan; shortcut for --sslv2 --sslv3
+</span><span class='line'>                        --tlsv1 --tlsv1_1 --tlsv1_2 --reneg --resum
+</span><span class='line'>                        --certinfo=basic --http_get --hide_rejected_ciphers
+</span><span class='line'>                        --compression --heartbleed
+</span><span class='line'>
+</span><span class='line'>  Client certificate support:
+</span><span class='line'>    --cert=CERT         Client certificate chain filename. The certificates
+</span><span class='line'>                        must be in PEM format and must be sorted starting with
+</span><span class='line'>                        the subject's client certificate, followed by
+</span><span class='line'>                        intermediate CA certificates if applicable.
+</span><span class='line'>    --key=KEY           Client private key filename.
+</span><span class='line'>    --keyform=KEYFORM   Client private key format. DER or PEM (default).
+</span><span class='line'>    --pass=KEYPASS      Client private key passphrase.
+</span><span class='line'>
+</span><span class='line'>  PluginOpenSSLCipherSuites:
+</span><span class='line'>    Scans the server(s) for supported OpenSSL cipher suites.
+</span><span class='line'>
+</span><span class='line'>    --sslv2             Lists the SSL 2.0 OpenSSL cipher suites supported by
+</span><span class='line'>                        the server(s).
+</span><span class='line'>    --sslv3             Lists the SSL 3.0 OpenSSL cipher suites supported by
+</span><span class='line'>                        the server(s).
+</span><span class='line'>    --tlsv1             Lists the TLS 1.0 OpenSSL cipher suites supported by
+</span><span class='line'>                        the server(s).
+</span><span class='line'>    --tlsv1_1           Lists the TLS 1.1 OpenSSL cipher suites supported by
+</span><span class='line'>                        the server(s).
+</span><span class='line'>    --tlsv1_2           Lists the TLS 1.2 OpenSSL cipher suites supported by
+</span><span class='line'>                        the server(s).
+</span><span class='line'>    --http_get          Option - For each cipher suite, sends an HTTP GET
+</span><span class='line'>                        request after completing the SSL handshake and returns
+</span><span class='line'>                        the HTTP status code.
+</span><span class='line'>    --hide_rejected_ciphers
+</span><span class='line'>                        Option - Hides the (usually long) list of cipher
+</span><span class='line'>                        suites that were rejected by the server(s).
+</span><span class='line'>
+</span><span class='line'>  PluginChromeSha1Deprecation:
+</span><span class='line'>    --chrome_sha1       Determines if the server will be affected by Google
+</span><span class='line'>                        Chrome's SHA-1 deprecation plans. See
+</span><span class='line'>                        http://googleonlinesecurity.blogspot.com/2014/09
+</span><span class='line'>                        /gradually-sunsetting-sha-1.html for more information
+</span><span class='line'>
+</span><span class='line'>  PluginSessionRenegotiation:
+</span><span class='line'>    --reneg             Tests the server(s) for client-initiated renegotiation
+</span><span class='line'>                        and secure renegotiation support.
+</span><span class='line'>
+</span><span class='line'>  PluginHeartbleed:
+</span><span class='line'>    --heartbleed        Tests the server(s) for the OpenSSL Heartbleed
+</span><span class='line'>                        vulnerability (experimental).
+</span><span class='line'>
+</span><span class='line'>  PluginCertInfo:
+</span><span class='line'>    --certinfo=CERTINFO
+</span><span class='line'>                        Verifies the validity of the server(s) certificate(s)
+</span><span class='line'>                        against various trust stores, checks for support for
+</span><span class='line'>                        OCSP stapling, and prints relevant fields of the
+</span><span class='line'>                        certificate. CERTINFO should be 'basic' or 'full'.
+</span><span class='line'>    --ca_file=CA_FILE   Local Certificate Authority file (in PEM format), to
+</span><span class='line'>                        verify the validity of the server(s) certificate(s)
+</span><span class='line'>                        against.
+</span><span class='line'>
+</span><span class='line'>  PluginCompression:
+</span><span class='line'>    --compression       Tests the server(s) for Zlib compression support.
+</span><span class='line'>
+</span><span class='line'>  PluginHSTS:
+</span><span class='line'>    --hsts              Checks support for HTTP Strict Transport Security
+</span><span class='line'>                        (HSTS) by collecting any Strict-Transport-Security
+</span><span class='line'>                        field present in the HTTP response sent back by the
+</span><span class='line'>                        server(s).
+</span><span class='line'>
+</span><span class='line'>  PluginSessionResumption:
+</span><span class='line'>    Analyzes the target server's SSL session resumption capabilities.
+</span><span class='line'>
+</span><span class='line'>    --resum             Tests the server(s) for session resumption support
+</span><span class='line'>                        using session IDs and TLS session tickets (RFC 5077).
+</span><span class='line'>    --resum_rate        Performs 100 session resumptions with the server(s),
+</span><span class='line'>                        in order to estimate the session resumption rate.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>sslyze usage</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sslyze --regular bugcrowd.com
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> AVAILABLE PLUGINS
+</span><span class='line'> -----------------
+</span><span class='line'>
+</span><span class='line'>  PluginSessionResumption
+</span><span class='line'>  PluginCompression
+</span><span class='line'>  PluginSessionRenegotiation
+</span><span class='line'>  PluginChromeSha1Deprecation
+</span><span class='line'>  PluginHSTS
+</span><span class='line'>  PluginHeartbleed
+</span><span class='line'>  PluginOpenSSLCipherSuites
+</span><span class='line'>  PluginCertInfo
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> CHECKING HOST(S) AVAILABILITY
+</span><span class='line'> -----------------------------
+</span><span class='line'>
+</span><span class='line'>   bugcrowd.com:443                    =&gt; 104.20.4.239:443
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> SCAN RESULTS FOR BUGCROWD.COM:443 - 104.20.4.239:443
+</span><span class='line'> ----------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>  * Deflate Compression:
+</span><span class='line'>      OK - Compression disabled          
+</span><span class='line'>
+</span><span class='line'>  * Session Renegotiation:
+</span><span class='line'>      Client-initiated Renegotiations:   OK - Rejected
+</span><span class='line'>      Secure Renegotiation:              OK - Supported
+</span><span class='line'>
+</span><span class='line'>  * OpenSSL Heartbleed:
+</span><span class='line'>      OK - Not vulnerable to Heartbleed  
+</span><span class='line'>
+</span><span class='line'>  * Session Resumption:
+</span><span class='line'>      With Session IDs:                  OK - Supported (5 successful, 0 failed, 0 errors, 5 total attempts).
+</span><span class='line'>      With TLS Session Tickets:          OK - Supported
+</span><span class='line'>
+</span><span class='line'>  * SSLV2 Cipher Suites:
+</span><span class='line'>      Server rejected all cipher suites.
+</span><span class='line'>
+</span><span class='line'>  * Certificate - Content:
+</span><span class='line'>      SHA1 Fingerprint:                  db65dbb15a1819ad4692c47cfc0bc966beb6e44f
+</span><span class='line'>      Common Name:                       bugcrowd.com
+</span><span class='line'>      Issuer:                            DigiCert SHA2 Extended Validation Server CA
+</span><span class='line'>      Serial Number:                     075FE475034104F4909DDD4B5CD8C1AC
+</span><span class='line'>      Not Before:                        Oct 10 00:00:00 2015 GMT
+</span><span class='line'>      Not After:                         Oct 13 12:00:00 2017 GMT
+</span><span class='line'>      Signature Algorithm:               sha256WithRSAEncryption
+</span><span class='line'>      Public Key Algorithm:              rsaEncryption
+</span><span class='line'>      Key Size:                          2048 bit
+</span><span class='line'>      Exponent:                          65537 (0x10001)
+</span><span class='line'>      X509v3 Subject Alternative Name:   {'DNS': ['bugcrowd.com', 'forum.bugcrowd.com', 'blog.bugcrowd.com', 'docs.bugcrowd.com', 'tracker.bugcrowd.com']}
+</span><span class='line'>
+</span><span class='line'>  * Certificate - Trust:
+</span><span class='line'>      Hostname Validation:               OK - Subject Alternative Name matches
+</span><span class='line'>      Google CA Store (09/2015):         OK - Certificate is trusted
+</span><span class='line'>      Java 6 CA Store (Update 65):       OK - Certificate is trusted
+</span><span class='line'>      Microsoft CA Store (09/2015):      OK - Certificate is trusted
+</span><span class='line'>      Mozilla NSS CA Store (09/2015):    OK - Certificate is trusted
+</span><span class='line'>      Apple CA Store (OS X 10.10.5):     OK - Certificate is trusted
+</span><span class='line'>      Certificate Chain Received:        ['bugcrowd.com', 'DigiCert SHA2 Extended Validation Server CA']
+</span><span class='line'>
+</span><span class='line'>  * Certificate - OCSP Stapling:
+</span><span class='line'>      OCSP Response Status:              successful
+</span><span class='line'>      Validation w/ Mozilla's CA Store:  OK - Response is trusted
+</span><span class='line'>      Responder Id:                      3DD350A5D6A0ADEEF34A600A65D321D4F8F8D60F
+</span><span class='line'>      Cert Status:                       good
+</span><span class='line'>      Cert Serial Number:                075FE475034104F4909DDD4B5CD8C1AC
+</span><span class='line'>      This Update:                       Jul 12 12:10:00 2017 GMT
+</span><span class='line'>      Next Update:                       Jul 19 11:25:00 2017 GMT
+</span><span class='line'>
+</span><span class='line'>  * TLSV1_2 Cipher Suites:
+</span><span class='line'>      Preferred:                       
+</span><span class='line'>                 ECDHE-RSA-AES128-GCM-SHA256   ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>      Accepted:                        
+</span><span class='line'>                 ECDHE-RSA-AES256-SHA384       ECDH-256 bits  256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES256-SHA          ECDH-256 bits  256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES256-GCM-SHA384   ECDH-256 bits  256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES256-SHA256                 -              256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES256-SHA                    -              256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES256-GCM-SHA384             -              256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA256       ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA          ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES128-GCM-SHA256   ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES128-SHA256                 -              128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES128-SHA                    -              128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES128-GCM-SHA256             -              128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>
+</span><span class='line'>  * TLSV1_1 Cipher Suites:
+</span><span class='line'>      Preferred:                       
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA          ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>      Accepted:                        
+</span><span class='line'>                 ECDHE-RSA-AES256-SHA          ECDH-256 bits  256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES256-SHA                    -              256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA          ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES128-SHA                    -              128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>
+</span><span class='line'>  * TLSV1 Cipher Suites:
+</span><span class='line'>      Preferred:                       
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA          ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>      Accepted:                        
+</span><span class='line'>                 ECDHE-RSA-AES256-SHA          ECDH-256 bits  256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES256-SHA                    -              256 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 ECDHE-RSA-AES128-SHA          ECDH-256 bits  128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 AES128-SHA                    -              128 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>                 DES-CBC3-SHA                  -              112 bits      HTTP 301 Unknown Error - https://www.bugcrowd.com/
+</span><span class='line'>
+</span><span class='line'>  * SSLV3 Cipher Suites:
+</span><span class='line'>      Server rejected all cipher suites.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> SCAN COMPLETED IN 1.71 S
+</span><span class='line'> ------------------------</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
+</span><span class='line'>/ Noise proves nothing. Often a hen who \
+</span><span class='line'>| has merely laid an egg cackles as if  |
+</span><span class='line'>| she laid an asteroid.                 |
+</span><span class='line'>|                                       |
+</span><span class='line'>\ -- Mark Twain                         /
+</span><span class='line'> ---------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-07-16T11:57:44+03:00" pubdate data-updated="true">Jul 16<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/tools/'>tools</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/07/16/sslyze-kali-linux-tools/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/07/16/sslyze-kali-linux-tools/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/07/12/dnsrecon-kali-linux-tools/" title="Previous Post: dnsrecon - Kali Linux tools">&laquo; dnsrecon - Kali Linux tools</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/09/10/nfs-shares-on-centos-7/" title="Next Post: NFS shares on CentOS 7">NFS shares on CentOS 7 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/07/16/sslyze-kali-linux-tools/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/07/16/sslyze-kali-linux-tools/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

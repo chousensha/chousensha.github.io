@@ -1,0 +1,3389 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: sysadmin | Core dump overflow]]></title>
+  <link href="http://chousensha.github.io/blog/categories/sysadmin/atom.xml" rel="self"/>
+  <link href="http://chousensha.github.io/"/>
+  <updated>2018-11-30T16:39:16+02:00</updated>
+  <id>http://chousensha.github.io/</id>
+  <author>
+    <name><![CDATA[chousensha]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Managing Docker containers]]></title>
+    <link href="http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/"/>
+    <updated>2018-04-22T14:30:54+03:00</updated>
+    <id>http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers</id>
+    <content type="html"><![CDATA[<p>In today&rsquo;s post we&rsquo;ll look at Docker containers. Containers are lightweight application virtualization platforms that are isolated, but contrary to virtual machines, they share resources with the host OS. They are faster and less resource intensive than traditional VMs.</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;ve had errors with the straightforward approach of installing Docker on CentOS7. So I installed by following the steps mentioned in the <a href="https://docs.docker.com/install/linux/docker-ce/centos/#set-up-the-repository">article about getting Docker Community Edition on CentOS</a></p>
+
+<p>Install needed packages:</p>
+
+<p><code>
+yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+</code></p>
+
+<p>Set up the stable Docker repository:</p>
+
+<p>```
+yum-config-manager \</p>
+
+<pre><code>--add-repo \
+https://download.docker.com/linux/centos/docker-ce.repo
+</code></pre>
+
+<p>```</p>
+
+<p>Install Docker CE:</p>
+
+<p><code>
+yum install docker-ce
+</code></p>
+
+<p>If you get errors, look in the journal log and troubleshoot from there, but this approach solved the problems for me:</p>
+
+<p><code>
+journalctl -u docker.service
+</code></p>
+
+<p>Start the Docker service:</p>
+
+<p><code>
+systemctl start docker
+</code></p>
+
+<p>Check information about your Docker installation:</p>
+
+<p><code>
+docker info
+Containers: 0
+ Running: 0
+ Paused: 0
+ Stopped: 0
+Images: 0
+Server Version: 18.03.0-ce
+Storage Driver: overlay2
+ Backing Filesystem: extfs
+ Supports d_type: true
+ Native Overlay Diff: true
+Logging Driver: json-file
+Cgroup Driver: cgroupfs
+Plugins:
+ Volume: local
+ Network: bridge host macvlan null overlay
+ Log: awslogs fluentd gcplogs gelf journald json-file logentries splunk syslog
+Swarm: inactive
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: cfd04396dc68220d1cecbe686a6cc3aa5ce3667c
+runc version: 4fc53a81fb7c994640722ac585fa9ca548971871
+init version: 949e6fa
+Security Options:
+ seccomp
+  Profile: default
+Kernel Version: 3.10.0-693.17.1.el7.x86_64
+Operating System: CentOS Linux 7 (Core)
+OSType: linux
+Architecture: x86_64
+CPUs: 4
+Total Memory: 1.687GiB
+Name: CentOS7
+ID: JRI7:OB26:2HEE:2K4Y:OCOZ:I376:F27U:22C4:L3BU:VPYQ:XZO3:FPEW
+Docker Root Dir: /var/lib/docker
+Debug Mode (client): false
+Debug Mode (server): false
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+ 127.0.0.0/8
+Live Restore Enabled: false
+</code></p>
+
+<p>Get more details about the version:</p>
+
+<p>```
+docker version
+Client:
+ Version:   18.03.0-ce
+ API version:   1.37
+ Go version:    go1.9.4
+ Git commit:    0520e24
+ Built: Wed Mar 21 23:09:15 2018
+ OS/Arch:   linux/amd64
+ Experimental:  false
+ Orchestrator:  swarm</p>
+
+<p>Server:
+ Engine:
+  Version:  18.03.0-ce
+  API version:  1.37 (minimum version 1.12)
+  Go version:   go1.9.4
+  Git commit:   0520e24
+  Built:    Wed Mar 21 23:13:03 2018
+  OS/Arch:  linux/amd64
+  Experimental: false
+```</p>
+
+<p>The docker CLI has a lot of commands:</p>
+
+<p>```
+docker &mdash;help</p>
+
+<p>Usage:  docker COMMAND</p>
+
+<p>A self-sufficient runtime for containers</p>
+
+<p>Options:</p>
+
+<pre><code>  --config string      Location of client config files (default "/root/.docker")
+</code></pre>
+
+<p>  -D, &mdash;debug              Enable debug mode
+  -H, &mdash;host list          Daemon socket(s) to connect to
+  -l, &mdash;log-level string   Set the logging level (&ldquo;debug&rdquo;|&ldquo;info&rdquo;|&ldquo;warn&rdquo;|&ldquo;error&rdquo;|&ldquo;fatal&rdquo;) (default &ldquo;info&rdquo;)</p>
+
+<pre><code>  --tls                Use TLS; implied by --tlsverify
+  --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
+  --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
+  --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
+  --tlsverify          Use TLS and verify the remote
+</code></pre>
+
+<p>  -v, &mdash;version            Print version information and quit</p>
+
+<p>Management Commands:
+  config      Manage Docker configs
+  container   Manage containers
+  image       Manage images
+  network     Manage networks
+  node        Manage Swarm nodes
+  plugin      Manage plugins
+  secret      Manage Docker secrets
+  service     Manage services
+  swarm       Manage Swarm
+  system      Manage Docker
+  trust       Manage trust on Docker images
+  volume      Manage volumes</p>
+
+<p>Commands:
+  attach      Attach local standard input, output, and error streams to a running container
+  build       Build an image from a Dockerfile
+  commit      Create a new image from a container&rsquo;s changes
+  cp          Copy files/folders between a container and the local filesystem
+  create      Create a new container
+  diff        Inspect changes to files or directories on a container&rsquo;s filesystem
+  events      Get real time events from the server
+  exec        Run a command in a running container
+  export      Export a container&rsquo;s filesystem as a tar archive
+  history     Show the history of an image
+  images      List images
+  import      Import the contents from a tarball to create a filesystem image
+  info        Display system-wide information
+  inspect     Return low-level information on Docker objects
+  kill        Kill one or more running containers
+  load        Load an image from a tar archive or STDIN
+  login       Log in to a Docker registry
+  logout      Log out from a Docker registry
+  logs        Fetch the logs of a container
+  pause       Pause all processes within one or more containers
+  port        List port mappings or a specific mapping for the container
+  ps          List containers
+  pull        Pull an image or a repository from a registry
+  push        Push an image or a repository to a registry
+  rename      Rename a container
+  restart     Restart one or more containers
+  rm          Remove one or more containers
+  rmi         Remove one or more images
+  run         Run a command in a new container
+  save        Save one or more images to a tar archive (streamed to STDOUT by default)
+  search      Search the Docker Hub for images
+  start       Start one or more stopped containers
+  stats       Display a live stream of container(s) resource usage statistics
+  stop        Stop one or more running containers
+  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+  top         Display the running processes of a container
+  unpause     Unpause all processes within one or more containers
+  update      Update configuration of one or more containers
+  version     Show the Docker version information
+  wait        Block until one or more containers stop, then print their exit codes</p>
+
+<p>Run &lsquo;docker COMMAND &mdash;help&rsquo; for more information on a command.
+```</p>
+
+<p>There are tons of containers available at <a href="https://hub.docker.com/explore/">https://hub.docker.com/explore/</a> . Here, let&rsquo;s look for a hello world one:</p>
+
+<p><code>
+docker search hello
+NAME                                       DESCRIPTION                                     STARS               OFFICIAL            AUTOMATED
+hello-world                                Hello World! (an example of minimal Dockeriz…   495                 [OK]
+</code></p>
+
+<p>Pull the image:</p>
+
+<p><code>
+docker pull hello-world
+Using default tag: latest
+latest: Pulling from library/hello-world
+9bb5a5d4561a: Pull complete
+Digest: sha256:f5233545e43561214ca4891fd1157e1c3c563316ed8e237750d59bde73361e77
+Status: Downloaded newer image for hello-world:latest
+</code></p>
+
+<p>Run the demo image:</p>
+
+<p>```
+docker run hello-world</p>
+
+<p>Hello from Docker!
+This message shows that your installation appears to be working correctly.</p>
+
+<p>To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the &ldquo;hello-world&rdquo; image from the Docker Hub.</p>
+
+<pre><code>(amd64)
+</code></pre>
+
+<ol>
+<li>The Docker daemon created a new container from that image which runs the
+executable that produces the output you are currently reading.</li>
+<li>The Docker daemon streamed that output to the Docker client, which sent it
+to your terminal.</li>
+</ol>
+
+
+<p>To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash</p>
+
+<p>Share images, automate workflows, and more with a free Docker ID:
+ <a href="https://hub.docker.com/">https://hub.docker.com/</a></p>
+
+<p>For more examples and ideas, visit:
+ <a href="https://docs.docker.com/engine/userguide/">https://docs.docker.com/engine/userguide/</a>
+```</p>
+
+<p>The Docker default storage is at <code>/var/lib/docker</code>.  Now let&rsquo;s go beyond the basics and get an Ubuntu image:</p>
+
+<p><code>
+docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+d3938036b19c: Pull complete
+a9b30c108bda: Pull complete
+67de21feec18: Pull complete
+817da545be2b: Pull complete
+d967c497ce23: Pull complete
+Digest: sha256:9ee3b83bcaa383e5e3b657f042f4034c92cdd50c03f73166c145c9ceaea9ba7c
+Status: Downloaded newer image for ubuntu:latest
+</code></p>
+
+<p>Check available images:</p>
+
+<p><code>
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+ubuntu              latest              c9d990395902        9 days ago          113MB
+hello-world         latest              e38bc07ac18e        10 days ago         1.85kB
+</code></p>
+
+<p>Run a command inside the Ubuntu container:</p>
+
+<p><code>
+docker run ubuntu uname -a
+Linux 05f2f247622a 3.10.0-693.17.1.el7.x86_64 #1 SMP Thu Jan 25 20:13:58 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+</code></p>
+
+<p>Check all containers:</p>
+
+<p><code>
+docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS                          PORTS               NAMES
+05f2f247622a        ubuntu              "uname -a"          About a minute ago   Exited (0) About a minute ago                       naughty_fermi
+db7d3fcd06a7        hello-world         "/hello"            10 minutes ago       Exited (0) 9 minutes ago                            trusting_mirzakh
+</code></p>
+
+<p>Take note of the container ID if you want to start a specific container:</p>
+
+<p><code>
+docker start 05f2f247622a
+05f2f247622a
+</code></p>
+
+<p>To start an interactive session in the container with an allocated TTY, do the following:</p>
+
+<p><code>
+docker run -it ubuntu bash
+root@c8561feac38d:/# cat /etc/issue
+Ubuntu 16.04.4 LTS \n \l
+</code></p>
+
+<p>Here we&rsquo;ve run the bash shell inside the container. To return to the host, type <em>exit</em></p>
+
+<p>We&rsquo;ve only scratched the surface, but we can see how powerful and versatile Docker containers can be.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Be free and open and breezy! Enjoy!     \
+| Things won&rsquo;t get any better so get used |
+\ to it.                                  /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Storage Management]]></title>
+    <link href="http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management/"/>
+    <updated>2018-03-02T20:12:06+02:00</updated>
+    <id>http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Storage Management domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/storage.png" title="&lsquo;linux storage&rsquo; &lsquo;storage objectives&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/storage2.png" title="&lsquo;linux storage&rsquo; &lsquo;storage objectives&rsquo;" ></p>
+
+<h4>mdadm</h4>
+
+<blockquote><p>manage MD devices aka Linux Software RAID</p></blockquote>
+
+<h4>lsblk</h4>
+
+<blockquote><p>list block devices</p></blockquote>
+
+<p><code>
+lsblk
+NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+fd0               2:0    1    4K  0 disk
+sda               8:0    0   20G  0 disk
+├─sda1            8:1    0  500M  0 part /boot
+└─sda2            8:2    0 19.5G  0 part
+  ├─centos-root 253:0    0 17.5G  0 lvm  /
+  └─centos-swap 253:1    0    2G  0 lvm  [SWAP]
+sdb               8:16   0    1G  0 disk
+sr0              11:0    1 1024M  0 rom  
+</code></p>
+
+<ul>
+<li>output filesystem info</li>
+</ul>
+
+
+<p>```
+lsblk -f
+NAME         FSTYPE      LABEL UUID                                   MOUNTPOINT
+fd0                                                                 <br/>
+sda                                                                 <br/>
+├─sda1       xfs               ef67363c-0fb5-4680-aa53-572e5e38d8d0   /boot
+└─sda2       LVM2_member       0R3HDI-jqHC-WdoO-gDZ5-ScPb-JdkI-y9sIvD
+  ├─centos-root</p>
+
+<pre><code>         xfs               71dd7ac4-ba5b-4e8a-a706-a51264d85900   /
+</code></pre>
+
+<p>  └─centos-swap</p>
+
+<pre><code>         swap              41edd5da-8142-4fc6-9e96-e8b7a08c2ae9   [SWAP]
+</code></pre>
+
+<p>sdb                                                                 <br/>
+sr0                                              <br/>
+```</p>
+
+<h4>fdisk</h4>
+
+<blockquote><p>manipulate disk partition table</p></blockquote>
+
+<ul>
+<li>list partition tables</li>
+</ul>
+
+
+<p>```
+fdisk -l /dev/sda</p>
+
+<p>Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x000e124e</p>
+
+<p>   Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     1026047      512000   83  Linux
+/dev/sda2         1026048    41943039    20458496   8e  Linux LVM
+```</p>
+
+<ul>
+<li>fdisk menu</li>
+</ul>
+
+
+<p><code>
+Command action
+   a   toggle a bootable flag
+   b   edit bsd disklabel
+   c   toggle the dos compatibility flag
+   d   delete a partition
+   g   create a new empty GPT partition table
+   G   create an IRIX (SGI) partition table
+   l   list known partition types
+   m   print this menu
+   n   add a new partition
+   o   create a new empty DOS partition table
+   p   print the partition table
+   q   quit without saving changes
+   s   create a new empty Sun disklabel
+   t   change a partition's system id
+   u   change display/entry units
+   v   verify the partition table
+   w   write table to disk and exit
+   x   extra functionality (experts only)
+</code></p>
+
+<h4>gdisk</h4>
+
+<blockquote><p>Interactive GUID partition table (GPT) manipulator</p></blockquote>
+
+<p>```
+gdisk /dev/sdb
+GPT fdisk (gdisk) version 0.8.6</p>
+
+<p>Partition table scan:
+  MBR: not present
+  BSD: not present
+  APM: not present
+  GPT: not present</p>
+
+<p>Creating new GPT entries.</p>
+
+<p>Command (? for help): ?
+b   back up GPT data to a file
+c   change a partition&rsquo;s name
+d   delete a partition
+i   show detailed information on a partition
+l   list known partition types
+n   add a new partition
+o   create a new empty GUID partition table (GPT)
+p   print the partition table
+q   quit without saving changes
+r   recovery and transformation options (experts only)
+s   sort partitions
+t   change a partition&rsquo;s type code
+v   verify disk
+w   write table to disk and exit
+x   extra functionality (experts only)
+?   print this menu
+```</p>
+
+<h4>parted</h4>
+
+<blockquote><p>a partition manipulation program</p></blockquote>
+
+<ul>
+<li>list all partitions</li>
+</ul>
+
+
+<p>```
+parted -l
+Model: VMware, VMware Virtual S (scsi)
+Disk /dev/sda: 21.5GB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+Disk Flags:</p>
+
+<p>Number  Start   End     Size    Type     File system  Flags
+ 1      1049kB  525MB   524MB   primary  xfs          boot
+ 2      525MB   21.5GB  20.9GB  primary               lvm</p>
+
+<p>Error: /dev/sdb: unrecognised disk label
+Model: VMware, VMware Virtual S (scsi)                                  <br/>
+Disk /dev/sdb: 1074MB
+Sector size (logical/physical): 512B/512B
+Partition Table: unknown
+Disk Flags:</p>
+
+<p>Model: Linux device-mapper (linear) (dm)
+Disk /dev/mapper/centos-swap: 2147MB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+Disk Flags:</p>
+
+<p>Number  Start  End     Size    File system     Flags
+ 1      0.00B  2147MB  2147MB  linux-swap(v1)</p>
+
+<p>Model: Linux device-mapper (linear) (dm)
+Disk /dev/mapper/centos-root: 18.8GB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+Disk Flags:</p>
+
+<p>Number  Start  End     Size    File system  Flags
+ 1      0.00B  18.8GB  18.8GB  xfs
+```</p>
+
+<h4>mkfs</h4>
+
+<blockquote><p>build a Linux filesystem</p></blockquote>
+
+<ul>
+<li><p>-t # filesystem type</p></li>
+<li><p>types of filesystems</p></li>
+</ul>
+
+
+<p><code>
+mkfs.
+mkfs.btrfs   mkfs.ext2    mkfs.ext4    mkfs.minix   mkfs.vfat    
+mkfs.cramfs  mkfs.ext3    mkfs.fat     mkfs.msdos   mkfs.xfs  
+</code></p>
+
+<h4>tune2fs</h4>
+
+<blockquote><p>adjust  tunable  filesystem  parameters  on  ext2/ext3/ext4 filesystems</p></blockquote>
+
+<ul>
+<li>set label</li>
+</ul>
+
+
+<p><code>
+tune2fs -L label device
+</code></p>
+
+<h4>e2label</h4>
+
+<blockquote><p>Change the label on an ext2/ext3/ext4 filesystem</p></blockquote>
+
+<h4>dumpe2fs</h4>
+
+<blockquote><p>dump ext2/ext3/ext4 filesystem information</p></blockquote>
+
+<h4>xfs_db</h4>
+
+<blockquote><p>debug an XFS filesystem</p></blockquote>
+
+<h4>mount</h4>
+
+<blockquote><p>mount a filesystem</p>
+
+<p>mount -t type device dir</p></blockquote>
+
+<ul>
+<li>-a # mount all filesystems</li>
+<li>-r # mount read-only</li>
+<li><p>-o # mount options</p></li>
+<li><p>list all mounted filesystems</p></li>
+</ul>
+
+
+<p><code>
+mount -l
+sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime,seclabel)
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+devtmpfs on /dev type devtmpfs (rw,nosuid,seclabel,size=926484k,nr_inodes=231621,mode=755)
+securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
+tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,seclabel)
+devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,seclabel,mode=755)
+tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,seclabel,mode=755)
+cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
+pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
+cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
+cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
+cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
+cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
+cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
+cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_prio,net_cls)
+configfs on /sys/kernel/config type configfs (rw,relatime)
+/dev/mapper/rhel-root on / type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+selinuxfs on /sys/fs/selinux type selinuxfs (rw,relatime)
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=33,pgrp=1,timeout=300,minproto=5,maxproto=5,direct)
+hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,seclabel)
+debugfs on /sys/kernel/debug type debugfs (rw,relatime)
+mqueue on /dev/mqueue type mqueue (rw,relatime,seclabel)
+nfsd on /proc/fs/nfsd type nfsd (rw,relatime)
+/dev/sda1 on /boot type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
+sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+tmpfs on /run/user/0 type tmpfs (rw,nosuid,nodev,relatime,seclabel,size=188412k,mode=700)
+gvfsd-fuse on /run/user/0/gvfs type fuse.gvfsd-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0)
+fusectl on /sys/fs/fuse/connections type fusectl (rw,relatime)
+</code></p>
+
+<h4>umount</h4>
+
+<blockquote><p>unmount file systems</p></blockquote>
+
+<h4>blkid</h4>
+
+<blockquote><p>locate/print block device attributes</p></blockquote>
+
+<p><code>
+blkid
+/dev/sda1: UUID="b8e2fb99-bf4c-4632-883b-8ed5c2350b1e" TYPE="xfs"
+/dev/sda2: UUID="PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP" TYPE="LVM2_member"
+/dev/mapper/rhel-root: UUID="2c0268ac-c31a-462d-b5b9-41bdfbecd75d" TYPE="xfs"
+/dev/mapper/rhel-swap: UUID="6544d880-b634-4566-a68d-d3a58cec4cf6" TYPE="swap"
+</code></p>
+
+<h4>xfs_info</h4>
+
+<blockquote><p>expand an XFS filesystem</p></blockquote>
+
+<p>```
+xfs_info /dev/sda1
+meta-data=/dev/sda1              isize=512    agcount=4, agsize=65536 blks</p>
+
+<pre><code>     =                       sectsz=512   attr=2, projid32bit=1
+     =                       crc=1        finobt=0 spinodes=0
+</code></pre>
+
+<p>data     =                       bsize=4096   blocks=262144, imaxpct=25</p>
+
+<pre><code>     =                       sunit=0      swidth=0 blks
+</code></pre>
+
+<p>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=2560, version=2</p>
+
+<pre><code>     =                       sectsz=512   sunit=0 blks, lazy-count=1
+</code></pre>
+
+<p>realtime =none                   extsz=4096   blocks=0, rtextents=0
+```</p>
+
+<h4>mkswap</h4>
+
+<blockquote><p>set up a Linux swap area</p></blockquote>
+
+<h4>swapon, swapoff</h4>
+
+<blockquote><p>enable/disable devices and files for paging and swapping</p></blockquote>
+
+<ul>
+<li>display swap usage</li>
+</ul>
+
+
+<p><code>
+swapon -s
+Filename                Type        Size    Used    Priority
+/dev/dm-1        
+</code></p>
+
+<h4>pvscan</h4>
+
+<blockquote><p>scan all disks for physical volumes</p></blockquote>
+
+<p><code>
+pvscan
+  PV /dev/sda2   VG centos          lvm2 [19.51 GiB / 40.00 MiB free]
+  Total: 1 [19.51 GiB] / in use: 1 [19.51 GiB] / in no VG: 0 [0   ]
+</code></p>
+
+<h4>vgscan</h4>
+
+<blockquote><p>scan all disks for volume groups and rebuild caches</p></blockquote>
+
+<p><code>
+vgscan
+  Reading volume groups from cache.
+  Found volume group "centos" using metadata type lvm2
+</code></p>
+
+<h4>lvscan</h4>
+
+<blockquote><p>scan (all disks) for Logical Volumes</p></blockquote>
+
+<p><code>
+lvscan
+  ACTIVE            '/dev/centos/swap' [2.00 GiB] inherit
+  ACTIVE            '/dev/centos/root' [17.47 GiB] inherit
+</code></p>
+
+<h4>pvcreate</h4>
+
+<blockquote><p>initialize a disk or partition for use by LVM</p></blockquote>
+
+<h4>vgcreate</h4>
+
+<blockquote><p>create a volume group</p></blockquote>
+
+<h4>vgs</h4>
+
+<blockquote><p>report information about volume groups</p></blockquote>
+
+<p><code>
+vgs
+  VG     #PV #LV #SN Attr   VSize  VFree
+  centos   1   2   0 wz--n- 19.51g 40.00m
+</code></p>
+
+<h4>lvcreate</h4>
+
+<blockquote><p>create a logical volume in an existing volume group</p></blockquote>
+
+<h4>vgextend</h4>
+
+<blockquote><p>add physical volumes to a volume group</p></blockquote>
+
+<h4>lvextend</h4>
+
+<blockquote><p>extend the size of a logical volume</p></blockquote>
+
+<h4>lvremove</h4>
+
+<blockquote><p>remove a logical volume</p></blockquote>
+
+<h4>pvmove</h4>
+
+<blockquote><p>move physical extents</p></blockquote>
+
+<h4>vgreduce</h4>
+
+<blockquote><p>reduce a volume group</p></blockquote>
+
+<h4>pvremove</h4>
+
+<blockquote><p>remove a physical volume</p></blockquote>
+
+<h4>getfacl</h4>
+
+<blockquote><p>get file access control lists</p></blockquote>
+
+<p>```
+getfacl out.txt</p>
+
+<h1>file: out.txt</h1>
+
+<h1>owner: root</h1>
+
+<h1>group: root</h1>
+
+<p>user::rw-
+group::r&mdash;
+other::r&mdash;
+```</p>
+
+<h4>setfacl</h4>
+
+<blockquote><p>set file access control lists</p></blockquote>
+
+<ul>
+<li>give user dave read and write rights on a file</li>
+</ul>
+
+
+<p><code>
+setfacl -m u:dave:rw file
+</code></p>
+
+<ul>
+<li>set default ACL recursively on a directory for a group and give read and directory traversal permissions (but no execute for files)</li>
+</ul>
+
+
+<p><code>
+setfacl -R -m d:g:rockstars:rX folder
+</code></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: How many IBM types does it take to   \
+| change a light bulb? A: Fifteen. One to |
+| do it, and fourteen to write document   |
+| number                                  |
+|                                         |
+| GC7500439-0001, Multitasking            |
+| Incandescent Source System Facility,    |
+|                                         |
+| of which 10% of the pages state only    |
+| &ldquo;This page intentionally                |
+|                                         |
+| left blank&rdquo;, and 20% of the definitions |
+| are of the form &ldquo;A:&hellip;..                |
+|                                         |
+| consists of sequences of non-blank      |
+\ characters separated by blanks&rdquo;.        /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Networking]]></title>
+    <link href="http://chousensha.github.io/blog/2018/03/01/lfcs-prep-networking/"/>
+    <updated>2018-03-01T21:12:20+02:00</updated>
+    <id>http://chousensha.github.io/blog/2018/03/01/lfcs-prep-networking</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Networking domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/network.png" title="&lsquo;networking&rsquo; &lsquo;linux networking&rsquo;" ></p>
+
+<h4>hwclock</h4>
+
+<blockquote><p>query or set the hardware clock (RTC)</p></blockquote>
+
+<p><code>
+hwclock
+Wed 18 Oct 2017 07:24:51 PM EEST  -1.042307 seconds
+</code></p>
+
+<h4>timedatectl</h4>
+
+<blockquote><p>Control the system time and date</p></blockquote>
+
+<p>```
+timedatectl</p>
+
+<pre><code>  Local time: Wed 2017-10-18 17:26:49 EEST
+</code></pre>
+
+<p>  Universal time: Wed 2017-10-18 14:26:49 UTC</p>
+
+<pre><code>    RTC time: Wed 2017-10-18 17:26:49
+   Time zone: Europe/Bucharest (EEST, +0300)
+ NTP enabled: no
+</code></pre>
+
+<p>NTP synchronized: no
+ RTC in local TZ: no</p>
+
+<pre><code>  DST active: yes
+</code></pre>
+
+<p> Last DST change: DST began at</p>
+
+<pre><code>              Sun 2017-03-26 02:59:59 EET
+              Sun 2017-03-26 04:00:00 EEST
+</code></pre>
+
+<p> Next DST change: DST ends (the clock jumps one hour backwards) at</p>
+
+<pre><code>              Sun 2017-10-29 03:59:59 EEST
+              Sun 2017-10-29 03:00:00 EET
+</code></pre>
+
+<p>```</p>
+
+<h4>date</h4>
+
+<blockquote><p>print or set the system date and time</p></blockquote>
+
+<p><code>
+[root@tron ~]# date
+Tue Sep 19 12:40:58 EEST 2017
+</code></p>
+
+<ul>
+<li>get the date of a relative point in time</li>
+</ul>
+
+
+<p><code>
+date -d "50 days"
+Wed Nov  8 11:42:08 EET 2017
+date -d "50 days ago"
+Mon Jul 31 12:43:24 EEST 2017
+</code></p>
+
+<h4>ifconfig</h4>
+
+<blockquote><p>configure a network interface</p></blockquote>
+
+<ul>
+<li><p>ifconfig <interface> up / down &ndash; activate / deactivate interface</p></li>
+<li><p>ifconfig <interface> promisc &ndash; enable / disable promiscuous mode</p></li>
+<li>ifconfig <interface> netmask addr &ndash; set network mask</li>
+<li>ifconfig <interface> address &ndash; assign IP to interface</li>
+</ul>
+
+
+<h4>ip</h4>
+
+<blockquote><p>show / manipulate routing, devices, policy routing and tunnels</p></blockquote>
+
+<ul>
+<li>show information about all interfaces</li>
+</ul>
+
+
+<p>```
+ip a
+1: lo: &lt;LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1</p>
+
+<pre><code>link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+inet 127.0.0.1/8 scope host lo
+   valid_lft forever preferred_lft forever
+inet6 ::1/128 scope host
+   valid_lft forever preferred_lft forever
+</code></pre>
+
+<p>2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000</p>
+
+<pre><code>link/ether 00:0c:29:47:d7:a8 brd ff:ff:ff:ff:ff:ff
+inet 192.168.241.130/24 brd 192.168.241.255 scope global dynamic enp0s3
+   valid_lft 1665sec preferred_lft 1665sec
+inet6 fe80::d7e8:7b48:831f:a1de/64 scope link
+   valid_lft forever preferred_lft forever
+</code></pre>
+
+<p>3: virbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state DOWN qlen 1000</p>
+
+<pre><code>link/ether 52:54:00:e8:ed:ae brd ff:ff:ff:ff:ff:ff
+inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
+   valid_lft forever preferred_lft forever
+</code></pre>
+
+<p>4: virbr0-nic: &lt;BROADCAST,MULTICAST> mtu 1500 qdisc pfifo_fast master virbr0 state DOWN qlen 1000</p>
+
+<pre><code>link/ether 52:54:00:e8:ed:ae brd ff:ff:ff:ff:ff:ff
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>show routing table</li>
+</ul>
+
+
+<p><code>
+ip r
+default via 192.168.241.2 dev enp0s3  proto static  metric 100
+192.168.122.0/24 dev virbr0  proto kernel  scope link  src 192.168.122.1
+192.168.241.0/24 dev enp0s3  proto kernel  scope link  src 192.168.241.130  metric 100
+</code></p>
+
+<ul>
+<li>show network interface statistics</li>
+</ul>
+
+
+<p>```
+ip -s link show enp0s3
+2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000</p>
+
+<pre><code>link/ether 00:0c:29:47:d7:a8 brd ff:ff:ff:ff:ff:ff
+RX: bytes  packets  errors  dropped overrun mcast   
+26927      137      0       0       0       0       
+TX: bytes  packets  errors  dropped carrier collsns
+112697     201      0       0       0       0       
+</code></pre>
+
+<p>```</p>
+
+<h4>hostnamectl</h4>
+
+<blockquote><p>Control the system hostname</p></blockquote>
+
+<p>```
+hostnamectl
+   Static hostname: tron</p>
+
+<pre><code>     Icon name: computer-vm
+       Chassis: vm
+    Machine ID: bae5d656813c4d17a18bc5ac0a89cfc2
+       Boot ID: b0bbeef032cf4f6b9f4f764f9a043cb5
+Virtualization: vmware
+</code></pre>
+
+<p>  Operating System: Red Hat Enterprise Linux</p>
+
+<pre><code>   CPE OS Name: cpe:/o:redhat:enterprise_linux:7.3:GA:server
+        Kernel: Linux 3.10.0-514.26.2.el7.x86_64
+  Architecture: x86-64
+</code></pre>
+
+<p>```</p>
+
+<p>To make hostname changes permanent, modify the content of <strong>/etc/hostname</strong>. You can set it with <strong>hostnamectl set-hostname name</strong></p>
+
+<h4>nmcli</h4>
+
+<blockquote><p>command-line tool for controlling NetworkManager</p></blockquote>
+
+<p>```
+nmcli -p
+virbr0: connected to virbr0</p>
+
+<pre><code>bridge, 52:54:00:E8:ED:AE, sw, mtu 1500
+inet4 192.168.122.1/24
+</code></pre>
+
+<p>enp0s3: connected to Wired connection 1</p>
+
+<pre><code>"Intel 82545EM Gigabit Ethernet Controller (Copper) (PRO/1000 MT Single Port Adapter)"
+ethernet (e1000), 00:0C:29:47:D7:A8, hw, mtu 1500
+ip4 default
+inet4 192.168.241.130/24
+inet6 fe80::d7e8:7b48:831f:a1de/64
+</code></pre>
+
+<p>lo: unmanaged</p>
+
+<pre><code>loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536
+</code></pre>
+
+<p>virbr0-nic: unmanaged</p>
+
+<pre><code>tun, 52:54:00:E8:ED:AE, sw, mtu 1500
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>show information about interface</li>
+</ul>
+
+
+<p>```</p>
+
+<h1>nmcli -p connection show enp0s3</h1>
+
+<pre><code>                  Connection profile details (enp0s3)
+</code></pre>
+
+<p>===============================================================================
+connection.id:                          enp0s3
+connection.uuid:                        b4c32cc7-c5ff-451c-8af2-9b9124050f99
+connection.stable-id:                   &mdash;
+connection.interface-name:              enp0s3
+connection.type:                        802-3-ethernet
+connection.autoconnect:                 yes
+connection.autoconnect-priority:        0
+connection.timestamp:                   1499955175
+connection.read-only:                   no
+connection.permissions:               <br/>
+connection.zone:                        &mdash;
+connection.master:                      &mdash;
+connection.slave-type:                  &mdash;
+connection.autoconnect-slaves:          -1 (default)
+connection.secondaries:               <br/>
+connection.gateway-ping-timeout:        0
+connection.metered:                     unknown</p>
+
+<h2>connection.lldp:                        -1 (default)</h2>
+
+<p>802-3-ethernet.port:                    &mdash;
+802-3-ethernet.speed:                   0
+802-3-ethernet.duplex:                  &mdash;
+802-3-ethernet.auto-negotiate:          yes
+802-3-ethernet.mac-address:             00:0C:29:47:D7:A8
+802-3-ethernet.cloned-mac-address:      &mdash;
+802-3-ethernet.generate-mac-address-mask:&mdash;
+802-3-ethernet.mac-address-blacklist: <br/>
+802-3-ethernet.mtu:                     auto
+802-3-ethernet.s390-subchannels:      <br/>
+802-3-ethernet.s390-nettype:            &mdash;
+802-3-ethernet.s390-options:          <br/>
+802-3-ethernet.wake-on-lan:             1 (default)</p>
+
+<h2>802-3-ethernet.wake-on-lan-password:    &mdash;</h2>
+
+<p>ipv4.method:                            auto
+ipv4.dns:                             <br/>
+ipv4.dns-search:                      <br/>
+ipv4.dns-options:                       (default)
+ipv4.dns-priority:                      0
+ipv4.addresses:                       <br/>
+ipv4.gateway:                           &mdash;
+ipv4.routes:                          <br/>
+ipv4.route-metric:                      -1
+ipv4.ignore-auto-routes:                no
+ipv4.ignore-auto-dns:                   no
+ipv4.dhcp-client-id:                    &mdash;
+ipv4.dhcp-timeout:                      0
+ipv4.dhcp-send-hostname:                yes
+ipv4.dhcp-hostname:                     &mdash;
+ipv4.dhcp-fqdn:                         &mdash;
+ipv4.never-default:                     no
+ipv4.may-fail:                          yes</p>
+
+<h2>ipv4.dad-timeout:                       -1 (default)</h2>
+
+<p>ipv6.method:                            auto
+ipv6.dns:                             <br/>
+ipv6.dns-search:                      <br/>
+ipv6.dns-options:                       (default)
+ipv6.dns-priority:                      0
+ipv6.addresses:                       <br/>
+ipv6.gateway:                           &mdash;
+ipv6.routes:                          <br/>
+ipv6.route-metric:                      -1
+ipv6.ignore-auto-routes:                no
+ipv6.ignore-auto-dns:                   no
+ipv6.never-default:                     no
+ipv6.may-fail:                          yes
+ipv6.ip6-privacy:                       0 (disabled)
+ipv6.addr-gen-mode:                     stable-privacy
+ipv6.dhcp-send-hostname:                yes
+ipv6.dhcp-hostname:                     &mdash;</p>
+
+<h2>ipv6.token:                             &mdash;</h2>
+
+<p>```</p>
+
+<h4>route</h4>
+
+<blockquote><p>show / manipulate the IP routing table</p></blockquote>
+
+<p><code>
+route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         192.168.241.2   0.0.0.0         UG    100    0        0 enp0s3
+192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
+192.168.241.0   0.0.0.0         255.255.255.0   U     100    0        0 enp0s3
+</code></p>
+
+<h4>firewall-cmd</h4>
+
+<blockquote><p>firewalld command line client</p></blockquote>
+
+<p><code>
+firewall-cmd --get-default-zone
+public
+</code></p>
+
+<ul>
+<li>enumerate predefined zones</li>
+</ul>
+
+
+<p><code>
+firewall-cmd --get-zones
+work drop internal external trusted home dmz public block
+</code></p>
+
+<h4>tracepath,  tracepath6</h4>
+
+<blockquote><p>traces path to a network host discovering MTU along this path</p></blockquote>
+
+<h4>netstat</h4>
+
+<blockquote><p> Print network connections, routing tables, interface statistics, masquerade connections, and multicast memberships</p></blockquote>
+
+<ul>
+<li>show listening TCP ports in numbers</li>
+</ul>
+
+
+<p><code>
+netstat -lnt
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+tcp        0      0 0.0.0.0:111             0.0.0.0:*               LISTEN     
+tcp        0      0 192.168.122.1:53        0.0.0.0:*               LISTEN     
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN     
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN     
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN     
+tcp6       0      0 :::111                  :::*                    LISTEN     
+tcp6       0      0 :::22                   :::*                    LISTEN     
+tcp6       0      0 ::1:631                 :::*                    LISTEN     
+tcp6       0      0 ::1:25                  :::*                    LISTEN  
+</code></p>
+
+<ul>
+<li>list interfaces</li>
+</ul>
+
+
+<p><code>
+netstat -i
+'Kernel Interface table
+Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+enp0s3    1500      139      0      0 0           203      0      0      0 BMRU
+lo       65536       68      0      0 0            68      0      0      0 LRU
+virbr0    1500        0      0      0 0             0      0      0      0 BMU
+</code></p>
+
+<ul>
+<li>statistics</li>
+</ul>
+
+
+<p>```
+netstat -s
+Ip:</p>
+
+<pre><code>190 total packets received
+0 forwarded
+0 incoming packets discarded
+180 incoming packets delivered
+216 requests sent out
+65 dropped because of missing route
+</code></pre>
+
+<p>Icmp:</p>
+
+<pre><code>3 ICMP messages received
+0 input ICMP message failed.
+ICMP input histogram:
+    timeout in transit: 2
+    echo requests: 1
+1 ICMP messages sent
+0 ICMP messages failed
+ICMP output histogram:
+    echo replies: 1
+</code></pre>
+
+<p>IcmpMsg:</p>
+
+<pre><code>    InType8: 1
+    InType11: 2
+    OutType0: 1
+</code></pre>
+
+<p>Tcp:</p>
+
+<pre><code>34 active connections openings
+0 passive connection openings
+34 failed connection attempts
+0 connection resets received
+0 connections established
+68 segments received
+68 segments send out
+0 segments retransmited
+0 bad segments received.
+34 resets sent
+</code></pre>
+
+<p>Udp:</p>
+
+<pre><code>104 packets received
+0 packets to unknown port received.
+0 packet receive errors
+143 packets sent
+0 receive buffer errors
+0 send buffer errors
+</code></pre>
+
+<p>UdpLite:
+TcpExt:</p>
+
+<pre><code>0 packet headers predicted
+</code></pre>
+
+<p>IpExt:</p>
+
+<pre><code>InNoRoutes: 3
+InMcastPkts: 18
+OutMcastPkts: 26
+InBcastPkts: 12
+InOctets: 31730
+OutOctets: 105262
+InMcastOctets: 4252
+OutMcastOctets: 5054
+InBcastOctets: 4212
+InNoECTPkts: 190
+</code></pre>
+
+<p>```</p>
+
+<h4>ss</h4>
+
+<blockquote><p>another utility to investigate sockets</p></blockquote>
+
+<ul>
+<li>show statistics</li>
+</ul>
+
+
+<p>```
+ss -s
+Total: 1114 (kernel 1133)
+TCP:   0 (estab 0, closed 0, orphaned 0, synrecv 0, timewait 0/0), ports 0</p>
+
+<p>Transport Total     IP        IPv6
+*     1133      &ndash;         &ndash;      <br/>
+RAW   1         0         1      <br/>
+UDP   1         1         0      <br/>
+TCP   0         0         0      <br/>
+INET      2         1         1      <br/>
+FRAG      0         0         0      <br/>
+```</p>
+
+<ul>
+<li>show all TCP sockets</li>
+</ul>
+
+
+<p><code>
+ss -t -a
+State      Recv-Q Send-Q Local Address:Port                 Peer Address:Port                
+ESTAB      0      0      192.168.217.132:40382                87.243.6.137:http
+</code></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Q: Why did the programmer call his    \
+| mother long distance? A: Because that |
+\ was her name.                         /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - User and group management]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/28/lfcs-prep-user-and-group-management/"/>
+    <updated>2018-02-28T20:26:56+02:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/28/lfcs-prep-user-and-group-management</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS User and Group Management domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/users.png" title="&lsquo;user cmds&rsquo; &lsquo;user and group cmds&rsquo;" ></p>
+
+<h4>ulimit</h4>
+
+<blockquote><p>Provides control over the resources available  to the shell and to processes started by it, on systems that allow such control</p></blockquote>
+
+<p>```
+help ulimit
+ulimit: ulimit [-SHacdefilmnpqrstuvx] [limit]</p>
+
+<pre><code>Modify shell resource limits.
+
+Provides control over the resources available to the shell and processes
+it creates, on systems that allow such control.
+
+Options:
+  -S    use the `soft' resource limit
+  -H    use the `hard' resource limit
+  -a    all current limits are reported
+  -b    the socket buffer size
+  -c    the maximum size of core files created
+  -d    the maximum size of a process's data segment
+  -e    the maximum scheduling priority (`nice')
+  -f    the maximum size of files written by the shell and its children
+  -i    the maximum number of pending signals
+  -l    the maximum size a process may lock into memory
+  -m    the maximum resident set size
+  -n    the maximum number of open file descriptors
+  -p    the pipe buffer size
+  -q    the maximum number of bytes in POSIX message queues
+  -r    the maximum real-time scheduling priority
+  -s    the maximum stack size
+  -t    the maximum amount of cpu time in seconds
+  -u    the maximum number of user processes
+  -v    the size of virtual memory
+  -x    the maximum number of file locks
+
+If LIMIT is given, it is the new value of the specified resource; the
+special LIMIT values `soft', `hard', and `unlimited' stand for the
+current soft limit, the current hard limit, and no limit, respectively.
+Otherwise, the current value of the specified resource is printed.  If
+no option is given, then -f is assumed.
+
+Values are in 1024-byte increments, except for -t, which is in seconds,
+-p, which is in increments of 512 bytes, and -u, which is an unscaled
+number of processes.
+
+Exit Status:
+Returns success unless an invalid option is supplied or an error occurs.
+</code></pre>
+
+<p>```</p>
+
+<p>Config file in <strong>/etc/security/limits.conf</strong></p>
+
+<ul>
+<li>list current limits</li>
+</ul>
+
+
+<p><code>
+ulimit -a
+core file size          (blocks, -c) 0
+data seg size           (kbytes, -d) unlimited
+scheduling priority             (-e) 0
+file size               (blocks, -f) unlimited
+pending signals                 (-i) 7238
+max locked memory       (kbytes, -l) 64
+max memory size         (kbytes, -m) unlimited
+open files                      (-n) 1024
+pipe size            (512 bytes, -p) 8
+POSIX message queues     (bytes, -q) 819200
+real-time priority              (-r) 0
+stack size              (kbytes, -s) 8192
+cpu time               (seconds, -t) unlimited
+max user processes              (-u) 7238
+virtual memory          (kbytes, -v) unlimited
+file locks                      (-x) unlimited
+</code></p>
+
+<h4>quotacheck</h4>
+
+<blockquote><p>scan a filesystem for disk usage, create, check and repair quota files</p></blockquote>
+
+<h4>quotaon, quotaoff</h4>
+
+<blockquote><p>turn filesystem quotas on and off</p></blockquote>
+
+<h4>repquota</h4>
+
+<blockquote><p>summarize quotas for a filesystem</p></blockquote>
+
+<h4>setquota</h4>
+
+<blockquote><p>set disk quotas</p></blockquote>
+
+<h4>edquota</h4>
+
+<blockquote><p>edit user quotas</p></blockquote>
+
+<h4>pwscore</h4>
+
+<blockquote><p>simple configurable tool for checking quality of a password</p>
+
+<p>password is read from stdin</p>
+
+<p>It either reports an error if the password fails any of the checks,  or it  prints out the password quality score as an integer value between 0 and 100.</p></blockquote>
+
+<h4>getent</h4>
+
+<blockquote><p>get entries from Name Service Switch libraries</p></blockquote>
+
+<ul>
+<li>enumerate networks</li>
+</ul>
+
+
+<p><code>
+getent networks
+default               0.0.0.0
+loopback              127.0.0.0
+link-local            169.254.0.0
+</code></p>
+
+<h4>set</h4>
+
+<blockquote><p>list shell attributes</p></blockquote>
+
+<p><code>
+set -o
+allexport       off
+braceexpand     on
+emacs           on
+errexit         off
+errtrace        off
+functrace       off
+hashall         on
+histexpand      on
+history         on
+ignoreeof       off
+interactive-comments    on
+keyword         off
+monitor         on
+noclobber       off
+noexec          off
+noglob          off
+nolog           off
+notify          off
+nounset         off
+onecmd          off
+physical        off
+pipefail        off
+posix           off
+privileged      off
+verbose         off
+vi              off
+xtrace          off
+</code></p>
+
+<ul>
+<li><p>-o <option name> set option to on</p></li>
+<li><p>+o <option name> set option to off</p></li>
+</ul>
+
+
+<p>Example: noclobber protects files from being accidentally overwritten with >. To set it at login, add it in .bashrc. You can still overwrite with: <strong>>|</strong></p>
+
+<h4>who</h4>
+
+<blockquote><p>show who is logged on</p></blockquote>
+
+<p><code>
+who
+root     :0           2017-09-19 12:38 (:0)
+root     pts/0        2017-09-19 12:38 (:0)
+root     pts/1        2017-09-19 12:40 (:0)
+</code></p>
+
+<ul>
+<li>b # time of last system boot</li>
+</ul>
+
+
+<p>```
+who -b</p>
+
+<pre><code>     system boot  2017-09-19 12:36
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>q # all login names and number of users logged on</li>
+</ul>
+
+
+<p>```
+who -q
+root root root</p>
+
+<h1>users=3</h1>
+
+<p>```</p>
+
+<ul>
+<li>r # print current runlevel</li>
+</ul>
+
+
+<p>```
+who -r</p>
+
+<pre><code>     run-level 5  2017-09-20 13:15
+</code></pre>
+
+<p>```</p>
+
+<h4>id</h4>
+
+<blockquote><p>print real and effective user and group IDs</p></blockquote>
+
+<ul>
+<li>print all group IDs</li>
+</ul>
+
+
+<p><code>
+id -G madhat
+1000 10
+</code></p>
+
+<ul>
+<li>print group names</li>
+</ul>
+
+
+<p><code>
+id -Gn madhat
+madhat wheel
+</code></p>
+
+<h4>useradd</h4>
+
+<blockquote><p>create a new user or update default new user information</p></blockquote>
+
+<ul>
+<li>-c # Any text string. It is generally a short description of the login, and is currently used as the field for the user&rsquo;s full name.</li>
+<li>-e # expire date. The date on which the user account will be disabled. The date is specified in the format YYYY-MM-DD.</li>
+</ul>
+
+
+<p>If not specified, useradd will use the default expiry date specified by the EXPIRE variable in /etc/default/useradd, or an empty string (no expiry) by default.</p>
+
+<ul>
+<li>-g # The group name or number of the user&rsquo;s initial login group. The group name must exist. A group number must refer to an already existing group.</li>
+<li>-G # A list of supplementary groups which the user is also a member of. Each group is separated from the next by a comma, with no intervening whitespace</li>
+<li>-m # Create the user&rsquo;s home directory if it does not exist</li>
+<li><p>-s # The name of the user&rsquo;s login shell</p></li>
+<li><p>create user, specify primary and supplementary groups, create home directory, specify login shell</p></li>
+</ul>
+
+
+<p><code>
+useradd -c 'sample user' -g samplegroup -G users -m -s /bin/sh nixer
+grep nixer /etc/passwd
+nixer:x:1001:1025:sample user:/home/nixer:/bin/sh
+</code></p>
+
+<ul>
+<li>list defaults</li>
+</ul>
+
+
+<p><code>
+useradd -D
+GROUP=100
+HOME=/home
+INACTIVE=-1
+EXPIRE=
+SHELL=/bin/bash
+SKEL=/etc/skel
+CREATE_MAIL_SPOOL=yes
+</code></p>
+
+<h4>adduser</h4>
+
+<ul>
+<li>symlink to useradd on CentOS, Perl script on Debian / Ubuntu</li>
+</ul>
+
+
+<h4>usermod</h4>
+
+<blockquote><p>modify a user account</p></blockquote>
+
+<ul>
+<li>-c # new comment</li>
+<li>-d # new home directory</li>
+<li>-l # new login name</li>
+<li>-s # new shell</li>
+</ul>
+
+
+<h4>chsh</h4>
+
+<blockquote><p>change your login shell</p></blockquote>
+
+<ul>
+<li><p>-s # new shell</p></li>
+<li><p>list shells</p></li>
+</ul>
+
+
+<p><code>
+chsh -l
+/bin/sh
+/bin/bash
+/sbin/nologin
+/usr/bin/sh
+/usr/bin/bash
+/usr/sbin/nologin
+/bin/tcsh
+/bin/csh
+</code></p>
+
+<h4>userdel</h4>
+
+<blockquote><p>delete a user account and related files</p></blockquote>
+
+<h4>chpasswd</h4>
+
+<blockquote><p>update passwords in batch mode</p>
+
+<p>The chpasswd command reads a list of user name and password pairs from
+standard input and uses this information to update a group of existing
+users. Each line is of the format:</p>
+
+<p>user_name:password</p>
+
+<p>This command is intended to be used in a large system environment where
+many accounts are created at a single time.</p></blockquote>
+
+<h4>chage</h4>
+
+<blockquote><p>change user password expiry information</p></blockquote>
+
+<ul>
+<li>set password expiration date and list account aging information</li>
+</ul>
+
+
+<p><code>
+chage -E 2017-11-20 madhat
+[root@tron ~]# chage -l madhat
+Last password change                    : never
+Password expires                    : never
+Password inactive                   : never
+Account expires                     : Nov 20, 2017
+Minimum number of days between password change      : 0
+Maximum number of days between password change      : 99999
+Number of days of warning before password expires   : 7
+</code></p>
+
+<h4>pwconv</h4>
+
+<blockquote><p>creates shadow from passwd and an optionally existing shadow.</p></blockquote>
+
+<h4>pwunconv</h4>
+
+<blockquote><p>creates passwd from passwd and shadow and then removes shadow.</p></blockquote>
+
+<h4>grpconv</h4>
+
+<blockquote><p>creates gshadow from group and an optionally existing gshadow.</p></blockquote>
+
+<h4>grpunconv</h4>
+
+<blockquote><p>creates group from group and gshadow and then removes gshadow.</p></blockquote>
+
+<h4>newgrp</h4>
+
+<blockquote><p>log in to a new group &ndash; change the current group ID during a login session</p></blockquote>
+
+<h4>groupadd</h4>
+
+<blockquote><p>create a new group</p></blockquote>
+
+<ul>
+<li>-g # GID value</li>
+</ul>
+
+
+<h4>gpasswd</h4>
+
+<blockquote><p>administer /etc/group and /etc/gshadow</p></blockquote>
+
+<ul>
+<li>-a # add user to group</li>
+<li>-d # delete user from group</li>
+<li>-M # set list of group members</li>
+</ul>
+
+
+<h4>chgrp</h4>
+
+<blockquote><p>change group ownership</p>
+
+<p>chgrp [OPTION]&hellip; GROUP FILE</p></blockquote>
+
+<ul>
+<li>-R # operate on files and directories recursively</li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ You get along very well with everyone \
+\ except animals and people.            /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[LFCS prep - Operation of running systems]]></title>
+    <link href="http://chousensha.github.io/blog/2018/02/27/lfcs-prep-operation-of-running-systems/"/>
+    <updated>2018-02-27T19:54:56+02:00</updated>
+    <id>http://chousensha.github.io/blog/2018/02/27/lfcs-prep-operation-of-running-systems</id>
+    <content type="html"><![CDATA[<p>Various commands for the LFCS Operation of Running Systems domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
+
+<!-- more -->
+
+
+<p><img class="center" src="/images/sysadmin/os1.png" title="&lsquo;linux cmds&rsquo; &lsquo;linux operation&rsquo;" ></p>
+
+<p><img class="center" src="/images/sysadmin/os2.png" title="&lsquo;linux cmds&rsquo; &lsquo;linux operation&rsquo;" ></p>
+
+<ul>
+<li>systemd-analyze</li>
+</ul>
+
+
+<blockquote><p>Analyze system boot-up performance</p></blockquote>
+
+<p><code>
+systemd-analyze
+Startup finished in 403ms (kernel) + 1.517s (initrd) + 37.584s (userspace) = 39.505s
+</code></p>
+
+<h4>crontab</h4>
+
+<blockquote><p> maintains crontab files for individual users</p>
+
+<p>Crontab  is the program used to install, remove or list the tables used to serve the
+cron(8) daemon.  Each user can have their own crontab, and though  these  are  files
+in  /var/spool/, they are not intended to be edited directly</p></blockquote>
+
+<ul>
+<li>format of crontab entry</li>
+</ul>
+
+
+<p>```
+cat /etc/crontab
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=root</p>
+
+<h1>For details see man 4 crontabs</h1>
+
+<h1>Example of job definition:</h1>
+
+<h1>.&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash; minute (0 &ndash; 59)</h1>
+
+<h1>|  .&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&ndash; hour (0 &ndash; 23)</h1>
+
+<h1>|  |  .&mdash;&mdash;&mdash;&mdash;&mdash; day of month (1 &ndash; 31)</h1>
+
+<h1>|  |  |  .&mdash;&mdash;&mdash;&ndash; month (1 &ndash; 12) OR jan,feb,mar,apr &hellip;</h1>
+
+<h1>|  |  |  |  .&mdash;&mdash; day of week (0 &ndash; 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat</h1>
+
+<h1>|  |  |  |  |</h1>
+
+<h1>*  *  *  *  * user-name  command to be executed</h1>
+
+<p>```</p>
+
+<ul>
+<li>run uptime as root every minute, hour, day of month, month, on weekdays</li>
+</ul>
+
+
+<p><code>
+crontab -e
+* * * * 1-5 uptime &gt;&gt; /root/log.txt
+</code></p>
+
+<p>```
+You have new mail in /var/spool/mail/root
+[root@tron ~]# mail
+Heirloom Mail version 12.5 7/5/10.  Type ? for help.
+&ldquo;/var/spool/mail/root&rdquo;: 4 messages 4 new</p>
+
+<blockquote><p>N  1 (Cron Daemon)         Mon Oct  9 14:10  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  2 (Cron Daemon)         Mon Oct  9 14:11  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  3 (Cron Daemon)         Mon Oct  9 14:12  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+ N  4 (Cron Daemon)         Mon Oct  9 14:13  25/850   &ldquo;Cron &lt;root@tron> root&rdquo;
+```</p></blockquote>
+
+<p><code>
+ cat log.txt
+ 14:29:02 up  1:03,  3 users,  load average: 0.01, 0.09, 0.12
+ 14:30:01 up  1:04,  3 users,  load average: 0.39, 0.24, 0.18
+</code></p>
+
+<h4>anacron</h4>
+
+<blockquote><p>runs commands periodically</p>
+
+<p>Unlike cron(8), it does not assume that the machine is  running  continuously. <br/>
+Hence, it can be used on machines that are not running 24 hours a day to control
+regular jobs  as  daily,  weekly, and monthly jobs</p></blockquote>
+
+<p>```
+ cat /etc/anacrontab
+ # /etc/anacrontab: configuration file for anacron</p>
+
+<p> # See anacron(8) and anacrontab(5) for details.</p>
+
+<p> SHELL=/bin/sh
+ PATH=/sbin:/bin:/usr/sbin:/usr/bin
+ MAILTO=root
+ # the maximal random delay added to the base delay of the jobs
+ RANDOM_DELAY=45
+ # the jobs will be started during the following hours only
+ START_HOURS_RANGE=3-22</p>
+
+<p> #period in days   delay in minutes   job-identifier   command
+ 1  5   cron.daily      nice run-parts /etc/cron.daily
+ 7  25  cron.weekly     nice run-parts /etc/cron.weekly
+ @monthly 45    cron.monthly        nice run-parts /etc/cron.monthly
+```</p>
+
+<ul>
+<li>anacron job</li>
+</ul>
+
+
+<p><code>
+1 1 demo netstat -lnt &gt; /root/conn.txt
+</code></p>
+
+<p>Check validity of job file with <code>anacron -T</code></p>
+
+<h4>at</h4>
+
+<blockquote><p>executes commands at a specified time</p></blockquote>
+
+<ul>
+<li>schedule job and use Ctrl-D at the prompt when you&rsquo;re done</li>
+</ul>
+
+
+<p><code>
+ at 19:08 oct 09
+ at&gt; netstat -lnt &gt; /root/ports.txt
+ at&gt; &lt;EOT&gt;
+ job 3 at Mon Oct  9 19:08:00 2017
+</code></p>
+
+<h4>atq</h4>
+
+<blockquote><p>lists  the  user&rsquo;s  pending  jobs, unless the user is the superuser; in that case,
+everybody&rsquo;s jobs are listed.</p></blockquote>
+
+<p><code>
+ [root@tron ~]# atq
+ 3  Mon Oct  9 19:08:00 2017 a root
+</code></p>
+
+<h4>ldd</h4>
+
+<blockquote><p>print shared library dependencies</p>
+
+<p>In the usual  case,  ldd  invokes  the  standard  dynamic  linker  (see ld.so(8))<br/>
+with the LD_TRACE_LOADED_OBJECTS environment variable set to 1, which causes the
+linker to display  the  library  dependencies.   Be aware,  > however,  that  in some
+circumstances, some versions of ldd may attempt to obtain the dependency information
+by directly executing  the program.  Thus, you should never employ ldd on an untrusted
+executable, since this may result in the execution  of  arbitrary  code.   A  safer
+alternative when dealing with untrusted executables is:</p>
+
+<p>$ objdump -p /path/to/program | grep NEEDED</p></blockquote>
+
+<p>```
+ ldd /usr/bin/bash</p>
+
+<pre><code>linux-vdso.so.1 =&gt;  (0x00007fff62b20000)
+libtinfo.so.5 =&gt; /lib64/libtinfo.so.5 (0x00007ff06afba000)
+libdl.so.2 =&gt; /lib64/libdl.so.2 (0x00007ff06adb6000)
+libc.so.6 =&gt; /lib64/libc.so.6 (0x00007ff06a9f4000)
+/lib64/ld-linux-x86-64.so.2 (0x00007ff06b1f9000)
+</code></pre>
+
+<p>```</p>
+
+<h4>sar</h4>
+
+<blockquote><p>Collect, report, or save system activity information</p></blockquote>
+
+<ul>
+<li>CPU activity</li>
+</ul>
+
+
+<p>```
+ sar
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 03:57:29 PM       LINUX RESTART</p>
+
+<p> 04:00:01 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+ 04:10:01 PM     all      2.66      0.00      1.02      0.15      0.00     96.17
+ 04:20:01 PM     all      2.64      0.00      0.83      0.01      0.00     96.52
+ 04:30:01 PM     all      0.65      0.03      0.94      0.09      0.00     98.28
+ 04:40:01 PM     all      0.35      0.00      0.20      0.00      0.00     99.45
+ 04:50:01 PM     all      0.25      0.00      0.14      0.00      0.00     99.60
+ 05:00:01 PM     all      0.24      0.00      0.17      0.00      0.00     99.58
+ 05:10:01 PM     all      0.24      0.00      0.17      0.00      0.00     99.59
+ 05:20:01 PM     all      0.35      0.00      0.20      0.00      0.00     99.45
+ 05:30:01 PM     all      0.40      0.00      0.24      0.00      0.00     99.36
+ 05:40:01 PM     all      0.51      0.00      0.21      0.00      0.00     99.27
+ 05:50:01 PM     all      5.88      0.00      1.51      0.02      0.00     92.59
+ 06:00:02 PM     all      0.48      0.00      0.25      0.00      0.00     99.27
+ 06:10:01 PM     all      0.16      0.00      0.19      0.00      0.00     99.65
+ 06:20:01 PM     all      2.16      0.00      0.59      0.01      0.00     97.25
+ 06:30:01 PM     all      2.94      0.00      0.69      0.00      0.00     96.37
+ 06:40:01 PM     all      0.10      0.00      0.18      0.00      0.00     99.72
+ 06:50:01 PM     all      0.11      0.00      0.13      0.00      0.00     99.76
+ 07:00:02 PM     all      0.17      0.00      0.21      0.00      0.00     99.62
+ 07:10:01 PM     all      0.10      0.00      0.15      0.00      0.00     99.76
+ 07:20:01 PM     all      0.10      0.00      0.14      0.00      0.00     99.76
+ 07:30:01 PM     all      0.14      0.00      0.16      0.00      0.00     99.70
+ 07:40:02 PM     all      0.10      0.00      0.14      0.00      0.00     99.76</p>
+
+<p> 07:40:02 PM     CPU     %user     %nice   %system   %iowait    %steal     %idle
+ 07:50:01 PM     all      0.09      0.00      0.15      0.00      0.00     99.75
+ 08:00:01 PM     all      0.19      0.00      0.26      0.00      0.00     99.55
+ 08:10:01 PM     all      0.44      0.00      0.22      0.00      0.00     99.34
+ Average:        all      0.84      0.00      0.36      0.01      0.00     98.78
+```</p>
+
+<ul>
+<li>memory statistics</li>
+</ul>
+
+
+<p>```
+ sar -r
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 03:57:29 PM       LINUX RESTART</p>
+
+<p> 04:00:01 PM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+ 04:10:01 PM    889804    994304     52.77      1004    382376   2556680     64.22    522128    294044        12
+ 04:20:01 PM    890844    993264     52.72      1004    382456   2556872     64.22    521256    294004         4
+ 04:30:01 PM    802736   1081372     57.39      1004    387280   2557724     64.24    524088    296556         0
+ 04:40:01 PM    802744   1081364     57.39      1004    387320   2557724     64.24    524120    296564        12
+ 04:50:01 PM    802712   1081396     57.40      1004    387296   2557724     64.24    524096    296556         0
+ 05:00:01 PM    802640   1081468     57.40      1004    387304   2582312     64.86    524252    296544         8
+ 05:10:01 PM    803032   1081076     57.38      1004    387288   2581776     64.85    524048    296516         0
+ 05:20:01 PM    798948   1085160     57.60      1004    387288   2581776     64.85    528108    296516         0
+ 05:30:01 PM    798808   1085300     57.60      1004    387312   2581776     64.85    528156    296524        20
+ 05:40:01 PM    798552   1085556     57.62      1004    387344   2581720     64.85    528424    296520         0
+ 05:50:01 PM    773308   1110800     58.96      1004    388048   2605656     65.45    553040    297056         0
+ 06:00:02 PM    773116   1110992     58.97      1004    388056   2605656     65.45    553196    297056         0
+ 06:10:01 PM    770812   1113296     59.09      1004    388564   2605664     65.45    554944    297556         0
+ 06:20:01 PM    733504   1150604     61.07      1004    388708   2642264     66.37    592036    297640         0
+ 06:30:01 PM    732720   1151388     61.11      1004    388852   2642544     66.37    592928    297552         0
+ 06:40:01 PM    732732   1151376     61.11      1004    388884   2642608     66.38    592956    297556         8
+ 06:50:01 PM    732640   1151468     61.11      1004    388864   2642608     66.38    592948    297556         0
+ 07:00:02 PM    732616   1151492     61.12      1004    388872   2642608     66.38    593060    297496         0
+ 07:10:01 PM    732512   1151596     61.12      1004    388880   2642608     66.38    593120    297496         0
+ 07:20:01 PM    732536   1151572     61.12      1004    388888   2642608     66.38    593324    297320         0
+ 07:30:01 PM    732452   1151656     61.12      1004    388896   2642608     66.38    593348    297320         0
+ 07:40:02 PM    732424   1151684     61.13      1004    388924   2642608     66.38    593364    297324         4</p>
+
+<p> 07:40:02 PM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+ 07:50:01 PM    732388   1151720     61.13      1004    388908   2642608     66.38    593376    297320         0
+ 08:00:01 PM    732444   1151664     61.13      1004    388956   2642608     66.38    594632    296136         8
+ 08:10:01 PM    752844   1131264     60.04      1004    388988   2621972     65.86    574028    296148         0
+ Average:       772795   1111313     58.98      1004    387782   2608132     65.51    560359    296755         3
+```</p>
+
+<h4>iostat</h4>
+
+<blockquote><p>report CPU statistics and input/output statistics for devices and partitions.</p></blockquote>
+
+<p>```
+ iostat
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> avg-cpu:  %user   %nice %system %iowait  %steal   %idle</p>
+
+<pre><code>        1.41    0.01    0.76    0.20    0.00   97.61
+</code></pre>
+
+<p> Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
+ sda               2.09        54.42         6.10     452565      50723
+ dm-0              1.85        50.73         5.85     421879      48655
+ dm-1              0.02         0.13         0.00       1068          0
+```</p>
+
+<h4>pidstat</h4>
+
+<blockquote><p>Report statistics for Linux tasks</p></blockquote>
+
+<p>```
+ pidstat -p 3381
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 06:20:21 PM   UID       PID    %usr %system  %guest    %CPU   CPU  Command
+```</p>
+
+<h4>mpstat</h4>
+
+<blockquote><p>Report processors related statistics</p></blockquote>
+
+<p>```
+ mpstat
+ Linux 3.10.0-514.26.2.el7.x86_64 (tron)    10/05/2017  <em>x86_64</em>    (1 CPU)</p>
+
+<p> 06:23:38 PM  CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+ 06:23:38 PM  all    1.59    0.01    0.76    0.20    0.00    0.02    0.00    0.00    0.00   97.42
+```</p>
+
+<h4>vmstat</h4>
+
+<blockquote><p>Report virtual memory statistics</p></blockquote>
+
+<p><code>
+ vmstat
+ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+  r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+  4  0      0 776148   1004 503192    0    0    70     8   79  169  2  1 97  0  0
+</code></p>
+
+<h4>tload</h4>
+
+<blockquote><p>graphic representation of system load average</p></blockquote>
+
+<p><code>
+ 0.01, 0.07, 0.17
+</code></p>
+
+<h4>watch</h4>
+
+<blockquote><p>execute a program periodically, showing output fullscreen</p></blockquote>
+
+<h4>lscpu</h4>
+
+<blockquote><p>display information about the CPU architecture</p></blockquote>
+
+<p><code>
+ lscpu
+ Architecture:          x86_64
+ CPU op-mode(s):        32-bit, 64-bit
+ Byte Order:            Little Endian
+ CPU(s):                1
+ On-line CPU(s) list:   0
+ Thread(s) per core:    1
+ Core(s) per socket:    1
+ Socket(s):             1
+ NUMA node(s):          1
+ Vendor ID:             GenuineIntel
+ CPU family:            6
+ Model:                 69
+ Model name:            Intel(R) Core(TM) i5-4300U CPU @ 1.90GHz
+ Stepping:              1
+ CPU MHz:               2493.585
+ BogoMIPS:              4988.45
+ Hypervisor vendor:     VMware
+ Virtualization type:   full
+ L1d cache:             32K
+ L1i cache:             32K
+ L2 cache:              256K
+ L3 cache:              3072K
+ NUMA node0 CPU(s):     0
+</code></p>
+
+<h4>uptime</h4>
+
+<blockquote><p>Tell how long the system has been running</p></blockquote>
+
+<p><code>
+ uptime
+  16:11:48 up 14 min,  3 users,  load average: 0.06, 0.20, 0.28
+</code></p>
+
+<ul>
+<li>show since when is the system up</li>
+</ul>
+
+
+<p><code>
+ uptime -s
+ 2017-10-05 15:57:10
+</code></p>
+
+<h4>pmap</h4>
+
+<blockquote><p>report memory map of a process</p></blockquote>
+
+<ul>
+<li>-p # Show full path to files in the mapping column</li>
+</ul>
+
+
+<p><code>
+ pmap -p $$
+ 3425:   bash
+ 0000000000400000    884K r-x-- /usr/bin/bash
+ 00000000006dc000      4K r---- /usr/bin/bash
+ 00000000006dd000     36K rw--- /usr/bin/bash
+ 00000000006e6000     24K rw---   [ anon ]
+ 0000000000cbc000   1572K rw---   [ anon ]
+ 00007f1b843d1000     48K r-x-- /usr/lib64/libnss_files-2.17.so
+ 00007f1b843dd000   2044K ----- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845dc000      4K r---- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845dd000      4K rw--- /usr/lib64/libnss_files-2.17.so
+ 00007f1b845de000     24K rw---   [ anon ]
+ 00007f1b845e4000 103588K r---- /usr/lib/locale/locale-archive
+ 00007f1b8ab0d000   1756K r-x-- /usr/lib64/libc-2.17.so
+ 00007f1b8acc4000   2044K ----- /usr/lib64/libc-2.17.so
+ 00007f1b8aec3000     16K r---- /usr/lib64/libc-2.17.so
+ 00007f1b8aec7000      8K rw--- /usr/lib64/libc-2.17.so
+ 00007f1b8aec9000     20K rw---   [ anon ]
+ 00007f1b8aece000      8K r-x-- /usr/lib64/libdl-2.17.so
+ 00007f1b8aed0000   2048K ----- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d0000      4K r---- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d1000      4K rw--- /usr/lib64/libdl-2.17.so
+ 00007f1b8b0d2000    148K r-x-- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b0f7000   2048K ----- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2f7000     16K r---- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2fb000      4K rw--- /usr/lib64/libtinfo.so.5.9
+ 00007f1b8b2fc000    128K r-x-- /usr/lib64/ld-2.17.so
+ 00007f1b8b504000     12K rw---   [ anon ]
+ 00007f1b8b512000      8K rw---   [ anon ]
+ 00007f1b8b514000     28K r--s- /usr/lib64/gconv/gconv-modules.cache
+ 00007f1b8b51b000      4K rw---   [ anon ]
+ 00007f1b8b51c000      4K r---- /usr/lib64/ld-2.17.so
+ 00007f1b8b51d000      4K rw--- /usr/lib64/ld-2.17.so
+ 00007f1b8b51e000      4K rw---   [ anon ]
+ 00007ffeb5ec8000    132K rw---   [ stack ]
+ 00007ffeb5efc000      8K r-x--   [ anon ]
+ ffffffffff600000      4K r-x--   [ anon ]
+  total           116692K
+</code></p>
+
+<h4>pwdx</h4>
+
+<blockquote><p>report current working directory of a process</p></blockquote>
+
+<p><code>
+ pwdx $$
+ 3425: /root
+</code></p>
+
+<h4>free</h4>
+
+<blockquote><p>Display amount of free and used memory in the system</p></blockquote>
+
+<p>```
+ free -h</p>
+
+<pre><code>           total        used        free      shared  buff/cache   available
+</code></pre>
+
+<p> Mem:           1.8G        509M        883M         10M        446M        1.1G
+ Swap:          2.0G          0B        2.0G
+```</p>
+
+<h4>nice</h4>
+
+<blockquote><p>run a program with modified scheduling priority</p></blockquote>
+
+<p> Niceness  values range  from  -20 (most favorable to the process) to 19 (least favorable to the process).</p>
+
+<ul>
+<li>-n # add integer N to the niceness (default 10)</li>
+</ul>
+
+
+<h4>renice</h4>
+
+<blockquote><p> alter priority of running processes</p></blockquote>
+
+<ul>
+<li>-n # priority</li>
+</ul>
+
+
+<h4>sleep</h4>
+
+<blockquote><p>delay for a specified amount of time</p></blockquote>
+
+<h4>bg</h4>
+
+<blockquote><p>Resume each suspended job jobspec  in  the  background,  as  if  it  had been started
+with &amp;</p></blockquote>
+
+<h4>fg</h4>
+
+<blockquote><p>Resume jobspec in the foreground, and make it the current job</p></blockquote>
+
+<h4>jobs</h4>
+
+<blockquote><p>list active jobs</p></blockquote>
+
+<p><code>
+ sleep 15 &amp;
+ [1] 9767
+ [root@tron ~]# jobs
+ [1]+  Running                 sleep 15 &amp;
+</code></p>
+
+<h4>kill</h4>
+
+<blockquote><p>terminate a process</p>
+
+<p>Default is the TERM signal, which is similar to asking nicely to terminate. The more
+forcefull option is KILL(9)</p></blockquote>
+
+<ul>
+<li>list signals</li>
+</ul>
+
+
+<p><code>
+ kill -l
+  1) SIGHUP  2) SIGINT   3) SIGQUIT  4) SIGILL   5) SIGTRAP
+  6) SIGABRT     7) SIGBUS   8) SIGFPE   9) SIGKILL 10) SIGUSR1
+ 11) SIGSEGV    12) SIGUSR2 13) SIGPIPE 14) SIGALRM 15) SIGTERM
+ 16) SIGSTKFLT  17) SIGCHLD 18) SIGCONT 19) SIGSTOP 20) SIGTSTP
+ 21) SIGTTIN    22) SIGTTOU 23) SIGURG  24) SIGXCPU 25) SIGXFSZ
+ 26) SIGVTALRM  27) SIGPROF 28) SIGWINCH    29) SIGIO   30) SIGPWR
+ 31) SIGSYS 34) SIGRTMIN    35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3
+ 38) SIGRTMIN+4 39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+ 43) SIGRTMIN+9 44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12 47) SIGRTMIN+13
+ 48) SIGRTMIN+14    49) SIGRTMIN+15 50) SIGRTMAX-14 51) SIGRTMAX-13 52) SIGRTMAX-12
+ 53) SIGRTMAX-11    54) SIGRTMAX-10 55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7
+ 58) SIGRTMAX-6 59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+ 63) SIGRTMAX-1 64) SIGRTMAX
+</code></p>
+
+<h4>pgrep,  pkill</h4>
+
+<blockquote><p>look  up  or signal processes based on name and other attributes</p></blockquote>
+
+<h4>ps</h4>
+
+<blockquote><p>report a snapshot of the current processes</p></blockquote>
+
+<ul>
+<li>-e # Select all processes.  Identical to -A</li>
+</ul>
+
+
+<p>```
+ ps -e
+   PID TTY          TIME CMD</p>
+
+<pre><code> 1 ?        00:00:02 systemd
+ 2 ?        00:00:00 kthreadd
+ 3 ?        00:00:00 ksoftirqd/0
+ 5 ?        00:00:00 kworker/0:0H
+ 7 ?        00:00:00 migration/0
+ 8 ?        00:00:00 rcu_bh
+ 9 ?        00:00:00 rcu_sched
+10 ?        00:00:00 watchdog/0
+12 ?        00:00:00 kdevtmpfs
+</code></pre>
+
+<p>[&hellip;]
+  3591 pts/0    00:00:00 man
+  3598 pts/0    00:00:00 less
+  3608 ?        00:00:00 sleep
+  3614 pts/1    00:00:00 ps
+```</p>
+
+<ul>
+<li>-r #  Restrict the selection to only running processes</li>
+</ul>
+
+
+<p><code>
+ ps -r
+   PID TTY      STAT   TIME COMMAND
+  1354 tty1     Rs+    0:08 /usr/bin/Xorg :0 -background none -noreset -audit 4 -
+  3805 pts/1    R+     0:00 ps -r
+</code></p>
+
+<ul>
+<li><p>-u # Select by effective user ID (EUID) or name</p></li>
+<li><p>process tree</p></li>
+</ul>
+
+
+<p><code>
+ ps --forest
+   PID TTY          TIME CMD
+  3508 pts/1    00:00:00 bash
+  3880 pts/1    00:00:00  \_ ps
+</code></p>
+
+<ul>
+<li>all processes + EUID</li>
+</ul>
+
+
+<p><code>
+ ps -aux
+ USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+ root         1  0.1  0.3 128088  6756 ?        Ss   17:03   0:02 /usr/lib/system
+ root         2  0.0  0.0      0     0 ?        S    17:03   0:00 [kthreadd]
+ root         3  0.0  0.0      0     0 ?        S    17:03   0:00 [ksoftirqd/0]
+ root         7  0.0  0.0      0     0 ?        S    17:03   0:00 [migration/0]
+ root         8  0.0  0.0      0     0 ?        S    17:03   0:00 [rcu_bh]
+ root         9  0.0  0.0      0     0 ?        R    17:03   0:00 [rcu_sched]
+ root        10  0.0  0.0      0     0 ?        S    17:03   0:00 [watchdog/0]
+ root        12  0.0  0.0      0     0 ?        S    17:03   0:00 [kdevtmpfs]
+ root        13  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [netns]
+ root        14  0.0  0.0      0     0 ?        S    17:03   0:00 [khungtaskd]
+ root        15  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [writeback]
+ root        16  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [kintegrityd]
+ root        17  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [bioset]
+ root        18  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [kblockd]
+ root        19  0.0  0.0      0     0 ?        S&lt;   17:03   0:00 [md]
+ root        25  0.0  0.0      0     0 ?        S    17:04   0:00 [kswapd0]
+ root        26  0.0  0.0      0     0 ?        SN   17:04   0:00 [ksmd]
+ root        27  0.0  0.0      0     0 ?        SN   17:04   0:00 [khugepaged]
+ root        28  0.0  0.0      0     0 ?        S    17:04   0:00 [fsnotify_mark]
+ root        29  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [crypto]
+ [...]
+ root       587  0.0  0.3  47700  5856 ?        Ss   17:04   0:00 /usr/lib/system
+ root       625  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [nfit]
+ root       666  0.0  0.0      0     0 ?        S&lt;   17:04   0:00 [xfs-buf/sda1]
+ dbus       727  0.0  0.1  36328  3332 ?        Ssl  17:04   0:01 /bin/dbus-daemo
+ root       734  0.0  0.0 201208  1208 ?        Ssl  17:04   0:00 /usr/sbin/gsspr
+ root      2862  0.0  0.1 380356  3468 ?        Sl   17:06   0:00 /usr/libexec/gv
+ root      3508  0.0  0.1 116688  3392 pts/1    Ss   17:07   0:00 bash
+ root      3591  0.0  0.1 119548  2292 pts/0    S+   17:12   0:00 man ps
+ root      3598  0.0  0.0 110248   960 pts/0    S+   17:12   0:00 less -s
+ root      3718  0.0  0.0      0     0 ?        S&lt;   17:22   0:00 [kworker/0:2H]
+ root      3743  0.0  0.0      0     0 ?        S    17:24   0:00 [kworker/0:0]
+ root      3819  0.0  0.0      0     0 ?        S&lt;   17:27   0:00 [kworker/0:1H]
+ root      3892  0.1  0.0      0     0 ?        S    17:29   0:00 [kworker/0:2]
+ root      3955  0.0  0.0      0     0 ?        S&lt;   17:33   0:00 [kworker/0:0H]
+ root      3967  0.0  0.0 107892   604 ?        S    17:34   0:00 sleep 60
+ root      3968  0.1  0.0      0     0 ?        R    17:34   0:00 [kworker/0:1]
+ root      3979  0.0  0.0 153136  1876 pts/1    R+   17:35   0:00 ps -aux
+</code></p>
+
+<ul>
+<li>long format, don&rsquo;t show flags</li>
+</ul>
+
+
+<p><code>
+ ps -ly
+ S   UID   PID  PPID  C PRI  NI   RSS    SZ WCHAN  TTY          TIME CMD
+ S     0  3508  3438  0  80   0  3392 29172 wait   pts/1    00:00:00 bash
+ R     0  4002  3508  0  80   0  1452 37232 -      pts/1    00:00:00 ps
+</code></p>
+
+<ul>
+<li>get running processes</li>
+</ul>
+
+
+<p><code>
+ echo $$
+ 3744
+ ps -p $$ -F
+ UID        PID  PPID  C    SZ   RSS PSR STIME TTY          TIME CMD
+ root      3697  3692  0 29172  3372   0 13:09 pts/0    00:00:00 bash
+</code></p>
+
+<h4>pstree</h4>
+
+<blockquote><p>display a tree of processes</p></blockquote>
+
+<ul>
+<li>-a # Show  command  line arguments</li>
+</ul>
+
+
+<p><code>
+ pstree -a
+ systemd --switched-root --system --deserialize 21
+   ├─ModemManager
+   │   └─2*[{ModemManager}]
+   ├─NetworkManager --no-daemon
+   │   ├─dhclient -d -q -sf /usr/libexec/nm-dhcp-helper -pf /var/run/dhclient-enp0s3.pid -lf ...
+   │   └─2*[{NetworkManager}]
+   ├─abrt-watch-log -F BUG: WARNING: at WARNING: CPU: INFO: possible recursive locking detected ernel BUG at list_del corruption list_add corruptiondo_IRQ: stack overfl
+   ├─abrt-watch-log -F Backtrace /var/log/Xorg.0.log -- /usr/bin/abrt-dump-xorg -xD
+   ├─abrtd -d -s
+   ├─accounts-daemon
+   │   └─2*[{accounts-daemon}]
+   ├─alsactl -s -n 19 -c -E ALSA_CONFIG_PATH=/etc/alsa/alsactl.conf --initfile=/lib/alsa/init/00main rdaemon
+   ├─at-spi-bus-laun
+   │   ├─dbus-daemon --config-file=/etc/at-spi2/accessibility.conf --nofork --print-address 3
+   │   │   └─{dbus-daemon}
+   │   └─3*[{at-spi-bus-laun}]
+   ├─at-spi2-registr --use-gnome-session
+   │   └─2*[{at-spi2-registr}]
+   ├─atd -f
+   ├─auditd -n
+   │   ├─audispd
+   │   │   ├─sedispatch
+   │   │   └─{audispd}
+   │   └─{auditd}
+   ├─avahi-daemon
+   │   └─avahi-daemon
+   ├─caribou
+   │   └─2*[{caribou}]
+   ├─colord
+   │   └─2*[{colord}]
+   ├─crond -n
+   ├─cupsd -f
+   ├─dbus-daemon --fork --print-pid 4 --print-address 6 --session
+   │   └─{dbus-daemon}
+   ├─dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation
+   │   └─{dbus-daemon}
+   ├─dbus-launch --sh-syntax --exit-with-session
+   ├─dconf-service
+   │   └─2*[{dconf-service}]
+   ├─dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+   │   └─dnsmasq --conf-file=/var/lib/libvirt/dnsmasq/default.conf --leasefile-ro --dhcp-script=/usr/libexec/libvirt_leaseshelper
+   ├─evolution-calen
+   │   └─5*[{evolution-calen}]
+   ├─evolution-sourc
+   │   └─2*[{evolution-sourc}]
+   ├─gconfd-2
+   ├─gdm
+   │   ├─Xorg :0 -background none -noreset -audit 4 -verbose -auth /run/gdm/auth-for-gdm-kJZtDT/database -seat seat0 -nolisten tcp vt1
+   │   ├─gdm-session-wor
+   │   │   ├─gnome-session --session gnome-classic
+   │   │   │   ├─abrt-applet
+   │   │   │   │   └─2*[{abrt-applet}]
+   │   │   │   ├─gnome-settings-
+   │   │   │   │   └─5*[{gnome-settings-}]
+   │   │   │   ├─gnome-shell
+   │   │   │   │   ├─ibus-daemon --xim --panel disable
+   │   │   │   │   │   ├─ibus-dconf
+   │   │   │   │   │   │   └─3*[{ibus-dconf}]
+   │   │   │   │   │   ├─ibus-engine-sim
+   │   │   │   │   │   │   └─2*[{ibus-engine-sim}]
+   │   │   │   │   │   └─2*[{ibus-daemon}]
+   │   │   │   │   └─6*[{gnome-shell}]
+   │   │   │   ├─gnome-software --gapplication-service
+   │   │   │   │   └─3*[{gnome-software}]
+   │   │   │   ├─nautilus --no-default-window --force-desktop
+   │   │   │   │   └─3*[{nautilus}]
+   │   │   │   ├─rhsm-icon
+   │   │   │   │   └─2*[{rhsm-icon}]
+   │   │   │   ├─seapplet
+   │   │   │   ├─ssh-agent /bin/sh -c exec -l /bin/bash -c "env GNOME_SHELL_SESSION_MODE=classic gnome-session --session gnome-classic"
+   │   │   │   ├─tracker-extract
+   │   │   │   │   └─13*[{tracker-extract}]
+   │   │   │   ├─tracker-miner-a
+   │   │   │   │   └─2*[{tracker-miner-a}]
+   │   │   │   ├─tracker-miner-f
+   │   │   │   │   └─3*[{tracker-miner-f}]
+   │   │   │   ├─tracker-miner-u
+   │   │   │   │   └─2*[{tracker-miner-u}]
+   │   │   │   └─3*[{gnome-session}]
+   │   │   └─2*[{gdm-session-wor}]
+   │   └─3*[{gdm}]
+   ├─gnome-keyring-d --daemonize --login
+   │   └─4*[{gnome-keyring-d}]
+   ├─gnome-shell-cal
+   │   └─5*[{gnome-shell-cal}]
+   ├─gnome-terminal-
+   │   ├─bash
+   │   │   └─man pstree
+   │   │       └─less -s
+   │   ├─bash
+   │   │   └─pstree -a
+   │   ├─gnome-pty-helpe
+   │   └─3*[{gnome-terminal-}]
+   ├─goa-daemon
+   │   └─3*[{goa-daemon}]
+   ├─goa-identity-se
+   │   └─3*[{goa-identity-se}]
+   ├─gsd-printer
+   │   └─2*[{gsd-printer}]
+   ├─gssproxy -D
+   │   └─5*[{gssproxy}]
+   ├─gvfs-afc-volume
+   │   └─3*[{gvfs-afc-volume}]
+   ├─gvfs-goa-volume
+   │   └─2*[{gvfs-goa-volume}]
+   ├─gvfs-gphoto2-vo
+   │   └─2*[{gvfs-gphoto2-vo}]
+   ├─gvfs-mtp-volume
+   │   └─2*[{gvfs-mtp-volume}]
+   ├─gvfs-udisks2-vo
+   │   └─2*[{gvfs-udisks2-vo}]
+   ├─gvfsd
+   │   └─2*[{gvfsd}]
+   ├─gvfsd-fuse /run/user/0/gvfs -f -o big_writes
+   │   └─5*[{gvfsd-fuse}]
+   ├─gvfsd-metadata
+   │   └─2*[{gvfsd-metadata}]
+   ├─gvfsd-trash --spawner :1.3 /org/gtk/gvfs/exec_spaw/0
+   │   └─2*[{gvfsd-trash}]
+   ├─ibus-x11 --kill-daemon
+   │   └─2*[{ibus-x11}]
+   ├─ksmtuned /usr/sbin/ksmtuned
+   │   └─sleep 60
+   ├─libvirtd
+   │   └─15*[{libvirtd}]
+   ├─lsmd -d
+   ├─lvmetad -f
+   ├─master -w
+   │   ├─pickup -l -t unix -u
+   │   └─qmgr -l -t unix -u
+   ├─mcelog --ignorenodev --daemon --syslog
+   ├─mission-control
+   │   └─3*[{mission-control}]
+   ├─packagekitd
+   │   └─2*[{packagekitd}]
+   ├─polkitd --no-debug
+   │   └─5*[{polkitd}]
+   ├─pulseaudio --start
+   │   └─{pulseaudio}
+   ├─rhnsd
+   ├─rhsmcertd
+   ├─rngd -f
+   ├─rsyslogd -n
+   │   └─2*[{rsyslogd}]
+   ├─rtkit-daemon
+   │   └─2*[{rtkit-daemon}]
+   ├─smartd -n -q never
+   ├─sshd -D
+   ├─systemd-journal
+   ├─systemd-logind
+   ├─systemd-udevd
+   ├─tracker-store
+   │   └─7*[{tracker-store}]
+   ├─tuned -Es /usr/sbin/tuned -l -P
+   │   └─4*[{tuned}]
+   ├─udisksd --no-debug
+   │   └─4*[{udisksd}]
+   ├─upowerd
+   │   └─2*[{upowerd}]
+   ├─vmtoolsd
+   │   └─{vmtoolsd}
+   ├─vmtoolsd -n vmusr
+   └─wpa_supplicant -u -f /var/log/wpa_supplicant.log -c /etc/wpa_supplicant/wpa_supplicant.conf -P /var/run/wpa_supplicant.pid
+</code></p>
+
+<h4>runlevel</h4>
+
+<blockquote><p>Print previous and current SysV runlevel</p>
+
+<p>If a runlevel cannot be determined, N is printed instead</p></blockquote>
+
+<p><code>
+ runlevel
+ N 5
+</code></p>
+
+<h4>init / telinit</h4>
+
+<ul>
+<li>legacy</li>
+</ul>
+
+
+<p>```
+ init [OPTIONS&hellip;] {COMMAND}</p>
+
+<p> Send control commands to the init daemon.</p>
+
+<pre><code>  --help      Show this help
+  --no-wall   Don't send wall message before halt/power-off/reboot
+</code></pre>
+
+<p> Commands:
+   0              Power-off the machine
+   6              Reboot the machine
+   2, 3, 4, 5     Start runlevelX.target unit
+   1, s, S        Enter rescue mode
+   q, Q           Reload init daemon configuration
+   u, U           Reexecute init daemon
+```</p>
+
+<h4>mkfifo</h4>
+
+<blockquote><p>make FIFOs (named pipes)</p></blockquote>
+
+<p><code>
+ mkfifo /tmp/pipe
+ [root@tron ~]# ls -l /tmp/pipe
+ prw-r--r--. 1 root root 0 Sep 27 13:32 /tmp/pipe
+</code></p>
+
+<h4>script</h4>
+
+<blockquote><p>make typescript of terminal session</p></blockquote>
+
+<p>```
+ script
+ Script started, file is typescript
+ [root@tron ~]# ls
+ anaconda-ks.cfg  Downloads             Music          Templates
+ Desktop          hashes.txt            openscap_data  test.txt
+ dns.conf         initial-setup-ks.cfg  Pictures       typescript
+ Documents        man.txt               Public         Videos
+ [root@tron ~]# rm -f dns.conf hashes.txt
+ [root@tron ~]# exit
+ exit
+ Script done, file is typescript
+ [root@tron ~]# cat typescript
+ Script started on Wed 27 Sep 2017 01:34:50 PM EEST
+ [root@tron ~]# ls
+ anaconda-ks.cfg  Downloads             Music          Templates
+ Desktop          hashes.txt            openscap_data  test.txt
+ dns.conf         initial-setup-ks.cfg  Pictures       typescript
+ Documents        man.txt               Public         Videos
+ [root@tron ~]# rm -f dns.conf hashes.txt
+ [root@tron ~]# exit
+ exit</p>
+
+<p> Script done on Wed 27 Sep 2017 01:35:18 PM EEST
+```</p>
+
+<h4>stat</h4>
+
+<blockquote><p>display file or file system status</p></blockquote>
+
+<p><code>
+ stat hashes.txt
+   File: ‘hashes.txt’
+   Size: 43         Blocks: 8          IO Block: 4096   regular file
+ Device: fd00h/64768d   Inode: 33859054    Links: 1
+ Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+ Context: unconfined_u:object_r:admin_home_t:s0
+ Access: 2017-09-26 11:27:18.298105601 +0300
+ Modify: 2017-09-22 14:14:29.035069557 +0300
+ Change: 2017-09-22 14:14:29.035069557 +0300
+  Birth: -
+</code></p>
+
+<h4>lastlog</h4>
+
+<blockquote><p>reports the most recent login of all users or of a given user</p></blockquote>
+
+<p><code>
+ lastlog
+ Username         Port     From             Latest
+ root             :0                        Sat Oct  7 14:45:28 +0300 2017
+ bin                                        **Never logged in**
+ daemon                                     **Never logged in**
+ adm                                        **Never logged in**
+ lp                                         **Never logged in**
+ sync                                       **Never logged in**
+ shutdown                                   **Never logged in**
+ halt                                       **Never logged in**
+ mail                                       **Never logged in**
+ operator                                   **Never logged in**
+ games                                      **Never logged in**
+ ftp                                        **Never logged in**
+ nobody                                     **Never logged in**
+ systemd-bus-proxy                           **Never logged in**
+ systemd-network                            **Never logged in**
+ dbus                                       **Never logged in**
+ polkitd                                    **Never logged in**
+ abrt                                       **Never logged in**
+ unbound                                    **Never logged in**
+ tss                                        **Never logged in**
+ colord                                     **Never logged in**
+ usbmuxd                                    **Never logged in**
+ geoclue                                    **Never logged in**
+ saslauth                                   **Never logged in**
+ libstoragemgmt                             **Never logged in**
+ rpc                                        **Never logged in**
+ rtkit                                      **Never logged in**
+ chrony                                     **Never logged in**
+ radvd                                      **Never logged in**
+ qemu                                       **Never logged in**
+ ntp                                        **Never logged in**
+ rpcuser                                    **Never logged in**
+ nfsnobody                                  **Never logged in**
+ avahi-autoipd                              **Never logged in**
+ setroubleshoot                             **Never logged in**
+ sssd                                       **Never logged in**
+ pulse                                      **Never logged in**
+ gdm              :0                        Sat Oct  7 14:42:55 +0300 2017
+ gnome-initial-setup :0                        Tue Apr 26 15:36:08 +0300 2016
+ sshd                                       **Never logged in**
+ avahi                                      **Never logged in**
+ postfix                                    **Never logged in**
+ tcpdump                                    **Never logged in**
+ nixhat           :0                        Sat Aug 19 20:00:48 +0300 2017
+ apache                                     **Never logged in**
+ smbuser                                    **Never logged in**
+ squid                                      **Never logged in**
+</code></p>
+
+<ul>
+<li>see last time a user logged in</li>
+</ul>
+
+
+<p><code>
+ lastlog -u root
+ Username         Port     From             Latest
+ root             :0                        Sat Oct  7 14:45:28 +0300 2017
+</code></p>
+
+<h4>last</h4>
+
+<blockquote><p>show listing of last logged in users</p>
+
+<p>Last searches back through the file /var/log/wtmp (or the  file  designated  by  the
+f flag) and displays a list of all users logged in (and out) since that file was
+created.</p></blockquote>
+
+<p>```
+ last -n 10
+ root     pts/1        :0               Sat Oct  7 14:53   still logged in <br/>
+ root     pts/0        :0               Sat Oct  7 14:45   still logged in <br/>
+ root     :0           :0               Sat Oct  7 14:45   still logged in <br/>
+ (unknown :0           :0               Sat Oct  7 14:42 &ndash; 14:45  (00:02)  <br/>
+ reboot   system boot  3.10.0-514.21.1. Sat Oct  7 14:41 &ndash; 14:54  (00:13)  <br/>
+ root     pts/1        :0               Fri Oct  6 21:48 &ndash; 23:19  (01:30)  <br/>
+ root     pts/0        :0               Fri Oct  6 21:47 &ndash; 23:19  (01:32)  <br/>
+ root     :0           :0               Fri Oct  6 21:43 &ndash; 23:19  (01:36)  <br/>
+ (unknown :0           :0               Fri Oct  6 21:37 &ndash; 21:43  (00:05)  <br/>
+ reboot   system boot  3.10.0-514.21.1. Fri Oct  6 21:36 &ndash; 23:19  (01:43)</p>
+
+<p> wtmp begins Tue Apr 26 15:32:43 2016
+```</p>
+
+<h4>lastb</h4>
+
+<blockquote><p>shows a log of the file /var/log/btmp, which contains all the bad login attempts</p></blockquote>
+
+<p>```
+ lastb
+ root     :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)  <br/>
+ root     :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)  <br/>
+ nixhat   :0           :0               Sat Oct  7 14:57 &ndash; 14:57  (00:00)</p>
+
+<p> btmp begins Sat Oct  7 14:57:26 2017
+```</p>
+
+<h4>logrotate</h4>
+
+<blockquote><p>rotates, compresses, and mails system logs</p></blockquote>
+
+<p> Config file: <strong>/etc/logrotate.conf</strong></p>
+
+<h4>journalctl</h4>
+
+<blockquote><p>Query the systemd journal</p></blockquote>
+
+<p><code>
+ journalctl -u httpd.service
+ -- Logs begin at Sat 2017-10-07 14:41:21 EEST, end at Sat 2017-10-07 15:34:36 EE
+ Oct 07 14:42:14 localhost.localdomain systemd[1]: Starting The Apache HTTP Serve
+ Oct 07 14:42:23 localhost.localdomain httpd[1099]: AH00558: httpd: Could not rel
+ Oct 07 14:42:24 localhost.localdomain systemd[1]: Started The Apache HTTP Server
+ Oct 07 15:11:02 localhost.localdomain httpd[6068]: AH00558: httpd: Could not rel
+ Oct 07 15:11:02 localhost.localdomain systemd[1]: Reloaded The Apache HTTP Serve
+</code></p>
+
+<ul>
+<li>show boot log</li>
+</ul>
+
+
+<p><code>
+ journalctl -b | tail
+ Jan 25 18:28:01 rhel7 systemd[1]: Created slice user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Starting user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Started Session 45 of user pcp.
+ Jan 25 18:28:01 rhel7 systemd[1]: Starting Session 45 of user pcp.
+ Jan 25 18:28:01 rhel7 CROND[6820]: (pcp) CMD ( /usr/libexec/pcp/bin/pmie_check -C)
+ Jan 25 18:28:01 rhel7 systemd[1]: Removed slice user-993.slice.
+ Jan 25 18:28:01 rhel7 systemd[1]: Stopping user-993.slice.
+ Jan 25 18:30:01 rhel7 systemd[1]: Started Session 46 of user root.
+ Jan 25 18:30:01 rhel7 systemd[1]: Starting Session 46 of user root.
+ Jan 25 18:30:01 rhel7 CROND[6978]: (root) CMD (/usr/lib64/sa/sa1 1 1)
+</code></p>
+
+<ul>
+<li>show error events</li>
+</ul>
+
+
+<p><code>
+ journalctl -p err
+ -- Logs begin at Thu 2018-01-25 14:28:07 EET, end at Thu 2018-01-25 18:30:01 EET. --
+ Jan 25 14:28:10 rhel7 kernel: piix4_smbus 0000:00:07.3: Host SMBus controller not enabled!
+ Jan 25 14:28:11 rhel7 kernel: intel_rapl: no valid rapl domains found in package 0
+ Jan 25 14:28:35 rhel7 cntlm[1121]: Error creating a new PID file
+ Jan 25 14:28:45 rhel7 spice-vdagent[2501]: Cannot access vdagent virtio channel /dev/virtio-ports/com.redhat.spice.0
+ Jan 25 14:28:57 rhel7 udisksd[2652]: Error probing device: Error sending ATA command IDENTIFY PACKET DEVICE to /dev/sr0: ATA command failed: error=0x01 count=0x02 status=0x5
+ Jan 25 14:47:48 rhel7 gdm-launch-environment][2380]: pam_systemd(gdm-launch-environment:session): Failed to release session: Interrupted system call
+ Jan 25 14:47:50 rhel7 spice-vdagent[3306]: Cannot access vdagent virtio channel /dev/virtio-ports/com.redhat.spice.0
+ Jan 25 14:48:15 rhel7 pulseaudio[3318]: GetManagedObjects() failed: org.freedesktop.DBus.Error.NoReply: Did not receive a reply. Possible causes include: the remote applicat
+ Jan 25 14:53:38 rhel7 kernel: ata4: exception Emask 0x10 SAct 0x0 SErr 0x4010000 action 0xe frozen
+ Jan 25 14:53:38 rhel7 kernel: ata4: irq_stat 0x00400040, connection status changed
+ Jan 25 14:53:38 rhel7 kernel: ata4: SError: { PHYRdyChg DevExch }
+</code></p>
+
+<h4>rpm</h4>
+
+<blockquote><p>RPM Package Manager</p></blockquote>
+
+<ul>
+<li>count all installed packages</li>
+</ul>
+
+
+<p><code>
+rpqm -qa | wc -l
+1366
+</code></p>
+
+<ul>
+<li>get info about installed package</li>
+</ul>
+
+
+<p><code>
+ rpm -qi samba
+ Name        : samba
+ Epoch       : 0
+ Version     : 4.4.4
+ Release     : 14.el7_3
+ Architecture: x86_64
+ Install Date: Thu 08 Jun 2017 10:55:00 AM EEST
+ Group       : System Environment/Daemons
+ Size        : 1869228
+ License     : GPLv3+ and LGPLv3+
+ Signature   : RSA/SHA256, Thu 25 May 2017 04:16:22 PM EEST, Key ID 24c6a8a7f4a80eb5
+ Source RPM  : samba-4.4.4-14.el7_3.src.rpm
+ Build Date  : Thu 25 May 2017 02:35:40 PM EEST
+ Build Host  : c1bm.rdu2.centos.org
+ Relocations : (not relocatable)
+ Packager    : CentOS BuildSystem &lt;http://bugs.centos.org&gt;
+ Vendor      : CentOS
+ URL         : http://www.samba.org/
+ Summary     : Server and Client software to interoperate with Windows machines
+ Description :
+ Samba is the standard Windows interoperability suite of programs for Linux and
+ Unix.
+</code></p>
+
+<ul>
+<li>list files in package</li>
+</ul>
+
+
+<p><code>
+ rpm -ql lynx
+ /etc/lynx-site.cfg
+ /etc/lynx.cfg
+ /etc/lynx.lss
+ /usr/bin/lynx
+ /usr/share/doc/lynx-2.8.8
+ [...]
+ /usr/share/locale/zh_TW/LC_MESSAGES/lynx.mo
+ /usr/share/man/man1/lynx.1.gz
+</code></p>
+
+<ul>
+<li>list config files</li>
+</ul>
+
+
+<p><code>
+ rpm -qc name
+</code></p>
+
+<ul>
+<li>install RPM package</li>
+</ul>
+
+
+<p><code>
+ rpm -i pkgname
+</code></p>
+
+<ul>
+<li>upgrade package</li>
+</ul>
+
+
+<p><code>
+ rpm -U pkgname
+</code></p>
+
+<ul>
+<li>remove package</li>
+</ul>
+
+
+<p><code>
+ rpm -e pkgname
+</code></p>
+
+<ul>
+<li>see where file comes from</li>
+</ul>
+
+
+<p><code>
+ rpm -qf /etc/httpd/conf
+ httpd-2.4.6-45.el7.centos.4.x86_64
+</code></p>
+
+<ul>
+<li>verify package</li>
+</ul>
+
+
+<p><code>
+rpm -V pgkname
+</code></p>
+
+<ul>
+<li>list documentation files</li>
+</ul>
+
+
+<p><code>
+rpm -qd cmdname
+</code></p>
+
+<h4>yum</h4>
+
+<blockquote><p>Yellowdog Updater Modified</p></blockquote>
+
+<ul>
+<li>install automatically</li>
+</ul>
+
+
+<p><code>
+ yum install -y pkgname
+</code></p>
+
+<ul>
+<li>get info about package</li>
+</ul>
+
+
+<p>```
+ yum info nmap
+ [&hellip;]
+ Available Packages
+ Name        : nmap
+ Arch        : x86_64
+ Epoch       : 2
+ Version     : 6.40
+ Release     : 7.el7
+ Size        : 4.0 M
+ Repo        : base/7/x86_64
+ Summary     : Network exploration tool and security scanner
+ URL         : <a href="http://nmap.org/">http://nmap.org/</a>
+ License     : GPLv2 and LGPLv2+ and GPLv2+ and BSD
+ Description : Nmap is a utility for network exploration or security auditing.</p>
+
+<pre><code>         : It supports ping scanning (determine which hosts are up), many
+         : port scanning techniques (determine what services the hosts are
+         : offering), and TCP/IP fingerprinting (remote host operating system
+         : identification). Nmap also offers flexible target and port
+         : specification, decoy scanning, determination of TCP sequence
+         : predictability characteristics, reverse-identd scanning, and more.
+         : In addition to the classic command-line nmap executable, the Nmap
+         : suite includes a flexible data transfer, redirection, and
+         : debugging tool (netcat utility ncat), a utility for comparing scan
+         : results (ndiff), and a packet generation and response analysis
+         : tool (nping).
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>remove pkg</li>
+</ul>
+
+
+<p><code>
+ yum remove pkgname
+</code></p>
+
+<ul>
+<li>list dependencies</li>
+</ul>
+
+
+<p>```
+ yum deplist cowsay
+ [&hellip;]
+ package: cowsay.noarch 3.04-4.el7
+   dependency: /bin/sh</p>
+
+<pre><code>provider: bash.x86_64 4.2.46-29.el7_4
+</code></pre>
+
+<p>   dependency: /usr/bin/perl</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Cwd)</p>
+
+<pre><code>provider: perl-PathTools.x86_64 3.40-5.el7
+</code></pre>
+
+<p>   dependency: perl(File::Basename)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Getopt::Std)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Text::Tabs)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(Text::Wrap)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl(strict)</p>
+
+<pre><code>provider: perl.x86_64 4:5.16.3-292.el7
+</code></pre>
+
+<p>   dependency: perl-Encode</p>
+
+<pre><code>provider: perl-Encode.x86_64 2.51-7.el7
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>list installed packages</li>
+</ul>
+
+
+<p><code>
+ yum list installed
+ [...]
+ yum.noarch                             3.4.3-150.el7.centos            @base    
+ yum-langpacks.noarch                   0.4.2-7.el7                     @base    
+ yum-metadata-parser.x86_64             1.1.4-10.el7                    @anaconda
+ yum-plugin-fastestmirror.noarch        1.1.31-40.el7                   @base    
+ yum-utils.noarch                       1.1.31-40.el7                   @base    
+ zenity.x86_64                          3.8.0-5.el7                     @anaconda
+ zip.x86_64                             3.0-11.el7                      @base    
+ zlib.x86_64                            1.2.7-17.el7                    @base    
+</code></p>
+
+<ul>
+<li>update all packages</li>
+</ul>
+
+
+<p><code>
+ yum update
+</code></p>
+
+<ul>
+<li>check if updates are available, without updating</li>
+</ul>
+
+
+<p><code>
+ yum check-update
+</code></p>
+
+<ul>
+<li>list info about available packages</li>
+</ul>
+
+
+<p><code>
+ yum list python
+ [...]
+ Installed Packages
+ python.x86_64                         2.7.5-48.el7                         @base
+ Available Packages
+ python.x86_64                         2.7.5-58.el7                         base
+ [root@localhost ~]#
+</code></p>
+
+<ul>
+<li>find out which package provides some feature or file</li>
+</ul>
+
+
+<p>```
+ yum provides scapy
+ scapy-2.3.3-1.el7.noarch : Interactive packet manipulation tool and network</p>
+
+<pre><code>                      : scanner
+</code></pre>
+
+<p> Repo        : epel
+```</p>
+
+<ul>
+<li>find packages when you know something about  the package but aren&rsquo;t sure of its name.</li>
+</ul>
+
+
+<p><code>
+ yum search name
+</code></p>
+
+<ul>
+<li>list package summary</li>
+</ul>
+
+
+<p>```
+ yum info scapy
+ Available Packages
+ Name        : scapy
+ Arch        : noarch
+ Version     : 2.3.3
+ Release     : 1.el7
+ Size        : 983 k
+ Repo        : epel/x86_64
+ Summary     : Interactive packet manipulation tool and network scanner
+ URL         : <a href="http://www.secdev.org/projects/scapy/">http://www.secdev.org/projects/scapy/</a>
+ License     : GPLv2
+ Description : Scapy is a powerful interactive packet manipulation program built</p>
+
+<pre><code>         : on top of the Python interpreter. It can be used to forge or
+         : decode packets of a wide number of protocols, send them over the
+         : wire, capture them, match requests and replies, and much more.
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>find which package provides an utility</li>
+</ul>
+
+
+<p><code>
+ yum provides sealert
+ Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-manager
+ setroubleshoot-server-3.2.27.2-3.el7.x86_64 : SELinux troubleshoot server
+ Repo        : rhel7-local
+ Matched from:
+ Filename    : /usr/bin/sealert
+</code></p>
+
+<ul>
+<li>perform cleaning operations</li>
+</ul>
+
+
+<p><code>
+ yum clean
+ all           dbcache       headers       packages      
+ cache         expire-cache  metadata   
+</code></p>
+
+<ul>
+<li>Produces a list of all dependencies and  what  packages  provide those  dependencies  for the given packages.</li>
+</ul>
+
+
+<p>```
+yum deplist scapy
+ package: scapy.noarch 2.3.3-1.el7
+   dependency: /usr/bin/python</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>   dependency: python >= 2.5</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>   dependency: python(abi) = 2.7</p>
+
+<pre><code>provider: python.x86_64 2.7.5-58.el7
+</code></pre>
+
+<p>```</p>
+
+<ul>
+<li>list configured repositories</li>
+</ul>
+
+
+<p><code>
+ yum repolist
+ repo id               repo name                                           status
+ base/7/x86_64         CentOS-7 - Base                                      9,591
+ *epel/x86_64          Extra Packages for Enterprise Linux 7 - x86_64      11,985
+ extras/7/x86_64       CentOS-7 - Extras                                      227
+ nux-dextop/x86_64     Nux.Ro RPMs for general desktop use                  1,599
+ updates/7/x86_64      CentOS-7 - Updates                                     731
+ repolist: 24,133
+</code></p>
+
+<ul>
+<li>see past transactions</li>
+</ul>
+
+
+<p><code>
+ yum history
+</code></p>
+
+<ul>
+<li>list available kernels</li>
+</ul>
+
+
+<p>```
+ yum list kernel
+ Loaded plugins: langpacks, product-id, search-disabled-repos, subscription-</p>
+
+<pre><code>           : manager
+</code></pre>
+
+<p> Repodata is over 2 weeks old. Install yum-cron? Or run: yum makecache fast
+ Installed Packages
+ kernel.x86_64              3.10.0-514.el7                    @anaconda/7.3    <br/>
+ kernel.x86_64              3.10.0-514.26.2.el7               @rhel-7-server-rpms
+ Available Packages
+ kernel.x86_64              3.10.0-693.2.2.el7                rhel-7-server-rpms
+```</p>
+
+<ul>
+<li>install new kernel and set it as default boot choice</li>
+</ul>
+
+
+<p><code>
+yum --enablerepo=kernelrepo install kernelname
+</code></p>
+
+<p>Set <code>GRUB_DEFAULT=0</code> to make it default, 1 otherwise</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Fine day for friends. So-so day for \
+\ you.                                /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
+  
+</feed>

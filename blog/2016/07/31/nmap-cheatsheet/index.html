@@ -1,0 +1,537 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Nmap cheatsheet - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Nmap 101">
+  <meta name="keywords" content="pentesting, nmap, hacking, penetration testing, nmap tutorial, nmap guide, port scan, scanner, port scanner, nmap cheatsheet, port scanning, exploit, vulnerability, security audit">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Nmap cheatsheet</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-07-31T13:40:43+03:00" pubdate data-updated="true">Jul 31<span>st</span>, 2016</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Recently, I&rsquo;ve been reading Fyodor&rsquo;s <a href="https://www.amazon.com/Nmap-Network-Scanning-Official-Discovery/dp/0979958717">Nmap Network Scanning</a> book and decided to create an Nmap cheatsheet while at it.</p>
+
+<p>Half of the book, including updated content, is also available for free on <a href="https://nmap.org/book/toc.html">https://nmap.org/book/toc.html</a></p>
+
+<p>Fyodor was also nice enough to set up a machine that you can test your scans against (within reasonable limits), at <a href="http://scanme.nmap.org/">http://scanme.nmap.org/</a></p>
+
+<p>All right, let&rsquo;s get scanning!</p>
+
+<!-- more -->
+
+
+<h1>Commands cheatsheet</h1>
+
+<h2>Scan types</h2>
+
+<p><strong>-sS</strong>: TCP SYN scan &ndash; the default scan, most popular due to its speed and stealth, as it doesn&rsquo;t complete a TCP connection</p>
+
+<p><strong>-sT</strong>: TCP Connect scan, it uses the connect() system call, used by unprivileged users who can&rsquo;t send raw packets or when scanning IPv6 targets</p>
+
+<p><strong>-sV</strong>: Version detection, omit for performance increase and/or stealth</p>
+
+<p><strong>-sA</strong>: TCP ACK scan, can&rsquo;t tell if the ports are open or closed, but it can determine whether firewall rules are stateful or stateless</p>
+
+<p><strong>-sW</strong>: TCP Window scan, same as ACK, but it can determine open and closed ports on certain systems</p>
+
+<p><strong>-sM</strong>: Maimon scan, yet another special scan type for bypassing firewalls</p>
+
+<p><strong>-sU</strong>: UDP scan. You can improve it by adding a version scan alongside it (but it will be slower)</p>
+
+<p><strong>-sF</strong>: FIN scan, sets the FIN bit, useful in bypassing some firewalls and determining the target&rsquo;s OS between Windows and Unix types, as it doesn&rsquo;t work against Windows</p>
+
+<p><strong>-sX</strong>: Xmas scan, another option for firewall evasion, sets the FIN, PSH, and URG flags, creating the impression of a lit Christmas tree</p>
+
+<p><strong>-sN</strong>: Null scan, doesn&rsquo;t set any flags, an additional option to evade pesky firewalls</p>
+
+<p><strong>-sO</strong>: IP protocol scan, check which IP protocols are supported on the target</p>
+
+<p><strong>-b <FTP relay host></strong>: FTP bounce scan, also available to unprivileged users</p>
+
+<p><strong>-A</strong>: Enable OS detection, version detection, script scanning, and traceroute</p>
+
+<h3>Host discovery</h3>
+
+<p><strong>List scan &ndash; sL</strong> &ndash; enumerates the addresses in the specified range and does reverse DNS lookup on them. Good for getting a feel about the targets by checking their DNS names, and maintaining a low profile on the network (because no ping requests are being sent yet, so it&rsquo;s stealthier)</p>
+
+<p><strong>-p-</strong>: Shortcut for <em>-p1-65535</em></p>
+
+<p><strong>-Pn</strong>: Treat all hosts as online &mdash; skip host discovery (disable ping)</p>
+
+<p><strong>&mdash;exclude &lt;host1[,host2][,host3],&hellip;></strong>: Exclude hosts/networks</p>
+
+<p><strong>-n</strong>: Never do DNS resolution</p>
+
+<p><strong>-sP</strong>: perform a ping sweep</p>
+
+<p><strong>-PS/PA/PU</strong>: TCP SYN ping/TCP ACK ping/UDP ping &ndash; various host discovery options for bypassing firewalls</p>
+
+<h3>Performance</h3>
+
+<p><strong>-T&lt;0-5></strong>: Set timing template (higher is faster). -T4 (aggressive) is recommended for most cases, as it improves performance and optimization for a fast and reliable network. For evasion purposes you can use T0 (paranoid) or T1 (sneaky), but speed will be very slow. To conserve bandwidth and resources you may use T2 (polite), at another significant expense of speed. T3 is the normal mode, and T5 is an insane level of speed (but you might sacrifice some accuracy in the process)</p>
+
+<p><strong>-F</strong>: Fast scan, only scan most common 100 ports</p>
+
+<h3>Evasion</h3>
+
+<p><strong>-D &lt;decoy1,decoy2[,ME],&hellip;></strong>: Cloak a scan with decoys</p>
+
+<p><strong>&mdash;scanflags <flags></strong>: Customize TCP scan flags. You can couple it with specifying a TCP scan type to give Nmap a base of interpreting the results</p>
+
+<p><strong>-S &lt;IP_Address></strong>: Spoof source address</p>
+
+<p><strong>-sI <zombie host[:probeport]></strong>: Idle scan, a complex scan that is stealthy but slow. It uses zombies to perform the scan, without sending packets directly from your IP. Use in tandem with the -PN option to disable ping and not disclose your real address. Avoid -sV, as version detection would also make your IP visible to the target</p>
+
+<p><strong>-f; &mdash;mtu <val></strong>: fragment packets (optionally w/given MTU), can aid in bypassing firewalls that don&rsquo;t handle fragmentation well</p>
+
+<p><strong>-g/&mdash;source-port <portnum></strong>: Spoof source port, bypass security measures that rely only on checking the source port</p>
+
+<p><strong>&mdash;spoof-mac <mac address/prefix/vendor name></strong>: Spoof your MAC address</p>
+
+<p><strong>&mdash;badsum</strong>: Send packets with a bogus TCP/UDP/SCTP checksum. Normal hosts discard packets with bad checksums, but firewalls may omit these checks for performance reasons</p>
+
+<p><strong>&mdash;dns-servers &lt;serv1[,serv2],&hellip;></strong>: Specify custom DNS servers when doing reverse DNS lookup to avoid your DNS server showing up in the target&rsquo;s logs</p>
+
+<h3>Additional info</h3>
+
+<p><strong>-v</strong>: increase verbosity level, you can use it 2 or 3 times to further increase verbosity</p>
+
+<p><strong>-d</strong>: Increase debugging level (use -dd or more for greater effect), can increase to a max of 9</p>
+
+<p><strong>&mdash;packet-trace</strong>: print summary of every packet sent and received</p>
+
+<h3>Output</h3>
+
+<p><strong>-oN/-oX/-oS/-oG <file></strong>: Output scan in normal, XML, sCrIpt kIddi3, and Grepable format, respectively, to the given filename</p>
+
+<p><strong>-oA <basename></strong>: Output in the three major formats at once</p>
+
+<p><strong>&mdash;resume <filename></strong>: Resume an aborted scan</p>
+
+<p>If you don&rsquo;t want Nmap to display its interactive output, you can pass a <em>&ndash;</em> to the format type(s), like so: <code>-oS &ndash;</code></p>
+
+<h2>Useful tips</h2>
+
+<ul>
+<li><p><code>nmap -sL -n target</code> &ndash; list IPs to be scanned before actually scanning them</p></li>
+<li><p><code>-pT:22,80,U:53</code> &ndash; scan separate TCP and UDP ports (you have to specify a UDP scan in addition to a TCP scan)</p></li>
+<li><p><code>&mdash;version-intensity <level></code>: Set from 0 (light) to 9 (try all probes), setting it to 0 will limit the version detection to the most likely to succeed probes, and improve the speed of the scan</p></li>
+<li><p>you can scan a network range by adding the subnet mask after an IP like so: <em>ip/numbits</em>. An example would be: 192.168.80.0/24, where the hosts between 192.168.80.0 and 192.168.80.255 would be scanned</p></li>
+<li><p>version detection is noisy</p></li>
+<li><p>you can specify port 0 for a scan, to catch malicious software that might listen on it</p></li>
+</ul>
+
+
+<h2>Script scanning</h2>
+
+<p><strong>-sC</strong>: enable some common scripts, may be intrusive to the target</p>
+
+<p><strong>&mdash;script</strong>=<Lua scripts>: <Lua scripts> is a comma separated list of directories, script-files or script-categories</p>
+
+<p><a href="https://nmap.org/book/nse-usage.html">Currently defined categories</a> are:</p>
+
+<ul>
+<li><p><em>auth</em> &ndash; operations requiring authentication credentials</p></li>
+<li><p><em>broadcast</em> &ndash; local network broadcasts</p></li>
+<li><p><em>brute</em> &ndash; brute force attacks</p></li>
+<li><p><em>default</em> &ndash; scripts that are run by default with -sC or -A options</p></li>
+<li><p><em>discovery</em> &ndash; additional network information and enumeration</p></li>
+<li><p><em>dos</em> &ndash; denial of service scripts</p></li>
+<li><p><em>exploit</em> &ndash; exploitation of some specific vulnerability</p></li>
+<li><p><em>external</em> &ndash; information may be sent to a third-party database or service</p></li>
+<li><p><em>fuzzer</em> &ndash; fuzzing scripts</p></li>
+<li><p><em>intrusive</em> &ndash; may crash the target system, consume excessive resources, or be perceived as malicious</p></li>
+<li><p><em>malware</em> &ndash; test if the target is infected by malware or backdoors</p></li>
+<li><p><em>safe</em> &ndash; general network discovery scripts that re unlikely to be resource intensive, crash a system, or lit the target logs on fire</p></li>
+<li><p><em>version</em> &ndash; scripts that run only with -sV enabled</p></li>
+<li><p><em>vuln</em> &ndash; check for specific vulnerabilities</p></li>
+</ul>
+
+
+<p>A full list of scripts and their description and usage can be found at <a href="https://nmap.org/nsedoc/">https://nmap.org/nsedoc/</a></p>
+
+<p>Some notable scripts that you might use more often are listed below.</p>
+
+<ul>
+<li><p>dns-zone-transfer &ndash; requests a zone transfer from a DNS server</p></li>
+<li><p>ftp-anon &ndash; checks if anonymous login is enabled on an FTP server and lists the root directory if yes</p></li>
+<li><p>ftp-bounce &ndash; checks if FTP server allows port scanning via the bounce method</p></li>
+<li><p>http-auth-finder &ndash; spiders a site to find pages containing form or HTTP authentication</p></li>
+<li><p>http-backup-finder &ndash; spiders a site to find backups of discovered files</p></li>
+<li><p>http-config-backup &ndash; searches for backups of web server and CMS configuration files</p></li>
+<li><p>http-csrf &ndash; checks for forms vulnerable to CSRF</p></li>
+<li><p>http-default-accounts &ndash; checks for default credentials in web applications, routers, and VOIP and security devices</p></li>
+<li><p>http-devframework &ndash; checks for the underlying framework of a site</p></li>
+<li><p>http-dlink-backdoor &ndash; checks for a firmware backdoor that is found in some D-Link routers</p></li>
+<li><p>http-dombased-xss &ndash; searches for places susceptible to DOM-based XSS</p></li>
+<li><p>http-drupal-enum-users &ndash; enumerates Drupal users</p></li>
+<li><p>http-enum &ndash; enumerates common directories found in web apps</p></li>
+<li><p>http-fileupload-exploiter &ndash; exploits file upload vulnerabilities</p></li>
+<li><p>http-mobileversion-checker &ndash; checks if the site has a mobile version</p></li>
+<li><p>http-open-redirect &ndash; checks for open redirects</p></li>
+<li><p>http-passwd &ndash; checks for directory traversal</p></li>
+<li><p>http-phpself-xss &ndash; finds PHP_SELF XSS vulnerabilities</p></li>
+<li><p>http-rfi-spider &ndash; searches for RFI in forms and URL parameters</p></li>
+<li><p>http-shellshock &ndash; checks if web app is vulnerable to shellshock</p></li>
+<li><p>http-sitemap-generator &ndash; crawls a site and lists its directory structure and files</p></li>
+<li><p>http-sql-injection &ndash; looks for SQLi in forms and URL parameters of HTTP servers</p></li>
+<li><p>http-stored-xss &ndash; searches for unfiltered input that might lead to XSS</p></li>
+<li><p>http-tplink-dir-traversal &ndash; on certain TPLINK routers that are vulnerable to directory traversal, it can read remote files with no authentication required</p></li>
+<li><p>http-unsafe-output-escaping &ndash; crawls a site looking for where improperly escaped data is reflected back to the user</p></li>
+<li><p>http-vuln-cve2012-1823 &ndash; attempts to exploit vulnerable PHP CGI apps that allow remote code execution</p></li>
+<li><p>http-vuln-cve2015-1635 &ndash; checks for the MS15-034 RCE vulnerability in Windows machines</p></li>
+<li><p>http-waf-detect &ndash; tries to detect IDS / IPS / WAF protection on the target</p></li>
+<li><p>http-waf-fingerprint &ndash; attempts to fingerpring the WAF</p></li>
+<li><p>http-webdav-scan &ndash; WebDAV detection</p></li>
+<li><p>ipidseq &ndash; tests for suitable zombies to be used in idle scan</p></li>
+<li><p>mongodb-databases &ndash; enumerates MongoDB tables</p></li>
+<li><p>ms-sql-empty-password &ndash; tries to login as the sa account with no password on MS-SQL</p></li>
+<li><p>mysql-empty-password &ndash; checks for MySQL servers with empty password for the root or anonymous account</p></li>
+<li><p>samba-vuln-cve-2012-1182 &ndash; checks if Samba server is vulnerable to CVE-2012-1182 heap overflow</p></li>
+<li><p>shodan-api &ndash; uses Shodan (API key needed) to scan targets in a way similar to the -sV scan</p></li>
+<li><p>sniffer-detect &ndash; checks if a NIC on the local network is in promiscuous mode</p></li>
+<li><p>ssl-heartbleed &ndash; checks for the Heartbleed vulnerability</p></li>
+<li><p>ssl-poodle &ndash; checks for the Poodle vulnerability</p></li>
+<li><p>tor-consensus-checker &ndash; checks if target host is a Tor node</p></li>
+<li><p>traceroute-geolocation &ndash; performs geolocation on traceroute hops</p></li>
+</ul>
+
+
+<p>Many thanks to Fyodor for creating such an awesome tool and freely sharing with everyone! As you can see, Nmap is so much more than just a port scanner. You can easily perform some sort of vulnerability analysis and exploitation with it, and if there is no task that you would like Nmap to do and it can&rsquo;t, you can write the code yourself and contribute to this amazing project.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ You have the capacity to learn from \
+</span><span class='line'>\ mistakes. You'll learn a lot today. /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-07-31T13:40:43+03:00" pubdate data-updated="true">Jul 31<span>st</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/networking/'>networking</a>, <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/tools/'>tools</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/07/30/python-virtualenv/" title="Previous Post: Python virtualenv">&laquo; Python virtualenv</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/08/05/getting-started-with-apache/" title="Next Post: Getting started with Apache">Getting started with Apache &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet/';
+        var disqus_url = 'http://chousensha.github.io/blog/2016/07/31/nmap-cheatsheet/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

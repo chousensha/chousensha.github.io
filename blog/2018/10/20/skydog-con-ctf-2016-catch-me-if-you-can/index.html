@@ -1,0 +1,780 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SkyDog Con CTF 2016 - Catch Me If You Can - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Writeup for SkyDog Con 2016">
+  <meta name="keywords" content="skydog 2016, pentest lab, vulnhub, ctf, boot2root, skydog con 2016, skydog vulnhub, volatility">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SkyDog Con CTF 2016 - Catch Me If You Can</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-20T18:53:46+03:00" pubdate data-updated="true">Oct 20<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>For this box, you have to find 8 flags, each containing an MD5 hash.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -sC -sV -p- 192.168.145.136
+</span><span class='line'>
+</span><span class='line'>PORT      STATE  SERVICE  VERSION
+</span><span class='line'>22/tcp    closed ssh
+</span><span class='line'>80/tcp    open   http     Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: SkyDog Con CTF 2016 - Catch Me If You Can
+</span><span class='line'>443/tcp   open   ssl/http Apache httpd 2.4.18 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.18 (Ubuntu)
+</span><span class='line'>|_http-title: SkyDog Con CTF 2016 - Catch Me If You Can
+</span><span class='line'>| ssl-cert: Subject: commonName=Network Solutions EV Server CA 2/organizationName=Network Solutions L.L.C./stateOrProvinceName=VA/countryName=US
+</span><span class='line'>| Not valid before: 2016-09-21T14:51:57
+</span><span class='line'>|_Not valid after:  2017-09-21T14:51:57
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>| tls-alpn: 
+</span><span class='line'>|   http/1.1
+</span><span class='line'>22222/tcp open   ssh      OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   2048 b6:64:7c:d1:55:46:4e:50:e3:ba:cf:4c:1e:81:f9:db (RSA)
+</span><span class='line'>|   256 ef:17:df:cc:db:2e:c5:24:e3:9e:25:16:3d:25:68:35 (ECDSA)
+</span><span class='line'>|_  256 0e:1b:3f:c3:4a:56:a0:ef:4d:2a:af:a1:7e:94:d2:06 (ED25519)</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Flag #1 Don’t go Home Frank! There’s a Hex on Your House.</h2>
+
+<p>Starting with the web server, the web page is the homepage of the SkyDog con. Poking through the source, I found a suspicious comment:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;!--[If IE4]&gt;&lt;script src="/oldIE/html5.js"&gt;&lt;/script&gt;&lt;![Make sure to remove this before going to PROD]--&gt; </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Going to the above mentioned JS file, on the first line we find a hex string:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* 666c61677b37633031333230373061306566373164353432363633653964633166356465657d */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Decoded, it gives the first flag: <code>flag{7c0132070a0ef71d542663e9dc1f5dee}</code>. And decoding the MD5 hash gives a hint: <code>nmap</code></p>
+
+<h2>Flag #2 Obscurity or Security?</h2>
+
+<p>I already ran Nmap and saw that SSH is listening on port 22222. Trying to SSH as frank gives the next flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh frank@192.168.145.136 -p 22222
+</span><span class='line'>The authenticity of host '[192.168.145.136]:22222 ([192.168.145.136]:22222)' can't be established.
+</span><span class='line'>ECDSA key fingerprint is SHA256:DeCMZ74o5wesBHFLyaVY7UTCA7mW+bx6WroHm6AgMqU.
+</span><span class='line'>Are you sure you want to continue connecting (yes/no)? yes
+</span><span class='line'>Warning: Permanently added '[192.168.145.136]:22222' (ECDSA) to the list of known hosts.
+</span><span class='line'>###############################################################
+</span><span class='line'>#                         WARNING                             #
+</span><span class='line'>#     FBI - Authorized access only!                 # 
+</span><span class='line'># Disconnect IMMEDIATELY if you are not an authorized user!!! #
+</span><span class='line'>#         All actions Will be monitored and recorded          #
+</span><span class='line'># Flag{53c82eba31f6d416f331de9162ebe997}            #
+</span><span class='line'>###############################################################
+</span><span class='line'>frank@192.168.145.136's password: </span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>The decoded hint is <code>encrypt</code></p>
+
+<h2>Flag #3 Be Careful Agent, Frank Has Been Known to Intercept Traffic Our Traffic.</h2>
+
+<p>Remember that Nmap found also port 443 open, so I switched to https to check it out and was greeted by a self-signed certificate. Viewing the certificate gives the third flag: <code>flag3{f82366a9ddc064585d54e3f78bde3221}</code></p>
+
+<p><img class="center" src="/images/pentest/skydogctf/flag3.jpg" title="flag3" alt="flag3"></p>
+
+<p>And the next hint is <code>personnel</code></p>
+
+<h2>Flag #4 A Good Agent is Hard to Find.</h2>
+
+<p>I tried navigating to /personnel on the web server and it gave me the following message:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ACCESS DENIED!!! You Do Not Appear To Be Coming From An FBI Workstation. Preparing Interrogation Room 1. Car Batteries Charging....</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we need a specific user agent. Remembering the included JS file of the first flag, that hinted towards an old Internet Explorer version, I revisited it and searched for the string <em>fbi</em> inside it and found the lines:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* maindev -  6/7/02 Adding temporary support for IE4 FBI Workstations */
+</span><span class='line'>/* newmaindev -  5/22/16 Last maindev was and idoit and IE4 is still Gold image -@Support doug.perterson@fbi.gov */</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So FBI agents use IE4 on their workstations. Cool, nothing catastrophically wrong there. I grabbed an IE4 user agent from <a href="http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,">http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,</a> changed my User Agent to <code>User-Agent: Mozilla/4.0 WebTV/2.6 (compatible; MSIE 4.0)</code>, and went straight to the FBI portal!</p>
+
+<p><img class="center" src="/images/pentest/skydogctf/fbiportal.png" title="fbi portal" alt="fbi portal"></p>
+
+<p>The flag is on the page: <code> flag{14e10d570047667f904261e6d08f520f}</code>, and the decoded value is <code>evidence</code></p>
+
+<h2>Flag #5 The Devil is in the Details &ndash; Or is it Dialogue? Either Way, if it’s Simple, Guessable, or Personal it Goes Against Best Practices</h2>
+
+<p>Following up on the clue <em>new+flag</em>, I tried navigating to 192.168.145.136/newevidence and a basic authentication prompt asked me for credentials. On the FBI portal we have the message &ldquo;Welcome Agent Hanratty&rdquo;. A quick Google reveals that this is a reference to agent Carl Hanratty from the movie Catch Me If You Can. I went through the dialogue (hint hint) on the <a href="https://www.imdb.com/title/tt0264464/characters/nm0000158">IMDB page</a> to find out Carl&rsquo;s daughter is called Grace (simple? guessable? personal?). I tried some combinations in the pop up until I found the right one is <em>carl.hanratty/Grace</em> (remember the naming convention of doug.perterson)</p>
+
+<p><img class="center" src="/images/pentest/skydogctf/newevidence.png" title="new evidence" alt="new evidence"></p>
+
+<p>The flag is in the Evidence Summary File: <code>flag{117c240d49f54096413dd64280399ea9}</code>. The hint is <code>panam</code></p>
+
+<h2>Flag #6 Where in the World is Frank?</h2>
+
+<p>For this one you have to work with the other 2 files from the page, the image and the PDF invoice. The invoice mentions an encryption consultation project:</p>
+
+<p><img class="center" src="/images/pentest/skydogctf/invoice.jpg" title="invoice" alt="invoice"></p>
+
+<p>This might suggest the use of steganography in the image, and this is confirmed if you search for Stefan Hetzl, it turns out he&rsquo;s the author of steghide! And we have the previous hint of panam, which is the passphrase in this case:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>steghide extract -sf image.jpg 
+</span><span class='line'>Enter passphrase: 
+</span><span class='line'>wrote extracted data to "flag.txt".
+</span><span class='line'>root@kali:~/Downloads# cat flag.txt 
+</span><span class='line'>flag{d1e5146b171928731385eb7ea38c37b8}
+</span><span class='line'>=ILoveFrance
+</span><span class='line'>
+</span><span class='line'>clue=iheartbrenda</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Flag #7 Frank Was Caught on Camera Cashing Checks and Yelling &ndash; I’m The Fastest Man Alive!</h2>
+
+<p>This was a movie reference and I had to look it up in other solutions&hellip;&ldquo;I’m The Fastest Man Alive!&rdquo; is a reference to The Flash, whose real name is Barry Allen. For the next part, log in to SSH with the the username <em>barryallen</em> and the password <em>iheartbrenda</em>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh barryallen@192.168.145.136 -p 22222
+</span><span class='line'>[...]
+</span><span class='line'>barryallen@skydogconctf2016:~$ cat flag.txt 
+</span><span class='line'>flag{bd2f6a1d5242c962a05619c56fa47ba6}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the hint for the last flag is <code>theflash</code>.</p>
+
+<h2>Flag #8 Franks Lost His Mind or Maybe it’s His Memory. He’s Locked Himself Inside the Building. Find the Code to Unlock the Door Before He Gets Himself Killed!</h2>
+
+<p>Inside barryallen&rsquo;s home there&rsquo;s a 72M ZIP file called security-system.data:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>barryallen@skydogconctf2016:~$ file security-system.data 
+</span><span class='line'>security-system.data: Zip archive data, at least v2.0 to extract</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I transferred it to my machine with scp:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp -P 22222 barryallen@192.168.145.136:security-system.data .
+</span><span class='line'>###############################################################
+</span><span class='line'>#                         WARNING                             #
+</span><span class='line'>#     FBI - Authorized access only!                 # 
+</span><span class='line'># Disconnect IMMEDIATELY if you are not an authorized user!!! #
+</span><span class='line'>#         All actions Will be monitored and recorded          #
+</span><span class='line'># Flag{53c82eba31f6d416f331de9162ebe997}            #
+</span><span class='line'>###############################################################
+</span><span class='line'>barryallen@192.168.145.136's password: 
+</span><span class='line'>security-system.data                          100%   71MB   6.6MB/s   00:10    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I unzipped the archive, but the file command didn&rsquo;t identify it as something specific, it just said it&rsquo;s data. I ran strings on it and saw various references to memory that seem to be linked to a Windows system. Time for some memory forensics with Volatility!</p>
+
+<p>First, we need to identify what type of image we&rsquo;re working with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module ImageInfo
+</span><span class='line'>---------------------------------
+</span><span class='line'>Identify information for the image 
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility imageinfo -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>INFO    : volatility.debug    : Determining profile based on KDBG search...
+</span><span class='line'>          Suggested Profile(s) : WinXPSP2x86, WinXPSP3x86 (Instantiated with WinXPSP2x86)
+</span><span class='line'>                     AS Layer1 : IA32PagedMemoryPae (Kernel AS)
+</span><span class='line'>                     AS Layer2 : FileAddressSpace (/root/Downloads/data)
+</span><span class='line'>                      PAE type : PAE
+</span><span class='line'>                           DTB : 0x33e000L
+</span><span class='line'>                          KDBG : 0x80545b60L
+</span><span class='line'>          Number of Processors : 1
+</span><span class='line'>     Image Type (Service Pack) : 3
+</span><span class='line'>                KPCR for CPU 0 : 0xffdff000L
+</span><span class='line'>             KUSER_SHARED_DATA : 0xffdf0000L
+</span><span class='line'>           Image date and time : 2016-10-10 22:00:50 UTC+0000
+</span><span class='line'>     Image local date and time : 2016-10-10 18:00:50 -0400</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It&rsquo;s an image of a Windows XP machine! Next, let&rsquo;s look at the processes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module PSList
+</span><span class='line'>---------------------------------
+</span><span class='line'>Print all running processes by following the EPROCESS lists
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility pslist -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>Offset(V)  Name                    PID   PPID   Thds     Hnds   Sess  Wow64 Start                          Exit                          
+</span><span class='line'>---------- -------------------- ------ ------ ------ -------- ------ ------ ------------------------------ ------------------------------
+</span><span class='line'>0x867c6830 System                    4      0     57      171 ------      0                                                              
+</span><span class='line'>0x86262900 smss.exe                332      4      3       19 ------      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8623b978 csrss.exe               560    332     10      423      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x865ed020 winlogon.exe            588    332     24      512      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8662d808 services.exe            664    588     15      263      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x866a5670 lsass.exe               676    588     25      356      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86358a70 vmacthlp.exe            848    664      1       25      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86651da0 svchost.exe             860    664     21      202      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x865c2790 svchost.exe             944    664     11      258      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x86554020 svchost.exe            1040    664     82     1287      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x866196b8 svchost.exe            1092    664      5       59      0      0 2016-10-10 21:59:14 UTC+0000                                 
+</span><span class='line'>0x8643ca18 svchost.exe            1144    664     17      213      0      0 2016-10-10 21:59:15 UTC+0000                                 
+</span><span class='line'>0x866fca88 explorer.exe           1540   1520     14      417      0      0 2016-10-10 21:59:16 UTC+0000                                 
+</span><span class='line'>0x8656b4d0 spoolsv.exe            1636    664     15      125      0      0 2016-10-10 21:59:16 UTC+0000                                 
+</span><span class='line'>0x86338640 VGAuthService.e        1900    664      2       60      0      0 2016-10-10 21:59:25 UTC+0000                                 
+</span><span class='line'>0x8667bda0 vmtoolsd.exe           2012    664      9      271      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x864f6440 wmiprvse.exe            488    860     14      251      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x864fbad0 wscntfy.exe             536   1040      1       31      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x85e5dd48 alg.exe                 624    664      8      110      0      0 2016-10-10 21:59:28 UTC+0000                                 
+</span><span class='line'>0x866f98b0 vmtoolsd.exe           1352   1540      7      242      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x86674410 ctfmon.exe             1356   1540      1       79      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x865bea48 CCleaner.exe           1388   1540      5      108      0      0 2016-10-10 21:59:29 UTC+0000                                 
+</span><span class='line'>0x865c3d78 cmd.exe                1336   1540      1       30      0      0 2016-10-10 22:00:05 UTC+0000                                 
+</span><span class='line'>0x8634fbb8 wuauclt.exe            1884   1040      9      198      0      0 2016-10-10 22:00:13 UTC+0000                                 
+</span><span class='line'>0x86260a78 wuauclt.exe            1024   1040      6      172      0      0 2016-10-10 22:00:29 UTC+0000                                 
+</span><span class='line'>0x8667b488 notepad.exe             268   1540      1       55      0      0 2016-10-10 22:00:41 UTC+0000                                 
+</span><span class='line'>0x8640cc10 cmd.exe                1276   2012      0 --------      0      0 2016-10-10 22:00:49 UTC+0000   2016-10-10 22:00:50 UTC+0000 </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I took note of that Notepad process and several cmd.exes and then dumped the files:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module FileScan
+</span><span class='line'>---------------------------------
+</span><span class='line'>Pool scanner for file objects
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility filescan -f data &gt; filelist.txt
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I searched for the string code in the resulting list of files and got a hit:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>grep "code" filelist.txt 
+</span><span class='line'>0x0000000005e612f8      1      0 -W-r-- \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt
+</span><span class='line'>0x00000000062e04b0      1      0 R--r-d \Device\HarddiskVolume1\Documents and Settings\test\Recent\code.txt.lnk
+</span><span class='line'>0x00000000064900a0      1      0 R--rwd \Device\HarddiskVolume1\WINDOWS\system32\unicode.nls
+</span><span class='line'>0x0000000006640bc8      1      0 R--rwd \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Maybe this code.txt file is connected to the running Notepad process. I used Volatility&rsquo;s notepad plugin to dump the text found into Notepad:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>---------------------------------
+</span><span class='line'>Module Notepad
+</span><span class='line'>---------------------------------
+</span><span class='line'>List currently displayed notepad text
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>volatility notepad -f data 
+</span><span class='line'>Volatility Foundation Volatility Framework 2.6
+</span><span class='line'>Process: 268
+</span><span class='line'>Text:
+</span><span class='line'>?
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>d
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>?
+</span><span class='line'>
+</span><span class='line'>Text:
+</span><span class='line'>66 6c 61 67 7b 38 34 31 64 64 33 64 62 32 39 62 30 66 62 62 64 38 39 63 37 62 35 62 65 37 36 38 63 64 63 38 31 7d</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have a hex string! Decoding it yields the final flag: <code>flag{841dd3db29b0fbbd89c7b5be768cdc81}</code>. And the decoded value for the last flag is <code>Two[space]little[space]mice</code></p>
+
+<p>This is it for the SkyDog Con CTF machine! I particularly liked the memory forensics part at the end!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ____________________________________
+</span><span class='line'>/ Q: Do you know what the death rate \
+</span><span class='line'>\ around here is? A: One per person. /
+</span><span class='line'> ------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-10-20T18:53:46+03:00" pubdate data-updated="true">Oct 20<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/10/14/git-me-some-irn-bru-ye-teuchter/" title="Previous Post: Git me some Irn-Bru ye Teuchter!">&laquo; Git me some Irn-Bru ye Teuchter!</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/10/26/all-your-64base-are-belong-to-us/" title="Next Post: All your 64Base are belong to us">All your 64Base are belong to us &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

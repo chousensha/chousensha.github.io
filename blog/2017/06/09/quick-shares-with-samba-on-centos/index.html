@@ -1,0 +1,882 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Quick shares with Samba on CentOS - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Configure Samba shares on CentOS">
+  <meta name="keywords" content="samba, samba centos, centos samba, samba linux, samba shares, samba sharing, samba tutorial, samba server">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Quick shares with Samba on CentOS</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-09T12:47:05+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>The interwebz is thundering with doomsday predictions about the <a href="https://blog.qualys.com/securitylabs/2017/05/26/samba-vulnerability-cve-2017-7494">Samba CVE-2017-7494 exploit</a>, and here I am, deciding that now is the best time to make a post on setting up Samba shares! xD</p>
+
+<p>On a related note, if for some reason you can&rsquo;t patch the vulnerability yet, there is a workaround (with some drawbacks). Edit the global section in smb.conf and add the line <code>nt pipe support = no</code>.</p>
+
+<!-- more -->
+
+
+<p>Back to the matter at hand. First, let&rsquo;s verify if Samba is installed on the CentOS system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q samba
+</span><span class='line'>package samba is not installed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since it&rsquo;s not installed on my machine, I installed it with <code>yum install samba</code>, and then ran the previous command again, to check the version:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q samba
+</span><span class='line'>samba-4.4.4-14.el7_3.x86_64</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, let&rsquo;s start Samba and see it running:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service smb start
+</span><span class='line'>Redirecting to /bin/systemctl start  smb.service
+</span><span class='line'>service smb status
+</span><span class='line'>Redirecting to /bin/systemctl status  smb.service
+</span><span class='line'>● smb.service - Samba SMB Daemon
+</span><span class='line'>   Loaded: loaded (/usr/lib/systemd/system/smb.service; disabled; vendor preset: disabled)
+</span><span class='line'>   Active: active (running) since Thu 2017-06-08 10:56:54 EEST; 5s ago
+</span><span class='line'> Main PID: 61874 (smbd)
+</span><span class='line'>   Status: "smbd: ready to serve connections..."
+</span><span class='line'>   CGroup: /system.slice/smb.service
+</span><span class='line'>           ├─61874 /usr/sbin/smbd
+</span><span class='line'>           ├─61875 /usr/sbin/smbd
+</span><span class='line'>           ├─61876 /usr/sbin/smbd
+</span><span class='line'>           └─61879 /usr/sbin/smbd
+</span><span class='line'>
+</span><span class='line'>Jun 08 10:56:52 localhost.localdomain systemd[1]: Starting Samba SMB Daemon...
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain smbd[61874]: [2017/06/08 10:56:54.513901,  0] ../lib/util/become_daemon.c:124(daemon_ready)
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain smbd[61874]:   STATUS=daemon 'smbd' finished starting up and ready to serve connections
+</span><span class='line'>Jun 08 10:56:54 localhost.localdomain systemd[1]: Started Samba SMB Daemon.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Samba daemons</h2>
+
+<p>The Samba functionality is contained within 3 daemons:</p>
+
+<ul>
+<li><p><strong>smbd</strong> &ndash; file sharing, printing services, authentication. Default ports are 139 and 445</p></li>
+<li><p><strong>nmbd</strong> &ndash; NetBIOS name service requests and browsing protocols</p></li>
+<li><p><strong>winbindd</strong> &ndash; used for Windows domains membership</p></li>
+</ul>
+
+
+<h2>Samba configuration</h2>
+
+<p>The Samba configuration file is <code>/etc/samba/smb.conf</code>. Here is how a fresh config file looks after installation:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># See smb.conf.example for a more detailed config file or
+</span><span class='line'># read the smb.conf manpage.
+</span><span class='line'># Run 'testparm' to verify the config is correct after
+</span><span class='line'># you modified it.
+</span><span class='line'>
+</span><span class='line'>[global]
+</span><span class='line'>  workgroup = SAMBA
+</span><span class='line'>  security = user
+</span><span class='line'>
+</span><span class='line'>  passdb backend = tdbsam
+</span><span class='line'>
+</span><span class='line'>  printing = cups
+</span><span class='line'>  printcap name = cups
+</span><span class='line'>  load printers = yes
+</span><span class='line'>  cups options = raw
+</span><span class='line'>
+</span><span class='line'>[homes]
+</span><span class='line'>  comment = Home Directories
+</span><span class='line'>  valid users = %S, %D%w%S
+</span><span class='line'>  browseable = No
+</span><span class='line'>  read only = No
+</span><span class='line'>  inherit acls = Yes
+</span><span class='line'>
+</span><span class='line'>[printers]
+</span><span class='line'>  comment = All Printers
+</span><span class='line'>  path = /var/tmp
+</span><span class='line'>  printable = Yes
+</span><span class='line'>  create mask = 0600
+</span><span class='line'>  browseable = No
+</span><span class='line'>
+</span><span class='line'>[print$]
+</span><span class='line'>  comment = Printer Drivers
+</span><span class='line'>  path = /var/lib/samba/drivers
+</span><span class='line'>  write list = root
+</span><span class='line'>  create mask = 0664
+</span><span class='line'>  directory mask = 0775</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For much more detailed information and examples, see the <a href="/downloads/code/smb.conf.example">smb.conf.example file</a></p>
+
+<h2>Create Samba share</h2>
+
+<p>In this example, let&rsquo;s create a share that users can also write to. First, create the directory that you will share: <code>mkdir -p /srv/samba/myshare</code>. I placed a text file with some random stuff inside. Then I gave full access to the path and its subfolders with <code>chmod -R 777 /srv/samba</code></p>
+
+<p>Next, we need to create a Samba user, but this account is not the same as a user account on the system. We have to make a user account on the system before assigning it to Samba:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>adduser smbuser -s /sbin/nologin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here I created a user just for Samba, with no login shell. Attempting to login will give the user a message that they are not allowed to login. If you prefer that the user is disconnected with no message, you can specify <code>/bin/false</code> instead.</p>
+
+<p>Then, I gave the user account a description, which you can find inside <em>/etc/passwd</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>usermod -c 'Samba access is allowed for this user' smbuser
+</span><span class='line'>[root@localhost ~]# cat /etc/passwd | grep smbuser
+</span><span class='line'>smbuser:x:1001:1001:Samba access is allowed for this user:/home/smbuser:/sbin/nologin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Have to give the user account a password:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# passwd smbuser
+</span><span class='line'>Changing password for user smbuser.
+</span><span class='line'>New password:
+</span><span class='line'>Retype new password:
+</span><span class='line'>passwd: all authentication tokens updated successfully.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, we create a Samba user, by using the previously created account:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# smbpasswd -a smbuser
+</span><span class='line'>New SMB password:
+</span><span class='line'>Retype new SMB password:
+</span><span class='line'>Added user smbuser.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To be safe, check that the Samba user was created:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# pdbedit -L
+</span><span class='line'>smbuser:1001:Samba access is allowed for this user</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have the share location and the user, now we need to edit the smb.conf file with the relevant information:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[global]
+</span><span class='line'>  # workgroup name or Windows NT domain name
+</span><span class='line'>  workgroup = SAMBA
+</span><span class='line'>  # default: user and password authentication
+</span><span class='line'>  security = user
+</span><span class='line'>  # optional comment for Windows
+</span><span class='line'>  server string = Samba File Server
+</span><span class='line'>  # default backend for user information
+</span><span class='line'>  passdb backend = tdbsam
+</span><span class='line'>
+</span><span class='line'>[sharename]
+</span><span class='line'>  path = /srv/samba/myshare
+</span><span class='line'>  comment = Only authorized users
+</span><span class='line'>  # allow these users
+</span><span class='line'>  valid users = smbuser
+</span><span class='line'>  # same can be achieved with writable = yes
+</span><span class='line'>  read only = no  
+</span><span class='line'>  # allow subnet range
+</span><span class='line'>  allow hosts = 192.168.217.
+</span><span class='line'>  # deny access
+</span><span class='line'>  invalid users = root  </span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used comments for easier understanding, but for performance reasons, you might want to keep your file to minimum size, by removing all those comment lines. You can do that by keeping a configuration file with all the additional remarks, while using a smb.conf with only the required configuration. All the comments will be stripped from the config file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost samba]# testparm -s smb.conf.old &gt; smb.conf
+</span><span class='line'>Load smb config files from smb.conf.old
+</span><span class='line'>rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
+</span><span class='line'>Processing section "[sharename]"
+</span><span class='line'>Loaded services file OK.
+</span><span class='line'>Server role: ROLE_STANDALONE</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We checked that our config file is valid, so now it&rsquo;s time to test it. Restart Samba for the configurations to take effect with <code>service smb restart</code>. And now let&rsquo;s access the share! From another machine, I used <strong>smbclient</strong> to list the available services on the Samba server:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbclient -L 192.168.217.131 -U smbuser
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Enter smbuser's password:
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>
+</span><span class='line'>  Sharename       Type      Comment
+</span><span class='line'>  ---------       ----      -------
+</span><span class='line'>  sharename       Disk      Only authorized users
+</span><span class='line'>  IPC$            IPC       IPC Service (Samba File Server)
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>
+</span><span class='line'>  Server               Comment
+</span><span class='line'>  ---------            -------
+</span><span class='line'>
+</span><span class='line'>  Workgroup            Master
+</span><span class='line'>  ---------            -------</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There is one last step that you need to accomplish if you have SELinux enabled. You have to label the directory you&rsquo;re sharing with the <strong>samba_share_t</strong> label:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chcon -R -t samba_share_t /srv/samba</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now the /srv/samba directory and everything it contains is labeled correctly, and SELinux won&rsquo;t interfere. View the security context of the path with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -ldZ /srv/samba/
+</span><span class='line'>drwxr-xr-x. root root unconfined_u:object_r:samba_share_t:s0 /srv/samba/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Changes made with chcon are temporary. To survive a relabel or running <em>restorerecon</em>, make the changes permanent with:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>semanage fcontext -a -t samba_share_t "path(/.*)?"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then apply them with <code>restorecon -R -v /path</code>.</p>
+
+<p>Finally, to connect to a share, use the syntax: <code>smbclient  //host/sharename -U username</code> (in the below examle, the name of my share is sharename, because laziness):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbclient  //192.168.217.131/sharename -U smbuser
+</span><span class='line'>WARNING: The "syslog" option is deprecated
+</span><span class='line'>Enter smbuser's password:
+</span><span class='line'>Domain=[SAMBA] OS=[Windows 6.1] Server=[Samba 4.4.4]
+</span><span class='line'>smb: \&gt; ls
+</span><span class='line'>      .                                   D        0  Thu Jun  8 09:39:42 2017
+</span><span class='line'>      ..                                  D        0  Thu Jun  8 09:26:38 2017
+</span><span class='line'>      read.txt                            N       11  Thu Jun  8 09:39:42 2017
+</span><span class='line'>
+</span><span class='line'>          18307072 blocks of size 1024. 13091600 blocks available</span></code></pre></td></tr></table></div></figure>
+
+
+<p>List available commands:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; ?
+</span><span class='line'>?              allinfo        altname        archive        backup         
+</span><span class='line'>blocksize      cancel         case_sensitive cd             chmod          
+</span><span class='line'>chown          close          del            dir            du             
+</span><span class='line'>echo           exit           get            getfacl        geteas         
+</span><span class='line'>hardlink       help           history        iosize         lcd            
+</span><span class='line'>link           lock           lowercase      ls             l              
+</span><span class='line'>mask           md             mget           mkdir          more           
+</span><span class='line'>mput           newer          notify         open           posix          
+</span><span class='line'>posix_encrypt  posix_open     posix_mkdir    posix_rmdir    posix_unlink   
+</span><span class='line'>posix_whoami   print          prompt         put            pwd            
+</span><span class='line'>q              queue          quit           readlink       rd             
+</span><span class='line'>recurse        reget          rename         reput          rm             
+</span><span class='line'>rmdir          showacls       setea          setmode        scopy          
+</span><span class='line'>stat           symlink        tar            tarmode        timeout        
+</span><span class='line'>translate      unlock         volume         vuid           wdel           
+</span><span class='line'>logon          listconnect    showconnect    tcon           tdis           
+</span><span class='line'>tid            logoff         ..             !              </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Download file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; get read.txt
+</span><span class='line'>getting file \read.txt of size 11 as read.txt (3.6 KiloBytes/sec) (average 3.6 KiloBytes/sec)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Delete file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; del read.txt</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Upload file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smb: \&gt; put test.png
+</span><span class='line'>putting file test.png as \test.png (0.2 kb/s) (average 0.2 kb/s)
+</span><span class='line'>smb: \&gt; ls
+</span><span class='line'>  .                                   D        0  Thu Jun  8 13:24:14 2017
+</span><span class='line'>  ..                                  D        0  Thu Jun  8 09:26:38 2017
+</span><span class='line'>  test.png                            A       35  Thu Jun  8 13:22:09 2017
+</span><span class='line'>
+</span><span class='line'>      18307072 blocks of size 1024. 13091480 blocks available</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From a Windows system, you can run <code>\192.168.217.131\sharename</code> to connect to the share, or use the <em>net use</em> command.</p>
+
+<p>View shares:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>C:\Documents and Settings\admin&gt;net use
+</span><span class='line'>New connections will be remembered.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Status       Local     Remote                    Network
+</span><span class='line'>
+</span><span class='line'>-------------------------------------------------------------------------------
+</span><span class='line'>OK                     \\192.168.217.131\sharename
+</span><span class='line'>                                                 Microsoft Windows Network
+</span><span class='line'>The command completed successfully.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Connect to shares:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>C:\Documents and Settings\admin&gt;net use S: \\192.168.217.131\sharename
+</span><span class='line'>The command completed successfully.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>C:\Documents and Settings\admin&gt;s:
+</span><span class='line'>
+</span><span class='line'>S:\&gt;dir
+</span><span class='line'> Volume in drive S is sharename
+</span><span class='line'> Volume Serial Number is DCCC-194F
+</span><span class='line'>
+</span><span class='line'> Directory of S:\
+</span><span class='line'>
+</span><span class='line'>06/09/2017  02:24 AM    &lt;DIR&gt;          .
+</span><span class='line'>06/08/2017  10:26 PM    &lt;DIR&gt;          ..
+</span><span class='line'>06/09/2017  02:22 AM                35 test.png
+</span><span class='line'>               1 File(s)             35 bytes
+</span><span class='line'>               2 Dir(s)  13,405,708,288 bytes free</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Other useful options</h3>
+
+<p>You can drill down into the smb.conf file and customize it to your liking. Here are a few options:</p>
+
+<ul>
+<li><p>read list = user1, user2 &ndash; set read only users on a writable share</p></li>
+<li><p>write list = user1, user2 &ndash; set write access for users on a read only share</p></li>
+<li><p>deny hosts  = ip &ndash; deny access to the specified IPs</p></li>
+<li><p>hide unreadable = yes &ndash; don&rsquo;t let users see files they don&rsquo;t have access to</p></li>
+<li><p>browseable = no &ndash; hide shares from Windows network</p></li>
+</ul>
+
+
+<p>Key takeaways:</p>
+
+<ul>
+<li><p>server and share security levels are deprecated, so best to avoid them</p></li>
+<li><p>specifying a share in the smb.conf file is not enough. Ensure that you have created the path and gave it sufficient permissins</p></li>
+<li><p>Samba users need to already exist on the system</p></li>
+<li><p>you can have both a well documented config file and a minimal size one for performance, by using <code>testparm -s</code></p></li>
+<li><p>if you use SELinux, don&rsquo;t forget to label your share with <code>samba_share_t</code></p></li>
+</ul>
+
+
+<p>Learn more:</p>
+
+<ul>
+<li><p><a href="http://linux-training.be/linuxsrv.pdf">Samba section in Paul Cobbaut&rsquo;s Linux Servers course</a></p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smb.conf.5.html">smb.conf manpage</a> &ndash; The configuration file for the Samba suite</p></li>
+<li><p><a href="https://www.centos.org/docs/5/html/Deployment_Guide-en-US/ch-samba.html">CentOS Samba guide</a></p></li>
+<li><p><a href="smbpasswd%20-%20The%20Samba%20encrypted%20password%20file">smbpasswd man page</a> &ndash; The Samba encrypted password file</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages/pdbedit.8.html">pdbedit manpage</a> &ndash; manage the SAM database (Database of Samba Users)</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/testparm.1.html">testparm manpage</a> &ndash; check an smb.conf configuration file for internal correctness</p></li>
+<li><p><a href="https://www.samba.org/samba/docs/man/manpages-3/smbclient.1.html">smbclient manpage</a> &ndash; ftp-like client to access SMB/CIFS resources on servers</p></li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ Nothing so needs reforming as other \
+</span><span class='line'>| people's habits.                    |
+</span><span class='line'>|                                     |
+</span><span class='line'>\ -- Mark Twain                       /
+</span><span class='line'> -------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-09T12:47:05+03:00" pubdate data-updated="true">Jun 9<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/06/07/lbd-kali-linux-tools/" title="Previous Post: lbd - Kali Linux tools">&laquo; lbd - Kali Linux tools</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/06/10/masscan-kali-linux-tools/" title="Next Post: Masscan - Kali Linux tools">Masscan - Kali Linux tools &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/06/09/quick-shares-with-samba-on-centos/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

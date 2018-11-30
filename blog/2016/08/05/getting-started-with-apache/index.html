@@ -1,0 +1,1995 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Getting started with Apache - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Installing and configuring Apache 2.4 on CentOS 7">
+  <meta name="keywords" content="apache, apache web server, apache server, apache 2.4, apache on centos, install apache, configure apache, apache linux, apache centos, apache tutorial">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Getting started with Apache</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-08-05T14:26:16+03:00" pubdate data-updated="true">Aug 5<span>th</span>, 2016</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In this post I will go over the installation and configuration of an Apache web server on CentOS.</p>
+
+<!-- more -->
+
+
+<h1>Installation</h1>
+
+<p>First, let&rsquo;s verify whether Apache is already installed. Note that on CentOS, the package (and process name) for Apache is called <strong>httpd</strong>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q httpd
+</span><span class='line'>package httpd is not installed
+</span><span class='line'>ls -l /var/www
+</span><span class='line'>ls: cannot access /var/www: No such file or directory</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Apache is not installed, so let&rsquo;s install it with <code>yum install httpd</code>. Now verify that it has been installed:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>rpm -q httpd
+</span><span class='line'>httpd-2.4.6-40.el7.centos.4.x86_64
+</span><span class='line'>ls -l /var/www
+</span><span class='line'>total 0
+</span><span class='line'>drwxr-xr-x. 2 root root 6 Jul 18 18:30 cgi-bin
+</span><span class='line'>drwxr-xr-x. 2 root root 6 Jul 18 18:30 html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Remember that the directory for Apache configuration is <code>/etc/httpd</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# ls /etc/httpd
+</span><span class='line'>conf  conf.d  conf.modules.d  logs  modules  run</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the Apache configuration file is <code>/etc/httpd/conf/httpd.conf</code>. I included a snapshot of a fresh config file at the end of this post.</p>
+
+<h1>Configuration</h1>
+
+<p>Now we can start Apache and check that it is running with the <strong>apachectl</strong> command, that provides a front-end control interface for the httpd daemon. For reference, the man page for this utility is at the end of the post.</p>
+
+<p>To start the web server, type <code>apachectl start</code> (alternatively, you can do it with <code>service httpd start</code>, and can use the httpd daemon directly to pass arguments, etc. At the end I&rsquo;ve also included the httpd man page.</p>
+
+<p>If you&rsquo;re getting a message like &ldquo;Could not reliably determine the server&rsquo;s fully qualified domain name&rdquo;, you can modify the ServerName in the configuration file and then restart the server. After making changes to the config file, it&rsquo;s also a good idea to check if there are any errors in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# apachectl configtest
+</span><span class='line'>Syntax OK</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, let&rsquo;s check the status of the server:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# apachectl status
+</span><span class='line'>* httpd.service - The Apache HTTP Server
+</span><span class='line'>   Loaded: loaded (/usr/lib/systemd/system/httpd.service; disabled; vendor preset: disabled)
+</span><span class='line'>   Active: active (running) since Tue 2016-08-02 15:53:53 EEST; 1min 42s ago
+</span><span class='line'>     Docs: man:httpd(8)
+</span><span class='line'>           man:apachectl(8)
+</span><span class='line'> Main PID: 5941 (httpd)
+</span><span class='line'>   Status: "Total requests: 0; Current requests/sec: 0; Current traffic:   0 B/sec"
+</span><span class='line'>[snip]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Also, if you want Apache to start on boot, you need to specify it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chkconfig httpd on
+</span><span class='line'>Note: Forwarding request to 'systemctl enable httpd.service'.
+</span><span class='line'>Created symlink from /etc/systemd/system/multi-user.target.wants/httpd.service to /usr/lib/systemd/system/httpd.service.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you need to troubleshoot your Apache, you can consult the error log at <code>/var/log/httpd/error_log</code>.</p>
+
+<h2>Site setup</h2>
+
+<p>To add an index for your site, create an <em>index.html</em> file inside <code>/var/www/html/</code>. This is what you&rsquo;ll see when visiting your site.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@localhost ~]# echo 'Hello interwebz!' &gt; /var/www/html/index.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When you navigate to your website, this page will be what you&rsquo;ll see. On other distributions, a default index.html may be present in the website root (identified by the DocumentRoot directive).</p>
+
+<h3>Virtual hosts</h3>
+
+<p>Virtual hosts allow you to run multiple websites on a single server. Let&rsquo;s see some examples of how we can do that.</p>
+
+<h4>Port-based vhosts</h4>
+
+<p>One option is to <strong>put each website on a different port</strong>. In addition to our main website on port 80, let&rsquo;s serve a different one on port 8080.</p>
+
+<p>First, add a new Listen directive in <code>/etc/httpd/conf/httpd.conf</code>, to tell Apache to also listen on port 8080:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Listen 80
+</span><span class='line'>Listen 8080</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We could add virtual hosts in the main configuration file, but if you plan to serve many websites, better to create separate configuration files for each virtual host. Check that the line telling Apache to load other config files is uncommented:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Load config files in the "/etc/httpd/conf.d" directory, if any.
+</span><span class='line'>IncludeOptional conf.d/*.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, create a config file for a specific virtual host (it must end in .conf):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# nano /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>[root@freehat ~]# cat /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>&lt;VirtualHost *:8080&gt;
+</span><span class='line'>    DocumentRoot "/var/www/html/skynet"
+</span><span class='line'>    ServerName skynet.local
+</span><span class='line'>&lt;/VirtualHost&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next, create the necessary document root directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# mkdir /var/www/html/skynet</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Put some resource that you want to be server in the folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# echo 'You are marked for extermination' &gt;  /var/www/html/skynet/index.html</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The last step is to tell Apache to reload its configuration files with <code>service httpd reload</code>. However, now I ran into some SELinux alert. I looked in <code>/var/log/messages</code>:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Aug  3 16:16:16 localhost setroubleshoot: SELinux is preventing /usr/sbin/httpd from name_connect access on the tcp_socket port 8080. For complete SELinux messages. run sealert -l bc571bd3-344f-4a4e-830a-ce744154d527</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran the mentioned command but was confused by my first brush with SELinux, so I did some google-fu which led me to <a href="https://www.certdepot.net/rhel7-use-selinux-port-labelling/">this post</a>. You can verify what ports are allowed by SELinux for HTTP traffic with the below command:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat ~]# semanage port -l | grep http
+</span><span class='line'>http_cache_port_t              tcp      8080, 8118, 8123, 10001-10010
+</span><span class='line'>http_cache_port_t              udp      3130
+</span><span class='line'>http_port_t                    tcp      80, 81, 443, 488, 8008, 8009, 8443, 9000
+</span><span class='line'>pegasus_http_port_t            tcp      5988
+</span><span class='line'>pegasus_https_port_t           tcp      5989</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To add port 8080 to http_port_t, I ran <code>semanage port -m -t http_port_t -p tcp 8080</code>, and then I checked it was added. Should be all good now. If you go visit your server on port 8080, you should get a friendly message. To differentiate it from the website on port 80, create another virtual host configuration for that respective server.</p>
+
+<p>You can now access your sites from your own machine, but if you try navigating to them from another computer, it will be just like the websites don&rsquo;t exist! It turns out, iptables is blocking access, and you have to tell it to open the ports:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+</span><span class='line'>[root@freehat sysconfig]# iptables -I INPUT -p tcp --dport 8080 -j ACCEPT</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And if you want these changes to survive a reboot, you should save them. I had to do some additional work for that. It turns out, <a href="https://stackoverflow.com/questions/24756240/how-can-i-use-iptables-on-centos-7">RHEL 7 and CentOS 7 use <em>firewalld</em></a> to manage iptables. So first I followed the instructions on StackOverflow to stop and mask the firewalld service:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl stop firewalld
+</span><span class='line'>[root@freehat ~]# systemctl mask firewalld
+</span><span class='line'>Created symlink from /etc/systemd/system/firewalld.service to /dev/null.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I had to install <em>iptables-services</em>: <code>yum install iptables-services</code>. Next I enabled it at boot:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl enable iptables
+</span><span class='line'>Created symlink from /etc/systemd/system/basic.target.wants/iptables.service to /usr/lib/systemd/system/iptables.service.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I also modified the &ldquo;no&rdquo; defaults in <code>/etc/sysconfig/iptables-config</code> to &ldquo;yes&rdquo;:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Save current firewall rules on stop.
+</span><span class='line'>#   Value: yes|no,  default: no
+</span><span class='line'># Saves all firewall rules to /etc/sysconfig/iptables if firewall gets stopped
+</span><span class='line'># (e.g. on system shutdown).
+</span><span class='line'>IPTABLES_SAVE_ON_STOP="yes"
+</span><span class='line'>
+</span><span class='line'># Save current firewall rules on restart.
+</span><span class='line'>#   Value: yes|no,  default: no
+</span><span class='line'># Saves all firewall rules to /etc/sysconfig/iptables if firewall gets
+</span><span class='line'># restarted.
+</span><span class='line'>IPTABLES_SAVE_ON_RESTART="yes"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Finally, I was able to save the changes and checked that they persisted after reboot:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>service iptables save
+</span><span class='line'>iptables: Saving firewall rules to /etc/sysconfig/iptables:[  OK  ]</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>Name-based vhosts</h4>
+
+<p>We&rsquo;ve seen the virtual hosts running on different ports, now let&rsquo;s see how we can <strong>serve them on the same port, but with different names</strong>. I modified one of the config files so that both sites will run on port 80.Let&rsquo;s see the current virtual host settings:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>httpd -S
+</span><span class='line'>VirtualHost configuration:
+</span><span class='line'>*:80                   is a NameVirtualHost
+</span><span class='line'>         default server myweb.local (/etc/httpd/conf.d/myweb.conf:1)
+</span><span class='line'>         port 80 namevhost myweb.local (/etc/httpd/conf.d/myweb.conf:1)
+</span><span class='line'>         port 80 namevhost skynet.local (/etc/httpd/conf.d/skynet.conf:1)
+</span><span class='line'>ServerRoot: "/etc/httpd"
+</span><span class='line'>Main DocumentRoot: "/var/www/html"
+</span><span class='line'>Main ErrorLog: "/etc/httpd/logs/error_log"
+</span><span class='line'>[snip]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We will use the server names to navigate to those sites. Because I am testing locally with no DNS, I modified <code>/etc/hosts</code> and added these entries:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>192.168.80.153 myweb.local
+</span><span class='line'>192.168.80.153 skynet.local</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now I was able to use the names of the sites in the web browser.</p>
+
+<h3>Password protection</h3>
+
+<p>It&rsquo;s time to restrict access to the skynet website! There are a number of ways that Apache can protect a resource with a password and ensure that is accessible only to certain users. In this example, I will want the skynet website to allow only a user called tx. First, I used the <em>htpasswd</em> utility to create a <em>.htpasswd</em> file (you can call it whatever you want), and placed it in <code>/etc/httpd</code>.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>htpasswd -c /etc/httpd/.htpasswd tx
+</span><span class='line'>New password: 
+</span><span class='line'>Re-type new password: 
+</span><span class='line'>Adding password for user tx</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This file holds the allowed user/password combination:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/httpd/.htpasswd
+</span><span class='line'>tx:$apr1$2FI77JZQ$IrMFnxvHzvtRhWGiQfvxL0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The next step is to tell Apache to restrict access to a resource based on this file. If you have access to the main configuration file or the virtual host config file, the preferred way is to add a Directory directive there:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nano /etc/httpd/conf.d/skynet.conf
+</span><span class='line'>&lt;VirtualHost *:80&gt;
+</span><span class='line'>    DocumentRoot "/var/www/html/skynet"
+</span><span class='line'>    ServerName skynet.local
+</span><span class='line'>    &lt;Directory "/var/www/html/skynet"&gt;
+</span><span class='line'>        AuthType Basic
+</span><span class='line'>        AuthName "Authorized Only"
+</span><span class='line'>        AuthUserFile /etc/httpd/.htpasswd
+</span><span class='line'>        Require valid-user
+</span><span class='line'>    &lt;/Directory&gt;
+</span><span class='line'>&lt;/VirtualHost&gt;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The Directory specified is the one that will be password-protected. Next, we specify the type of authentication (basic in this case, so no super sensitive files should be stored there), the name which will be displayed on the prompt, the location where Apache can find the password file, and the allowed user(s). Maybe we&rsquo;ll want to add some terminators later, so instead of just specifying one user, I allowed any valid user/password combination from the password file.</p>
+
+<p>Now if you try to go to the skynet website, you will see the window prompting for username and password.</p>
+
+<p>Another way you can restrict directory access is via a <strong>.htaccess</strong> file. Due to performance and security reasons, you should avoid this, if possible.</p>
+
+<p>First, create a .htaccess file in the directory you want to protect:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nano /var/www/html/skynet/.htaccess
+</span><span class='line'>AuthType Basic
+</span><span class='line'>AuthName "Authorized Only"
+</span><span class='line'>AuthUserFile /etc/httpd/.htpasswd
+</span><span class='line'>Require valid-user</span></code></pre></td></tr></table></div></figure>
+
+
+<p>For the .htaccess file to work, you need to edit the <code>/etc/httpd/conf/httpd.conf</code> file, and change the <a href="https://httpd.apache.org/docs/current/mod/core.html#allowoverride">AllowOverride directive</a> inside Directory. When set to None, as it is by default, .htaccess files are ignored. Change it to AuthConfig (I had to do it both under /var/www and /var/www/html).</p>
+
+<h3>HTTPS with self-signed certificate</h3>
+
+<p>In the next demo, I will encrypt the skynet website with SSL (removed all the authorization bits for demo purposes).</p>
+
+<p>First, I installed <a href="https://httpd.apache.org/docs/current/mod/mod_ssl.html">mod_ssl</a> with <code>yum install mod_ssl</code>. Next, I created a directory for Apache to store its server key and certificate: <code>mkdir /etc/httpd/myssl</code></p>
+
+<p>Inside this directory, I created a RSA private key of length 2048:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl genrsa -out https.key 2048
+</span><span class='line'>Generating RSA private key, 2048 bit long modulus
+</span><span class='line'>....................+++
+</span><span class='line'>..............+++
+</span><span class='line'>e is 65537 (0x10001)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I created a Certificate Signing Request (CSR):</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl req -new -key https.key -out server.csr
+</span><span class='line'>You are about to be asked to enter information that will be incorporated
+</span><span class='line'>into your certificate request.
+</span><span class='line'>What you are about to enter is what is called a Distinguished Name or a DN.
+</span><span class='line'>There are quite a few fields but you can leave some blank
+</span><span class='line'>For some fields there will be a default value,
+</span><span class='line'>If you enter '.', the field will be left blank.
+</span><span class='line'>-----
+</span><span class='line'>Country Name (2 letter code) [XX]:
+</span><span class='line'>State or Province Name (full name) []:
+</span><span class='line'>Locality Name (eg, city) [Default City]:
+</span><span class='line'>Organization Name (eg, company) [Default Company Ltd]:
+</span><span class='line'>Organizational Unit Name (eg, section) []:
+</span><span class='line'>Common Name (eg, your name or your server's hostname) []:
+</span><span class='line'>Email Address []:
+</span><span class='line'>
+</span><span class='line'>Please enter the following 'extra' attributes
+</span><span class='line'>to be sent with your certificate request
+</span><span class='line'>A challenge password []:
+</span><span class='line'>An optional company name []:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Lastly, I generated an x509 certificate with a duration of an year:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[root@freehat myssl]# openssl x509 -req -days 365 -in server.csr -signkey https.key -out mycert.crt
+</span><span class='line'>Signature ok
+</span><span class='line'>subject=/C=XX/L=Default City/O=Default Company Ltd
+</span><span class='line'>Getting Private key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We&rsquo;re not done yet. Edit the file <code>/etc/httpd/conf.d/ssl.conf</code>, and comment the lines with the location of the server key and certificate, replacing them with new ones pointing at our previously created files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#SSLCertificateFile /etc/pki/tls/certs/localhost.crt
+</span><span class='line'>SSLCertificateFile /etc/httpd/myssl/mycert.crt
+</span><span class='line'>#SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
+</span><span class='line'>SSLCertificateKeyFile /etc/httpd/myssl/https.key</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now restart the server and go to website (mine is at <a href="https://192.168.80.153/">https://192.168.80.153/</a> ). Your browser will warn you about the untrusted connection, add it to exceptions and now you have https on your site.</p>
+
+<h3>Logging</h3>
+
+<p>Lastly, let&rsquo;s go over Apache&rsquo;s logging system. There are 2 types of logs kept, error logs for when some error happens, and access logs, that provide information about incoming requests. By default, these logs are located at <code>/var/log/httpd/error_log</code> and <code>/var/log/httpd/access_log</code> on CentOS</p>
+
+<p>For your sites, you can configure the logs and choose where to store them. I decided to separate the logs for my skynet website. I made a folder for them in /var/log/httpd/skynet-logs, and modified the skynet virtual host config file and added the path and format for the logs:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>CustomLog /var/log/httpd/skynet-logs/skynet-access.log combined
+</span><span class='line'>ErrorLog /var/log/httpd/skynet-logs/skynet-error.log</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I wanted the combined format instead of the common one, because it provides a bit more information, including also the User-agent and the Referer</p>
+
+<p>Hopefully, this post has helped others in setting up an Apache web server. Since I&rsquo;ve installed it on CentOS 7, I also had to account for SELinux and some other differences from a Debian distro, so it&rsquo;s been a good learning experience.</p>
+
+<p>If you want to become an Apache wizard, the <a href="https://httpd.apache.org/docs/2.4/">Apache 2.4 documentation</a> should be a good starting point.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>________________________________________
+</span><span class='line'>/ Give thought to your reputation.       \
+</span><span class='line'>| Consider changing name and moving to a |
+</span><span class='line'>\ new town.                              /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>Freshly installed httpd.conf file</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+<span class='line-number'>231</span>
+<span class='line-number'>232</span>
+<span class='line-number'>233</span>
+<span class='line-number'>234</span>
+<span class='line-number'>235</span>
+<span class='line-number'>236</span>
+<span class='line-number'>237</span>
+<span class='line-number'>238</span>
+<span class='line-number'>239</span>
+<span class='line-number'>240</span>
+<span class='line-number'>241</span>
+<span class='line-number'>242</span>
+<span class='line-number'>243</span>
+<span class='line-number'>244</span>
+<span class='line-number'>245</span>
+<span class='line-number'>246</span>
+<span class='line-number'>247</span>
+<span class='line-number'>248</span>
+<span class='line-number'>249</span>
+<span class='line-number'>250</span>
+<span class='line-number'>251</span>
+<span class='line-number'>252</span>
+<span class='line-number'>253</span>
+<span class='line-number'>254</span>
+<span class='line-number'>255</span>
+<span class='line-number'>256</span>
+<span class='line-number'>257</span>
+<span class='line-number'>258</span>
+<span class='line-number'>259</span>
+<span class='line-number'>260</span>
+<span class='line-number'>261</span>
+<span class='line-number'>262</span>
+<span class='line-number'>263</span>
+<span class='line-number'>264</span>
+<span class='line-number'>265</span>
+<span class='line-number'>266</span>
+<span class='line-number'>267</span>
+<span class='line-number'>268</span>
+<span class='line-number'>269</span>
+<span class='line-number'>270</span>
+<span class='line-number'>271</span>
+<span class='line-number'>272</span>
+<span class='line-number'>273</span>
+<span class='line-number'>274</span>
+<span class='line-number'>275</span>
+<span class='line-number'>276</span>
+<span class='line-number'>277</span>
+<span class='line-number'>278</span>
+<span class='line-number'>279</span>
+<span class='line-number'>280</span>
+<span class='line-number'>281</span>
+<span class='line-number'>282</span>
+<span class='line-number'>283</span>
+<span class='line-number'>284</span>
+<span class='line-number'>285</span>
+<span class='line-number'>286</span>
+<span class='line-number'>287</span>
+<span class='line-number'>288</span>
+<span class='line-number'>289</span>
+<span class='line-number'>290</span>
+<span class='line-number'>291</span>
+<span class='line-number'>292</span>
+<span class='line-number'>293</span>
+<span class='line-number'>294</span>
+<span class='line-number'>295</span>
+<span class='line-number'>296</span>
+<span class='line-number'>297</span>
+<span class='line-number'>298</span>
+<span class='line-number'>299</span>
+<span class='line-number'>300</span>
+<span class='line-number'>301</span>
+<span class='line-number'>302</span>
+<span class='line-number'>303</span>
+<span class='line-number'>304</span>
+<span class='line-number'>305</span>
+<span class='line-number'>306</span>
+<span class='line-number'>307</span>
+<span class='line-number'>308</span>
+<span class='line-number'>309</span>
+<span class='line-number'>310</span>
+<span class='line-number'>311</span>
+<span class='line-number'>312</span>
+<span class='line-number'>313</span>
+<span class='line-number'>314</span>
+<span class='line-number'>315</span>
+<span class='line-number'>316</span>
+<span class='line-number'>317</span>
+<span class='line-number'>318</span>
+<span class='line-number'>319</span>
+<span class='line-number'>320</span>
+<span class='line-number'>321</span>
+<span class='line-number'>322</span>
+<span class='line-number'>323</span>
+<span class='line-number'>324</span>
+<span class='line-number'>325</span>
+<span class='line-number'>326</span>
+<span class='line-number'>327</span>
+<span class='line-number'>328</span>
+<span class='line-number'>329</span>
+<span class='line-number'>330</span>
+<span class='line-number'>331</span>
+<span class='line-number'>332</span>
+<span class='line-number'>333</span>
+<span class='line-number'>334</span>
+<span class='line-number'>335</span>
+<span class='line-number'>336</span>
+<span class='line-number'>337</span>
+<span class='line-number'>338</span>
+<span class='line-number'>339</span>
+<span class='line-number'>340</span>
+<span class='line-number'>341</span>
+<span class='line-number'>342</span>
+<span class='line-number'>343</span>
+<span class='line-number'>344</span>
+<span class='line-number'>345</span>
+<span class='line-number'>346</span>
+<span class='line-number'>347</span>
+<span class='line-number'>348</span>
+<span class='line-number'>349</span>
+<span class='line-number'>350</span>
+<span class='line-number'>351</span>
+<span class='line-number'>352</span>
+<span class='line-number'>353</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#
+</span><span class='line'># This is the main Apache HTTP server configuration file.  It contains the
+</span><span class='line'># configuration directives that give the server its instructions.
+</span><span class='line'># See &lt;URL:http://httpd.apache.org/docs/2.4/&gt; for detailed information.
+</span><span class='line'># In particular, see 
+</span><span class='line'># &lt;URL:http://httpd.apache.org/docs/2.4/mod/directives.html&gt;
+</span><span class='line'># for a discussion of each configuration directive.
+</span><span class='line'>#
+</span><span class='line'># Do NOT simply read the instructions in here without understanding
+</span><span class='line'># what they do.  They're here only as hints or reminders.  If you are unsure
+</span><span class='line'># consult the online docs. You have been warned.  
+</span><span class='line'>#
+</span><span class='line'># Configuration and logfile names: If the filenames you specify for many
+</span><span class='line'># of the server's control files begin with "/" (or "drive:/" for Win32), the
+</span><span class='line'># server will use that explicit path.  If the filenames do *not* begin
+</span><span class='line'># with "/", the value of ServerRoot is prepended -- so 'log/access_log'
+</span><span class='line'># with ServerRoot set to '/www' will be interpreted by the
+</span><span class='line'># server as '/www/log/access_log', where as '/log/access_log' will be
+</span><span class='line'># interpreted as '/log/access_log'.
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerRoot: The top of the directory tree under which the server's
+</span><span class='line'># configuration, error, and log files are kept.
+</span><span class='line'>#
+</span><span class='line'># Do not add a slash at the end of the directory path.  If you point
+</span><span class='line'># ServerRoot at a non-local disk, be sure to specify a local disk on the
+</span><span class='line'># Mutex directive, if file-based mutexes are used.  If you wish to share the
+</span><span class='line'># same ServerRoot for multiple httpd daemons, you will need to change at
+</span><span class='line'># least PidFile.
+</span><span class='line'>#
+</span><span class='line'>ServerRoot "/etc/httpd"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Listen: Allows you to bind Apache to specific IP addresses and/or
+</span><span class='line'># ports, instead of the default. See also the &lt;VirtualHost&gt;
+</span><span class='line'># directive.
+</span><span class='line'>#
+</span><span class='line'># Change this to Listen on specific IP addresses as shown below to 
+</span><span class='line'># prevent Apache from glomming onto all bound IP addresses.
+</span><span class='line'>#
+</span><span class='line'>#Listen 12.34.56.78:80
+</span><span class='line'>Listen 80
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Dynamic Shared Object (DSO) Support
+</span><span class='line'>#
+</span><span class='line'># To be able to use the functionality of a module which was built as a DSO you
+</span><span class='line'># have to place corresponding `LoadModule' lines at this location so the
+</span><span class='line'># directives contained in it are actually available _before_ they are used.
+</span><span class='line'># Statically compiled modules (those listed by `httpd -l') do not need
+</span><span class='line'># to be loaded here.
+</span><span class='line'>#
+</span><span class='line'># Example:
+</span><span class='line'># LoadModule foo_module modules/mod_foo.so
+</span><span class='line'>#
+</span><span class='line'>Include conf.modules.d/*.conf
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># If you wish httpd to run as a different user or group, you must run
+</span><span class='line'># httpd as root initially and it will switch.  
+</span><span class='line'>#
+</span><span class='line'># User/Group: The name (or #number) of the user/group to run httpd as.
+</span><span class='line'># It is usually good practice to create a dedicated user and group for
+</span><span class='line'># running httpd, as with most system services.
+</span><span class='line'>#
+</span><span class='line'>User apache
+</span><span class='line'>Group apache
+</span><span class='line'>
+</span><span class='line'># 'Main' server configuration
+</span><span class='line'>#
+</span><span class='line'># The directives in this section set up the values used by the 'main'
+</span><span class='line'># server, which responds to any requests that aren't handled by a
+</span><span class='line'># &lt;VirtualHost&gt; definition.  These values also provide defaults for
+</span><span class='line'># any &lt;VirtualHost&gt; containers you may define later in the file.
+</span><span class='line'>#
+</span><span class='line'># All of these directives may appear inside &lt;VirtualHost&gt; containers,
+</span><span class='line'># in which case these default settings will be overridden for the
+</span><span class='line'># virtual host being defined.
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerAdmin: Your address, where problems with the server should be
+</span><span class='line'># e-mailed.  This address appears on some server-generated pages, such
+</span><span class='line'># as error documents.  e.g. admin@your-domain.com
+</span><span class='line'>#
+</span><span class='line'>ServerAdmin root@localhost
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ServerName gives the name and port that the server uses to identify itself.
+</span><span class='line'># This can often be determined automatically, but we recommend you specify
+</span><span class='line'># it explicitly to prevent problems during startup.
+</span><span class='line'>#
+</span><span class='line'># If your host doesn't have a registered DNS name, enter its IP address here.
+</span><span class='line'>#
+</span><span class='line'>#ServerName www.example.com:80
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Deny access to the entirety of your server's filesystem. You must
+</span><span class='line'># explicitly permit access to web content directories in other 
+</span><span class='line'># &lt;Directory&gt; blocks below.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory /&gt;
+</span><span class='line'>    AllowOverride none
+</span><span class='line'>    Require all denied
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Note that from this point forward you must specifically allow
+</span><span class='line'># particular features to be enabled - so if something's not working as
+</span><span class='line'># you might expect, make sure that you have specifically enabled it
+</span><span class='line'># below.
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># DocumentRoot: The directory out of which you will serve your
+</span><span class='line'># documents. By default, all requests are taken from this directory, but
+</span><span class='line'># symbolic links and aliases may be used to point to other locations.
+</span><span class='line'>#
+</span><span class='line'>DocumentRoot "/var/www/html"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Relax access to content within /var/www.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory "/var/www"&gt;
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>    # Allow open access:
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'># Further relax access to the default document root:
+</span><span class='line'>&lt;Directory "/var/www/html"&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # Possible values for the Options directive are "None", "All",
+</span><span class='line'>    # or any combination of:
+</span><span class='line'>    #   Indexes Includes FollowSymLinks SymLinksifOwnerMatch ExecCGI MultiViews
+</span><span class='line'>    #
+</span><span class='line'>    # Note that "MultiViews" must be named *explicitly* --- "Options All"
+</span><span class='line'>    # doesn't give it to you.
+</span><span class='line'>    #
+</span><span class='line'>    # The Options directive is both complicated and important.  Please see
+</span><span class='line'>    # http://httpd.apache.org/docs/2.4/mod/core.html#options
+</span><span class='line'>    # for more information.
+</span><span class='line'>    #
+</span><span class='line'>    Options Indexes FollowSymLinks
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AllowOverride controls what directives may be placed in .htaccess files.
+</span><span class='line'>    # It can be "All", "None", or any combination of the keywords:
+</span><span class='line'>    #   Options FileInfo AuthConfig Limit
+</span><span class='line'>    #
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Controls who can get stuff from this server.
+</span><span class='line'>    #
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># DirectoryIndex: sets the file that Apache will serve if a directory
+</span><span class='line'># is requested.
+</span><span class='line'>#
+</span><span class='line'>&lt;IfModule dir_module&gt;
+</span><span class='line'>    DirectoryIndex index.html
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># The following lines prevent .htaccess and .htpasswd files from being 
+</span><span class='line'># viewed by Web clients. 
+</span><span class='line'>#
+</span><span class='line'>&lt;Files ".ht*"&gt;
+</span><span class='line'>    Require all denied
+</span><span class='line'>&lt;/Files&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># ErrorLog: The location of the error log file.
+</span><span class='line'># If you do not specify an ErrorLog directive within a &lt;VirtualHost&gt;
+</span><span class='line'># container, error messages relating to that virtual host will be
+</span><span class='line'># logged here.  If you *do* define an error logfile for a &lt;VirtualHost&gt;
+</span><span class='line'># container, that host's errors will be logged there and not here.
+</span><span class='line'>#
+</span><span class='line'>ErrorLog "logs/error_log"
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># LogLevel: Control the number of messages logged to the error_log.
+</span><span class='line'># Possible values include: debug, info, notice, warn, error, crit,
+</span><span class='line'># alert, emerg.
+</span><span class='line'>#
+</span><span class='line'>LogLevel warn
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule log_config_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # The following directives define some format nicknames for use with
+</span><span class='line'>    # a CustomLog directive (see below).
+</span><span class='line'>    #
+</span><span class='line'>    LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+</span><span class='line'>    LogFormat "%h %l %u %t \"%r\" %&gt;s %b" common
+</span><span class='line'>
+</span><span class='line'>    &lt;IfModule logio_module&gt;
+</span><span class='line'>      # You need to enable mod_logio.c to use %I and %O
+</span><span class='line'>      LogFormat "%h %l %u %t \"%r\" %&gt;s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+</span><span class='line'>    &lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # The location and format of the access logfile (Common Logfile Format).
+</span><span class='line'>    # If you do not define any access logfiles within a &lt;VirtualHost&gt;
+</span><span class='line'>    # container, they will be logged here.  Contrariwise, if you *do*
+</span><span class='line'>    # define per-&lt;VirtualHost&gt; access logfiles, transactions will be
+</span><span class='line'>    # logged therein and *not* in this file.
+</span><span class='line'>    #
+</span><span class='line'>    #CustomLog "logs/access_log" common
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # If you prefer a logfile with access, agent, and referer information
+</span><span class='line'>    # (Combined Logfile Format) you can use the following directive.
+</span><span class='line'>    #
+</span><span class='line'>    CustomLog "logs/access_log" combined
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule alias_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # Redirect: Allows you to tell clients about documents that used to 
+</span><span class='line'>    # exist in your server's namespace, but do not anymore. The client 
+</span><span class='line'>    # will make a new request for the document at its new location.
+</span><span class='line'>    # Example:
+</span><span class='line'>    # Redirect permanent /foo http://www.example.com/bar
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Alias: Maps web paths into filesystem paths and is used to
+</span><span class='line'>    # access content that does not live under the DocumentRoot.
+</span><span class='line'>    # Example:
+</span><span class='line'>    # Alias /webpath /full/filesystem/path
+</span><span class='line'>    #
+</span><span class='line'>    # If you include a trailing / on /webpath then the server will
+</span><span class='line'>    # require it to be present in the URL.  You will also likely
+</span><span class='line'>    # need to provide a &lt;Directory&gt; section to allow access to
+</span><span class='line'>    # the filesystem path.
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # ScriptAlias: This controls which directories contain server scripts. 
+</span><span class='line'>    # ScriptAliases are essentially the same as Aliases, except that
+</span><span class='line'>    # documents in the target directory are treated as applications and
+</span><span class='line'>    # run by the server when requested rather than as documents sent to the
+</span><span class='line'>    # client.  The same rules about trailing "/" apply to ScriptAlias
+</span><span class='line'>    # directives as to Alias.
+</span><span class='line'>    #
+</span><span class='line'>    ScriptAlias /cgi-bin/ "/var/www/cgi-bin/"
+</span><span class='line'>
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># "/var/www/cgi-bin" should be changed to whatever your ScriptAliased
+</span><span class='line'># CGI directory exists, if you have that configured.
+</span><span class='line'>#
+</span><span class='line'>&lt;Directory "/var/www/cgi-bin"&gt;
+</span><span class='line'>    AllowOverride None
+</span><span class='line'>    Options None
+</span><span class='line'>    Require all granted
+</span><span class='line'>&lt;/Directory&gt;
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule mime_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # TypesConfig points to the file containing the list of mappings from
+</span><span class='line'>    # filename extension to MIME-type.
+</span><span class='line'>    #
+</span><span class='line'>    TypesConfig /etc/mime.types
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AddType allows you to add to or override the MIME configuration
+</span><span class='line'>    # file specified in TypesConfig for specific file types.
+</span><span class='line'>    #
+</span><span class='line'>    #AddType application/x-gzip .tgz
+</span><span class='line'>    #
+</span><span class='line'>    # AddEncoding allows you to have certain browsers uncompress
+</span><span class='line'>    # information on the fly. Note: Not all browsers support this.
+</span><span class='line'>    #
+</span><span class='line'>    #AddEncoding x-compress .Z
+</span><span class='line'>    #AddEncoding x-gzip .gz .tgz
+</span><span class='line'>    #
+</span><span class='line'>    # If the AddEncoding directives above are commented-out, then you
+</span><span class='line'>    # probably should define those extensions to indicate media types:
+</span><span class='line'>    #
+</span><span class='line'>    AddType application/x-compress .Z
+</span><span class='line'>    AddType application/x-gzip .gz .tgz
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # AddHandler allows you to map certain file extensions to "handlers":
+</span><span class='line'>    # actions unrelated to filetype. These can be either built into the server
+</span><span class='line'>    # or added with the Action directive (see below)
+</span><span class='line'>    #
+</span><span class='line'>    # To use CGI scripts outside of ScriptAliased directories:
+</span><span class='line'>    # (You will also need to add "ExecCGI" to the "Options" directive.)
+</span><span class='line'>    #
+</span><span class='line'>    #AddHandler cgi-script .cgi
+</span><span class='line'>
+</span><span class='line'>    # For type maps (negotiated resources):
+</span><span class='line'>    #AddHandler type-map var
+</span><span class='line'>
+</span><span class='line'>    #
+</span><span class='line'>    # Filters allow you to process content before it is sent to the client.
+</span><span class='line'>    #
+</span><span class='line'>    # To parse .shtml files for server-side includes (SSI):
+</span><span class='line'>    # (You will also need to add "Includes" to the "Options" directive.)
+</span><span class='line'>    #
+</span><span class='line'>    AddType text/html .shtml
+</span><span class='line'>    AddOutputFilter INCLUDES .shtml
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Specify a default charset for all content served; this enables
+</span><span class='line'># interpretation of all content as UTF-8 by default.  To use the 
+</span><span class='line'># default browser choice (ISO-8859-1), or to allow the META tags
+</span><span class='line'># in HTML content to override this choice, comment out this
+</span><span class='line'># directive:
+</span><span class='line'>#
+</span><span class='line'>AddDefaultCharset UTF-8
+</span><span class='line'>
+</span><span class='line'>&lt;IfModule mime_magic_module&gt;
+</span><span class='line'>    #
+</span><span class='line'>    # The mod_mime_magic module allows the server to use various hints from the
+</span><span class='line'>    # contents of the file itself to determine its type.  The MIMEMagicFile
+</span><span class='line'>    # directive tells the module where the hint definitions are located.
+</span><span class='line'>    #
+</span><span class='line'>    MIMEMagicFile conf/magic
+</span><span class='line'>&lt;/IfModule&gt;
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># Customizable error responses come in three flavors:
+</span><span class='line'># 1) plain text 2) local redirects 3) external redirects
+</span><span class='line'>#
+</span><span class='line'># Some examples:
+</span><span class='line'>#ErrorDocument 500 "The server made a boo boo."
+</span><span class='line'>#ErrorDocument 404 /missing.html
+</span><span class='line'>#ErrorDocument 404 "/cgi-bin/missing_handler.pl"
+</span><span class='line'>#ErrorDocument 402 http://www.example.com/subscription_info.html
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'>#
+</span><span class='line'># EnableMMAP and EnableSendfile: On systems that support it, 
+</span><span class='line'># memory-mapping or the sendfile syscall may be used to deliver
+</span><span class='line'># files.  This usually improves server performance, but must
+</span><span class='line'># be turned off when serving from networked-mounted 
+</span><span class='line'># filesystems or if support for these functions is otherwise
+</span><span class='line'># broken on your system.
+</span><span class='line'># Defaults if commented: EnableMMAP On, EnableSendfile Off
+</span><span class='line'>#
+</span><span class='line'>#EnableMMAP off
+</span><span class='line'>EnableSendfile on
+</span><span class='line'>
+</span><span class='line'># Supplemental configuration
+</span><span class='line'>#
+</span><span class='line'># Load config files in the "/etc/httpd/conf.d" directory, if any.
+</span><span class='line'>IncludeOptional conf.d/*.conf</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>apachectl utility</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>APACHECTL(8)              apachectl                APACHECTL(8)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>NAME
+</span><span class='line'>       apachectl - Apache HTTP Server Control Interface
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SYNOPSIS
+</span><span class='line'>       When  acting  in    pass-through  mode,  apachectl can take all the arguments
+</span><span class='line'>       available for the httpd binary.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       apachectl [ httpd-argument ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       When acting in SysV init mode, apachectl takes simple,  one-word    commands,
+</span><span class='line'>       defined below.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       apachectl command
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SUMMARY
+</span><span class='line'>       apachectl  is  a front end to the Apache HyperText Transfer Protocol (HTTP)
+</span><span class='line'>       server. It is designed to help the administrator control the functioning of
+</span><span class='line'>       the Apache httpd daemon.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  apachectl script can operate in two modes. First, it can act as a sim‐
+</span><span class='line'>       ple front-end to the httpd command that simply sets any necessary  environ‐
+</span><span class='line'>       ment  variables    and  then  invokes httpd, passing through any command line
+</span><span class='line'>       arguments. Second, apachectl can act as a SysV init script,  taking  simple
+</span><span class='line'>       one-word arguments like start, restart, and stop, and translating them into
+</span><span class='line'>       appropriate signals to httpd.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       If your Apache installation uses non-standard paths, you will need to  edit
+</span><span class='line'>       the  apachectl script to set the appropriate paths to the httpd binary. You
+</span><span class='line'>       can also specify any necessary httpd command line arguments. See    the  com‐
+</span><span class='line'>       ments in the script for details.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  apachectl script returns a 0 exit value on success, and &gt;0 if an error
+</span><span class='line'>       occurs. For more details, view the comments in the script.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>OPTIONS
+</span><span class='line'>       Only the SysV init-style options are  defined  here.  Other  arguments  are
+</span><span class='line'>       defined on the httpd manual page.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       start  Start  the Apache httpd daemon. Gives an error if it is already run‐
+</span><span class='line'>        ning. This is equivalent to apachectl -k start.
+</span><span class='line'>
+</span><span class='line'>       stop   Stops the Apache httpd daemon. This is equivalent    to  apachectl  -k
+</span><span class='line'>        stop.
+</span><span class='line'>
+</span><span class='line'>       restart
+</span><span class='line'>        Restarts  the  Apache httpd daemon. If the daemon is not running, it
+</span><span class='line'>        is started. This  command  automatically  checks  the  configuration
+</span><span class='line'>        files  as  in  configtest before initiating the restart to make sure
+</span><span class='line'>        the daemon doesn't die. This is equivalent to apachectl -k restart.
+</span><span class='line'>
+</span><span class='line'>       fullstatus
+</span><span class='line'>        Displays a full status report from mod_status. For this to work, you
+</span><span class='line'>        need  to  have  mod_status  enabled  on your server and a text-based
+</span><span class='line'>        browser such as lynx available on  your  system.  The  URL  used  to
+</span><span class='line'>        access  the  status report can be set by editing the STATUSURL vari‐
+</span><span class='line'>        able in the script.
+</span><span class='line'>
+</span><span class='line'>       status Displays a brief status report using systemd.
+</span><span class='line'>
+</span><span class='line'>       graceful
+</span><span class='line'>        Gracefully restarts the Apache httpd daemon. If the  daemon  is  not
+</span><span class='line'>        running,  it  is  not started. This differs from a normal restart in
+</span><span class='line'>        that currently open connections are not aborted. A  side  effect  is
+</span><span class='line'>        that  old  log files will not be closed immediately. This means that
+</span><span class='line'>        if used in a log rotation script, a substantial delay may be  neces‐
+</span><span class='line'>        sary  to  ensure that the old log files are closed before processing
+</span><span class='line'>        them. This command automatically checks the configuration  files  as
+</span><span class='line'>        in  configtest  before  initiating  the  restart to make sure Apache
+</span><span class='line'>        doesn't die. This is equivalent to apachectl -k graceful.
+</span><span class='line'>
+</span><span class='line'>       graceful-stop
+</span><span class='line'>        Gracefully stops the Apache httpd daemon. This differs from a normal
+</span><span class='line'>        stop  in  that  currently  open  connections are not aborted. A side
+</span><span class='line'>        effect is that old log files will not be closed immediately. This is
+</span><span class='line'>        equivalent to apachectl -k graceful-stop.
+</span><span class='line'>
+</span><span class='line'>       configtest
+</span><span class='line'>        Run  a  configuration  file syntax test. It parses the configuration
+</span><span class='line'>        files and either reports Syntax Ok or detailed information about the
+</span><span class='line'>        particular syntax error. This is equivalent to apachectl -t.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The  following  option  was  available  in  earlier  versions  but has been
+</span><span class='line'>       removed.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       startssl
+</span><span class='line'>        To start httpd with SSL support, you should edit your  configuration
+</span><span class='line'>        file  to  include  the  relevant  directives and then use the normal
+</span><span class='line'>        apachectl start.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Apache HTTP Server            2005-08-26                APACHECTL(8)</span></code></pre></td></tr></table></div></figure>
+
+
+<p><strong>httpd reference</strong></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>HTTPD(8)                httpd                  HTTPD(8)
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>NAME
+</span><span class='line'>       httpd - Apache Hypertext Transfer Protocol Server
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SYNOPSIS
+</span><span class='line'>       httpd  [    -d serverroot ] [ -f config ] [ -C directive ] [ -c directive ] [
+</span><span class='line'>       -D parameter ] [    -e  level  ]  [  -E  file  ]  [  -k  start|restart|grace‐
+</span><span class='line'>       ful|stop|graceful-stop  ] [ -R directory ] [ -h ] [ -l ] [ -L ] [ -S ] [ -t
+</span><span class='line'>       ] [ -v ] [ -V ] [ -X ] [ -M ] [ -T ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       On Windows systems, the following additional arguments are available:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       httpd [ -k install|config|uninstall ] [ -n name ] [ -w ]
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>SUMMARY
+</span><span class='line'>       httpd is the Apache HyperText Transfer Protocol (HTTP) server  program.    It
+</span><span class='line'>       is  designed  to be run as a standalone daemon process. When used like this
+</span><span class='line'>       it will create a pool of child processes or threads to handle requests.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       In general, httpd should not be invoked    directly,  but  rather  should  be
+</span><span class='line'>       invoked    via apachectl on Unix-based systems or as a service on Windows NT,
+</span><span class='line'>       2000 and XP and as a console application on Windows 9x and ME.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>OPTIONS
+</span><span class='line'>       -d serverroot
+</span><span class='line'>        Set the initial value for the ServerRoot  directive  to  serverroot.
+</span><span class='line'>        This can be overridden by the ServerRoot directive in the configura‐
+</span><span class='line'>        tion file. The default is /etc/httpd.
+</span><span class='line'>
+</span><span class='line'>       -f config
+</span><span class='line'>        Uses the directives in the file config on startup.  If  config  does
+</span><span class='line'>        not  begin  with  a /, then it is taken to be a path relative to the
+</span><span class='line'>        ServerRoot. The default is conf/httpd.conf.
+</span><span class='line'>
+</span><span class='line'>       -k start|restart|graceful|stop|graceful-stop
+</span><span class='line'>        Signals httpd to start, restart, or stop. See Stopping Apache  httpd
+</span><span class='line'>        for more information.
+</span><span class='line'>
+</span><span class='line'>       -C directive
+</span><span class='line'>        Process the configuration directive before reading config files.
+</span><span class='line'>
+</span><span class='line'>       -c directive
+</span><span class='line'>        Process the configuration directive after reading config files.
+</span><span class='line'>
+</span><span class='line'>       -D parameter
+</span><span class='line'>        Sets  a  configuration  parameter  which can be used with &lt;IfDefine&gt;
+</span><span class='line'>        sections in the configuration files to conditionally skip or process
+</span><span class='line'>        commands at server startup and restart. Also can be used to set cer‐
+</span><span class='line'>        tain less-common startup parameters including  -DNO_DETACH  (prevent
+</span><span class='line'>        the  parent  from forking) and -DFOREGROUND (prevent the parent from
+</span><span class='line'>        calling setsid() et al).
+</span><span class='line'>
+</span><span class='line'>       -e level
+</span><span class='line'>        Sets the LogLevel to level during server startup. This is useful for
+</span><span class='line'>        temporarily  increasing  the verbosity of the error messages to find
+</span><span class='line'>        problems during startup.
+</span><span class='line'>
+</span><span class='line'>       -E file
+</span><span class='line'>        Send error messages during server startup to file.
+</span><span class='line'>
+</span><span class='line'>       -h     Output a short summary of available command line options.
+</span><span class='line'>
+</span><span class='line'>       -l     Output a list of modules compiled into the  server.  This    will  not
+</span><span class='line'>        list dynamically loaded modules included using the LoadModule direc‐
+</span><span class='line'>        tive.
+</span><span class='line'>
+</span><span class='line'>       -L     Output a list of directives provided  by    static  modules,  together
+</span><span class='line'>        with  expected  arguments  and  places where the directive is valid.
+</span><span class='line'>        Directives provided by shared modules are not listed.
+</span><span class='line'>
+</span><span class='line'>       -M     Dump a list of loaded Static and Shared Modules.
+</span><span class='line'>
+</span><span class='line'>       -S     Show the settings as parsed from the  config  file  (currently  only
+</span><span class='line'>        shows the virtualhost settings).
+</span><span class='line'>
+</span><span class='line'>       -T (Available in 2.3.8 and later)
+</span><span class='line'>        Skip document root check at startup/restart.
+</span><span class='line'>
+</span><span class='line'>       -t     Run  syntax  tests for configuration files only. The program immedi‐
+</span><span class='line'>        ately exits after these syntax parsing tests with  either  a  return
+</span><span class='line'>        code  of 0 (Syntax OK) or return code not equal to 0 (Syntax Error).
+</span><span class='line'>        If -D DUMP_VHOSTS is also set, details of the virtual host  configu‐
+</span><span class='line'>        ration  will be printed. If -D DUMP_MODULES  is set, all loaded mod‐
+</span><span class='line'>        ules will be printed.
+</span><span class='line'>
+</span><span class='line'>       -v     Print the version of httpd, and then exit.
+</span><span class='line'>
+</span><span class='line'>       -V     Print the version and build parameters of httpd, and then exit.
+</span><span class='line'>
+</span><span class='line'>       -X     Run httpd in debug mode. Only one worker will  be    started  and  the
+</span><span class='line'>        server will not detach from the console.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       The following arguments are available only on the Windows platform:
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>       -k install|config|uninstall
+</span><span class='line'>        Install Apache httpd as a Windows NT service; change startup options
+</span><span class='line'>        for the Apache httpd service; and uninstall the  Apache  httpd  ser‐
+</span><span class='line'>        vice.
+</span><span class='line'>
+</span><span class='line'>       -n name
+</span><span class='line'>        The name of the Apache httpd service to signal.
+</span><span class='line'>
+</span><span class='line'>       -w     Keep  the console window open on error so that the error message can
+</span><span class='line'>        be read.
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Apache HTTP Server            2012-02-10                HTTPD(8)</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2016-08-05T14:26:16+03:00" pubdate data-updated="true">Aug 5<span>th</span>, 2016</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2016/07/31/nmap-cheatsheet/" title="Previous Post: Nmap cheatsheet">&laquo; Nmap cheatsheet</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/08/24/book-review-nmap-network-scanning/" title="Next Post: Book review - Nmap Network Scanning">Book review - Nmap Network Scanning &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/';
+        var disqus_url = 'http://chousensha.github.io/blog/2016/08/05/getting-started-with-apache/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

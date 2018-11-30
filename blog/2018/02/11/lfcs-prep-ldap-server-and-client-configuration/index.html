@@ -1,0 +1,930 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LFCS prep - LDAP server and client configuration - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Configuring LDAP authentication">
+  <meta name="keywords" content="ldap, authconfig, ldap server, ldap client, openldap, ldap authentication, lfcs ldap, lfcs, rhcsa, lfcsa">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LFCS prep - LDAP server and client configuration</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-11T17:37:49+02:00" pubdate data-updated="true">Feb 11<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Something that you may come up with in the exam and that I&rsquo;ve been avoiding is the LDAP topic. In this post we&rsquo;ll look at server and client configuration for LDAP.</p>
+
+<p>For this scenario, the hostname of my LDAP server is centos.example.com. The domain is example.com and the entry is inside /etc/hosts</p>
+
+<p>I used <a href="https://www.certdepot.net/rhel7-configure-ldap-directory-service-user-connection/">CertDepot</a> as inspiration..the LDAP syntax and topic really keeps me away from approaching it.</p>
+
+<!-- more -->
+
+
+<h2>Server configuration</h2>
+
+<p>To get started, install these packages:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y openldap openldap-clients openldap-servers migrationtools</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some info about them:</p>
+
+<ul>
+<li><p>openldap is the open source implementation of LDAP</p></li>
+<li><p>openldap-clients contains LDAP client utilities</p></li>
+<li><p>openldap-servers is the server package</p></li>
+<li><p>The MigrationTools are a set of Perl scripts for migrating users, groups, aliases, hosts, netgroups, networks, protocols, RPCs, and services from existing nameservices (flat files, NIS, and NetInfo) to LDAP.</p></li>
+</ul>
+
+
+<p>Create LDAP password from a key, (the string secret below):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>slappasswd -s secret -n &gt; /etc/openldap/passwd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside the file take note of the generated password: <code>{SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07</code></p>
+
+<p>Generate an X509 certificate valid for 1 year (note the paths of the certificate and private key):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>openssl req -new -x509 -nodes -out /etc/openldap/certs/cert.pem -keyout /etc/openldap/certs/key.pem -days 365</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At the prompt, you can leave as blank the values except the below, where you put your server&rsquo;s hostname:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Common Name (eg, your name or your server's hostname) []:centos.example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Change the ownership of the files inside <code>/etc/openldap/certs</code> and change the permissions of the private key:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /etc/openldap/certs
+</span><span class='line'>chown ldap:ldap *
+</span><span class='line'>chmod 600 key.pem 
+</span><span class='line'>ll
+</span><span class='line'>total 88
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 65536 Feb 11 14:08 cert8.db
+</span><span class='line'>-rw-r--r--. 1 ldap ldap  1298 Feb 11 14:27 cert.pem
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 16384 Feb 11 14:08 key3.db
+</span><span class='line'>-rw-------. 1 ldap ldap  1704 Feb 11 14:27 key.pem
+</span><span class='line'>-r--r-----. 1 ldap ldap    45 Apr 26  2016 password
+</span><span class='line'>-rw-r--r--. 1 ldap ldap 16384 Apr 26  2016 secmod.db</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Copy the LDAP database:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the slapd configuration (below errors are safe):</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>slaptest
+</span><span class='line'>5a8038c4 hdb_db_open: database "dc=my-domain,dc=com": db_open(/var/lib/ldap/id2entry.bdb) failed: No such file or directory (2).
+</span><span class='line'>5a8038c4 backend_startup_one (type=hdb, suffix="dc=my-domain,dc=com"): bi_db_open failed! (2)
+</span><span class='line'>slap_startup failed (test would succeed using the -u switch)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Change the ownership of the DB to ldap:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>chown ldap:ldap /var/lib/ldap/*</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now start the service</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start slapd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check that the LDAP service is listening:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -lpt | grep ldap
+</span><span class='line'>tcp        0      0 0.0.0.0:ldap            0.0.0.0:*               LISTEN      5558/slapd          
+</span><span class='line'>tcp6       0      0 [::]:ldap               [::]:*                  LISTEN      5558/slapd    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next you have to add some LDAP schemas</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /etc/openldap/schema</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Mainly, add the following:</p>
+
+<ul>
+<li>cosine (Cosine and Internet X.500)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f cosine.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>adding new entry "cn=cosine,cn=schema,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<ul>
+<li>nis (Network Information Services)</li>
+</ul>
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -Y EXTERNAL -H ldapi:/// -D "cn=config" -f nis.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>adding new entry "cn=nis,cn=schema,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the <code>/etc/openldap/changes.ldif</code> file with the below content and remember the password value from earlier:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcSuffix
+</span><span class='line'>olcSuffix: dc=example,dc=com
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcRootDN
+</span><span class='line'>olcRootDN: cn=Manager,dc=example,dc=com
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={2}hdb,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcRootPW
+</span><span class='line'>olcRootPW: {SSHA}T4srVIBK+rJ9DXlVG7dvZnnAQhAZuO07
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcTLSCertificateFile
+</span><span class='line'>olcTLSCertificateFile: /etc/openldap/certs/cert.pem
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcTLSCertificateKeyFile
+</span><span class='line'>olcTLSCertificateKeyFile: /etc/openldap/certs/key.pem
+</span><span class='line'>
+</span><span class='line'>dn: cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcLogLevel
+</span><span class='line'>olcLogLevel: -1
+</span><span class='line'>
+</span><span class='line'>dn: olcDatabase={1}monitor,cn=config
+</span><span class='line'>changetype: modify
+</span><span class='line'>replace: olcAccess
+</span><span class='line'>olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=Manager,dc=example,dc=com" read by * none</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In summary, here you have to be mindful of the certificate and key paths, and of your previously generated password.</p>
+
+<p>Now create the configuration:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapmodify -Y EXTERNAL -H ldapi:/// -f /etc/openldap/changes.ldif
+</span><span class='line'>SASL/EXTERNAL authentication started
+</span><span class='line'>SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+</span><span class='line'>SASL SSF: 0
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={2}hdb,cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "cn=config"
+</span><span class='line'>
+</span><span class='line'>modifying entry "olcDatabase={1}monitor,cn=config"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the file <code>/etc/openldap/base.ldif</code> with the following content:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dn: dc=example,dc=com
+</span><span class='line'>dc: example
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: domain
+</span><span class='line'>
+</span><span class='line'>dn: ou=People,dc=example,dc=com
+</span><span class='line'>ou: People
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: organizationalUnit
+</span><span class='line'>
+</span><span class='line'>dn: ou=Group,dc=example,dc=com
+</span><span class='line'>ou: Group
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: organizationalUnit</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Create the directory structure:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f /etc/openldap/base.ldif
+</span><span class='line'>adding new entry "dc=example,dc=com"
+</span><span class='line'>
+</span><span class='line'>adding new entry "ou=People,dc=example,dc=com"
+</span><span class='line'>
+</span><span class='line'>adding new entry "ou=Group,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This command uses simple authentication and reads the previously created file.</p>
+
+<p>Now it&rsquo;s time to create a sample user account and see if things are working:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mkdir /home/ldap
+</span><span class='line'>useradd -d /home/ldap/sam sam
+</span><span class='line'>passwd sam </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Some additional steps are needed for user account migration:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cd /usr/share/migrationtools </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Edit <strong>migrate_common.ph</strong> to have your domain values:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Default DNS domain
+</span><span class='line'>$DEFAULT_MAIL_DOMAIN = "example.com";
+</span><span class='line'>
+</span><span class='line'># Default base 
+</span><span class='line'>$DEFAULT_BASE = "dc=example,dc=com";</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the user to the directory:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/passwd | grep sam &gt; passwd
+</span><span class='line'>cat passwd 
+</span><span class='line'>sam:x:1004:1004::/home/ldap/sam:/bin/bash
+</span><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+</span><span class='line'>./migrate_passwd.pl passwd users.ldif</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check out the <em>users.ldif</em> file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat users.ldif 
+</span><span class='line'>dn: uid=sam,ou=People,dc=example,dc=com
+</span><span class='line'>uid: sam
+</span><span class='line'>cn: sam
+</span><span class='line'>objectClass: account
+</span><span class='line'>objectClass: posixAccount
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: shadowAccount
+</span><span class='line'>userPassword: {crypt}$6$L49gzmY1$n0RNoX86rhT4QMvmsKWkMruHT/BCh7yBm2cQOdb4pbOA7XM0RB4d4GsoDpSILQSjYduiPponzFDb8O7bIb1kA.
+</span><span class='line'>shadowLastChange: 17573
+</span><span class='line'>shadowMin: 0
+</span><span class='line'>shadowMax: 99999
+</span><span class='line'>shadowWarning: 7
+</span><span class='line'>loginShell: /bin/bash
+</span><span class='line'>uidNumber: 1004
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>homeDirectory: /home/ldap/sam</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the user entry:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f users.ldif
+</span><span class='line'>adding new entry "uid=sam,ou=People,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Do the same for group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/group | grep sam &gt; group
+</span><span class='line'>cat group
+</span><span class='line'>sam:x:1004:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Migrate the group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>./migrate_group.pl group groups.ldif</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check the groups.ldif file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat groups.ldif 
+</span><span class='line'>dn: cn=sam,ou=Group,dc=example,dc=com
+</span><span class='line'>objectClass: posixGroup
+</span><span class='line'>objectClass: top
+</span><span class='line'>cn: sam
+</span><span class='line'>userPassword: {crypt}x
+</span><span class='line'>gidNumber: 1004</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Add the group:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapadd -x -w secret -D cn=Manager,dc=example,dc=com -f groups.ldif
+</span><span class='line'>adding new entry "cn=sam,ou=Group,dc=example,dc=com"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now search for the user:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ldapsearch -x cn=sam -b dc=example,dc=com
+</span><span class='line'># extended LDIF
+</span><span class='line'>#
+</span><span class='line'># LDAPv3
+</span><span class='line'># base &lt;dc=example,dc=com&gt; with scope subtree
+</span><span class='line'># filter: cn=sam
+</span><span class='line'># requesting: ALL
+</span><span class='line'>#
+</span><span class='line'>
+</span><span class='line'># sam, People, example.com
+</span><span class='line'>dn: uid=sam,ou=People,dc=example,dc=com
+</span><span class='line'>uid: sam
+</span><span class='line'>cn: sam
+</span><span class='line'>objectClass: account
+</span><span class='line'>objectClass: posixAccount
+</span><span class='line'>objectClass: top
+</span><span class='line'>objectClass: shadowAccount
+</span><span class='line'>userPassword:: e2NyeXB0fSQ2JEw0OWd6bVkxJG4wUk5vWDg2cmhUNFFNdm1zS1drTXJ1SFQvQkN
+</span><span class='line'> oN3lCbTJjUU9kYjRwYk9BN1hNMFJCNGQ0R3NvRHBTSUxRU2pZZHVpUHBvbnpGRGI4TzdiSWIxa0Eu
+</span><span class='line'>shadowLastChange: 17573
+</span><span class='line'>shadowMin: 0
+</span><span class='line'>shadowMax: 99999
+</span><span class='line'>shadowWarning: 7
+</span><span class='line'>loginShell: /bin/bash
+</span><span class='line'>uidNumber: 1004
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>homeDirectory: /home/ldap/sam
+</span><span class='line'>
+</span><span class='line'># sam, Group, example.com
+</span><span class='line'>dn: cn=sam,ou=Group,dc=example,dc=com
+</span><span class='line'>objectClass: posixGroup
+</span><span class='line'>objectClass: top
+</span><span class='line'>cn: sam
+</span><span class='line'>userPassword:: e2NyeXB0fXg=
+</span><span class='line'>gidNumber: 1004
+</span><span class='line'>
+</span><span class='line'># search result
+</span><span class='line'>search: 2
+</span><span class='line'>result: 0 Success
+</span><span class='line'>
+</span><span class='line'># numResponses: 3
+</span><span class='line'># numEntries: 2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You might also need to allow ldap in the firewall.</p>
+
+<h2>Client configuration</h2>
+
+<p>If you hoped it was over, we still have to verify the authentication from a client machine. On my client, I also added the server in /etc/hosts:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>192.168.217.131 centos.example.com</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The interface used for configuring authentication is <code>authconfig</code>. For this example I will go over the <strong>nslcd</strong> route.</p>
+
+<p>On the client, install the needed packages:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y openldap-clients nss-pam-ldapd</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run the following:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>authconfig --enableforcelegacy --update
+</span><span class='line'>authconfig --enableldap --enableldapauth --ldapserver="centos.example.com" --ldapbasedn="dc=example,dc=com" --update</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Download the certificate:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp root@centos.example.com:/etc/openldap/certs/cert.pem /etc/openldap/cacerts/cert.pem
+</span><span class='line'>root@centos.example.com's password: 
+</span><span class='line'>cert.pem                                      100% 1298   107.3KB/s   00:00    </span></code></pre></td></tr></table></div></figure>
+
+
+<p>Enable TLS:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>authconfig --enableldaptls --update</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can do a getent or try to login as the LDAP user to see if it works.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
+</span><span class='line'>/ Your temporary financial embarrassment \
+</span><span class='line'>| will be relieved in a surprising       |
+</span><span class='line'>\ manner.                                /
+</span><span class='line'> ----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-11T17:37:49+02:00" pubdate data-updated="true">Feb 11<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" title="Previous Post: LFCS prep - Configure caching-only DNS">&laquo; LFCS prep - Configure caching-only DNS</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/02/12/lfcs-prep-managing-encrypted-partitions/" title="Next Post: LFCS prep - Managing encrypted partitions">LFCS prep - Managing encrypted partitions &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/11/lfcs-prep-ldap-server-and-client-configuration/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

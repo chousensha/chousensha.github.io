@@ -1,0 +1,503 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LFCS prep - Runlevels and bootloader configuration - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="System runlevels and grub2 bootloader troubleshooting">
+  <meta name="keywords" content="runlevels, systemd targets, bootloader, grub, grub2, lfcs, rhcsa, lfcsa">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LFCS prep - Runlevels and bootloader configuration</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-08T19:47:30+02:00" pubdate data-updated="true">Feb 8<span>th</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today we&rsquo;ll look at the following LFCS objectives:</p>
+
+<ul>
+<li><p>Log into graphical and text mode consoles</p></li>
+<li><p>Boot systems into different runlevels manually</p></li>
+<li><p>Install, configure and troubleshoot the  bootloader</p></li>
+</ul>
+
+
+<!-- more -->
+
+
+<h2>systemd targets</h2>
+
+<p>First, let&rsquo;s take a look at all the available targets:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl list-units --type=target --all
+</span><span class='line'>  UNIT                   LOAD      ACTIVE   SUB    DESCRIPTION
+</span><span class='line'>  basic.target           loaded    active   active Basic System
+</span><span class='line'>  cryptsetup.target      loaded    active   active Encrypted Volumes
+</span><span class='line'>  emergency.target       loaded    inactive dead   Emergency Mode
+</span><span class='line'>  final.target           loaded    inactive dead   Final Step
+</span><span class='line'>  getty.target           loaded    active   active Login Prompts
+</span><span class='line'>  graphical.target       loaded    active   active Graphical Interface
+</span><span class='line'>  local-fs-pre.target    loaded    active   active Local File Systems (Pre)
+</span><span class='line'>  local-fs.target        loaded    active   active Local File Systems
+</span><span class='line'>  multi-user.target      loaded    active   active Multi-User System
+</span><span class='line'>  network-online.target  loaded    active   active Network is Online
+</span><span class='line'>  network-pre.target     loaded    inactive dead   Network (Pre)
+</span><span class='line'>  network.target         loaded    active   active Network
+</span><span class='line'>  nfs-client.target      loaded    active   active NFS client services
+</span><span class='line'>  nss-lookup.target      loaded    inactive dead   Host and Network Name Lookups
+</span><span class='line'>  nss-user-lookup.target loaded    active   active User and Group Name Lookups
+</span><span class='line'>  paths.target           loaded    active   active Paths
+</span><span class='line'>  remote-fs-pre.target   loaded    active   active Remote File Systems (Pre)
+</span><span class='line'>  remote-fs.target       loaded    active   active Remote File Systems
+</span><span class='line'>  rescue.target          loaded    inactive dead   Rescue Mode
+</span><span class='line'>  rpcbind.target         loaded    inactive dead   RPC Port Mapper
+</span><span class='line'>  shutdown.target        loaded    inactive dead   Shutdown
+</span><span class='line'>  slices.target          loaded    active   active Slices
+</span><span class='line'>  sockets.target         loaded    active   active Sockets
+</span><span class='line'>  swap.target            loaded    active   active Swap
+</span><span class='line'>  sysinit.target         loaded    active   active System Initialization
+</span><span class='line'>● syslog.target          not-found inactive dead   syslog.target
+</span><span class='line'>  time-sync.target       loaded    inactive dead   System Time Synchronized
+</span><span class='line'>  timers.target          loaded    active   active Timers
+</span><span class='line'>  umount.target          loaded    inactive dead   Unmount All Filesystems
+</span><span class='line'>
+</span><span class='line'>LOAD   = Reflects whether the unit definition was properly loaded.
+</span><span class='line'>ACTIVE = The high-level unit activation state, i.e. generalization of SUB.
+</span><span class='line'>SUB    = The low-level unit activation state, values depend on unit type.
+</span><span class='line'>
+</span><span class='line'>29 loaded units listed.
+</span><span class='line'>To show all installed unit files use 'systemctl list-unit-files'.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Out of these, we will only look at the most relevant ones:</p>
+
+<ul>
+<li><p><strong>emergency.target</strong> = emergency mode. All you have is systemd and a shell. This is what you use if, for instance, you experience disk failure</p></li>
+<li><p><strong>rescue.target</strong> = single user mode. It&rsquo;s the equivalent of runlevel 1. In this mode, the early boot services are started and local mount points are mounted. No networking</p></li>
+<li><p><strong>multi-user.target</strong> = multi-user text mode with networking. Equivalent to runlevel 3</p></li>
+<li><p><strong>graphical.target</strong> = multi-user with GUI. Equivalent to runlevel 5</p></li>
+</ul>
+
+
+<p>Let&rsquo;s see what the default target is on my system:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl get-default
+</span><span class='line'>graphical.target</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can set a new default target with <code>systemctl set-default</code></p>
+
+<p>It is possible to switch to a different target without rebooting, by using <code>systemctl isolate <target name></code>. However, only targets with AllowIsolate=yes in their unit files can be isolated. Isolation will start or stop all necessary services for that particular target. You can use isolation to quickly switch between targets. You can achieve the same with the systemctl command:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl rescue
+</span><span class='line'>systemctl emergency</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Additionally, you can boot a desired target through the boot menu, by selecting <em>e</em> at the desired entry, and appending at the end of the kernel command line (the one starting with linux16) the entry <strong>systemd.unit=target name</strong></p>
+
+<h2>bootloader troubleshooting</h2>
+
+<p>Here we&rsquo;re only going to look at the grub2 bootloader. Its main configuration file is <code>/boot/grub2/grub.cfg</code>, but you&rsquo;re not supposed to edit it directly, but use <code>grub2-mkconfig</code> to generate the configuration. So you first edit the GRUB parameters in <code>/etc/default/grub</code>, and then run grub2-mkconfig to create the cfg file. Let&rsquo;s see the defaults I have:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat /etc/default/grub
+</span><span class='line'>GRUB_TIMEOUT=5
+</span><span class='line'>GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+</span><span class='line'>GRUB_DEFAULT=saved
+</span><span class='line'>GRUB_DISABLE_SUBMENU=true
+</span><span class='line'>GRUB_TERMINAL_OUTPUT="console"
+</span><span class='line'>GRUB_CMDLINE_LINUX="crashkernel=auto rd.lvm.lv=rhel/root rd.lvm.lv=rhel/swap rhgb quiet"
+</span><span class='line'>GRUB_DISABLE_RECOVERY="true"</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After editing those, you can run <code>grub2-mkconfig > /boot/grub2/grub.cfg</code> to create the new boot config file.</p>
+
+<p>If you need to reinstall the bootloader, you can do so with <code>grub2-install</code></p>
+
+<h3>Learn more</h3>
+
+<p><a href="https://fedoraproject.org/wiki/SysVinit_to_Systemd_Cheatsheet">SysVinit to Systemd Cheatsheet</a></p>
+
+<p><a href="https://lists.freedesktop.org/archives/systemd-devel/2016-February/035709.html">emergency mode vs rescue mode</a></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ You will always get the greatest        \
+</span><span class='line'>\ recognition for the job you least like. /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-02-08T19:47:30+02:00" pubdate data-updated="true">Feb 8<span>th</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/02/02/lfcs-prep-using-firewalld/" title="Previous Post: LFCS prep - Using firewalld">&laquo; LFCS prep - Using firewalld</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/02/10/lfcs-prep-configure-caching-only-dns/" title="Next Post: LFCS prep - Configure caching-only DNS">LFCS prep - Configure caching-only DNS &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/02/08/lfcs-prep-runlevels-and-bootloader-configuration/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

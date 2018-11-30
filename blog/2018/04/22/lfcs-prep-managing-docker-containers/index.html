@@ -1,0 +1,834 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>LFCS prep - Managing Docker containers - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Using Docker containers on CentOS">
+  <meta name="keywords" content="docker, docker containers, containers, docker tutorial, docker centos, lfcs, rhcsa, lfcsa">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">LFCS prep - Managing Docker containers</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-04-22T14:30:54+03:00" pubdate data-updated="true">Apr 22<span>nd</span>, 2018</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>In today&rsquo;s post we&rsquo;ll look at Docker containers. Containers are lightweight application virtualization platforms that are isolated, but contrary to virtual machines, they share resources with the host OS. They are faster and less resource intensive than traditional VMs.</p>
+
+<!-- more -->
+
+
+<p>I&rsquo;ve had errors with the straightforward approach of installing Docker on CentOS7. So I installed by following the steps mentioned in the <a href="https://docs.docker.com/install/linux/docker-ce/centos/#set-up-the-repository">article about getting Docker Community Edition on CentOS</a></p>
+
+<p>Install needed packages:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install -y yum-utils \
+</span><span class='line'>  device-mapper-persistent-data \
+</span><span class='line'>  lvm2</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Set up the stable Docker repository:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum-config-manager \
+</span><span class='line'>    --add-repo \
+</span><span class='line'>    https://download.docker.com/linux/centos/docker-ce.repo</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Install Docker CE:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>yum install docker-ce</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you get errors, look in the journal log and troubleshoot from there, but this approach solved the problems for me:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>journalctl -u docker.service</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Start the Docker service:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>systemctl start docker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check information about your Docker installation:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker info
+</span><span class='line'>Containers: 0
+</span><span class='line'> Running: 0
+</span><span class='line'> Paused: 0
+</span><span class='line'> Stopped: 0
+</span><span class='line'>Images: 0
+</span><span class='line'>Server Version: 18.03.0-ce
+</span><span class='line'>Storage Driver: overlay2
+</span><span class='line'> Backing Filesystem: extfs
+</span><span class='line'> Supports d_type: true
+</span><span class='line'> Native Overlay Diff: true
+</span><span class='line'>Logging Driver: json-file
+</span><span class='line'>Cgroup Driver: cgroupfs
+</span><span class='line'>Plugins:
+</span><span class='line'> Volume: local
+</span><span class='line'> Network: bridge host macvlan null overlay
+</span><span class='line'> Log: awslogs fluentd gcplogs gelf journald json-file logentries splunk syslog
+</span><span class='line'>Swarm: inactive
+</span><span class='line'>Runtimes: runc
+</span><span class='line'>Default Runtime: runc
+</span><span class='line'>Init Binary: docker-init
+</span><span class='line'>containerd version: cfd04396dc68220d1cecbe686a6cc3aa5ce3667c
+</span><span class='line'>runc version: 4fc53a81fb7c994640722ac585fa9ca548971871
+</span><span class='line'>init version: 949e6fa
+</span><span class='line'>Security Options:
+</span><span class='line'> seccomp
+</span><span class='line'>  Profile: default
+</span><span class='line'>Kernel Version: 3.10.0-693.17.1.el7.x86_64
+</span><span class='line'>Operating System: CentOS Linux 7 (Core)
+</span><span class='line'>OSType: linux
+</span><span class='line'>Architecture: x86_64
+</span><span class='line'>CPUs: 4
+</span><span class='line'>Total Memory: 1.687GiB
+</span><span class='line'>Name: CentOS7
+</span><span class='line'>ID: JRI7:OB26:2HEE:2K4Y:OCOZ:I376:F27U:22C4:L3BU:VPYQ:XZO3:FPEW
+</span><span class='line'>Docker Root Dir: /var/lib/docker
+</span><span class='line'>Debug Mode (client): false
+</span><span class='line'>Debug Mode (server): false
+</span><span class='line'>Registry: https://index.docker.io/v1/
+</span><span class='line'>Labels:
+</span><span class='line'>Experimental: false
+</span><span class='line'>Insecure Registries:
+</span><span class='line'> 127.0.0.0/8
+</span><span class='line'>Live Restore Enabled: false</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Get more details about the version:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker version
+</span><span class='line'>Client:
+</span><span class='line'> Version: 18.03.0-ce
+</span><span class='line'> API version: 1.37
+</span><span class='line'> Go version:  go1.9.4
+</span><span class='line'> Git commit:  0520e24
+</span><span class='line'> Built:   Wed Mar 21 23:09:15 2018
+</span><span class='line'> OS/Arch: linux/amd64
+</span><span class='line'> Experimental:    false
+</span><span class='line'> Orchestrator:    swarm
+</span><span class='line'>
+</span><span class='line'>Server:
+</span><span class='line'> Engine:
+</span><span class='line'>  Version:    18.03.0-ce
+</span><span class='line'>  API version:    1.37 (minimum version 1.12)
+</span><span class='line'>  Go version: go1.9.4
+</span><span class='line'>  Git commit: 0520e24
+</span><span class='line'>  Built:  Wed Mar 21 23:13:03 2018
+</span><span class='line'>  OS/Arch:    linux/amd64
+</span><span class='line'>  Experimental:   false</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The docker CLI has a lot of commands:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker --help
+</span><span class='line'>
+</span><span class='line'>Usage:    docker COMMAND
+</span><span class='line'>
+</span><span class='line'>A self-sufficient runtime for containers
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'>      --config string      Location of client config files (default "/root/.docker")
+</span><span class='line'>  -D, --debug              Enable debug mode
+</span><span class='line'>  -H, --host list          Daemon socket(s) to connect to
+</span><span class='line'>  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
+</span><span class='line'>      --tls                Use TLS; implied by --tlsverify
+</span><span class='line'>      --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
+</span><span class='line'>      --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
+</span><span class='line'>      --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
+</span><span class='line'>      --tlsverify          Use TLS and verify the remote
+</span><span class='line'>  -v, --version            Print version information and quit
+</span><span class='line'>
+</span><span class='line'>Management Commands:
+</span><span class='line'>  config      Manage Docker configs
+</span><span class='line'>  container   Manage containers
+</span><span class='line'>  image       Manage images
+</span><span class='line'>  network     Manage networks
+</span><span class='line'>  node        Manage Swarm nodes
+</span><span class='line'>  plugin      Manage plugins
+</span><span class='line'>  secret      Manage Docker secrets
+</span><span class='line'>  service     Manage services
+</span><span class='line'>  swarm       Manage Swarm
+</span><span class='line'>  system      Manage Docker
+</span><span class='line'>  trust       Manage trust on Docker images
+</span><span class='line'>  volume      Manage volumes
+</span><span class='line'>
+</span><span class='line'>Commands:
+</span><span class='line'>  attach      Attach local standard input, output, and error streams to a running container
+</span><span class='line'>  build       Build an image from a Dockerfile
+</span><span class='line'>  commit      Create a new image from a container's changes
+</span><span class='line'>  cp          Copy files/folders between a container and the local filesystem
+</span><span class='line'>  create      Create a new container
+</span><span class='line'>  diff        Inspect changes to files or directories on a container's filesystem
+</span><span class='line'>  events      Get real time events from the server
+</span><span class='line'>  exec        Run a command in a running container
+</span><span class='line'>  export      Export a container's filesystem as a tar archive
+</span><span class='line'>  history     Show the history of an image
+</span><span class='line'>  images      List images
+</span><span class='line'>  import      Import the contents from a tarball to create a filesystem image
+</span><span class='line'>  info        Display system-wide information
+</span><span class='line'>  inspect     Return low-level information on Docker objects
+</span><span class='line'>  kill        Kill one or more running containers
+</span><span class='line'>  load        Load an image from a tar archive or STDIN
+</span><span class='line'>  login       Log in to a Docker registry
+</span><span class='line'>  logout      Log out from a Docker registry
+</span><span class='line'>  logs        Fetch the logs of a container
+</span><span class='line'>  pause       Pause all processes within one or more containers
+</span><span class='line'>  port        List port mappings or a specific mapping for the container
+</span><span class='line'>  ps          List containers
+</span><span class='line'>  pull        Pull an image or a repository from a registry
+</span><span class='line'>  push        Push an image or a repository to a registry
+</span><span class='line'>  rename      Rename a container
+</span><span class='line'>  restart     Restart one or more containers
+</span><span class='line'>  rm          Remove one or more containers
+</span><span class='line'>  rmi         Remove one or more images
+</span><span class='line'>  run         Run a command in a new container
+</span><span class='line'>  save        Save one or more images to a tar archive (streamed to STDOUT by default)
+</span><span class='line'>  search      Search the Docker Hub for images
+</span><span class='line'>  start       Start one or more stopped containers
+</span><span class='line'>  stats       Display a live stream of container(s) resource usage statistics
+</span><span class='line'>  stop        Stop one or more running containers
+</span><span class='line'>  tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+</span><span class='line'>  top         Display the running processes of a container
+</span><span class='line'>  unpause     Unpause all processes within one or more containers
+</span><span class='line'>  update      Update configuration of one or more containers
+</span><span class='line'>  version     Show the Docker version information
+</span><span class='line'>  wait        Block until one or more containers stop, then print their exit codes
+</span><span class='line'>
+</span><span class='line'>Run 'docker COMMAND --help' for more information on a command.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are tons of containers available at <a href="https://hub.docker.com/explore/">https://hub.docker.com/explore/</a> . Here, let&rsquo;s look for a hello world one:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker search hello
+</span><span class='line'>NAME                                       DESCRIPTION                                     STARS               OFFICIAL            AUTOMATED
+</span><span class='line'>hello-world                                Hello World! (an example of minimal Dockeriz…   495                 [OK]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Pull the image:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker pull hello-world
+</span><span class='line'>Using default tag: latest
+</span><span class='line'>latest: Pulling from library/hello-world
+</span><span class='line'>9bb5a5d4561a: Pull complete
+</span><span class='line'>Digest: sha256:f5233545e43561214ca4891fd1157e1c3c563316ed8e237750d59bde73361e77
+</span><span class='line'>Status: Downloaded newer image for hello-world:latest</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run the demo image:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker run hello-world
+</span><span class='line'>
+</span><span class='line'>Hello from Docker!
+</span><span class='line'>This message shows that your installation appears to be working correctly.
+</span><span class='line'>
+</span><span class='line'>To generate this message, Docker took the following steps:
+</span><span class='line'> 1. The Docker client contacted the Docker daemon.
+</span><span class='line'> 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+</span><span class='line'>    (amd64)
+</span><span class='line'> 3. The Docker daemon created a new container from that image which runs the
+</span><span class='line'>    executable that produces the output you are currently reading.
+</span><span class='line'> 4. The Docker daemon streamed that output to the Docker client, which sent it
+</span><span class='line'>    to your terminal.
+</span><span class='line'>
+</span><span class='line'>To try something more ambitious, you can run an Ubuntu container with:
+</span><span class='line'> $ docker run -it ubuntu bash
+</span><span class='line'>
+</span><span class='line'>Share images, automate workflows, and more with a free Docker ID:
+</span><span class='line'> https://hub.docker.com/
+</span><span class='line'>
+</span><span class='line'>For more examples and ideas, visit:
+</span><span class='line'> https://docs.docker.com/engine/userguide/</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The Docker default storage is at <code>/var/lib/docker</code>.  Now let&rsquo;s go beyond the basics and get an Ubuntu image:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker pull ubuntu
+</span><span class='line'>Using default tag: latest
+</span><span class='line'>latest: Pulling from library/ubuntu
+</span><span class='line'>d3938036b19c: Pull complete
+</span><span class='line'>a9b30c108bda: Pull complete
+</span><span class='line'>67de21feec18: Pull complete
+</span><span class='line'>817da545be2b: Pull complete
+</span><span class='line'>d967c497ce23: Pull complete
+</span><span class='line'>Digest: sha256:9ee3b83bcaa383e5e3b657f042f4034c92cdd50c03f73166c145c9ceaea9ba7c
+</span><span class='line'>Status: Downloaded newer image for ubuntu:latest</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check available images:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+</span><span class='line'>ubuntu              latest              c9d990395902        9 days ago          113MB
+</span><span class='line'>hello-world         latest              e38bc07ac18e        10 days ago         1.85kB</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Run a command inside the Ubuntu container:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker run ubuntu uname -a
+</span><span class='line'>Linux 05f2f247622a 3.10.0-693.17.1.el7.x86_64 #1 SMP Thu Jan 25 20:13:58 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Check all containers:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker ps -a
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND             CREATED              STATUS                          PORTS               NAMES
+</span><span class='line'>05f2f247622a        ubuntu              "uname -a"          About a minute ago   Exited (0) About a minute ago                       naughty_fermi
+</span><span class='line'>db7d3fcd06a7        hello-world         "/hello"            10 minutes ago       Exited (0) 9 minutes ago                            trusting_mirzakh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Take note of the container ID if you want to start a specific container:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker start 05f2f247622a
+</span><span class='line'>05f2f247622a</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To start an interactive session in the container with an allocated TTY, do the following:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker run -it ubuntu bash
+</span><span class='line'>root@c8561feac38d:/# cat /etc/issue
+</span><span class='line'>Ubuntu 16.04.4 LTS \n \l</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Here we&rsquo;ve run the bash shell inside the container. To return to the host, type <em>exit</em></p>
+
+<p>We&rsquo;ve only scratched the surface, but we can see how powerful and versatile Docker containers can be.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _________________________________________
+</span><span class='line'>/ Be free and open and breezy! Enjoy!     \
+</span><span class='line'>| Things won't get any better so get used |
+</span><span class='line'>\ to it.                                  /
+</span><span class='line'> -----------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2018-04-22T14:30:54+03:00" pubdate data-updated="true">Apr 22<span>nd</span>, 2018</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>linux</a>, <a class='category' href='/blog/categories/sysadmin/'>sysadmin</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/03/02/lfcs-prep-storage-management/" title="Previous Post: LFCS prep - Storage Management">&laquo; LFCS prep - Storage Management</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2018/05/04/dropping-droopy/" title="Next Post: Dropping Droopy">Dropping Droopy &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/10/take-the-spydersec-challenge/">Take the SpyderSec Challenge</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/10/26/all-your-64base-are-belong-to-us/">All your 64Base are belong to us</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2018 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/';
+        var disqus_url = 'http://chousensha.github.io/blog/2018/04/22/lfcs-prep-managing-docker-containers/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
