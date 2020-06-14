@@ -1,0 +1,380 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>OSCP flash review - Core dump overflow</title>
+  <meta name="author" content="chousensha">
+
+  
+  
+  <meta name="description" content="Quick OSCP review">
+  <meta name="keywords" content="oscp, offensive security, offsec, pwk">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://chousensha.github.io/blog/2020/06/14/oscp-flash-review">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Core dump overflow" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-51216602-2']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Core dump overflow</a></h1>
+  
+    <h2>Core dump in progress...</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:chousensha.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/where-to-start">Where to start</a></li>
+  <li><a href="/book-corner">Book corner</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">OSCP flash review</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2020-06-14T20:07:43+03:00" pubdate data-updated="true">Jun 14<span>th</span>, 2020</time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://chousensha.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>I&rsquo;ve finished my OSCP shortly before <a href="https://www.offensive-security.com/pwk-oscp/">PWKv2</a> was released. Since my experience was pre-update, I didn&rsquo;t want to write a review that might no longer apply. Since then, I&rsquo;ve purchased the updated course materials, but I haven&rsquo;t yet gone back to do the newly added machines as well. I decided to write a quick review nonetheless, because I noticed a misconception about what the OSCP is. So I&rsquo;ll just address those points and not add just another OSCP review for the internet to swallow.</p>
+
+<!-- more -->
+
+
+<p>A quick rundown of my experience, I did all the lab machines and all the exam machines within 3 months. I plan to go back and also do the ones that were added by the update, but right now I am too busy with other things. After I do that, maybe I&rsquo;ll update this post or write a new one more focused on the impressions of the update. In terms of the new course materials, which I did review, there&rsquo;s a lot compared to the previous version. In particular, the new Windows section is superb and there are lots of usable snippets for various scenarios in modern environments.</p>
+
+<p>Back to the reason for this post, it&rsquo;s not that I want to add just another post with what I did to prepare and the kind of information that is widely available already through the experiences of so many other successful takers (and you should read those posts and learn the most out of them to help you with your journey). My reason is that I noticed many people consider the OSCP the end all, be all of pentesting and are under the impression that it automatically makes you a pentesting god, while there are others who think it&rsquo;s overrated and that you don&rsquo;t learn much out of it. I consider both these opinion categories wrong. Let&rsquo;s dive in.</p>
+
+<h3>My 50 cents about the OSCP</h3>
+
+<p>After doing the OSCP and also moving beyond it, I consider it more like a necessary qualification to go through as a baseline for pentesting, much like the bootcamp in an army, training camp of a fight, or the qualifiers to a World Cup. It&rsquo;s hard and diverse enough, but it doesn&rsquo;t cover everything. It&rsquo;s mostly focused on network and web exploitation, along with enumeration and privilege escalation. Achieving it will demonstrate perseverance in front of obstacles, a working pentest methodology and skill, and a reasonable level of experience performing it. From that point, there&rsquo;s a lot on the horizon..going deeper in network and web attacks, exploit development, Active Directory..you realize when you&rsquo;re done that you just passed through a warpgate and now there&rsquo;s a whole lot of new challenges lining up. But the principles you learned through completing it will continue to be usable in your career and in future challenges.</p>
+
+<h3>You get out what you put in</h3>
+
+<p>I&rsquo;ve heard of several people who jumped into the exam after only going through a few machines in the labs. You are literally robbing yourself of the most valuable thing the OSCP provides. All the lab machines present a wide variety of operating systems (not just the usual flavors of Windows and Linux) and attack vectors. Some machines have different and unique vectors hidden in the attack surface that are way more rewarding than the obvious one. I don&rsquo;t think I used the same exploit more than 2 times in the lab. Each machine was a learning experience by itself. If you&rsquo;re running exploit suggester and throwing kernel exploits until one works, you&rsquo;re doing it wrong. Also, the hidden networks present a new challenge, in the way of pivoting, that needs to be solved before even reaching the targets. Not to mention the client side attacks and their difficulties.</p>
+
+<p>Too many people are focusing just on the finality of earning a certification instead of squeezing the most out of all the labs have to offer. And even after you complete every box, don&rsquo;t imagine the exam won&rsquo;t be difficult. But you will be as prepared as you can get. Plus it&rsquo;s fun! If you don&rsquo;t get excited about the prospect of pwning over 50 boxes, why are you doing it in the first place? Your ROI will come from the effort you put into the labs, not from the letters you put on your resume.</p>
+
+<h3>Outdated machines?</h3>
+
+<p>Another thing I&rsquo;ve heard often is the complaint about lab machines being too outdated. Yes, the majority of boxes have older OS flavors..and that&rsquo;s a good thing! You can try your hand at exploits that will teach you things that you wouldn&rsquo;t otherwise experience in a completely modern environment. This is the foundation you are building, the training you&rsquo;re doing for match day. Plus, you learn to achieve objectives without your favorite tools. How do you transfer files to and from an older Windows machine without Powershell and all other native tools that you&rsquo;re used to? What can you do if you have RCE on a NIX system that&rsquo;s different than the ones you&rsquo;re familiar with? And many more wins that you arrive at from struggling with each challenge you&rsquo;re presented.</p>
+
+<h3>Target audience</h3>
+
+<p>Even with the new course update, which gives you a better starting point than before, I don&rsquo;t believe OSCP should be pursued for beginners. People who want to start in pentesting should first make sure they have their basics covered. Things like networking, system administration on Windows and Linux, programming, they are not basics as in easy and simple things, but as in the necessary foundation to add to with security. Trying to skip them won&rsquo;t end well. Once that is covered, there are lots of resources to prepare you, which I won&rsquo;t touch on here. VulnHub, HackTheBox, Ippsec, they have enough content to keep you busy for years. At some point, you have to dive in, but properly preparing for OSCP is as important an effort as working through it.</p>
+
+<h3>Exam</h3>
+
+<p>It&rsquo;s hard and it&rsquo;s fun. Don&rsquo;t think just because you finished all the lab machines it will be a walk in the park &ndash; it won&rsquo;t ;). But I do believe that doing all the machines is the best way to gauge your readiness for it.</p>
+
+<p>Keeping it short and to the point I intended, these are my thoughts about the OSCP. It&rsquo;s an awesome training experience and challenge. You constantly switch back and forth between frustration and elation. And once you&rsquo;re on the other side..you don&rsquo;t stop there, but you go forward exploring all that new fog of war.</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'> _____________________________________
+</span><span class='line'>/ You definitely intend to start living \
+</span><span class='line'>\ sometime soon.                        /
+</span><span class='line'>  -------------------------------------
+</span><span class='line'>         \   ^__^ 
+</span><span class='line'>          \  (oo)\_______
+</span><span class='line'>             (__)\       )\/\
+</span><span class='line'>                 ||----w |
+</span><span class='line'>                 ||     ||</span></code></pre></td></tr></table></div></figure>
+
+
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">chousensha</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2020-06-14T20:07:43+03:00" pubdate data-updated="true">Jun 14<span>th</span>, 2020</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hacking/'>hacking</a>, <a class='category' href='/blog/categories/penetration-testing/'>penetration testing</a>, <a class='category' href='/blog/categories/reviews/'>reviews</a>, <a class='category' href='/blog/categories/training/'>training</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://chousensha.github.io/blog/2020/06/14/oscp-flash-review/" data-via="chous3nsha" data-counturl="http://chousensha.github.io/blog/2020/06/14/oscp-flash-review/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2019/09/09/there-be-tr0lls-part-3/" title="Previous Post: There be Tr0lls - Part 3">&laquo; There be Tr0lls - Part 3</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>whoami</h1>
+  <p>switch (interests){<br>
+ case INFORMATION SECURITY:<br>
+Mostly offensive security, but trying to be well-rounded in everything;<br>
+case PYTHON:<br>
+Mainly security and sysadmin related scripting;<br>
+case LINUX:<br>
+Greetings from /dev/null;<br>
+case JAPANESE:<br>
+Language, anime, samurai;<br>
+case MARTIAL ARTS:<br>
+If it's fighting I like it;<br>
+case MILITARY SCIENCE:<br>
+Ancient, medieval, modern;<br>
+default: GAMING;}</p>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2020/06/14/oscp-flash-review/">OSCP flash review</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/09/09/there-be-tr0lls-part-3/">There be Tr0lls - Part 3</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/06/09/no-mercy/">No Mercy</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/05/30/pond-analoguepond/">Pond. Analoguepond</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2019/05/19/derpnstink/">Derpnstink</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/chousensha">@chousensha</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'chousensha',
+            count: 5,
+            skip_forks: true,
+	    skip_repos: [ "chousensha.github.io" ],
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+<section>
+  <h1>Latest Tweets</h1>
+  <ul id="tweets">
+    <a class="twitter-timeline" data-dnt="true" href="https://twitter.com/chous3nsha" data-widget-id="733738822597550081" data-link-color="#1863a1" data-tweet-limit="3" data-chrome="noheader nofooter transparent noscrollbar">Tweets by @chous3nsha</a>
+    <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+  </ul>
+  
+    <a href="http://twitter.com/chous3nsha" class="twitter-follow-button" data-show-count="true">Follow @chous3nsha</a>
+  
+</section>
+
+<section>
+  <h1>Blogroll</h1>
+  <p><a href="https://blog.g0tmi1k.com/">g0tmi1k</a></p>
+  <p><a href="http://redteamjournal.com/">Red Team Journal</a></p>
+  <p><a href="https://www.corelan.be/">Corelan Team</a></p>
+  <p><a href="http://www.madirish.net/">Mad Irish</a></p>
+  <p><a href="http://redteams.net/blog/">redteams.net</a></p>
+  <p><a href="https://www.mattandreko.com/">MattAndreko.com</a></p>
+  <p><a href="http://blog.portswigger.net/">Portswigger Web Security</a></p>
+  <p><a href="http://blog.cobaltstrike.com/">Cobalt Strike blog</a></p>
+  <p><a href="https://highon.coffee/blog/">HighOn.Coffee</a></p>
+  <p><a href="https://pentestlab.blog/">Penetration Testing Lab</a></p
+</section>
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2020 - chousensha -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'coredumpoverflow';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://chousensha.github.io/blog/2020/06/14/oscp-flash-review/';
+        var disqus_url = 'http://chousensha.github.io/blog/2020/06/14/oscp-flash-review/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
